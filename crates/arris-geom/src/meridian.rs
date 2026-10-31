@@ -67,6 +67,17 @@ pub(crate) fn intersect_coaxial(
         }
         Shared::InPlane { normal } => {
             let carrier = if a.kind() == SurfaceKind::Plane { b } else { a };
+            // A spindle's tube circles cross the axis, and what lies past
+            // it is the lemon: no whole circle is the band's (ADR-0080).
+            if let Surface::Torus {
+                major_radius,
+                minor_radius,
+                ..
+            } = carrier
+                && minor_radius - major_radius > tol.linear
+            {
+                return Err(unsupported());
+            }
             return through_the_axis(carrier, normal).ok_or_else(unsupported);
         }
         Shared::None => return crate::intersect::off_axis(a, b, within, tol, meter),
@@ -94,6 +105,18 @@ pub(crate) fn intersect_coaxial(
             Err(unsupported())
         };
     }
+    // A horn's or a spindle's faces lie on its regular band (ADR-0080):
+    // a meeting on the axis is its axis point, and one on this side of
+    // it that is not on the band's own section is on its mirror's, a
+    // spindle's lemon. Neither is a point of the band.
+    let bands: Vec<Section> = [a, b]
+        .into_iter()
+        .filter_map(|s| band_section(s, &axis, tol))
+        .collect();
+    meetings.retain(|(_, p)| {
+        bands.is_empty()
+            || (p[0] > tol.linear && bands.iter().all(|band| band.distance(*p) <= tol.linear))
+    });
     // The half-plane `ρ ≥ 0`: a meeting within `tol.linear` of the axis is
     // a point on it, one beyond is a circle of radius `ρ`, and one on the
     // far side is the mirror of a meeting already kept.
@@ -367,6 +390,32 @@ fn through_the_axis(carrier: &Surface, n: UnitVec3) -> Option<SurfaceIntersectio
         | Surface::Cylinder { .. }
         | Surface::EllipticCylinder { .. }
         | Surface::Sphere { .. }
+        | Surface::Nurbs(_) => None,
+    }
+}
+
+/// The section of `s`'s regular band in `axis`'s half-plane, the circle
+/// about `ρ = R`, when `s` is a torus whose band is not the whole of it: a
+/// horn or a spindle, or a ring within `tol.linear` of one (ADR-0080).
+fn band_section(s: &Surface, axis: &Frame, tol: Tolerance) -> Option<Section> {
+    match *s {
+        Surface::Torus {
+            ref frame,
+            major_radius,
+            minor_radius,
+        } if major_radius - minor_radius <= tol.linear => Some(Section::Circle {
+            centre: [
+                major_radius,
+                (frame.origin() - axis.origin()).dot(&axis.z()),
+            ],
+            radius: minor_radius,
+        }),
+        Surface::Plane { .. }
+        | Surface::Cylinder { .. }
+        | Surface::EllipticCylinder { .. }
+        | Surface::Cone { .. }
+        | Surface::Sphere { .. }
+        | Surface::Torus { .. }
         | Surface::Nurbs(_) => None,
     }
 }

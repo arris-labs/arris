@@ -70,7 +70,7 @@ impl Walker {
     /// The other surface's signed distance at the walk's `(u, v)` and
     /// its gradient in `(u, v)`, as they are.
     pub(super) fn distance(&self, u: f64, v: f64) -> (f64, [f64; 2]) {
-        let Some(implicit) = Implicit::of(&self.other) else {
+        let Some(implicit) = Implicit::sectioned(&self.other) else {
             return (f64::NAN, [f64::NAN; 2]);
         };
         let e = self.eval(u, v);
@@ -101,7 +101,7 @@ impl Walker {
     /// ([`Quotient::at`]), over `|∇F|`.
     pub(super) fn quotient(&self, factor: &TubeFactor, u: f64, v: f64) -> f64 {
         if let Some(divided) = &self.divided {
-            let Some(implicit) = Implicit::of(&self.other) else {
+            let Some(implicit) = Implicit::sectioned(&self.other) else {
                 return f64::NAN;
             };
             let quotient = divided.at(u, v);
@@ -121,7 +121,7 @@ impl Walker {
                 major_radius,
                 minor_radius,
             },
-        ) = (Implicit::of(&self.other), &self.walked)
+        ) = (Implicit::sectioned(&self.other), &self.walked)
         else {
             return f64::NAN;
         };
@@ -155,7 +155,7 @@ impl Walker {
     /// other surface, or with a tube circle divided out the quotient,
     /// which is never less.
     pub(super) fn apart(&self, u: f64, v: f64) -> f64 {
-        match (&self.factor, Implicit::of(&self.other)) {
+        match (&self.factor, Implicit::sectioned(&self.other)) {
             (Some(factor), _) => self.quotient(factor, u, v),
             (None, Some(other)) => other.distance(self.point(u, v)),
             (None, None) => f64::NAN,
@@ -291,7 +291,7 @@ impl Walker {
     /// slope. The torus walk's counterpart of a ruling's stretch
     /// ([`SectionBranch::distance`]).
     pub(super) fn stretch(&self, u: f64, v: f64, along_v: bool) -> Stretch {
-        let Some(implicit) = Implicit::of(&self.other) else {
+        let Some(implicit) = Implicit::sectioned(&self.other) else {
             return Stretch::Point;
         };
         let e = self.eval(u, v);

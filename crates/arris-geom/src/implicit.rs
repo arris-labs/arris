@@ -62,8 +62,14 @@ enum Form {
     Cone { radius: f64, sin: f64, cos: f64 },
     /// `x² + y² + z² − R²`.
     Sphere { radius: f64 },
-    /// `(x² + y² + z² + R² − r²)² − 4R² (x² + y²)`.
-    Torus { major: f64, minor: f64 },
+    /// `(x² + y² + z² + R² − r²)² − 4R² (x² + y²)`, which is
+    /// `((ρ − R)² + z² − r²)·((ρ + R)² + z² − r²)`: the tube about the
+    /// centre circle and its mirror across the axis. Off a ring the two
+    /// overlap, and the part of the mirror on this side of the axis is a
+    /// spindle's lemon (ADR-0080). `lemon` measures the distance to it as
+    /// well, the zero set the polynomial has; otherwise to the regular
+    /// band's sheet alone, the surface a face lies on.
+    Torus { major: f64, minor: f64, lemon: bool },
 }
 
 impl<'a> Implicit<'a> {
@@ -108,11 +114,26 @@ impl<'a> Implicit<'a> {
                 Form::Torus {
                     major: *major_radius,
                     minor: *minor_radius,
+                    lemon: false,
                 },
             ),
             Surface::Nurbs(_) => return None,
         };
         Some(Implicit { frame, form })
+    }
+
+    /// [`Self::of`] as a section is traced on the polynomial: the distance
+    /// of a torus is to the whole zero set, a spindle's lemon included,
+    /// so that the walk's roots are the patches' (`crate::torus_walk`).
+    /// What of the section lies on the regular band is decided after it
+    /// is traced (ADR-0080). The same as [`Self::of`] for every other
+    /// kind, and for a ring torus, whose lemon is empty.
+    pub(crate) fn sectioned(surface: &'a Surface) -> Option<Self> {
+        let mut implicit = Self::of(surface)?;
+        if let Form::Torus { lemon, .. } = &mut implicit.form {
+            *lemon = true;
+        }
+        Some(implicit)
     }
 
     /// The degree of the polynomial.
@@ -162,7 +183,7 @@ impl<'a> Implicit<'a> {
                 (1.0, &square(z)),
                 (-radius * radius, &square(w)),
             ]),
-            Form::Torus { major, minor } => {
+            Form::Torus { major, minor, .. } => {
                 let across = algebra.combine(&[(1.0, &square(x)), (1.0, &square(y))]);
                 let ww = square(w);
                 let q = algebra.combine(&[
@@ -234,7 +255,7 @@ impl<'a> Implicit<'a> {
                 2.0 * cos * cos * l2 + sin * sin * h * h
             }
             Form::Sphere { radius } => 3.0 * l2 + radius * radius * w2,
-            Form::Torus { major, minor } => {
+            Form::Torus { major, minor, .. } => {
                 let q = 3.0 * l2 + (major * major - minor * minor).abs() * w2;
                 q * q + 8.0 * major * major * l2 * w2
             }
@@ -256,7 +277,7 @@ impl<'a> Implicit<'a> {
                 let h = reach + (radius * cos / sin).abs();
                 2.0 * (cos * cos * reach + sin * sin * h)
             }
-            Form::Torus { major, minor } => {
+            Form::Torus { major, minor, .. } => {
                 let q = reach * reach + (major * major - minor * minor).abs();
                 4.0 * q * reach + 8.0 * major * major * reach
             }
@@ -288,7 +309,25 @@ impl<'a> Implicit<'a> {
             }
             Form::Cone { radius, sin, cos } => cos * rho - sin * (q.z + radius * cos / sin).abs(),
             Form::Sphere { radius } => q.coords.norm() - radius,
-            Form::Torus { major, minor } => real::hypot(rho - major, q.z) - minor,
+            Form::Torus {
+                major,
+                minor,
+                lemon,
+            } => {
+                let band = real::hypot(rho - major, q.z) - minor;
+                if !lemon || major > minor {
+                    return band;
+                }
+                // The nearer of the two tubes, with the polynomial's sign:
+                // the product of the two tubes' own.
+                let mirror = real::hypot(rho + major, q.z) - minor;
+                let sign = if (band < 0.0) == (mirror < 0.0) {
+                    1.0
+                } else {
+                    -1.0
+                };
+                sign * band.abs().min(mirror.abs())
+            }
         }
     }
 
@@ -319,12 +358,35 @@ impl<'a> Implicit<'a> {
                 cos * radial - sin * h.signum() * Vec3::z()
             }
             Form::Sphere { .. } => q.coords.try_normalize(0.0).unwrap_or_else(Vec3::zeros),
-            Form::Torus { major, .. } => {
-                let tube = real::hypot(rho - major, q.z);
-                if tube > 0.0 {
-                    ((rho - major) * radial + q.z * Vec3::z()) / tube
+            Form::Torus {
+                major,
+                minor,
+                lemon,
+            } => {
+                let along = |centre: f64| {
+                    let tube = real::hypot(rho - centre, q.z);
+                    if tube > 0.0 {
+                        ((rho - centre) * radial + q.z * Vec3::z()) / tube
+                    } else {
+                        Vec3::zeros()
+                    }
+                };
+                if !lemon || major > minor {
+                    return along(major);
+                }
+                // As [`Self::distance`] picks its tube.
+                let band = real::hypot(rho - major, q.z) - minor;
+                let mirror = real::hypot(rho + major, q.z) - minor;
+                if mirror.abs() < band.abs() {
+                    if band < 0.0 {
+                        -along(-major)
+                    } else {
+                        along(-major)
+                    }
+                } else if mirror < 0.0 {
+                    -along(major)
                 } else {
-                    Vec3::zeros()
+                    along(major)
                 }
             }
         }
@@ -368,7 +430,7 @@ impl<'a> Implicit<'a> {
                 cos * cos * across - sin * sin * h * h
             }
             Form::Sphere { radius } => across + q.z * q.z - radius * radius,
-            Form::Torus { major, minor } => {
+            Form::Torus { major, minor, .. } => {
                 let s = across + q.z * q.z + major * major - minor * minor;
                 s * s - 4.0 * major * major * across
             }
@@ -393,7 +455,9 @@ impl<'a> Implicit<'a> {
                 let apex = Point3::new(0.0, 0.0, -radius * cos / sin);
                 2.0 * sin * cos * clear_of(apex).max(0.0)
             }
-            Form::Torus { major, minor } => 8.0 * major * minor * (major - minor),
+            // Nothing off a ring: a horn's and a spindle's polynomial
+            // vanishes to second order on the axis.
+            Form::Torus { major, minor, .. } => 8.0 * major * minor * (major - minor).max(0.0),
         }
     }
 
@@ -415,7 +479,7 @@ impl<'a> Implicit<'a> {
                 )
             }
             Form::Sphere { .. } => 2.0 * q.coords,
-            Form::Torus { major, minor } => {
+            Form::Torus { major, minor, .. } => {
                 let s = q.coords.norm_squared() + major * major - minor * minor;
                 4.0 * s * q.coords - 8.0 * major * major * Vec3::new(q.x, q.y, 0.0)
             }
@@ -443,7 +507,7 @@ impl<'a> Implicit<'a> {
                 [cos * cos * across - sin * sin * tau.z * tau.z, 0.0, 0.0]
             }
             Form::Sphere { .. } => [1.0, 0.0, 0.0],
-            Form::Torus { major, minor } => {
+            Form::Torus { major, minor, .. } => {
                 // `S(λ)² − 4R²·T(λ)`, `S = |q + λτ|² + R² − r²` and `T` the
                 // square of the distance from the axis.
                 let s = q.coords.norm_squared() + major * major - minor * minor;

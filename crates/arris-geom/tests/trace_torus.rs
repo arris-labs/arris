@@ -508,9 +508,19 @@ const SCAN: usize = 160;
 /// Every cell of a grid over `torus` that `other` passes through — its
 /// corners not all on one side — is near a branch or a point of the
 /// trace, to what the cell's size and a polyline of the branches resolve.
+/// Of a horn or a spindle, every such cell on its regular band: what is
+/// off it is not a section of the band's (ADR-0080).
 fn assert_complete(trace: &SectionTrace, torus: &Surface, other: &Surface) {
-    let Surface::Torus { minor_radius, .. } = torus else {
+    let Surface::Torus {
+        major_radius,
+        minor_radius,
+        ..
+    } = torus
+    else {
         panic!("not a torus");
+    };
+    let on_band = |j: usize| {
+        major_radius + minor_radius * real::cos(TAU * j as f64 / SCAN as f64) > tol().linear
     };
     let polylines: Vec<Vec<Point3>> = (trace.branches().iter())
         .map(|b| polyline(b, TAU * minor_radius / SCAN as f64))
@@ -541,7 +551,10 @@ fn assert_complete(trace: &SectionTrace, torus: &Surface, other: &Surface) {
                 grid[i][j + 1],
                 grid[i + 1][j + 1],
             ];
-            if corners.iter().all(|c| *c > 0.0) || corners.iter().all(|c| *c < 0.0) {
+            if corners.iter().all(|c| *c > 0.0)
+                || corners.iter().all(|c| *c < 0.0)
+                || !(on_band(j) && on_band(j + 1))
+            {
                 continue;
             }
             let across =
@@ -1250,4 +1263,496 @@ fn a_ring_sliced_a_hair_off_a_meridian_is_fitted_on_both_surfaces() {
             assert!(off <= bound, "the fit is {off} off a surface at {p:?}");
         }
     }
+}
+
+/// A horn (`R = r`) or a spindle (`R < r`) torus at rest (ADR-0080).
+fn band_torus(major: f64, minor: f64) -> Surface {
+    Surface::Torus {
+        frame: Frame::world(),
+        major_radius: major,
+        minor_radius: minor,
+    }
+}
+
+/// The distance of `p` from `torus`'s axis, signed by the sheet of its
+/// polynomial `p` is nearer: positive on the regular band's, negative on
+/// its mirror across the axis, a spindle's lemon.
+fn signed_rho(torus: &Surface, p: Point3) -> f64 {
+    let Surface::Torus {
+        frame,
+        major_radius,
+        minor_radius,
+    } = torus
+    else {
+        return f64::INFINITY;
+    };
+    let q = frame.to_local(p);
+    let rho = real::hypot(q.x, q.y);
+    let band = (real::hypot(rho - major_radius, q.z) - minor_radius).abs();
+    let mirror = (real::hypot(rho + major_radius, q.z) - minor_radius).abs();
+    if band <= mirror { rho } else { -rho }
+}
+
+/// The partners of a horn or a spindle at rest: each kind through its
+/// tube, and again through its axis region, where a spindle's lemon is.
+fn band_partners(major: f64, minor: f64) -> Vec<(&'static str, Surface)> {
+    let r = minor;
+    let on_tube = Point3::new(major * real::cos(0.7f64), major * real::sin(0.7f64), 0.0);
+    let oblique = Vec3::new(0.4, -0.3, 0.85);
+    let steep = Vec3::new(0.2, 0.1, 0.97);
+    let centre = Point3::new(0.13 * r, -0.07 * r, 0.21 * r);
+    let f = |p: Point3, z: Vec3| Frame::from_z(p, z).unwrap();
+    vec![
+        (
+            "plane through the tube",
+            Surface::Plane {
+                frame: f(on_tube + 0.3 * r * Vec3::x(), oblique),
+            },
+        ),
+        (
+            "plane across the axis",
+            Surface::Plane {
+                frame: f(centre, steep),
+            },
+        ),
+        (
+            "plane square to the axis",
+            Surface::Plane {
+                frame: f(Point3::new(0.0, 0.0, 0.3 * r), Vec3::z()),
+            },
+        ),
+        (
+            "plane parallel to the axis",
+            Surface::Plane {
+                frame: f(Point3::new(0.5 * r, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.05)),
+            },
+        ),
+        (
+            "cylinder through the tube",
+            Surface::Cylinder {
+                frame: f(on_tube + 0.5 * r * Vec3::z(), oblique),
+                radius: 0.6 * r,
+            },
+        ),
+        (
+            "cylinder beside the axis",
+            Surface::Cylinder {
+                frame: f(Point3::new(0.7 * r, 0.2 * r, 0.0), Vec3::z()),
+                radius: 0.5 * r,
+            },
+        ),
+        (
+            "elliptic cylinder through the tube",
+            Surface::EllipticCylinder {
+                frame: f(on_tube - 0.2 * r * Vec3::y(), oblique),
+                major_radius: 0.9 * r,
+                minor_radius: 0.5 * r,
+            },
+        ),
+        (
+            "cone through the tube",
+            Surface::Cone {
+                frame: f(on_tube + 0.2 * r * Vec3::x(), oblique),
+                radius: 0.5 * r,
+                half_angle: 0.4,
+            },
+        ),
+        (
+            "cone across the axis",
+            Surface::Cone {
+                frame: f(centre, steep),
+                radius: 0.4 * r,
+                half_angle: 0.6,
+            },
+        ),
+        (
+            "sphere in the tube",
+            Surface::Sphere {
+                frame: f(on_tube + 0.7 * r * oblique.normalize(), Vec3::z()),
+                radius: 0.8 * r,
+            },
+        ),
+        (
+            "sphere about the axis",
+            Surface::Sphere {
+                frame: f(Point3::new(0.9 * r, 0.2 * r, 0.0), Vec3::z()),
+                radius: 0.5 * r,
+            },
+        ),
+        (
+            "torus through the tube",
+            Surface::Torus {
+                frame: f(on_tube + 0.9 * r * Vec3::x(), Vec3::new(0.1, 0.9, 0.3)),
+                major_radius: 0.9 * r,
+                minor_radius: 0.4 * r,
+            },
+        ),
+        (
+            "a ring through the lemon",
+            Surface::Torus {
+                frame: f(Point3::new(0.1 * r, 0.0, 0.1 * r), Vec3::new(1.0, 0.2, 0.1)),
+                major_radius: 0.4 * r,
+                minor_radius: 0.1 * r,
+            },
+        ),
+        (
+            "a spindle through the tube",
+            Surface::Torus {
+                frame: f(
+                    Point3::new(major, 0.1 * r, 0.05 * r),
+                    Vec3::new(0.05, 1.0, 0.1),
+                ),
+                major_radius: 0.5 * r,
+                minor_radius: 0.9 * r,
+            },
+        ),
+    ]
+}
+
+/// The distance of `p` from `surface`; from a torus in closed form, which
+/// holds on its axis, where the projection is ambiguous.
+fn off(surface: &Surface, p: Point3) -> f64 {
+    match surface {
+        Surface::Torus {
+            frame,
+            major_radius,
+            minor_radius,
+        } => {
+            let q = frame.to_local(p);
+            (real::hypot(real::hypot(q.x, q.y) - major_radius, q.z) - minor_radius).abs()
+        }
+        _ => distance(surface, p),
+    }
+}
+
+/// What a section of a horn or a spindle owes beyond [`holds`]: every
+/// sample of a branch or a circle within the tolerance of both surfaces
+/// and on the regular band of each torus that is not a ring — off the
+/// axis, on the band's sheet — and a point on the axis only where branches
+/// from the band end at it.
+fn holds_on_band(trace: &SectionTrace, a: &Surface, b: &Surface) -> Result<(), TestCaseError> {
+    let bound = |p: Point3| tol().linear + 1e-11 * real::powi(1.0 + p.coords.norm(), 2);
+    let bands: Vec<&Surface> = [a, b]
+        .into_iter()
+        .filter(|s| match s {
+            Surface::Torus {
+                major_radius,
+                minor_radius,
+                ..
+            } => major_radius - minor_radius <= tol().linear,
+            _ => false,
+        })
+        .collect();
+    let rho = |p: Point3| {
+        (bands.iter())
+            .map(|t| signed_rho(t, p))
+            .fold(f64::INFINITY, f64::min)
+    };
+    for branch in trace.branches() {
+        let points = samples(branch, 65);
+        for &p in &points {
+            let off = off(a, p).max(off(b, p));
+            prop_assert!(off <= bound(p), "{p} is {off} off a surface");
+            prop_assert!(rho(p) >= -tol().linear, "{p} is off the band: {}", rho(p));
+        }
+        prop_assert!(points.iter().any(|&p| rho(p) > tol().linear));
+        // An end on the axis is a point of the trace, and the end is it.
+        if let Some(ends) = branch.ends() {
+            let domain = branch.domain();
+            for (end, t) in ends.iter().zip([domain.lo(), domain.hi()]) {
+                if let BranchEnd::Singular(i) = end {
+                    prop_assert_eq!(branch.point(t), trace.points()[*i].point);
+                }
+            }
+        }
+    }
+    for c in trace.circles() {
+        let domain = c.circle.domain();
+        for k in 0..64 {
+            let p = c.circle.point(domain.lerp((k as f64 + 0.5) / 64.0));
+            prop_assert!(rho(p) > -tol().linear, "{p} of a circle is off the band");
+        }
+    }
+    for (i, p) in trace.points().iter().enumerate() {
+        let off = off(a, p.point).max(off(b, p.point));
+        prop_assert!(off <= bound(p.point), "{} is {off} off a surface", p.point);
+        let ended = (trace.branches().iter())
+            .filter_map(|br| br.ends())
+            .flatten()
+            .any(|e| e == BranchEnd::Singular(i));
+        if rho(p.point) <= tol().linear {
+            prop_assert!(
+                !p.isolated && ended,
+                "{} on the axis ends no branch",
+                p.point
+            );
+        }
+    }
+    Ok(())
+}
+
+/// A horn and spindles from `R/r` of 1 down to 0.3, each against every
+/// partner kind through its tube and through its axis region: what is
+/// left is the band's, every sample on both surfaces and none on the
+/// lemon or the axis, argument order not reaching it, and a scan of the
+/// band finding nothing of the section away from the trace.
+#[test]
+fn a_horn_and_a_spindle_keep_only_their_band() {
+    for (major, minor) in [(1.0, 1.0), (0.6, 1.0), (0.3, 1.0), (2.0, 2.0)] {
+        let torus = band_torus(major, minor);
+        for (name, other) in band_partners(major, minor) {
+            let label = format!("R={major} r={minor} against {name}");
+            let trace = trace_torus(&torus, &other, tol(), &mut arris_math::Meter::default())
+                .unwrap_or_else(|e| panic!("{label}: {e}"));
+            holds_on_band(&trace, &torus, &other).unwrap_or_else(|e| panic!("{label}: {e}"));
+            holds((torus.clone(), other.clone())).unwrap_or_else(|e| panic!("{label}: {e}"));
+        }
+    }
+}
+
+/// A plane square to a spindle's axis cuts its band in one circle and
+/// its lemon in another; the lemon's is dropped, by the tracer and by the
+/// shared-axis arm alike.
+#[test]
+fn a_plane_square_to_a_spindles_axis_keeps_the_bands_circle() {
+    let (major, minor, height) = (0.6, 1.0, 0.3);
+    let spindle = band_torus(major, minor);
+    let plane = Surface::Plane {
+        frame: frame([0.0, 0.0, height], [0.0, 0.0, 1.0]),
+    };
+    let radius = major + (minor * minor - height * height).sqrt();
+    let trace = trace_torus(&spindle, &plane, tol(), &mut arris_math::Meter::default()).unwrap();
+    assert_eq!((trace.branches().len(), closed(&trace)), (1, 1));
+    assert!(trace.points().is_empty());
+    for p in samples(&trace.branches()[0], 64) {
+        assert!((real::hypot(p.x, p.y) - radius).abs() < 1e-12 && (p.z - height).abs() < 1e-12);
+    }
+    let within = arris_math::Aabb {
+        min: [-5.0; 3],
+        max: [5.0; 3],
+    };
+    let meets = arris_geom::intersect_surfaces(
+        &spindle,
+        &plane,
+        &within,
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
+    let arris_geom::SurfaceIntersection::Meets { curves, points } = meets else {
+        panic!("{meets:?}");
+    };
+    assert!(points.is_empty());
+    assert_eq!(curves.len(), 1);
+    let Curve::Circle { radius: r, .. } = curves[0].curve else {
+        panic!("{:?}", curves[0]);
+    };
+    assert!((r - radius).abs() < 1e-12);
+    // Through the axis point: the band's circle, and the point itself is
+    // not the band's.
+    let apex = (minor * minor - major * major).sqrt();
+    let through = Surface::Plane {
+        frame: frame([0.0, 0.0, apex], [0.0, 0.0, 1.0]),
+    };
+    let meets = arris_geom::intersect_surfaces(
+        &spindle,
+        &through,
+        &within,
+        tol(),
+        &mut arris_math::Meter::default(),
+    )
+    .unwrap();
+    let arris_geom::SurfaceIntersection::Meets { curves, points } = meets else {
+        panic!("{meets:?}");
+    };
+    assert!(points.is_empty());
+    assert_eq!(curves.len(), 1);
+}
+
+/// A plane and a sphere through a spindle's axis point, crossing the
+/// cone it has there: the band's loop runs out of the axis point and back
+/// to it, an open branch ending at the one point there both ways, which
+/// is not isolated; the lemon's half and the axis row are dropped.
+#[test]
+fn a_section_through_a_spindles_axis_point_ends_there() {
+    for (major, minor) in [(0.6, 1.0), (0.3, 1.0)] {
+        let spindle = band_torus(major, minor);
+        let apex = Point3::new(0.0, 0.0, (minor * minor - major * major).sqrt());
+        let reach = Vec3::new(0.5 * minor, 0.1 * minor, 0.0);
+        for other in [
+            Surface::Plane {
+                frame: Frame::from_z(apex, Vec3::new(0.9, 0.1, 0.2)).unwrap(),
+            },
+            Surface::Sphere {
+                frame: Frame::from_z(apex + reach, Vec3::z()).unwrap(),
+                radius: reach.norm(),
+            },
+        ] {
+            let trace =
+                trace_torus(&spindle, &other, tol(), &mut arris_math::Meter::default()).unwrap();
+            assert_eq!(trace.points().len(), 1, "{other:?}");
+            let point = trace.points()[0];
+            assert!(!point.isolated && (point.point - apex).norm() <= 1e-12);
+            assert_eq!(trace.branches().len(), 1, "{other:?}");
+            let b = &trace.branches()[0];
+            assert_eq!(
+                b.ends(),
+                Some([BranchEnd::Singular(0), BranchEnd::Singular(0)])
+            );
+            assert_eq!(b.point(b.domain().lo()), point.point);
+            assert_eq!(b.point(b.domain().hi()), point.point);
+            holds_on_band(&trace, &spindle, &other).unwrap();
+        }
+    }
+}
+
+/// The poses at the axis the tracer does not part: a plane holding a
+/// horn's or a spindle's axis, whose tube circles meet there with the
+/// collapsed row of the axis point besides, and a sphere through a horn's
+/// axis point tangent to its axis, along which row the section is double.
+/// The shared-axis arm answers a horn's tube circles whole, and refuses a
+/// spindle's, which cross the axis into the lemon.
+#[test]
+fn the_axis_poses_a_band_does_not_resolve_are_refused_by_name() {
+    let refused = |torus: &Surface, other: &Surface| match trace_torus(
+        torus,
+        other,
+        tol(),
+        &mut arris_math::Meter::default(),
+    ) {
+        Err(GeomError::DegenerateSection { fault, .. }) => fault,
+        other => panic!("not refused: {other:?}"),
+    };
+    let holding = Surface::Plane {
+        frame: frame([0.0; 3], [0.3, 0.9, 0.0]),
+    };
+    let within = arris_math::Aabb {
+        min: [-5.0; 3],
+        max: [5.0; 3],
+    };
+    let meet = |torus: &Surface| {
+        arris_geom::intersect_surfaces(
+            torus,
+            &holding,
+            &within,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+    };
+    for (major, minor) in [(1.0, 1.0), (0.6, 1.0)] {
+        let torus = band_torus(major, minor);
+        assert_eq!(refused(&torus, &holding), SectionFault::TubeCircle);
+    }
+    let horn = band_torus(1.0, 1.0);
+    assert!(matches!(
+        meet(&horn),
+        Ok(arris_geom::SurfaceIntersection::Meets { ref curves, .. }) if curves.len() == 2
+    ));
+    assert!(matches!(
+        meet(&band_torus(0.6, 1.0)),
+        Err(GeomError::Unsupported { .. })
+    ));
+    let tangent = Surface::Sphere {
+        frame: frame([0.5, 0.1, 0.0], [0.0, 0.0, 1.0]),
+        radius: real::hypot(0.5, 0.1),
+    };
+    assert_eq!(refused(&horn, &tangent), SectionFault::TangentAlongCurve);
+}
+
+/// A NURBS twin of a plane and of a cylinder against a spindle, which is
+/// then the other surface: the lemon's branches are dropped as the
+/// walked torus's are.
+#[test]
+fn a_nurbs_surface_against_a_spindle_keeps_the_band() {
+    use arris_math::Interval;
+    let spindle = band_torus(0.6, 1.0);
+    let span = |lo: f64, hi: f64| Interval::new(lo, hi).unwrap();
+    let plane = Surface::Plane {
+        frame: frame([0.0, 0.0, 0.3], [0.0, 0.0, 1.0]),
+    };
+    let cylinder = Surface::Cylinder {
+        frame: frame([0.7, 0.2, 0.0], [0.0, 0.0, 1.0]),
+        radius: 0.5,
+    };
+    for (analytic, bounds) in [
+        (&plane, [span(-2.5, 2.5), span(-2.5, 2.5)]),
+        (&cylinder, [span(0.0, TAU), span(-2.0, 2.0)]),
+    ] {
+        let twin = Surface::Nurbs(analytic.to_nurbs(bounds).unwrap());
+        let anywhere = arris_math::Aabb {
+            min: [-1e3; 3],
+            max: [1e3; 3],
+        };
+        let trace = arris_geom::trace_section(
+            &twin,
+            &spindle,
+            &anywhere,
+            tol(),
+            &mut arris_math::Meter::default(),
+        )
+        .unwrap();
+        let exact =
+            trace_torus(&spindle, analytic, tol(), &mut arris_math::Meter::default()).unwrap();
+        assert_eq!(
+            trace.branches().len(),
+            exact.branches().len(),
+            "{analytic:?}"
+        );
+        holds_on_band(&trace, &twin, &spindle).unwrap();
+    }
+}
+
+/// A horn or a spindle, `R/r` of 1 drawn on purpose and otherwise from
+/// 0.3 to 1, in any pose.
+fn band() -> impl Strategy<Value = Surface> {
+    let ratio = prop_oneof![1 => Just(1.0), 3 => prop::finite_f64(0.3..=1.0)];
+    (prop::geom::torus(), ratio).prop_map(|(torus, ratio)| match torus {
+        Surface::Torus {
+            frame,
+            minor_radius,
+            ..
+        } => Surface::Torus {
+            frame,
+            major_radius: ratio * minor_radius,
+            minor_radius,
+        },
+        other => other,
+    })
+}
+
+/// A horn or a spindle and another surface placed where it meets it.
+fn meeting_band(
+    other: impl Strategy<Value = Surface>,
+) -> impl Strategy<Value = (Surface, Surface)> {
+    (
+        band(),
+        other,
+        prop::finite_f64(0.0..=TAU),
+        prop::finite_f64(0.0..=TAU),
+        prop::unit_vec3(),
+        prop::finite_f64(0.0..=0.9),
+    )
+        .prop_map(|(torus, other, u, v, direction, reach)| {
+            let at = torus.point(u, v) + direction.into_inner() * (reach * size(&other));
+            (torus, placed(&other, at))
+        })
+}
+
+#[test]
+fn random_horn_and_spindle_sections_keep_their_band() {
+    let partner = prop_oneof![
+        prop::geom::plane(),
+        prop::geom::cylinder(),
+        prop::geom::elliptic_cylinder(),
+        prop::geom::cone(),
+        prop::geom::sphere(),
+        prop::geom::torus(),
+        band(),
+    ];
+    check(meeting_band(partner), |(torus, other)| {
+        holds((torus.clone(), other.clone()))?;
+        let trace = trace_torus(&torus, &other, tol(), &mut arris_math::Meter::default())
+            .map_err(|e| TestCaseError::fail(e.to_string()))?;
+        holds_on_band(&trace, &torus, &other)
+    });
 }

@@ -32,7 +32,7 @@ impl Tracer<'_> {
     /// carried past the edge.
     pub(super) fn tube_circles(&self) -> Vec<TubeFactor> {
         let walker = &self.walker;
-        let Some(other) = Implicit::of(&walker.other) else {
+        let Some(other) = Implicit::sectioned(&walker.other) else {
             return Vec::new();
         };
         let closed = walker.closed;
@@ -62,7 +62,7 @@ impl Tracer<'_> {
                 Surface::Nurbs(nurbs) => {
                     (nurbs.project(other.frame.to_world(p))).map_or(0.0, |on| on.distance)
                 }
-                walked => (Implicit::of(walked))
+                walked => (Implicit::sectioned(walked))
                     .map_or(0.0, |torus| torus.distance(other.frame.to_world(p)).abs()),
             };
             tol * other.firmness(clear_of) + self.section.floor()
@@ -543,7 +543,8 @@ impl Tracer<'_> {
     /// ([`Tracer::aground`]); the foot is a point of the isoline already.
     fn at_foot(&self, k: usize, edge: f64, candidate: f64) -> bool {
         let walker = &self.walker;
-        let (Some(factor), Some(other)) = (walker.factor, Implicit::of(&walker.other)) else {
+        let (Some(factor), Some(other)) = (walker.factor, Implicit::sectioned(&walker.other))
+        else {
             return false;
         };
         k == 1
@@ -562,7 +563,7 @@ impl Tracer<'_> {
     /// rounding; the touch is a point of the section already.
     pub(super) fn at_touch(&self, k: usize, edge: f64, candidate: f64) -> bool {
         let walker = &self.walker;
-        let Some(other) = Implicit::of(&walker.other) else {
+        let Some(other) = Implicit::sectioned(&walker.other) else {
             return false;
         };
         (walker.singular.iter())
@@ -583,7 +584,7 @@ impl Tracer<'_> {
     /// rectangle reaches, which stands for it.
     fn held_over(&self, u: [f64; 2], v: [f64; 2]) -> bool {
         let walker = &self.walker;
-        let Some(other) = Implicit::of(&walker.other) else {
+        let Some(other) = Implicit::sectioned(&walker.other) else {
             return false;
         };
         let n = CIRCLE_SAMPLES as f64;

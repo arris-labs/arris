@@ -937,6 +937,27 @@ impl SectionBranch {
         }
     }
 
+    /// The branch with the singular points its ends are renumbered:
+    /// `index` gives each old index its new one and, where the point it
+    /// now ends at is another, that point, which the end is pinned to.
+    pub(crate) fn renumbered(
+        mut self,
+        index: impl Fn(usize) -> (usize, Option<Point3>),
+    ) -> SectionBranch {
+        if let Some(ends) = &mut self.ends {
+            for (end, pin) in ends.iter_mut().zip(&mut self.pins) {
+                if let BranchEnd::Singular(i) = end {
+                    let (j, moved) = index(*i);
+                    *i = j;
+                    if let Some(point) = moved {
+                        *pin = Some(point);
+                    }
+                }
+            }
+        }
+        self
+    }
+
     /// `[0, length]`. The parameter is the tracer's own: the walked
     /// angle — a ruled family's, a torus's `u` — along an arc that does
     /// not turn, and a parameter in which the section is smooth through a

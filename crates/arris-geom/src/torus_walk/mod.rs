@@ -115,6 +115,7 @@
 
 mod arcs;
 mod assembly;
+mod band;
 mod cells;
 mod run;
 mod singular;
@@ -590,6 +591,18 @@ struct Tracer<'a> {
 /// walked is a rule on the two surfaces — the smaller over all, then the
 /// smaller tube — so swapping the arguments changes nothing, bit for bit.
 ///
+/// A horn or a spindle torus, either operand, is cut on its regular band
+/// (ADR-0080): what of the section lies on its axis or on a spindle's
+/// lemon is dropped, and every branch, circle and isolated point returned
+/// is on the band. A branch through an axis point ends there, at a
+/// [`SectionPoint`] that is not isolated, one per axis point. Refused by
+/// name besides: a plane holding the axis
+/// ([`SectionFault::TubeCircle`]: the tube circles meet the axis row),
+/// a surface through a horn's axis point tangent to its axis
+/// ([`SectionFault::TangentAlongCurve`]: the section is double along the
+/// row), and a branch passing from the band to the lemon without ending
+/// at the axis ([`SectionFault::CrowdedSingularity`]).
+///
 /// ```
 /// use arris_geom::{Surface, trace_torus};
 /// use arris_math::{Frame, Point3, Precision, Vec3};
@@ -641,14 +654,16 @@ pub fn trace_torus(
         circles: Vec::new(),
         tol,
     };
-    tracer.run(meter).map_err(|halt| match halt {
-        Halt::Fault(fault) => GeomError::DegenerateSection {
-            a: GeomKind::Surface(torus.kind()),
-            b: GeomKind::Surface(other.kind()),
-            fault,
-        },
-        Halt::Stopped(stop) => GeomError::Interrupted(stop),
-    })
+    (tracer.run(meter))
+        .and_then(|trace| band::on_band(trace, [a, b], tol).map_err(Halt::Fault))
+        .map_err(|halt| match halt {
+            Halt::Fault(fault) => GeomError::DegenerateSection {
+                a: GeomKind::Surface(torus.kind()),
+                b: GeomKind::Surface(other.kind()),
+                fault,
+            },
+            Halt::Stopped(stop) => GeomError::Interrupted(stop),
+        })
 }
 
 /// The section of a NURBS surface with an analytic one, traced in the
@@ -687,7 +702,9 @@ pub fn trace_torus(
 /// isolines or more with more of the section besides
 /// ([`SectionFault::TubeCircle`]). A touch of an edge that does not enter
 /// the domain is an isolated point, or the edge's own line over the
-/// stretch rounding cannot sign, among the isolines.
+/// stretch rounding cannot sign, among the isolines. Against a horn or a
+/// spindle torus only what lies on its regular band is returned, as
+/// [`trace_torus`] returns it (ADR-0080).
 pub(crate) fn trace_nurbs(
     a: &Surface,
     b: &Surface,
@@ -785,7 +802,9 @@ pub(crate) fn trace_nurbs(
         (Err(Halt::Fault(SectionFault::TubeCircle)), Some((dir, cuts))) => {
             in_pieces(nurbs, other, dir, &cuts, tol, meter)
         }
-        (traced, _) => traced.map_err(|halt| match halt {
+        (traced, _) => (traced
+            .and_then(|trace| band::on_band(trace, [a, b], tol).map_err(Halt::Fault)))
+        .map_err(|halt| match halt {
             Halt::Fault(fault) => GeomError::DegenerateSection {
                 a: GeomKind::Surface(SurfaceKind::Nurbs),
                 b: GeomKind::Surface(other.kind()),

@@ -429,7 +429,7 @@ impl<'a> PatchedSection<'a> {
         else {
             return None;
         };
-        let implicit = Implicit::of(other)?;
+        let implicit = Implicit::sectioned(other)?;
         let (major, minor) = (*major_radius, *minor_radius);
         // The torus's frame in the other surface's: its axes as columns
         // and its origin.
@@ -513,7 +513,7 @@ impl<'a> PatchedSection<'a> {
         other: &'a Surface,
         tol: Tolerance,
     ) -> Option<Self> {
-        let implicit = Implicit::of(other)?;
+        let implicit = Implicit::sectioned(other)?;
         let degree = implicit.degree();
         let [p, q] = nurbs.degree();
         let binomials = Binomials::new(degree * p.max(q));
@@ -1412,15 +1412,25 @@ mod tests {
     /// The six partners of a torus at rest at the origin, each cutting
     /// through its tube near `u = 0.7` at an oblique angle, and each
     /// again at the torus's own size, through the hole and both sides of
-    /// the ring.
+    /// the ring. On a horn or a spindle the ones at its size run past the
+    /// axis, and a spindle's lemon is cut as the band is: the polynomial
+    /// is the whole zero set, the band only decided after the trace
+    /// (ADR-0080). The tori among them are of any `R, r > 0` the walked
+    /// one is.
+    ///
+    /// Off a ring they cut near `u = 1.1`: on a horn at `0.7` the torus
+    /// through the tube hugs a tube circle, `2.4·10⁻⁴` off it with a near
+    /// inflection (`du/dv` down to `1.7·10⁻⁶`), the pose
+    /// [`SectionFault::UnresolvedTurning`](crate::SectionFault) names, which
+    /// the scan flags as a turning point.
     fn partners(major: f64, minor: f64) -> Vec<(&'static str, Surface)> {
         let (r, big) = (minor, major);
-        let on_ring = Point3::new(major * real::cos(0.7f64), major * real::sin(0.7f64), 0.0);
+        let at: f64 = if major > minor { 0.7 } else { 1.1 };
+        let on_ring = Point3::new(major * real::cos(at), major * real::sin(at), 0.0);
         let oblique = Vec3::new(0.4, -0.3, 0.85);
         let steep = Vec3::new(0.2, 0.1, 0.97);
         let centre = Point3::new(0.13 * r, -0.07 * r, 0.21 * r);
-        let ring_of = |major: f64, minor: f64| (major > minor).then_some((major, minor));
-        let mut all = vec![
+        vec![
             (
                 "plane through the tube",
                 Surface::Plane {
@@ -1496,29 +1506,26 @@ mod tests {
                     radius: big,
                 },
             ),
-        ];
-        if let Some((major, minor)) = ring_of(0.9 * big, 0.8 * r) {
-            all.push((
+            (
                 "torus through the tube",
                 Surface::Torus {
-                    frame: frame(on_ring + major * Vec3::x(), Vec3::new(0.1, 0.9, 0.3)),
-                    major_radius: major,
-                    minor_radius: minor,
+                    frame: frame(on_ring + 0.9 * big * Vec3::x(), Vec3::new(0.1, 0.9, 0.3)),
+                    major_radius: 0.9 * big,
+                    minor_radius: 0.8 * r,
                 },
-            ));
-        }
-        all.push((
-            "torus, a chain link",
-            Surface::Torus {
-                frame: frame(
-                    Point3::new(big, 0.1 * r, 0.05 * r),
-                    Vec3::new(0.05, 1.0, 0.1),
-                ),
-                major_radius: big,
-                minor_radius: 0.9 * r,
-            },
-        ));
-        all
+            ),
+            (
+                "torus, a chain link",
+                Surface::Torus {
+                    frame: frame(
+                        Point3::new(big, 0.1 * r, 0.05 * r),
+                        Vec3::new(0.05, 1.0, 0.1),
+                    ),
+                    major_radius: big,
+                    minor_radius: 0.9 * r,
+                },
+            ),
+        ]
     }
 
     /// What the measured cost of the method is held to, with room to
@@ -1552,14 +1559,17 @@ mod tests {
         }
     }
 
-    /// Metre-scale tori: radii from 0.01 to 10, `R/r` from 1.1 to 100.
-    const TORI: [(f64, f64); 6] = [
+    /// Metre-scale tori: radii from 0.01 to 10, `R/r` from 1.1 to 100,
+    /// and a horn and a spindle, `R/r` of 1 and 0.6 (ADR-0080).
+    const TORI: [(f64, f64); 8] = [
         (0.011, 0.01),
         (1.0, 0.01),
         (10.0, 9.0),
         (10.0, 0.1),
         (0.05, 0.02),
         (2.0, 0.5),
+        (1.0, 1.0),
+        (0.6, 1.0),
     ];
 
     /// At rest, turned about the origin, and turned a kilometre away.
@@ -1860,7 +1870,12 @@ mod tests {
     fn a_tangency_is_a_critical_point_within_the_tolerance() {
         for (major, minor) in TORI {
             let torus = torus(major, minor);
-            for at in TOUCHED_AT {
+            // A spindle's inside point is on its lemon, which no face
+            // lies on (ADR-0080).
+            for at in TOUCHED_AT
+                .into_iter()
+                .filter(|at| major + minor * real::cos(at[1]) > 0.0)
+            {
                 for (name, other, on_other, inside) in touchers(minor) {
                     for gap in [0.0, 0.5, -0.5, 100.0, -100.0] {
                         let label = format!("{name} at {at:?}, gap {gap} tol, R={major} r={minor}");

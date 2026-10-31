@@ -306,7 +306,7 @@ impl Tracer<'_> {
     /// surfaces are then flush over an area, which no isoline or branch
     /// stands for.
     pub(super) fn flush(&self) -> bool {
-        let Some(other) = Implicit::of(&self.walker.other) else {
+        let Some(other) = Implicit::sectioned(&self.walker.other) else {
             return false;
         };
         let at = |[lo, hi]: [f64; 2], i: usize| lo + (hi - lo) * i as f64 / FLUSH_SAMPLES as f64;

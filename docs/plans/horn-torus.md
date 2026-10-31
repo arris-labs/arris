@@ -68,7 +68,7 @@ bound has to be established here.
   hand-built horn face over its axis point names it, every existing
   corpus fixture unchanged. Py binding, stub and `Breaking` bullet in the
   same commit.
-- [ ] Step 3 **[3]** — Sections on a horn and a spindle torus: plane,
+- [x] Step 3 **[3]** — Sections on a horn and a spindle torus: plane,
   cylinder, cone, sphere, torus and NURBS partners keep only band branches,
   split at the axis point(s). The six-partner tables in `trace_torus.rs`
   (its `ring_of`) and the walk's run over horn and spindle; property:
@@ -128,10 +128,18 @@ corpus's `fillet` refusals not above 1; no panic.
 - `AGENTS.md` current state — M6 done.
 
 ## Open questions
-- ⚠ OPEN: spindle in scope — agent, by step 3. Pick: yes, it is the same
-  invariant and ADR-0036 §3's same refusal. If step 3 cannot keep a
-  spindle's lemon branches out robustly, the plan narrows to `R ≥ r`, the
-  spindle fixture stays refused and becomes a backlog line.
+- *Settled* (step 3): spindle in scope. The section is traced on the
+  torus's polynomial whole — the walk's distance to a torus covers the
+  lemon too (`Implicit::sectioned`), so its roots are the patches' — and
+  the band is decided after (`torus_walk/band.rs`): an axis point is a
+  singular point of the trace, so every branch is on the band or off it
+  whole and is kept or dropped whole, the points on an axis merged to one.
+  The shared-axis arm drops its lemon and axis meetings the same way.
+  Refused by name, a backlog line: a plane holding a horn's or a
+  spindle's axis (`TubeCircle` in the tracer; the shared-axis arm answers
+  a horn's two tube circles whole and refuses a spindle's, which cross
+  into the lemon, `Unsupported`), and a surface through a horn's axis
+  point tangent to its axis (`TangentAlongCurve`).
 - ⚠ OPEN: the band's margin — agent, by step 1. Pick: the face's tolerance
   as a distance from the axis, the same measure `contacts_on` uses, so the
   ring and the checker refuse at one bound.

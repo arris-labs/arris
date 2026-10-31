@@ -117,7 +117,7 @@ impl Tracer<'_> {
         if walker.closed[1] {
             return None;
         }
-        let other = Implicit::of(&walker.other)?;
+        let other = Implicit::sectioned(&walker.other)?;
         let edge = if v < PI { 0.0 } else { TAU };
         let held = |x: f64, y: f64| other.distance(walker.point(x, y)).abs() <= self.tol.linear;
         let down = (0..=CIRCLE_SAMPLES).all(|n| {
