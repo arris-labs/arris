@@ -932,6 +932,11 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   stays 0 of 38 (0 of 11 committed, 0 of 27 fetched). The battery's one
   unexcluded stage, CTC-02 AP242 e2's drill along its first axis, is the
   known Open CASCADE miscount in BACKLOG, not this cycle's work.
+  The walked seam junction's census (`walked-seam-junction`, step 8,
+  2026-11-02): the real parts' blend row stays 0 of 38, the script corpus's
+  `fillet` refusals stay 0 (its histogram: 71 stages, 70 built, 1
+  `SurfaceCollapses` shell), and the VertexBlend census holds 0 fetched
+  edges and 3 committed, the FTC-06 cusp (NURBS), none a seam junction.
 - [x] The parallel-cylinder row of the blend table (ADR-0036 §5): **done
   2026-11-01** (`parallel-cylinder-blend`). A fillet or chamfer of a
   straight edge where two cylinders with parallel axes meet along a

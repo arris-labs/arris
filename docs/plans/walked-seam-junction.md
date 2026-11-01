@@ -135,7 +135,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   which is refused today (a backlog line), as is a chamfer with the seam at
   the pin's axis height (a second line). The seam's height `t` is drawn over
   the pin's whole span; the pose is the pin's offset.
-- [ ] Step 8 **[1]** — Census: re-run the real-parts battery (the blend row
+- [x] Step 8 **[1]** — Census: re-run the real-parts battery (the blend row
   stays 0 of 38, no new refusal) and `tools/script-corpus.sh` (`fillet`
   refusals stay 0). Count the seam-junction `VertexBlend` edges of
   `tests/horn_census.rs`'s parts before and after. Commit the numbers to the
