@@ -1,0 +1,139 @@
+{
+  "description": "the ball and off-axis pin of regression/sphere-cylinder-oblique-seam-fillet (the loop crosses the ball's seam at a slant at two vertices), chamfered at d 0.1 at a point 60 degrees round from the top: the chord of the walked junction's ball at a vertex on a seam. Open CASCADE builds it. Arris refuses it as VertexBlend until the walked junction slides onto the seam (plans/walked-seam-junction, ADR-0083)",
+  "params": {
+    "d": 0.1
+  },
+  "steps": [
+    {
+      "name": "half",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1.5
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.3228756555322954,
+              -1.5
+            ]
+          },
+          {
+            "arc_to": [
+              1.3228756555322954,
+              1.5
+            ],
+            "via": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1.5
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1.5
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "half",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "pin",
+      "op": "cylinder",
+      "base": [
+        0,
+        0.5,
+        0
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "radius": 0.6,
+      "height": 3
+    },
+    {
+      "name": "fused",
+      "op": "fuse",
+      "a": "ball",
+      "b": "pin"
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "fused",
+      "edges": [
+        [
+          1.7578395831246945,
+          0.8,
+          0.5196152422706631
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "in"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 5e-07,
+    "area_rel": 1e-06,
+    "centroid_abs": 1e-06,
+    "inertia_rel": 1e-06
+  },
+  "analytic": {
+    "genus": 0
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "description": "the ball of regression/sphere-cylinder-oblique-seam-fillet revolved about the axis (0, 1, 1) and a pin along +x with its axis at (0, 0.3, 0.3), in the ball's plane of symmetry through the pin: the loop crosses the ball's seam, in that plane, square at two vertices, and the pin's seam, 45 degrees round from the plane, at a slant at a third. Filleted at r 0.1 at a point 60 degrees round the pin. Open CASCADE builds it. Arris refuses it as VertexBlend until the walked junction slides onto the seam (plans/walked-seam-junction, ADR-0083)",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "half",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0.7071067811865476,
+          0.7071067811865476
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1.5
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.3228756555322954,
+              -1.5
+            ]
+          },
+          {
+            "arc_to": [
+              1.3228756555322954,
+              1.5
+            ],
+            "via": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1.5
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1.5
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "half",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0.7071067811865476,
+          0.7071067811865476
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "pin",
+      "op": "cylinder",
+      "base": [
+        0,
+        0.3,
+        0.3
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "radius": 0.6,
+      "height": 3
+    },
+    {
+      "name": "fused",
+      "op": "fuse",
+      "a": "ball",
+      "b": "pin"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "fused",
+      "edges": [
+        [
+          1.7903746978699298,
+          0.14470857293848755,
+          0.879555495773441
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        0,
+        0
+      ],
+      "expect": "in"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 5e-07,
+    "area_rel": 1e-06,
+    "centroid_abs": 1e-06,
+    "inertia_rel": 1e-06
+  },
+  "analytic": {
+    "genus": 0
+  }
+}
