@@ -1082,6 +1082,10 @@ corpus_tests! {
     /// alone, at a slant: the junction slides to the ball whose contact is on
     /// the pin's seam (ADR-0083).
     blend_sphere_cylinder_pin_seam_slant_fillet => run "blend/sphere-cylinder-pin-seam-slant-fillet";
+    /// The same ball and pin chamfered: the chord of the walked junction's
+    /// ball at a vertex on the ball's seam the loop crosses at a slant
+    /// (ADR-0083).
+    blend_sphere_cylinder_oblique_seam_chamfer => run "blend/sphere-cylinder-oblique-seam-chamfer";
     blend_bspline_rim_fillet => run "blend/bspline-rim-fillet";
     /// A torus drilled parallel to its axis and off it, the bore's edge
     /// filleted: a torus against a cylinder off its axis, two walked stripes
@@ -1337,10 +1341,6 @@ corpus_tests! {
     /// run on through a kink of 3.9° the vertex's tolerance writes as
     /// tangent, its junction the two runs' mean ball's arc (ADR-0075).
     blend_nist_ftc_11_ap242_slot_chain_fillet => run "blend/nist-ftc-11-ap242-slot-chain-fillet";
-    /// The same ball and pin chamfered: the chord of the walked junction's
-    /// ball at a vertex on the ball's seam the loop crosses at a slant.
-    #[ignore = "VertexBlend: the junction of two walked chamfer runs at a vertex on a seam the loop crosses at a slant ends on the chord in the vertex's normal plane, where the contact is not on the seam (plans/walked-seam-junction)"]
-    regression_sphere_cylinder_oblique_seam_chamfer => run "regression/sphere-cylinder-oblique-seam-chamfer";
     /// CTC-02's line edge e283 filleted alone: a tangent chain of 13 edges,
     /// lines alternating with B-spline edges that hide the ellipses where a
     /// plane meets oblique cylinders.

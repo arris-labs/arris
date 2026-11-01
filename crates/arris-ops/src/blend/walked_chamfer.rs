@@ -230,17 +230,32 @@ impl Chord {
     /// checked against, `u` from the contact on the first face to the one
     /// on the second and `v` the edge's own parameter.
     pub(super) fn skin(&self, tol: Tolerance, meter: &mut Meter<'_>) -> Result<Skin, Walked> {
-        let surface: NurbsSurface = fit_skin(
-            |t| self.section(t),
-            self.range,
-            SURFACE_DEGREE,
-            SECTION_FIT_FRACTION * tol.linear,
-            meter,
-        )?;
+        let surface = self.skin_within(self.range, tol, meter)?;
         Ok(Skin::along_edge(
             surface,
             self.range,
             [self.edge_range.lo(), self.edge_range.hi()],
         ))
+    }
+
+    /// The surface [`Chord::skin`] fits, over `within`, a stretch of its
+    /// `v` (the edge's parameter), fitted afresh there: its end rows are
+    /// the exact chords at `within`'s ends, where a junction off the vertex
+    /// ends the stripe (ADR-0083).
+    ///
+    /// Errors: as [`Chord::skin`].
+    pub(super) fn skin_within(
+        &self,
+        within: Interval,
+        tol: Tolerance,
+        meter: &mut Meter<'_>,
+    ) -> Result<NurbsSurface, Walked> {
+        fit_skin(
+            |t| self.section(t),
+            within,
+            SURFACE_DEGREE,
+            SECTION_FIT_FRACTION * tol.linear,
+            meter,
+        )
     }
 }

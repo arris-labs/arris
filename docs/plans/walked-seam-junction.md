@@ -107,7 +107,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   within the tolerance. `blend/sphere-cylinder-fillet` stays at its blessed
   dump, and `sphere-cylinder-pin-seam-slant-fillet` moves to `blend/`. A unit
   test of two disagreeing seams gives `VertexBlend`.
-- [ ] Step 5 **[2]** — The walked chamfer's junction slides the same way, by
+- [x] Step 5 **[2]** — The walked chamfer's junction slides the same way, by
   the chord at `t*`. `sphere-cylinder-oblique-seam-chamfer` moves to
   `blend/`.
 - [ ] Step 6 **[1]** — Refusals by name, each a `blend/` fixture holding its

@@ -57,7 +57,7 @@ struct Rolled<'a> {
 
 /// What the stripe's surface is skinned through: the ball's arcs along a
 /// fillet's spine, a chamfer's chords along its contact curves.
-enum Path {
+pub(super) enum Path {
     Ball(Box<Spine>),
     Chord(Box<Chord>),
 }
@@ -371,10 +371,7 @@ pub(super) fn walked_stripe(
         faces,
         uses,
         tolerance,
-        spine: match path {
-            Path::Ball(spine) => Some((spine, fit)),
-            Path::Chord(_) => None,
-        },
+        path: Some((path, fit)),
     })
 }
 
@@ -657,9 +654,11 @@ pub(super) fn walked_contacts(
 /// asked to tell that reach from the arc. The surface keeps its `v`, so
 /// the curves already placed on it — the junction's arc — keep theirs.
 ///
-/// Errors: `BlendReason::VertexBlend` naming the edge and the junction's
-/// vertex for a walked chamfer, which has no ball to share; the errors of [`Spine::skin_within`], named
-/// for the edge as the stripe's own were.
+/// A walked chamfer is cut the same way, its chords refitted over the
+/// stretch kept (ADR-0083), the chord at the cut being the junction's arc.
+///
+/// Errors: the errors of [`Spine::skin_within`] and [`Chord::skin_within`],
+/// named for the edge as the stripe's own were.
 pub(super) fn walked_cut(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
@@ -670,15 +669,8 @@ pub(super) fn walked_cut(
         return Ok(());
     }
     let m = env.m;
-    let Some((spine, fit)) = &s.spine else {
-        let vertices = [s.start, s.end].into_iter().zip(cut);
-        let at = vertices
-            .filter(|(_, t)| t.is_some())
-            .map(|(v, _)| forward(v));
-        return Err(degenerate(
-            [forward(s.edge)].into_iter().chain(at).collect(),
-            Reason::Blend(BlendReason::VertexBlend),
-        ));
+    let Some((path, fit)) = &s.path else {
+        return Err(invariant("a walked stripe's path"));
     };
     let Surface::Nurbs(surface) = &s.surface else {
         return Err(invariant("a walked stripe's NURBS surface"));
@@ -694,7 +686,11 @@ pub(super) fn walked_cut(
         return Err(invariant("a walked stripe's faces' surfaces"));
     };
     let named = |w| named(w, s.edge, s.faces, [sa, sb]);
-    let ended = spine.skin_within(within, *fit, meter).map_err(named)?;
+    let ended = match path {
+        Path::Ball(spine) => spine.skin_within(within, *fit, meter),
+        Path::Chord(chord) => chord.skin_within(within, *fit, meter),
+    }
+    .map_err(named)?;
     let rows = contact_rows(&ended).map_err(named)?;
     s.surface = Surface::Nurbs(ended);
     s.lines = rows.map(Curve::Nurbs);

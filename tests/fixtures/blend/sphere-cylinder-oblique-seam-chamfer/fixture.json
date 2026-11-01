@@ -1,5 +1,5 @@
 {
-  "description": "the ball and off-axis pin of regression/sphere-cylinder-oblique-seam-fillet (the loop crosses the ball's seam at a slant at two vertices), chamfered at d 0.1 at a point 60 degrees round from the top: the chord of the walked junction's ball at a vertex on a seam. Open CASCADE builds it. Arris refuses it as VertexBlend until the walked junction slides onto the seam (plans/walked-seam-junction, ADR-0083)",
+  "description": "the ball and off-axis pin of regression/sphere-cylinder-oblique-seam-fillet (the loop crosses the ball's seam at a slant at two vertices), chamfered at d 0.1 at a point 60 degrees round from the top: the chord of the walked junction's ball at a vertex on a seam. Open CASCADE builds it, and Arris: the walked chamfer's junction slides onto the seam, by the chord at that ball (ADR-0083)",
   "params": {
     "d": 0.1
   },
