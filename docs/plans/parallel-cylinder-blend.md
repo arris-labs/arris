@@ -119,10 +119,16 @@ given design); **[3]** unproven (robustness or a bound to establish here).
   bar's tip, two equal discs' waist) so the step-chain refusal is not in
   play; the section's closed form is the Green's-theorem area of the arcs
   (`corner_area`). Named refusals are accepted; none arose in 256 cases.
-- [ ] Step 7 **[1]** — The census after. Step 1's test holds the new counts
+- [x] Step 7 **[1]** — The census after. Step 1's test holds the new counts
   and the residue by cause. Open CASCADE's verdicts on the stride sample
   (`ask_the_oracle`) go into the roadmap line. `tools/real-parts.sh`'s
   `fillet` row stays 0 of 38.
+  *Settled* (step 7): step 1's test already held the after-state (step 4
+  had moved the rows), so it is unchanged and passes: 6 edges in 3 parts.
+  `ask_the_oracle` samples only `BlendTooLarge` edges of a `SolidCensus`,
+  and the residue is `Unsupported`, so the stride does not reach it: the
+  2 STC-10 edges were put to Open CASCADE directly (`occt_fillet_edges.py`
+  at `ORACLE_PROBE`), and both refuse.
 
 ## Acceptance
 - `cargo nextest run -p arris --test corpus -E 'test(/blend_(ogive|figure_eight)/)'`

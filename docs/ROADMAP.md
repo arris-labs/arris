@@ -926,8 +926,16 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
 - Corners the closed forms do not cover: a walked chain junction on a
   seam (`VertexBlend`), the hinge leaf's knuckle joins, a cusp whose two
   edges are both blended, as a fitted corner patch.
-- The parallel-cylinder row of the blend table (ADR-0036 §5: 29 edges in
-  5 parts).
+- [x] The parallel-cylinder row of the blend table (ADR-0036 §5): **done
+  2026-11-01** (`parallel-cylinder-blend`). A fillet or chamfer of a
+  straight edge where two cylinders with parallel axes meet along a
+  ruling builds in closed form. The census at the battery's radius counts
+  6 ruling edges in 3 parts (C6 counted 29 in 5 over every cylinder pair
+  the battery met): FTC-08 and STC-08, convex between planes, both
+  `built`; STC-10, concave between tori, both `Unsupported` torus × torus
+  at the ends. Open CASCADE refuses those two too ("There are no suitable
+  edges for chamfer or fillet"). The ogive bar and the figure eight's
+  waist are held to their closed forms.
 - Beside the cycle, in the second plan slot: draft and thicken (the plugin
   CAD's A7), the modelling layer's first milestone having landed (§Beside
   the cycles).
