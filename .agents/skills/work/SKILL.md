@@ -1,6 +1,6 @@
 ---
 name: work
-description: Execute an active plan, a commit per step — one step or a range in this session, or with no range the whole plan, each step a fresh subagent on its tier, then its retirement.
+description: Execute an active plan, a commit per step — given steps in this session, or with none the whole plan via subagents, then its retirement.
 disable-model-invocation: true
 argument-hint: <plan slug> [step number or range]
 ---
@@ -8,8 +8,13 @@ argument-hint: <plan slug> [step number or range]
 # /work — one step, one commit
 
 `/work <slug> step N` (or `N-M`) works those steps in this session, by
-*Do*. `/work <slug>` with no step **conducts** the rest of the plan, by
-*Conduct*: each step a fresh subagent that follows *Do* for that one step.
+*Do*. `/work` with no step, slug or not (no slug: the one active plan, or
+ask which if two), **conducts** the whole rest of the plan by *Conduct*,
+then retires it: each step a fresh subagent that follows *Do* for that one
+step. The conductor's turn does not end between steps: a checked hand-back
+is followed at once by the next step's subagent. It stops early only for
+what *Conduct* names (a **[CI]** step, a human-only question, a second
+miss); reporting after one step and waiting for another `/work` is a bug.
 
 ## Do
 
@@ -71,10 +76,8 @@ argument-hint: <plan slug> [step number or range]
   *Settled* with its reason, and go on through the requested range. Only a
   push, publish, branch, a change to the plan's acceptance or a product
   question (what the kernel offers its callers) waits for the human.
-- A step run by a conductor answers to the conductor alone: a question for
-  the human goes in the hand-back, and the conductor relays it.
 - The last ticked box of a step or range leaves the plan open for
-  `/retire-plan`; a conductor runs it itself.
+  `/retire-plan`.
 
 ## Conduct
 
