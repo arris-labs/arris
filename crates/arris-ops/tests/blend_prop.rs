@@ -33,6 +33,11 @@
 //! follow: an ogive bar's tip and two united discs' waist, filleted or
 //! chamfered, at the section's closed form.
 //!
+//! A concave blend ending on a face a fuse left in flush pieces (ADR-0082)
+//! follows: an L of two or three fused boxes and a step of two or three,
+//! the inner edge filleted or chamfered, at a lone concave edge's closed
+//! form.
+//!
 //! A miter of unequal dihedrals (ADR-0044) is last: a prism over a random
 //! parallelogram, the rise at one vertex and a top edge there blended, at
 //! the two blends' regions in closed form less their overlap.
@@ -4446,4 +4451,157 @@ fn an_elbows_cut_edge_holds_its_pcurve_gap_in_the_poses_that_found_it() {
         );
         elbow_holds(&pose).unwrap();
     }
+}
+
+/// An L or a step fused from boxes, whose caps are `pieces` faces on one
+/// plane (ADR-0082): the concave edge between two walls ends on them.
+#[derive(Debug, Clone, Copy)]
+struct Flush {
+    /// An L (the edge along z) or a step (the edge along y).
+    ell: bool,
+    /// Two pieces at the end, or three: the three-piece body splits the
+    /// large box at the edge's own plane, so a middle piece touches the end.
+    pieces: usize,
+    /// The big box's extent, the small box's reach past it, the inner
+    /// edge's length, the stand-off the edge sits at.
+    big: f64,
+    reach: f64,
+    run: f64,
+    stand: f64,
+    /// The height of the part, along z.
+    height: f64,
+}
+
+impl Flush {
+    /// The boxes fused, as (min, max) pairs.
+    fn boxes(&self) -> Vec<(Point3, Point3)> {
+        let p = Point3::new;
+        let (a, r, l, c, h) = (self.big, self.reach, self.run, self.stand, self.height);
+        if self.ell {
+            // The L: A = [0,a]x[0,b]x[0,h] with b = l, B = [0,c]x[b,b+r]x[0,h],
+            // the edge along z at (c, b). `run` is the leg b.
+            let b = l;
+            let mut v = Vec::new();
+            if self.pieces == 3 {
+                v.push((p(0.0, 0.0, 0.0), p(c, b, h)));
+                v.push((p(c, 0.0, 0.0), p(a, b, h)));
+            } else {
+                v.push((p(0.0, 0.0, 0.0), p(a, b, h)));
+            }
+            v.push((p(0.0, b, 0.0), p(c, b + r, h)));
+            v
+        } else {
+            // The step: slab [0,a]x[0,l]x[0,h], block [c,a]x[0,l]x[h,h+r],
+            // the edge along y at (c, h).
+            let mut v = Vec::new();
+            if self.pieces == 3 {
+                v.push((p(0.0, 0.0, 0.0), p(c, l, h)));
+                v.push((p(c, 0.0, 0.0), p(a, l, h)));
+            } else {
+                v.push((p(0.0, 0.0, 0.0), p(a, l, h)));
+            }
+            v.push((p(c, 0.0, h), p(a, l, h + r)));
+            v
+        }
+    }
+
+    /// The unblended volume and the concave edge's length and midpoint.
+    fn shape(&self) -> (f64, f64, Point3) {
+        let (a, r, l, c, h) = (self.big, self.reach, self.run, self.stand, self.height);
+        if self.ell {
+            ((a * l + c * r) * h, h, Point3::new(c, l, h / 2.0))
+        } else {
+            ((a * h + (a - c) * r) * l, l, Point3::new(c, l / 2.0, h))
+        }
+    }
+
+    /// The shortest wall the blend's arc may run along.
+    fn leg(&self) -> f64 {
+        if self.ell {
+            (self.big - self.stand)
+                .min(self.reach)
+                .min(self.stand)
+                .min(self.run)
+        } else {
+            self.stand
+                .min(self.big - self.stand)
+                .min(self.reach)
+                .min(self.height)
+        }
+    }
+}
+
+fn flush_holds(case: Flush, kind: Blend, share: f64, pose: &Isometry) -> Result<(), TestCaseError> {
+    let size = share * case.leg();
+    let (volume, length, mid) = case.shape();
+    let run = |pose: &Isometry| -> Run {
+        let mut m = Model::default();
+        let mut body: Option<Body> = None;
+        for (lo, hi) in case.boxes() {
+            let piece = primitive_box(&mut m, lo, hi).map_err(fail)?.0;
+            body = Some(match body {
+                None => piece,
+                Some(b) => fuse(&mut m, b, piece).map_err(fail)?.0,
+            });
+        }
+        let body = body.ok_or_else(|| fail("no boxes"))?;
+        let (moved, _) = transform(&mut m, body, pose).map_err(fail)?;
+        let edge = edge_near(&m, moved, pose.apply(mid))?;
+        let out = op(kind)(&mut m, moved, &[edge], size);
+        Ok((m, moved, out))
+    };
+    let (m, moved, out) = run(pose)?;
+    let (blended, p) = out.map_err(|e| fail(format!("{kind:?} of {size} on {case:?}: {e}")))?;
+    assert_checked(&check(&m, blended, Level::Full))?;
+    audit(&m, &[moved], blended, &p).map_err(|e| fail(format!("provenance: {e}")))?;
+    let before = mass_properties(&m, moved).map_err(fail)?.volume;
+    prop_assert!(
+        close_to(before, volume, 1.0, REL),
+        "the unblended body is {before}, not {volume}"
+    );
+    let section = match kind {
+        Blend::Fillet => (1.0 - FRAC_PI_4) * size * size,
+        Blend::Chamfer => size * size / 2.0,
+    };
+    let want = volume + section * length;
+    let got = mass_properties(&m, blended).map_err(fail)?.volume;
+    prop_assert!(
+        close_to(got, want, 1.0, REL),
+        "{kind:?} of {size} on {case:?}: volume {got} vs the closed form {want}"
+    );
+    let (again, _, second) = run(pose)?;
+    let twice = second.map_err(|e| fail(format!("built once, then {e}")))?.0;
+    prop_assert_eq!(
+        dump_text(&again, twice).map_err(fail)?,
+        dump_text(&m, blended).map_err(fail)?,
+        "a second run"
+    );
+    Ok(())
+}
+
+prop_shards! {
+    /// An L or a step fused from two or three boxes, its concave edge
+    /// filleted or chamfered, in a random pose: the edge ends on a face
+    /// left in flush pieces, and builds clean at `Full`, audited, at a lone
+    /// concave edge's volume, deterministic.
+    a_concave_edge_ending_on_flush_pieces_blends_as_a_lone_end
+        [shard_0 shard_1 shard_2 shard_3]
+        ((ell, pieces, dims, share, kind, pose)) = (
+            any::<bool>(),
+            2usize..=3,
+            (
+                prop::finite_f64(2.0..=4.0),
+                prop::finite_f64(1.0..=3.0),
+                prop::finite_f64(1.0..=4.0),
+                prop::finite_f64(0.3..=0.7),
+                prop::finite_f64(1.0..=3.0),
+            ),
+            prop::finite_f64(0.1..=0.6),
+            blend_kind(),
+            prop::pose(),
+        ) => {
+            let (big, reach, run, stand, height) = dims;
+            let case = Flush { ell, pieces, big, reach, run, stand: stand * big, height };
+            flush_holds(case, kind, share, &pose)
+        }
 }

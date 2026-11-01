@@ -100,7 +100,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   - an end whose arc runs past an extra: `BlendTooLarge`;
   - flush pieces on a cylinder: `VertexBlend`;
   - a convex end at a smooth extra: `VertexBlend`.
-- [ ] Step 6 **[2]** — Properties: the blend property's generator gains
+- [x] Step 6 **[2]** — Properties: the blend property's generator gains
   flush-fused L and step operands, with 2 and 3 pieces in random poses, for
   fillet and chamfer. Each is held to the closed-form volume of a lone
   concave end (`l-inner-edge`'s formula) and to checker-green.
