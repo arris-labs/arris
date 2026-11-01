@@ -1564,6 +1564,14 @@ corpus_tests! {
     /// A figure eight's waist chamfered at a chord `d` on each disc: a plane
     /// adding material.
     blend_figure_eight_waist_chamfer => run "blend/figure-eight-waist-chamfer";
+    /// The ogive bar's tip ruling ending on an oblique plane: the ball's cylinder
+    /// cut in an ellipse, no cap across.
+    blend_ogive_bar_oblique_end_fillet => run "blend/ogive-bar-oblique-end-fillet";
+    /// The ogive bar's tip ruling ending on a cylinder across, the end traced.
+    blend_ogive_bar_cylinder_end_fillet => run "blend/ogive-bar-cylinder-end-fillet";
+    /// The tip's ruling and a cap arc both filleted: a ruling stripe at a
+    /// vertex of two blends is refused by name.
+    blend_ogive_bar_ruling_and_cap_fillet => run "blend/ogive-bar-ruling-and-cap-fillet";
     /// A cube whose filleted edge lies 1.3e-7 off one of its faces in the file,
     /// as two of NIST FTC-06's edges do: within the edge's tolerance, outside
     /// the face's.
@@ -1993,6 +2001,12 @@ corpus_tests! {
     /// is `Unsupported`. The desired answer is Open CASCADE's distance.
     #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
     regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
+    /// The ogive bar's ruling over a step: a cylinder against a cylinder below
+    /// a ledge, a cylinder against a plane above, both filleted. The stripes
+    /// meet at a vertex of five edges; Arris refuses the corner as `Degenerate`,
+    /// where Open CASCADE builds it.
+    #[ignore = "OpError::Degenerate: the corner at the end of a ruling blend whose neighbour in line is another ruling blend of a different face pair is not covered (docs/BACKLOG.md, the ruling chain over a ledge)"]
+    regression_ogive_bar_step_chain_fillet => run "regression/ogive-bar-step-chain-fillet";
 }
 
 /// A variant the recipe does not have fails naming it.

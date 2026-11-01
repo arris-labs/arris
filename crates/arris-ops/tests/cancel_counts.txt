@@ -274,6 +274,9 @@ blend/nurbs-cap-cylinder-rim-fillet: 20090732
 blend/nurbs-slot-plate-rim-chamfer: 61383
 blend/nurbs-slot-plate-rim-fillet: 2514622
 blend/oblique-cut-cone-fillet: 152697
+blend/ogive-bar-cylinder-end-fillet: 448
+blend/ogive-bar-oblique-end-fillet: 152
+blend/ogive-bar-ruling-and-cap-fillet: refused
 blend/ogive-bar-ruling-chamfer: 6
 blend/ogive-bar-ruling-fillet: 6
 blend/pocket-corner-fillet: 6

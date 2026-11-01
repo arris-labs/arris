@@ -94,12 +94,21 @@ given design); **[3]** unproven (robustness or a bound to establish here).
   `measure_differs`; the oracle and the closed form hold the fixtures
   together. The plane-cylinder ruling chamfer stays walked and out of
   scope: the arm here is the two-cylinder pair only.
-- [ ] Step 5 **[2]** — Ends and chains. A `blend/` fixture each for an end on
+- [x] Step 5 **[2]** — Ends and chains. A `blend/` fixture each for an end on
   an oblique plane, an end on a face across that is a cylinder (traced,
   ADR-0037), and a chain through a tangent vertex into a plane–cylinder
   ruling stripe. A fixture where two such stripes meet at a sharp corner
   holds `VertexBlend` by name. Whatever does not build becomes a
   `regression/` fixture and a backlog line.
+  *Settled* (step 5): built as `blend/ogive-bar-oblique-end-fillet` (a plane
+  cutting the tip), `blend/ogive-bar-cylinder-end-fillet` (a cylinder
+  across) and `blend/ogive-bar-ruling-and-cap-fillet` (the ruling and a cap
+  arc, `vertex-blend`); the oracle holds the measures, no closed form
+  written. The chain over a step (a cylinder pair below a ledge, a
+  plane-cylinder pair above, both filleted) is refused `Degenerate` at the
+  five-edge vertex: `regression/ogive-bar-step-chain-fillet` and a backlog
+  line. A ruling chain into a plane-cylinder stripe needs a ledge (the
+  faces differ above and below), so no corner-free fixture exists.
 - [ ] Step 6 **[2]** — Property test in `blend_prop.rs`. Random
   parallel-cylinder unions and ogives in random poses, fillet and
   chamfer, each either `Ok` and checker-green, with its volume change

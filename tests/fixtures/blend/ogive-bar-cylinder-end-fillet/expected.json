@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "e63e5da3313983c3ad85f01abe6be3e4476cee27b976e68d176eab41dbe318b6",
+  "results": {
+    "default": {
+      "area": 48.94809171588864,
+      "centroid": [
+        2.616873523444952,
+        -4.350209736179465e-12,
+        0.9968831567045612
+      ],
+      "counts": {
+        "edges": 21,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          13.413876698010132,
+          1.744944574726349e-10,
+          0.1870171158991809
+        ],
+        [
+          1.744944574726349e-10,
+          55.38711639228572,
+          2.6169645005233217e-11
+        ],
+        [
+          0.1870171158991809,
+          2.6169645005233217e-11,
+          54.9673781651442
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 21,
+        "faces": 9,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            2.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            6.5,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "cut_away",
+          "point": [
+            6.5,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            2.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 20.82412557599205
+    }
+  }
+}

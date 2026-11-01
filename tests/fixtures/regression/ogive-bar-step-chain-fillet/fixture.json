@@ -1,0 +1,217 @@
+{
+  "description": "blend/ogive-bar-ruling-fillet's ogive, 2 tall, whose upper half (z 1 to 2) is cut flat by the plane through the tip's ruling and the arc's far end (4, 1), a chord: the ruling edge is two edges in a line, below the step a cylinder against a cylinder, above it a cylinder against a plane, with a ledge at z = 1 between the arc and the chord. Both ruling edges are filleted at r 0.2: the stripe chains through the vertex into the plane-cylinder ruling stripe above. Arris refuses it as Degenerate (the corner at the edge's end is one the closed forms do not cover) where Open CASCADE builds it; the desired result is Open CASCADE's. The oracle holds the measures",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              -1
+            ]
+          },
+          {
+            "arc_to": [
+              5.732050807568877,
+              0
+            ],
+            "via": [
+              5,
+              -0.7320508075688772
+            ]
+          },
+          {
+            "arc_to": [
+              4,
+              1
+            ],
+            "via": [
+              5,
+              0.7320508075688772
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "lower",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "upper_sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          1
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              -1
+            ]
+          },
+          {
+            "arc_to": [
+              5.732050807568877,
+              0
+            ],
+            "via": [
+              5,
+              -0.7320508075688772
+            ]
+          },
+          {
+            "line_to": [
+              4,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "upper",
+      "op": "extrude",
+      "profile": "upper_sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "solid",
+      "op": "fuse",
+      "a": "lower",
+      "b": "upper"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "solid",
+      "edges": [
+        [
+          5.732050807568877,
+          0,
+          0.5
+        ],
+        [
+          5.732050807568877,
+          0,
+          1.5
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        6.5,
+        0,
+        0.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "inside_upper",
+      "point": [
+        2,
+        0,
+        1.5
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "genus": 0
+  }
+}

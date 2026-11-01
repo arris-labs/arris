@@ -1,0 +1,120 @@
+{
+  "description": "blend/ogive-bar-ruling-fillet's ogive, 2 tall, the tip's ruling edge and the cap edge of one arc (the top, z = 2) both filleted at r 0.2: two stripes meet at the tip's vertex, one of them a ruling blend, whose contact on its cylinder meets no other blend's, so Arris refuses it as VertexBlend (ADR-0036 s5, miter.rs/corner.rs) where Open CASCADE builds a corner",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1
+        ],
+        "segments": [
+          {
+            "line_to": [
+              4,
+              -1
+            ]
+          },
+          {
+            "arc_to": [
+              5.732050807568877,
+              0
+            ],
+            "via": [
+              5,
+              -0.7320508075688772
+            ]
+          },
+          {
+            "arc_to": [
+              4,
+              1
+            ],
+            "via": [
+              5,
+              0.7320508075688772
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bar",
+      "op": "extrude",
+      "profile": "sketch",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 2
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "bar",
+      "edges": [
+        [
+          5.732050807568877,
+          0,
+          0.5
+        ],
+        [
+          5,
+          -0.7320508075688772,
+          2
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        2,
+        0,
+        0.5
+      ],
+      "expect": "in"
+    }
+  ],
+  "analytic": {
+    "expect_error": "vertex-blend",
+    "genus": 0
+  }
+}
