@@ -1,5 +1,5 @@
-//! The parallel-cylinder row, before and after its blend was built (ADR-0036 §5)
-//! amendment): every edge of the fetched tier that two
+//! The parallel-cylinder row, before and after its blend was built (ADR-0036
+//! §5): every edge of the fetched tier that two
 //! cylinders with parallel axes share along a ruling is blended alone at
 //! the battery's radius, and what happens to it is held by part, by
 //! convexity, by what lies across at its ends and by outcome. No oracle is
