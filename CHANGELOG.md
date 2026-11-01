@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A fillet or a chamfer of a straight edge where two cylinders with parallel
+  axes meet along a ruling now builds, where it was refused as unsupported.
+  A corner with another blend on the same pair is still refused as
+  `VertexBlend`; cylinders whose axes cross or are skew stay unsupported.
 - A fillet whose rolling ball makes a horn or spindle torus (a ball as large
   as the rounded wall, or larger) now builds where it was refused as
   `BlendTooLarge`; the result is an operand of every operation, written to

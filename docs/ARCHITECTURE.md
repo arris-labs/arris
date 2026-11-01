@@ -830,7 +830,16 @@ the face's own loop; the contacts sit at `u = 0` and at the angle
 between them about the blend's axis, no longer `π − φ`. That pair has no
 chamfer in the table, and no miter: its contact on the cylinder misses
 the other blend's on the third edge, so a corner with a ruling blend is
-`VertexBlend`. A plane against a cylinder along a circle — a hole's rim,
+`VertexBlend`. Two
+cylinders with parallel axes along a ruling blend by the same ball found
+in the cross-section: each face is a *trace* (a line or a circle in the
+plane square to the edge), the traces offset by `r` toward the ball cross
+at its centre — for two circles the root on the edge's side of the line
+through the axes — and the fillet is the cylinder of radius `r` about the
+line through it, both contacts rulings with `Line` pcurves; the chamfer is
+the plane through the two rulings at chord `d`. A face across cuts either
+as for a plane against a cylinder (ADR-0037); a corner with another blend
+is `VertexBlend`, and axes that cross or are skew stay `Unsupported`. A plane against a cylinder along a circle — a hole's rim,
 a boss's base — is a closed edge and blends with no ends: a torus
 coaxial with the cylinder, its centre circle at `R + sσr` for `s` `−1`
 on a convex edge and `σ` the side of the axis the cylinder's outward

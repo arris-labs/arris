@@ -163,6 +163,12 @@ A stripe with no closed form: the ball's centre traced along the section of
 the two faces' offsets and fitted (ADR-0062).
 _Avoid_: marched fillet, numeric fillet
 
+**Trace**:
+A face's curve in a blend's cross-section, the plane square to a line
+edge: a line for a plane, a circle for a cylinder about a parallel axis.
+The rolling ball's centre is where the two traces, offset toward it,
+cross (ADR-0036 §5).
+
 **Spine**:
 The curve a stripe's ball centre runs along. Not the roadmap's `Spine:`
 line.

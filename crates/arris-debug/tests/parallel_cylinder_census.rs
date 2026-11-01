@@ -1,6 +1,5 @@
-//! The parallel-cylinder row (the census before step 3, the fillet, held its
-//! refusals; step 7 recounts) (ADR-0036 §5,
-//! plans/parallel-cylinder-blend): every edge of the fetched tier that two
+//! The parallel-cylinder row, before and after its blend was built (ADR-0036 §5)
+//! amendment): every edge of the fetched tier that two
 //! cylinders with parallel axes share along a ruling is blended alone at
 //! the battery's radius, and what happens to it is held by part, by
 //! convexity, by what lies across at its ends and by outcome. No oracle is
@@ -22,7 +21,7 @@ const TORI: &str = "Unsupported pair: torus surface × torus surface";
 /// the outcome, the edge count. A part not listed holds none. The count was
 /// 29 edges in 5 parts at C6 (ADR-0036 §5), over every cylinder pair the
 /// battery met; the ruling edges between parallel axes that remain are
-/// these 6 in 3 parts (plans/parallel-cylinder-blend step 1).
+/// these 6 in 3 parts (the parallel-cylinder-blend census).
 type Row = (&'static str, &'static str, &'static str, usize);
 
 const PARTS: [(&str, [Row; 1]); 3] = [
