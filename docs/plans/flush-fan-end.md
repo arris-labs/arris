@@ -104,7 +104,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   flush-fused L and step operands, with 2 and 3 pieces in random poses, for
   fillet and chamfer. Each is held to the closed-form volume of a lone
   concave end (`l-inner-edge`'s formula) and to checker-green.
-- [ ] Step 7 **[1]** — Census: `tools/script-corpus.sh` shows 0 `fillet`
+- [x] Step 7 **[1]** — Census: `tools/script-corpus.sh` shows 0 `fillet`
   refusals, and the real-parts battery re-run stays at 0 of 38. Commit the
   numbers to the roadmap's §C11 line.
 

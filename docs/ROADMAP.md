@@ -925,7 +925,12 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   AP242's four cylinder pairs waiting.
 - Corners the closed forms do not cover: a walked chain junction on a
   seam (`VertexBlend`), the hinge leaf's knuckle joins, a cusp whose two
-  edges are both blended, as a fitted corner patch.
+  edges are both blended, as a fitted corner patch. The flush-fan census
+  (`flush-fan-end`, step 7, 2026-11-01): the script corpus's `fillet`
+  refusals are 0 (from 1, the hinge leaf), and the real parts' blend row
+  stays 0 of 38 (0 of 11 committed, 0 of 27 fetched). The battery's one
+  unexcluded stage, CTC-02 AP242 e2's drill along its first axis, is the
+  known Open CASCADE miscount in BACKLOG, not this cycle's work.
 - [x] The parallel-cylinder row of the blend table (ADR-0036 §5): **done
   2026-11-01** (`parallel-cylinder-blend`). A fillet or chamfer of a
   straight edge where two cylinders with parallel axes meet along a
