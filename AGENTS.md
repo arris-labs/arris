@@ -53,6 +53,8 @@ M6 `horn-torus` done 2026-10-31 (ADR-0080): a torus face holds the regular
 band, so a fillet whose torus is horn or spindle builds and stays operable.
 M7 `parallel-cylinder-blend` done 2026-11-01 (ADR-0036 §5 amended): a fillet or
 chamfer of two parallel-axis cylinders along a ruling builds in closed form.
+M8 `flush-fan-end` done 2026-11-01 (ADR-0082): a concave blend ends on a
+fan of flush pieces; the script corpus's `fillet` refusals are 0.
 **Next:** the cycle's next plan (`docs/ROADMAP.md` §C11).
 
 ## Rules that are not derivable from the code

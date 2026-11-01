@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A concave fillet or chamfer whose end face a fuse left in flush pieces (the
+  inner edge of an L or a step made by fusing two boxes, a hinge leaf's
+  knuckle joins) now builds, where it was refused as `VertexBlend`. Flush
+  pieces on a curved surface are still refused.
 - A boolean, split or multi-tool cut where a face meets a curved wall at a
   shallow angle (a plane a hair inside a cylinder, crossing at about two
   degrees) and a hole's rim passes through the section no longer fails with

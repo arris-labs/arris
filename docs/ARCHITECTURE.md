@@ -953,7 +953,15 @@ blend's surface crosses each extra edge, which is cut there; the vertex is
 `Deleted`. Where both corner edges lead to the one face and other edges
 also stand at the vertex (a box set on another's top edge), the end is that
 face's single arc, the vertex stays with the edges it does not reach, and
-the face's loop splits in two. Two blends meeting at a vertex whose third
+the face's loop splits in two. A **concave** blend whose face across was left in
+flush pieces by a fuse (a *flush fan*, ADR-0082: planar pieces with parallel
+normals, convex corner edges, tangent extras) ends on the first piece as for
+a lone face: its arc is the lone section, the first piece takes the region
+the arc and the corner edges bound, the second corner edge is cut at the
+section and its part to the vertex becomes an edge between the first and
+last pieces, and the vertex stays with the extras and any middle piece
+untouched. Pieces on a curved surface, or a convex blend there, stay
+`VertexBlend`. Two blends meeting at a vertex whose third
 edge stays sharp meet in a miter: the two equal-radius cylinders' axes
 cross at the ball's one centre, and the miter is the ellipse of the
 plane through it bisecting the axes — minor radius `r` toward the shared

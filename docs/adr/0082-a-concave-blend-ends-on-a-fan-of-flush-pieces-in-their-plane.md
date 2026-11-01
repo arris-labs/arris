@@ -70,7 +70,9 @@ from `e`. `c1`, `c2`, `A1` and `A2`: `Modified`. Middle pieces: untouched.
 
 **4. Refusals.** If `a` meets an extra's curve within the extra's range, the
 end is `BlendTooLarge`, naming `e` and that extra. Pieces on a non-planar
-surface, pieces not coincident within their tolerance, a mixed-sense extra
+surface (no fixture reaches the extras check; the arc cannot reach an
+extra, so it is a guard and a corner edge's far vertex is what the fixture
+holds), pieces not coincident within their tolerance, a mixed-sense extra
 and a convex blend at a smooth extra stay `VertexBlend`. `Reason` gains no
 variant.
 

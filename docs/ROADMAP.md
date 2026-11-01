@@ -924,8 +924,9 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   are built and checked (`blend/`), the S-bend's f37/f38 and STC-07
   AP242's four cylinder pairs waiting.
 - Corners the closed forms do not cover: a walked chain junction on a
-  seam (`VertexBlend`), the hinge leaf's knuckle joins, a cusp whose two
-  edges are both blended, as a fitted corner patch. The flush-fan census
+  seam (`VertexBlend`), a cusp whose two edges are both blended, as a
+  fitted corner patch. The hinge leaf's knuckle joins are done
+  (`flush-fan-end`, M8, ADR-0082). The flush-fan census
   (`flush-fan-end`, step 7, 2026-11-01): the script corpus's `fillet`
   refusals are 0 (from 1, the hinge leaf), and the real parts' blend row
   stays 0 of 38 (0 of 11 committed, 0 of 27 fetched). The battery's one
