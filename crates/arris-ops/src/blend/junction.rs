@@ -408,13 +408,13 @@ pub(super) fn junction(
             .filter_map(|(edge, at)| edge.map(|edge| (edge, at)))
             .map(|(edge, at)| on_corner_edge(m, edge, at).map(|on| (edge, on)))
             .collect::<Result<Vec<_>, _>>()?;
-        if let [(seam, false)] = off
+        let missed: Vec<EdgeId> = off
             .iter()
-            .copied()
-            .filter(|&(_, on)| !on)
-            .collect::<Vec<_>>()[..]
-        {
-            if !slide(m, view, [a, b], [&mut ra, &mut rb], seam)? {
+            .filter(|&&(_, on)| !on)
+            .map(|&(edge, _)| edge)
+            .collect();
+        if !missed.is_empty() {
+            if !slide(m, view, [a, b], [&mut ra, &mut rb], &missed)? {
                 return Err(vertex_blend());
             }
             slid = true;
@@ -1062,14 +1062,17 @@ fn leaning(
 }
 
 /// Slides the walked junction of `runs` along their spines to the
-/// ball whose contact on the seamed face is on `seam`, the corner edge a
-/// contact missed at the vertex (ADR-0083 §2, §3): both runs are read again
+/// ball whose contact on the seamed face is on `seams`, the corner edges the
+/// contacts missed at the vertex (ADR-0083 §2, §3): both runs are read again
 /// there, their contacts, ball centres and parameters. The root is found on
-/// the first run's contact on that face, within its surface's reach, and the
-/// second run's parameter is the foot of that contact point on its own.
-/// `false` where the construction does not apply: `seam` is no seam of a
-/// periodic face the runs share, a run is no walked stripe, or the second
-/// run's contact does not meet the first's within the stripes' tolerance.
+/// the first run's contact on the seam's face, within its surface's reach,
+/// and the second run's parameter is the foot of that contact point on its
+/// own. With a seam of each face the two roots must be one ball: their
+/// contacts on both faces within the stripes' tolerance.
+/// `false` where the construction does not apply: a seam is no seam of a
+/// periodic face the runs share, two seams are of one face, a run is no
+/// walked stripe, the second run's contact does not meet the first's within
+/// the stripes' tolerance, or two seams' roots are not one ball.
 ///
 /// Errors: `BlendReason::TooLarge` naming the first run's edge and the seam,
 /// where no root lies within the reach or the root lies past the second
@@ -1079,7 +1082,7 @@ fn slide(
     view: &BodyView,
     runs: [Run<'_>; 2],
     at: [&mut RunAt<'_>; 2],
-    seam: EdgeId,
+    seams: &[EdgeId],
 ) -> Result<bool, OpError> {
     let [Run::Line(sa), Run::Line(sb)] = runs else {
         return Ok(false);
@@ -1090,66 +1093,90 @@ fn slide(
     {
         return Ok(false);
     }
-    let uses = view
-        .uses
-        .get(&seam)
-        .ok_or(invariant("the junction's seam's uses"))?;
-    let [first, second] = uses[..] else {
-        return Ok(false);
-    };
-    let Some((_, range)) = m.edge(seam)?.curve() else {
-        return Ok(false);
-    };
-    if first.face != second.face {
-        return Ok(false);
-    }
-    let face = first.face;
-    let (Some(ka), Some(kb)) = (
-        ra.faces.iter().position(|&f| f == face),
-        rb.faces.iter().position(|&f| f == face),
-    ) else {
-        return Ok(false);
-    };
-    // The seam is the isocurve of the periodic parameter its pcurve holds.
-    let surface = m.surface(m.face(face)?.surface())?;
-    let pcurve = m.curve2(first.pcurve)?;
-    let (lo, hi) = (pcurve.point(range.lo()), pcurve.point(range.hi()));
-    let period = surface.period();
-    let moved = |axis: usize| {
-        if axis == 0 {
-            (hi.x - lo.x).abs()
-        } else {
-            (hi.y - lo.y).abs()
+    let tolerance = sa.tolerance.max(sb.tolerance);
+    // Each seam's root on the first run's spine, and the face it is on.
+    let mut roots: Vec<(f64, usize)> = Vec::with_capacity(2);
+    for &seam in seams {
+        let uses = view
+            .uses
+            .get(&seam)
+            .ok_or(invariant("the junction's seam's uses"))?;
+        let [first, second] = uses[..] else {
+            return Ok(false);
+        };
+        let Some((_, range)) = m.edge(seam)?.curve() else {
+            return Ok(false);
+        };
+        if first.face != second.face {
+            return Ok(false);
         }
-    };
-    let Some(axis) = [0, 1]
-        .into_iter()
-        .filter(|&axis| period[axis].is_some())
-        .min_by(|&i, &j| moved(i).total_cmp(&moved(j)))
-    else {
+        let face = first.face;
+        let (Some(ka), Some(_)) = (
+            ra.faces.iter().position(|&f| f == face),
+            rb.faces.iter().position(|&f| f == face),
+        ) else {
+            return Ok(false);
+        };
+        if roots.iter().any(|&(_, k)| k == ka) {
+            return Ok(false);
+        }
+        // The seam is the isocurve of the periodic parameter its pcurve holds.
+        let surface = m.surface(m.face(face)?.surface())?;
+        let pcurve = m.curve2(first.pcurve)?;
+        let (lo, hi) = (pcurve.point(range.lo()), pcurve.point(range.hi()));
+        let period = surface.period();
+        let moved = |axis: usize| {
+            if axis == 0 {
+                (hi.x - lo.x).abs()
+            } else {
+                (hi.y - lo.y).abs()
+            }
+        };
+        let Some(axis) = [0, 1]
+            .into_iter()
+            .filter(|&axis| period[axis].is_some())
+            .min_by(|&i, &j| moved(i).total_cmp(&moved(j)))
+        else {
+            return Ok(false);
+        };
+        let value = if axis == 0 { lo.x } else { lo.y };
+        let on_a = |t: f64| sa.lines[ka].point(t);
+        let v = sa.surface.domain()[1];
+        let Some(t) = seam_ball(surface, axis, value, &on_a, ra.t, [v.lo(), v.hi()]) else {
+            return Err(degenerate(
+                vec![forward(sa.edge), forward(seam)],
+                Reason::Blend(BlendReason::TooLarge),
+            ));
+        };
+        roots.push((t, ka));
+    }
+    let Some(&(ta, ka)) = roots.first() else {
         return Ok(false);
     };
-    let value = if axis == 0 { lo.x } else { lo.y };
+    if let Some(&(t1, _)) = roots.get(1) {
+        if !one_ball(&|k, t| sa.lines[k].point(t), [ta, t1], tolerance) {
+            return Ok(false);
+        }
+    }
+    let on_a = |t: f64| sa.lines[ka].point(t);
     let too_large = || {
         degenerate(
-            vec![forward(sa.edge), forward(seam)],
+            vec![forward(sa.edge), forward(seams[0])],
             Reason::Blend(BlendReason::TooLarge),
         )
     };
-    let on_a = |t: f64| sa.lines[ka].point(t);
-    let Some(ta) = seam_ball(surface, axis, value, &on_a, ra.t, {
-        let v = sa.surface.domain()[1];
-        [v.lo(), v.hi()]
-    }) else {
-        return Err(too_large());
-    };
+    let kb = rb
+        .faces
+        .iter()
+        .position(|&f| f == ra.faces[ka])
+        .ok_or(invariant("the junction's shared face"))?;
     let foot = sb.lines[kb].project(on_a(ta)).map_err(fault_of)?;
     let tb = foot.t;
     let domain_b = sb.surface.domain()[1];
     if tb < domain_b.lo() || domain_b.hi() < tb {
         return Err(too_large());
     }
-    if foot.distance > sa.tolerance.max(sb.tolerance) {
+    if foot.distance > tolerance {
         return Ok(false);
     }
     for (s, at, t) in [(sa, ra, ta), (sb, rb, tb)] {
@@ -1177,6 +1204,13 @@ fn slide(
         at.t = t;
     }
     Ok(true)
+}
+
+/// Whether the balls at `ts` on a run's spine are one ball: the contacts
+/// `contact(k, t)` on both faces within `tolerance`. Two seams' roots agree
+/// this way, else the vertex is a `VertexBlend` (ADR-0083 §2).
+fn one_ball(contact: &dyn Fn(usize, f64) -> Point3, ts: [f64; 2], tolerance: f64) -> bool {
+    (0..2).all(|k| (contact(k, ts[0]) - contact(k, ts[1])).norm() <= tolerance)
 }
 
 /// The samples [`seam_ball`] takes across its span to find the contact
@@ -1378,6 +1412,14 @@ mod tests {
             let p = contact(t);
             assert!(p.y.abs() < 1e-10 && p.x > 0.0, "{p:?}");
         }
+    }
+
+    #[test]
+    fn two_seams_roots_are_one_ball_only_within_the_tolerance() {
+        let contact = |k: usize, t: f64| Point3::new(t, k as f64, 0.0);
+        assert!(one_ball(&contact, [0.5, 0.5 + 1e-9], 1e-7));
+        // Seams whose roots are a tenth apart on the spine disagree.
+        assert!(!one_ball(&contact, [0.5, 0.6], 1e-7));
     }
 
     #[test]

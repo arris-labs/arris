@@ -103,7 +103,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   crossing, is undecided too, so the limit was the checker's. The NURBS
   march accounts such boxes on the arc (ADR-0068's 2026-11-01 amendment);
   test `two_skins_adjoining_on_a_slid_seam_junction_are_decided`.
-- [ ] Step 4 **[2]** — Two seams at one vertex: the roots are held to agree
+- [x] Step 4 **[2]** — Two seams at one vertex: the roots are held to agree
   within the tolerance. `blend/sphere-cylinder-fillet` stays at its blessed
   dump, and `sphere-cylinder-pin-seam-slant-fillet` moves to `blend/`. A unit
   test of two disagreeing seams gives `VertexBlend`.
