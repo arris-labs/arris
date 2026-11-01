@@ -87,7 +87,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   routes it. A unit test over the three bodies' stars checks the pieces and
   the smooth extras. The census names the site "a flush fan"
   (`census::vertex_blend_cause`).
-- [ ] Step 3 **[2]** — Build the two-piece end: `A1` takes the region, `c2`
+- [x] Step 3 **[2]** — Build the two-piece end: `A1` takes the region, `c2`
   is cut at `P2`, `v` is kept, provenance as above. The `flush-l-inner`
   fixtures move to `blend/` and are checker-green at `Full`, at the oracle's
   counts and measures.

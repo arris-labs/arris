@@ -88,6 +88,11 @@ pub(super) struct End {
     /// The edges that stay at the vertex, which survives with them, where
     /// the face across is met twice (ADR-0043 §4); none otherwise.
     pub(super) stays: Vec<EdgeId>,
+    /// The last piece of a *flush fan* (ADR-0082), the one the corner edge
+    /// of the second contact leads to: the first piece in `pieces` takes the
+    /// region the arc bounds, and that corner edge's part from the vertex to
+    /// its trim stays as an edge between the two. `None` at any other end.
+    pub(super) flush: Option<FaceId>,
 }
 
 /// A walked stripe's end at a pole (ADR-0062 §5): the faces turn tangent
@@ -859,15 +864,26 @@ pub(super) fn face_end(
         )
     };
     let mut corner = corner_of(env, edge, &s.uses, vertex, at_lo)?;
-    if corner.flush {
-        // The flush fan's end is built from ADR-0082's construction.
-        return Err(vertex_blend());
-    }
-    if corner.pieces.len() > 1 {
+    // A flush fan is a lone end on its first piece (ADR-0082 §2): the arc
+    // is the section of one face across, and the last piece is kept for the
+    // rewrite.
+    let flush = if corner.flush {
+        let [first, .., last] = corner.pieces[..] else {
+            return Err(invariant("a flush fan of two pieces or more"));
+        };
+        Some((first, last))
+    } else {
+        None
+    };
+    if corner.pieces.len() > 1 && flush.is_none() {
         return fan_end(env, meter, s, vertex, &corner);
     }
     let stays = std::mem::take(&mut corner.stays);
-    let (corner_edges, face3, spine) = corner.lone(edge, vertex)?;
+    let extras = std::mem::take(&mut corner.extras);
+    let (corner_edges, face3, spine) = match flush {
+        Some((first, _)) => (corner.edges, first, None),
+        None => corner.lone(edge, vertex)?,
+    };
     // At a cusp (ADR-0042): the spine, which the contact on the wall
     // tangent to the face across meets at `Q`, a line where a line edge's
     // walls are a plane and a cylinder tangent along it.
@@ -1049,7 +1065,7 @@ pub(super) fn face_end(
             });
         }
     };
-    finish_end(
+    let mut end = finish_end(
         env,
         meter,
         s,
@@ -1060,6 +1076,7 @@ pub(super) fn face_end(
             surface3,
             spine,
             stays,
+            extras,
             points,
             t,
             gaps,
@@ -1068,7 +1085,9 @@ pub(super) fn face_end(
             lo_first,
             arc_tolerance,
         },
-    )
+    )?;
+    end.flush = flush.map(|(_, last)| last);
+    Ok(end)
 }
 
 /// Why a contact of `s` misses the curved face across its end at
@@ -1133,6 +1152,9 @@ pub(super) struct Arced<'a> {
     pub(super) spine: Option<usize>,
     /// The edges that stay at the vertex ([`CornerAt::stays`]).
     pub(super) stays: Vec<EdgeId>,
+    /// A flush fan's extra edges, which the arc must not reach (ADR-0082
+    /// §4); none otherwise.
+    pub(super) extras: Vec<EdgeId>,
     /// Where each contact pierces the face across, by contact.
     pub(super) points: [Point3; 2],
     /// The contacts' parameters there.
@@ -1166,6 +1188,7 @@ pub(super) fn finish_end(
         surface3,
         spine,
         stays,
+        extras,
         points,
         t,
         gaps,
@@ -1220,8 +1243,9 @@ pub(super) fn finish_end(
         }
     };
     // The edges that stay at the vertex are not reached: an arc that
-    // crosses one within its range has run past the face (ADR-0043 §4).
-    for &x in &stays {
+    // crosses one within its range has run past the face (ADR-0043 §4,
+    // ADR-0082 §4).
+    for &x in stays.iter().chain(&extras) {
         let (curve_id, range) = m
             .edge(x)?
             .curve()
@@ -1275,6 +1299,7 @@ pub(super) fn finish_end(
         crossings: Vec::new(),
         vertex_tolerance,
         stays,
+        flush: None,
     })
 }
 
@@ -1476,6 +1501,7 @@ pub(super) fn fan_end(
         crossings,
         vertex_tolerance,
         stays: Vec::new(),
+        flush: None,
     })
 }
 

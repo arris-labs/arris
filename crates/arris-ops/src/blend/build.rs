@@ -44,6 +44,19 @@ pub(super) struct Insertion {
     /// edges, whose stretch of the loop through the vertex becomes a loop
     /// of its own, closed by the arc.
     pub(super) splits: Option<[EdgeId; 2]>,
+    /// Where the face is the first piece of a flush fan (ADR-0082 §2): the
+    /// corner edge's kept part, which runs on from the arc to the vertex.
+    pub(super) tail: Option<Tail>,
+}
+
+/// The part of a flush fan's second corner edge from its trim point to the
+/// vertex, which stays as an edge between the first and the last piece.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Tail {
+    pub(super) edge: EdgeKey,
+    pub(super) pcurve: Curve2Id,
+    /// `true` when the edge runs from the trim point to the vertex.
+    pub(super) to_vertex: bool,
 }
 
 /// What a face's loops are rewritten with: a blended edge replaced by
@@ -827,6 +840,7 @@ fn add_miters(
                         lo_first: arc.m_first,
                         edge_at_lo: arc.narrow_edge,
                         splits: None,
+                        tail: None,
                     },
                 );
                 Some((end, edge))
@@ -912,7 +926,7 @@ fn add_stripes(
     joins: &Joins,
     drafted: &Drafted,
 ) -> Result<Vec<StripeMade>, OpError> {
-    let (m, view, ..) = ctx.parts();
+    let (m, view, _, tol, _, meter) = ctx.parts();
     let Draft {
         rw,
         cuts,
@@ -1054,6 +1068,29 @@ fn add_stripes(
             for (k, trim) in face_end.trims.iter().enumerate() {
                 cut_once(cuts, trim, vertices[end_index][k])?;
             }
+            // A flush fan keeps the second corner edge's part from the
+            // vertex to its trim, an edge between the first and the last
+            // piece (ADR-0082 §2).
+            let mut tail = None;
+            if let Some(last) = face_end.flush {
+                let first = face_end.pieces[0].face;
+                let (for_first, for_last) = flush_tail(
+                    m,
+                    view,
+                    rw,
+                    face_end,
+                    vertices[end_index][1],
+                    [first, last],
+                    tol,
+                    meter,
+                )?;
+                edits
+                    .entry(last)
+                    .or_default()
+                    .insert
+                    .insert(face_end.vertex, for_last);
+                tail = Some(for_first);
+            }
             for (i, piece) in face_end.pieces.iter().enumerate() {
                 let (from, to) = (along[i], along[i + 1]);
                 let (first, second) = if piece.arc.lo_first {
@@ -1091,6 +1128,7 @@ fn add_stripes(
                         edge_at_lo,
                         splits: (!face_end.stays.is_empty())
                             .then_some(face_end.trims.map(|trim| trim.edge)),
+                        tail,
                     },
                 );
             }
@@ -1137,6 +1175,82 @@ fn add_stripes(
         });
     }
     Ok(made)
+}
+
+/// A flush fan's kept edge (ADR-0082 §2): the second corner edge's curve from
+/// the vertex to its trim point `p2` (the rewrite's vertex), added to `rw`
+/// with the corner edge as its parent. Returns the first piece's tail, whose
+/// pcurve is derived on its plane, and the last piece's insertion, which is
+/// the edge itself at the junction, on the corner edge's own pcurve.
+#[allow(clippy::too_many_arguments)]
+fn flush_tail(
+    m: &mut Model,
+    view: &BodyView,
+    rw: &mut Rewrite,
+    end: &super::ends::End,
+    p2: usize,
+    [first, last]: [FaceId; 2],
+    tol: Tolerance,
+    meter: &mut Meter<'_>,
+) -> Result<(Tail, Insertion), OpError> {
+    let trim = end.trims[1];
+    let entity = *m.edge(trim.edge)?;
+    let (curve, range) = entity
+        .curve()
+        .ok_or(invariant("a flush fan's corner edge curve"))?;
+    let kept = if trim.cuts_lo {
+        Interval::new(range.lo(), trim.t)
+    } else {
+        Interval::new(trim.t, range.hi())
+    }
+    .map_err(|_| invariant("a flush fan's corner edge cut inside its range"))?;
+    let (start, finish) = if trim.cuts_lo {
+        (VertexKey::Kept(end.vertex), VertexKey::New(p2))
+    } else {
+        (VertexKey::New(p2), VertexKey::Kept(end.vertex))
+    };
+    let key = EdgeKey::New(rw.edges.len());
+    rw.edges.push((
+        EdgeSpec::New {
+            geometry: EdgeGeometry::Curve { curve, range: kept },
+            start,
+            end: finish,
+            tolerance: entity.tolerance(),
+        },
+        Some(trim.edge),
+    ));
+    let surface = m.surface(m.face(first)?.surface())?.clone();
+    let on_first = pcurve_on(
+        m.curve(curve)?,
+        kept,
+        &surface,
+        Tolerance::new(entity.tolerance(), tol.angular),
+        meter,
+    )
+    .map_err(fault_of)?;
+    let on_first = m.add_curve2(on_first);
+    let on_last = view
+        .uses
+        .get(&trim.edge)
+        .and_then(|u| u.iter().find(|u| u.face == last))
+        .ok_or(invariant("a flush fan's corner edge on its last piece"))?
+        .pcurve;
+    let to_vertex = !trim.cuts_lo;
+    Ok((
+        Tail {
+            edge: key,
+            pcurve: on_first,
+            to_vertex,
+        },
+        Insertion {
+            arc: key,
+            pcurve: on_last,
+            lo_first: to_vertex,
+            edge_at_lo: trim.edge,
+            splits: None,
+            tail: None,
+        },
+    ))
 }
 
 /// The blended edge's remnant at each end where its stripe stops short of
@@ -1349,6 +1463,7 @@ fn add_rings(
                             lo_first: end.lo_first,
                             edge_at_lo: end.trims[0].edge,
                             splits: None,
+                            tail: None,
                         },
                     );
                 }
@@ -1553,11 +1668,33 @@ fn rewrite_faces(
                     } else {
                         Orientation::Reversed
                     };
-                    uses.push(StoredUse {
+                    let arc = StoredUse {
                         edge: ins.arc,
                         orientation,
                         pcurve: ins.pcurve,
-                    });
+                    };
+                    // A flush fan's first piece goes on to the vertex by
+                    // the kept edge, before the arc where it arrives by an
+                    // extra (ADR-0082 §2).
+                    match ins.tail {
+                        None => uses.push(arc),
+                        Some(tail) => {
+                            let kept = StoredUse {
+                                edge: tail.edge,
+                                orientation: if arrived_at_lo == tail.to_vertex {
+                                    Orientation::Forward
+                                } else {
+                                    Orientation::Reversed
+                                },
+                                pcurve: tail.pcurve,
+                            };
+                            if arrived_at_lo {
+                                uses.extend([arc, kept]);
+                            } else {
+                                uses.extend([kept, arc]);
+                            }
+                        }
+                    }
                 }
             }
             // The face across met twice: the stretch of the loop from the

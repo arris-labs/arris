@@ -959,6 +959,10 @@ corpus_tests! {
     /// adds material, its cylinder's axis in the notch and the blend face
     /// reversed against it.
     blend_l_inner_edge => run "blend/l-inner-edge";
+    /// The L of `l-inner-edge` made by fusing two boxes, so each cap is two flush faces: the concave fillet ends at a vertex of four edges, one of them smooth (a flush fan). The first piece takes the region the end arc bounds, the corner edge's part from the vertex to its trim stays between the two, and the vertex survives.
+    blend_flush_l_inner_fillet => run "blend/flush-l-inner-fillet";
+    /// The same fused L, its inner edge chamfered.
+    blend_flush_l_inner_chamfer => run "blend/flush-l-inner-chamfer";
     /// The cube's four vertical edges in one call: four disjoint blends, each
     /// cap edge cut at both its ends by two of them.
     blend_box_four_verticals => run "blend/box-four-verticals";
@@ -2007,14 +2011,6 @@ corpus_tests! {
     /// where Open CASCADE builds it.
     #[ignore = "OpError::Degenerate: the corner at the end of a ruling blend whose neighbour in line is another ruling blend of a different face pair is not covered (docs/BACKLOG.md, the ruling chain over a ledge)"]
     regression_ogive_bar_step_chain_fillet => run "regression/ogive-bar-step-chain-fillet";
-    /// The L of two fused boxes, its inner edge filleted: the caps are two flush faces each, so the end of the concave blend is at a vertex of four edges, one of them smooth.
-    /// The desired result is Open CASCADE's blend, its end in the pieces' plane.
-    #[ignore = "BlendReason::VertexBlend: a concave end whose face across is split into flush pieces on one plane, the walk from one corner edge to the other meeting a smooth extra (docs/plans/flush-fan-end.md, ADR-0043 §2)"]
-    regression_flush_l_inner_fillet => run "regression/flush-l-inner-fillet";
-    /// The same L, its inner edge chamfered.
-    /// The desired result is Open CASCADE's blend, its end in the pieces' plane.
-    #[ignore = "BlendReason::VertexBlend: a concave end whose face across is split into flush pieces on one plane, the walk from one corner edge to the other meeting a smooth extra (docs/plans/flush-fan-end.md, ADR-0043 §2)"]
-    regression_flush_l_inner_chamfer => run "regression/flush-l-inner-chamfer";
     /// A slab and a block on it, fused, the concave edge between the block's wall and the slab's top filleted into the front plane, which is two flush faces.
     /// The desired result is Open CASCADE's blend, its end in the pieces' plane.
     #[ignore = "BlendReason::VertexBlend: a concave end whose face across is split into flush pieces on one plane, the walk from one corner edge to the other meeting a smooth extra (docs/plans/flush-fan-end.md, ADR-0043 §2)"]

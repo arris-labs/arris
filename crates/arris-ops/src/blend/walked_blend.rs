@@ -487,6 +487,7 @@ pub(super) fn walked_end(
             surface3,
             spine: None,
             stays,
+            extras: Vec::new(),
             points,
             t,
             gaps: traced.gaps,

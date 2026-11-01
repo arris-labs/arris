@@ -41,6 +41,11 @@ planar faces on one plane, the pieces. A sharp extra, a seam, or a piece
 off the plane stays as ADR-0043 and ADR-0039 §4 have it. A flush fan is for
 a concave `e` at a face end only.
 
+At such an end the corner edges `c1` and `c2` are **convex**, the walls'
+edges with the cap, as at a lone face across, and the extra edges are the
+ones that are tangent (`tangent_at`) along their length. The walk's test
+reads the corner edges as sharp and convex, the extras as smooth.
+
 **2. The construction.** The end's section `a` lies on the pieces' plane,
 in the wedge between `c1` and `c2` on the side of `v` that holds no piece
 of the walk, so it crosses no extra. It is ADR-0007's arc or chord for one
@@ -74,5 +79,9 @@ variant.
 - The hinge leaf's `knuckle_joins` and the two fused-box bodies build.
 - Pieces on a cylinder or a sphere stay refused, by name, until something
   asks.
+- The build reuses the lone face's end for the first piece (`face_end`,
+  `finish_end`), the arc checked against the extras as `stays` are; the
+  rewrite adds the kept part of `c2` as a new edge (`flush_tail`) with `c2`
+  as its parent, and the two faces' loops take it at the junction.
 - The coincidence test of the pieces is a step 2 decision; it uses the
   faces' tolerance and adds no literal.
