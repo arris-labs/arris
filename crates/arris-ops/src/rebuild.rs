@@ -517,6 +517,67 @@ pub(crate) fn stored_to_spec(
         .collect()
 }
 
+/// Each new edge's tolerance raised to the gap its pcurves leave from its
+/// curve, measured at the checker's samples of its range. A tolerance a
+/// piece carries from the edge it was cut from was measured at that edge's
+/// samples; the checker samples the piece's range elsewhere and may find a
+/// larger gap, which E4 holds the edge's tolerance to.
+fn raise_to_measured_gaps(
+    m: &Model,
+    assembly: &mut Assembly,
+    samples: usize,
+) -> Result<(), OpError> {
+    let mut gaps: BTreeMap<usize, f64> = BTreeMap::new();
+    for face in assembly.shells.iter().flatten() {
+        let FaceSpec::New { surface, loops, .. } = face else {
+            continue;
+        };
+        let surface = m.surface(*surface)?;
+        for u in loops.iter().flatten() {
+            let EdgeKey::New(i) = u.edge else {
+                continue;
+            };
+            let Some(EdgeSpec::New {
+                geometry: EdgeGeometry::Curve { curve, range },
+                ..
+            }) = assembly.edges.get(i)
+            else {
+                continue;
+            };
+            let (curve, pcurve) = (m.curve(*curve)?, m.curve2(u.pcurve)?);
+            let gap = gaps.entry(i).or_insert(0.0);
+            for t in range.samples(samples) {
+                let uv = pcurve.point(t);
+                *gap = gap.max((surface.point(uv.x, uv.y) - curve.point(t)).norm());
+            }
+        }
+    }
+    // A vertex is at least as tolerant as the edges it ends.
+    let mut raised: Vec<(usize, f64)> = Vec::new();
+    for (i, gap) in gaps {
+        if let Some(EdgeSpec::New {
+            tolerance,
+            start,
+            end,
+            ..
+        }) = assembly.edges.get_mut(i)
+        {
+            *tolerance = tolerance.max(gap);
+            for end in [*start, *end] {
+                if let VertexKey::New(k) = end {
+                    raised.push((k, *tolerance));
+                }
+            }
+        }
+    }
+    for (k, tol) in raised {
+        if let Some(VertexSpec::New { tolerance, .. }) = assembly.vertices.get_mut(k) {
+            *tolerance = tolerance.max(tol);
+        }
+    }
+    Ok(())
+}
+
 /// What [`rewrite`] built: the body, the ids behind the rewrite's new
 /// vertices, edges and added faces, and the generic half
 /// of the provenance — every operand entity kept, `Modified` into its
@@ -612,6 +673,7 @@ pub(crate) fn rewrite_unverified(
         });
     }
 
+    raise_to_measured_gaps(m, &mut assembly, precision.check_samples)?;
     let (builder, slots) = Builder::assemble(m, precision.default_tolerance, assembly)?;
     let built = builder.finish(m, BodyKind::Solid)?;
     let id_at = |(s, i): (usize, usize)| -> Result<FaceId, OpError> {

@@ -4417,3 +4417,33 @@ prop_shards! {
             parallel_pair_holds(pair, kind, size, &pose)
         }
 }
+
+/// Two poses CI's 1000 cases drew: the stripe's torus edge `e794` was cut
+/// from an edge whose tolerance was measured at the samples of its whole
+/// range, and the checker, sampling the piece's range elsewhere, found a
+/// gap 1e-13 above it (E4). The piece's tolerance is measured again.
+#[test]
+fn an_elbows_cut_edge_holds_its_pcurve_gap_in_the_poses_that_found_it() {
+    use arris_math::nalgebra::{Quaternion, Unit};
+    for (q, t) in [
+        (
+            [-0.5316200052406779, 0.8469829809552857, 0.0, 0.0],
+            [77.72634321343656, 95.82277935844732, 0.0],
+        ),
+        (
+            [
+                -0.6480756590218757,
+                -0.3440673409759742,
+                0.0,
+                0.679422994206911,
+            ],
+            [-49.38188549084462, -97.70284495841538, -73.94413016562885],
+        ),
+    ] {
+        let pose = Isometry::new(
+            Unit::new_unchecked(Quaternion::new(q[3], q[0], q[1], q[2])),
+            Vec3::new(t[0], t[1], t[2]),
+        );
+        elbow_holds(&pose).unwrap();
+    }
+}
