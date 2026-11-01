@@ -963,6 +963,12 @@ corpus_tests! {
     blend_flush_l_inner_fillet => run "blend/flush-l-inner-fillet";
     /// The same fused L, its inner edge chamfered.
     blend_flush_l_inner_chamfer => run "blend/flush-l-inner-chamfer";
+    /// A slab and a block on it, fused, the concave edge between the block's wall and the slab's top filleted into the front plane, which is two flush faces: the end is a flush fan of two pieces, as the fused L's.
+    blend_flush_step_concave_fillet => run "blend/flush-step-concave-fillet";
+    /// The same step, the concave edge chamfered.
+    blend_flush_step_concave_chamfer => run "blend/flush-step-concave-chamfer";
+    /// The hinge leaf shrunk: a plate fused with a half-buried cylinder, one join edge filleted, its end in the plane the plate's face and the cylinder's cap share, three flush pieces with a middle one left untouched.
+    blend_knuckle_join_flush_end_fillet => run "blend/knuckle-join-flush-end-fillet";
     /// The cube's four vertical edges in one call: four disjoint blends, each
     /// cap edge cut at both its ends by two of them.
     blend_box_four_verticals => run "blend/box-four-verticals";
@@ -2011,18 +2017,6 @@ corpus_tests! {
     /// where Open CASCADE builds it.
     #[ignore = "OpError::Degenerate: the corner at the end of a ruling blend whose neighbour in line is another ruling blend of a different face pair is not covered (docs/BACKLOG.md, the ruling chain over a ledge)"]
     regression_ogive_bar_step_chain_fillet => run "regression/ogive-bar-step-chain-fillet";
-    /// A slab and a block on it, fused, the concave edge between the block's wall and the slab's top filleted into the front plane, which is two flush faces.
-    /// The desired result is Open CASCADE's blend, its end in the pieces' plane.
-    #[ignore = "BlendReason::VertexBlend: a concave end whose face across is split into flush pieces on one plane, the walk from one corner edge to the other meeting a smooth extra (docs/plans/flush-fan-end.md, ADR-0043 §2)"]
-    regression_flush_step_concave_fillet => run "regression/flush-step-concave-fillet";
-    /// The same step, the concave edge chamfered.
-    /// The desired result is Open CASCADE's blend, its end in the pieces' plane.
-    #[ignore = "BlendReason::VertexBlend: a concave end whose face across is split into flush pieces on one plane, the walk from one corner edge to the other meeting a smooth extra (docs/plans/flush-fan-end.md, ADR-0043 §2)"]
-    regression_flush_step_concave_chamfer => run "regression/flush-step-concave-chamfer";
-    /// The hinge leaf shrunk: a plate fused with a half-buried cylinder, one join edge filleted, its end in the plane the plate's face and the cylinder's cap share.
-    /// The desired result is Open CASCADE's blend, its end in the pieces' plane.
-    #[ignore = "BlendReason::VertexBlend: a concave end whose face across is split into flush pieces on one plane, the walk from one corner edge to the other meeting a smooth extra (docs/plans/flush-fan-end.md, ADR-0043 §2)"]
-    regression_knuckle_join_flush_end_fillet => run "regression/knuckle-join-flush-end-fillet";
 }
 
 /// A variant the recipe does not have fails naming it.

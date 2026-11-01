@@ -245,6 +245,8 @@ blend/fillet-miter: 303
 blend/five-edge-vertex: 6
 blend/flush-l-inner-chamfer: 6
 blend/flush-l-inner-fillet: 6
+blend/flush-step-concave-chamfer: 6
+blend/flush-step-concave-fillet: 6
 blend/frustum-rim-chamfer: 3
 blend/frustum-rim-fillet: 3
 blend/half-cone-ruling-fillet: 84153
@@ -256,6 +258,7 @@ blend/hole-rim-chamfer: 3
 blend/hole-rim-fillet: 3
 blend/hole-rim-fillet-runs-off-the-plate: 363297
 blend/horn-blend-box-cut: 11134
+blend/knuckle-join-flush-end-fillet: 6
 blend/l-inner-edge: 6
 blend/line-into-arc-fillet: 9
 blend/lip-fillet-runs-into-a-hole: 405416

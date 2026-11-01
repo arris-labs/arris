@@ -91,7 +91,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   is cut at `P2`, `v` is kept, provenance as above. The `flush-l-inner`
   fixtures move to `blend/` and are checker-green at `Full`, at the oracle's
   counts and measures.
-- [ ] Step 4 **[2]** — Three pieces, with a middle piece left untouched:
+- [x] Step 4 **[2]** — Three pieces, with a middle piece left untouched:
   `knuckle-join-flush-end-fillet` and `flush-step-concave-*` move to `blend/`.
   The hinge leaf's `outcome.json` becomes `ok` at `knuckle_joins` and matches
   its oracle checkpoint.
