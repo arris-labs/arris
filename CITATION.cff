@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use arris in your research, please cite it as below."
+title: "arris: a B-Rep geometric kernel in pure Rust"
+type: software
+authors:
+  - family-names: Sergienko
+    given-names: Sergei
+repository-code: "https://github.com/arris-labs/arris"
+url: "https://github.com/arris-labs/arris"
+license:
+  - MIT
+  - Apache-2.0
+abstract: >-
+  arris is a boundary-representation (B-Rep) geometric kernel written in
+  pure Rust: analytic and NURBS geometry, tolerance-carrying topology,
+  boolean operations that return provenance for every entity they touch,
+  blends, sweeps and lofts, tessellation, and a STEP reader. Every result
+  is checked for validity, every operation is deterministic, and every
+  failure becomes a test fixture measured against an independent oracle.
+  It ships as Rust crates and as the Python package arris.
+keywords:
+  - CAD
+  - B-Rep
+  - geometric kernel
+  - solid modeling
+  - NURBS
+  - boolean operations
+  - Rust
