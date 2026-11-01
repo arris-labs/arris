@@ -109,11 +109,16 @@ given design); **[3]** unproven (robustness or a bound to establish here).
   five-edge vertex: `regression/ogive-bar-step-chain-fillet` and a backlog
   line. A ruling chain into a plane-cylinder stripe needs a ledge (the
   faces differ above and below), so no corner-free fixture exists.
-- [ ] Step 6 **[2]** — Property test in `blend_prop.rs`. Random
+- [x] Step 6 **[2]** — Property test in `blend_prop.rs`. Random
   parallel-cylinder unions and ogives in random poses, fillet and
   chamfer, each either `Ok` and checker-green, with its volume change
   equal to the closed form within the fixture tolerance, or refused by a
   named `BlendTooLarge`/`VertexBlend`.
+  *Settled* (step 6): two properties, `an_ogive_tip_blends_as_its_closed_form`
+  and `a_waist_blends_as_its_closed_form`, each over a single edge (an ogive
+  bar's tip, two equal discs' waist) so the step-chain refusal is not in
+  play; the section's closed form is the Green's-theorem area of the arcs
+  (`corner_area`). Named refusals are accepted; none arose in 256 cases.
 - [ ] Step 7 **[1]** — The census after. Step 1's test holds the new counts
   and the residue by cause. Open CASCADE's verdicts on the stride sample
   (`ask_the_oracle`) go into the roadmap line. `tools/real-parts.sh`'s
