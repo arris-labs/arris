@@ -414,7 +414,7 @@ pub(super) fn junction(
             .map(|&(edge, _)| edge)
             .collect();
         if !missed.is_empty() {
-            if !slide(m, view, [a, b], [&mut ra, &mut rb], &missed)? {
+            if !slide(m, view, [a, b], [&mut ra, &mut rb], vertex, &missed)? {
                 return Err(vertex_blend());
             }
             slid = true;
@@ -1075,13 +1075,14 @@ fn leaning(
 /// the stripes' tolerance, or two seams' roots are not one ball.
 ///
 /// Errors: `BlendReason::TooLarge` naming the first run's edge and the seam,
-/// where no root lies within the reach or the root lies past the second
-/// run's surface.
+/// where no root lies within the reach, or the root lies past either run's
+/// far end (the surface runs on past it for the reach, the edge does not).
 fn slide(
     m: &Model,
     view: &BodyView,
     runs: [Run<'_>; 2],
     at: [&mut RunAt<'_>; 2],
+    vertex: VertexId,
     seams: &[EdgeId],
 ) -> Result<bool, OpError> {
     let [Run::Line(sa), Run::Line(sb)] = runs else {
@@ -1173,7 +1174,11 @@ fn slide(
     let foot = sb.lines[kb].project(on_a(ta)).map_err(fault_of)?;
     let tb = foot.t;
     let domain_b = sb.surface.domain()[1];
-    if tb < domain_b.lo() || domain_b.hi() < tb {
+    if tb < domain_b.lo()
+        || domain_b.hi() < tb
+        || past_far_end(sb, vertex, rb.t, tb)
+        || past_far_end(sa, vertex, ra.t, ta)
+    {
         return Err(too_large());
     }
     if foot.distance > tolerance {
@@ -1206,6 +1211,23 @@ fn slide(
     Ok(true)
 }
 
+/// Whether the parameter `t` of a walked stripe's spine lies past the far
+/// end of its edge from `vertex`, `near` being the parameter at `vertex`.
+/// The surface runs on `REACH_RADII` past the edge's ends, so its domain
+/// is no bound on a slide. A stripe that is not walked has no such reach.
+fn past_far_end(s: &Stripe, vertex: VertexId, near: f64, t: f64) -> bool {
+    let Section::Walked { ends, .. } = s.section else {
+        return false;
+    };
+    let far = ends[usize::from(s.start == vertex)];
+    past(near, far, t)
+}
+
+/// Whether `t` is beyond `far` as seen from `near`.
+fn past(near: f64, far: f64, t: f64) -> bool {
+    (t - far) * (near - far) < 0.0
+}
+
 /// Whether the balls at `ts` on a run's spine are one ball: the contacts
 /// `contact(k, t)` on both faces within `tolerance`. Two seams' roots agree
 /// this way, else the vertex is a `VertexBlend` (ADR-0083 §2).
@@ -1218,6 +1240,12 @@ fn one_ball(contact: &dyn Fn(usize, f64) -> Point3, ts: [f64; 2], tolerance: f64
 /// sampling density and a structural bound, not tolerances.
 const SEAM_SAMPLES: usize = 64;
 const SEAM_HALVINGS: usize = 64;
+
+/// The fraction of a period that a bracket's two wrapped distances may sum
+/// to for the bracket to hold a root. At the seam's antipode the wrapped
+/// distance jumps by a whole period, so a bracket across it sums to about
+/// half; a real root's sum is the bracket's width, far under a quarter.
+const ANTIPODE_FRACTION: f64 = 0.25;
 
 /// The parameter `t*` of the ball on a walked run's spine whose contact on
 /// a seamed face lies on the seam (ADR-0083 §2). `contact` is the run's
@@ -1272,7 +1300,7 @@ pub(super) fn seam_ball(
         }
         // At the antipode the wrapped distance jumps by a period, and the
         // bracket keeps its two ends half a period apart.
-        if ga.abs() + gb.abs() >= 0.25 * period {
+        if ga.abs() + gb.abs() >= ANTIPODE_FRACTION * period {
             continue;
         }
         let t = 0.5 * (a + b);
@@ -1420,6 +1448,18 @@ mod tests {
         assert!(one_ball(&contact, [0.5, 0.5 + 1e-9], 1e-7));
         // Seams whose roots are a tenth apart on the spine disagree.
         assert!(!one_ball(&contact, [0.5, 0.6], 1e-7));
+    }
+
+    #[test]
+    fn a_root_past_a_runs_far_end_is_past_it_from_either_side() {
+        // The vertex at 1, the far end at 3 (up) or at -1 (down).
+        assert!(!past(1.0, 3.0, 2.0));
+        assert!(past(1.0, 3.0, 3.5));
+        assert!(!past(1.0, 3.0, -0.5), "behind the vertex is the reach");
+        assert!(!past(1.0, -1.0, 0.0));
+        assert!(past(1.0, -1.0, -1.5));
+        // Exactly at the far end is not past it.
+        assert!(!past(1.0, 3.0, 3.0));
     }
 
     #[test]
