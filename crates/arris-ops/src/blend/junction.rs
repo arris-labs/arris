@@ -1027,6 +1027,77 @@ fn leaning(
     Ok(true)
 }
 
+/// The samples [`seam_ball`] takes across its span to find the contact
+/// crossing the seam, and the halvings that then close the bracket. A
+/// sampling density and a structural bound, not tolerances.
+const SEAM_SAMPLES: usize = 64;
+const SEAM_HALVINGS: usize = 64;
+
+/// The parameter `t*` of the ball on a walked run's spine whose contact on
+/// a seamed face lies on the seam (ADR-0083 §2). `contact` is the run's
+/// contact isocurve on that face (its `lines[k]`, the surface's `v` as
+/// parameter); the seam is the isocurve of `surface`'s parameter `axis`
+/// (0 for `u`, 1 for `v`) at `seam`, which `axis` must make periodic. The
+/// contact's signed distance to it is its `axis` parameter less `seam`,
+/// wrapped into half a period either side; `t*` is its root within
+/// `span = [lo, hi]`, the run's reach on either side of the vertex, nearest
+/// `near`, the vertex's own parameter. Found by sampling for a change of
+/// sign, then halving the bracket. A square crossing gives `near` back.
+/// `None` where `axis` is no seam of `surface`, no root lies in `span`, or
+/// the sign changes across the antipode of the seam where the wrapped
+/// distance jumps, not at a root.
+#[cfg_attr(not(test), allow(dead_code))] // the slid junction of step 3 calls it
+pub(super) fn seam_ball(
+    surface: &Surface,
+    axis: usize,
+    seam: f64,
+    contact: &dyn Fn(f64) -> Point3,
+    near: f64,
+    span: [f64; 2],
+) -> Option<f64> {
+    let period = surface.period().get(axis).copied().flatten()?;
+    let signed = |t: f64| -> Option<f64> {
+        let uv = surface.project(contact(t)).ok()?.uv;
+        let d = (if axis == 0 { uv.x } else { uv.y }) - seam;
+        Some(d - period * (d / period).round())
+    };
+    let [lo, hi] = span;
+    let step = (hi - lo) / SEAM_SAMPLES as f64;
+    let mut samples = Vec::with_capacity(SEAM_SAMPLES + 1);
+    for i in 0..=SEAM_SAMPLES {
+        let t = lo + i as f64 * step;
+        samples.push((t, signed(t)?));
+    }
+    let mut best: Option<(f64, f64)> = None;
+    for pair in samples.windows(2) {
+        let [(t0, g0), (t1, g1)] = [pair[0], pair[1]];
+        if g0 * g1 > 0.0 {
+            continue;
+        }
+        let (mut a, mut b, mut ga) = (t0, t1, g0);
+        let mut gb = g1;
+        for _ in 0..SEAM_HALVINGS {
+            let mid = 0.5 * (a + b);
+            let gm = signed(mid)?;
+            if gm * ga <= 0.0 {
+                (b, gb) = (mid, gm);
+            } else {
+                (a, ga) = (mid, gm);
+            }
+        }
+        // At the antipode the wrapped distance jumps by a period, and the
+        // bracket keeps its two ends half a period apart.
+        if ga.abs() + gb.abs() >= 0.25 * period {
+            continue;
+        }
+        let t = 0.5 * (a + b);
+        if best.is_none_or(|(_, far)| (t - near).abs() < far) {
+            best = Some((t, (t - near).abs()));
+        }
+    }
+    best.map(|(t, _)| t)
+}
+
 #[cfg(test)]
 mod tests {
     use arris_math::{Vec3, real};
@@ -1118,5 +1189,59 @@ mod tests {
         assert!((c.centre - Point3::new(0.0, R, 1.0 - R)).norm() < 1e-12);
         assert!((c.p - Point3::new(0.0, 0.0, 1.0 - R)).norm() < 1e-12);
         assert!((c.q - Point3::new(0.0, R, 1.0)).norm() < 1e-12);
+    }
+
+    /// A contact on `surface` whose `u` is `slope · (t − root)` and `v`
+    /// is `lift · t`: it crosses the seam `u = 0` at `t = root`.
+    fn slanted(surface: &Surface, slope: f64, root: f64, lift: f64) -> impl Fn(f64) -> Point3 + '_ {
+        move |t| surface.point(slope * (t - root), lift * t)
+    }
+
+    #[test]
+    fn seam_ball_of_a_square_crossing_is_the_vertex() {
+        let cylinder = Surface::Cylinder {
+            frame: Frame::world(),
+            radius: 1.0,
+        };
+        // A circle of the cylinder at one height, the loop square to the seam.
+        let circle = |t: f64| cylinder.point(t, 0.7);
+        let t = seam_ball(&cylinder, 0, 0.0, &circle, 0.0, [-0.5, 0.5]).unwrap();
+        assert!(t.abs() < 1e-10, "{t}");
+    }
+
+    #[test]
+    fn seam_ball_puts_the_contact_on_the_seam() {
+        let sphere = Surface::Sphere {
+            frame: Frame::world(),
+            radius: 2.0,
+        };
+        let cylinder = Surface::Cylinder {
+            frame: Frame::world(),
+            radius: 0.5,
+        };
+        for (surface, root) in [(&sphere, 0.3), (&sphere, -0.4), (&cylinder, 0.45)] {
+            // Crossing the wrap of `u` between `2π` and `0`.
+            let contact = slanted(surface, 0.4, root, 0.1);
+            let t = seam_ball(surface, 0, 0.0, &contact, 0.0, [-1.0, 1.0]).unwrap();
+            assert!((t - root).abs() < 1e-10, "{t} for {root}");
+            let p = contact(t);
+            assert!(p.y.abs() < 1e-10 && p.x > 0.0, "{p:?}");
+        }
+    }
+
+    #[test]
+    fn seam_ball_is_none_without_a_root_in_reach() {
+        let cylinder = Surface::Cylinder {
+            frame: Frame::world(),
+            radius: 1.0,
+        };
+        // The crossing lies at `t = 3`, past the reach.
+        let contact = slanted(&cylinder, 0.4, 3.0, 0.0);
+        assert!(seam_ball(&cylinder, 0, 0.0, &contact, 0.0, [-1.0, 1.0]).is_none());
+        // `v` of a cylinder is no seam.
+        assert!(seam_ball(&cylinder, 1, 0.0, &contact, 0.0, [-1.0, 4.0]).is_none());
+        // Half a turn away the wrapped distance jumps, and is no root.
+        let far = |t: f64| cylinder.point(core::f64::consts::PI + 0.01 * t, 0.0);
+        assert!(seam_ball(&cylinder, 0, 0.0, &far, 0.0, [-1.0, 1.0]).is_none());
     }
 }

@@ -85,7 +85,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   Each gets its Open CASCADE oracle and is `#[ignore]`d. Write ADR-0083 from
   their counts, which confirm or reverse "the junction is on the seam, `v`
   consumed".
-- [ ] Step 2 **[2]** — `seam_ball`: the root `t*` on a walked run's spine for
+- [x] Step 2 **[2]** — `seam_ball`: the root `t*` on a walked run's spine for
   a seamed face. Unit tests:
   - the square sibling's vertex gives `t(v)`;
   - an analytic sphere and cylinder give the contact on the seam to `1e-10`;
