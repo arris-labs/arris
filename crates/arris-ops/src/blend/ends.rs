@@ -23,7 +23,7 @@ use super::stripe::{
     on_side_of_face, section_between,
 };
 use super::{degenerate, invariant};
-use crate::body_view::{BodyView, UseAt};
+use crate::body_view::{BodyView, UseAt, faces_tolerance};
 use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild::forward;
 
@@ -172,6 +172,9 @@ pub(super) struct CornerAt {
     /// A fan's extra edges, `extras[i]` between `pieces[i]` and
     /// `pieces[i + 1]`; none for one face across.
     pub(super) extras: Vec<EdgeId>,
+    /// `true` where the pieces are a *flush fan* (ADR-0082): the extras are
+    /// smooth, the pieces planes on one plane across a concave edge.
+    pub(super) flush: bool,
     /// The edges that stay at the vertex where the one face across is met
     /// twice, the end not reaching them (ADR-0043 §4); none otherwise.
     pub(super) stays: Vec<EdgeId>,
@@ -246,6 +249,59 @@ pub(super) fn fan_at(
     vertex: VertexId,
     convex: Option<bool>,
 ) -> Result<Option<Fan>, OpError> {
+    walk_fan(env, faces, corners, extras_at, vertex, convex, false)
+}
+
+/// The *flush fan* at `vertex` (ADR-0082 §1): [`fan_at`]'s walk for a concave
+/// blended edge whose extra edges are all **smooth**, each between two faces
+/// tangent along it, and whose pieces are planes on one plane — their
+/// outward normals the same way within the angular tolerance, the vertex
+/// within the faces' tolerance of each. The corner edges are sharp and
+/// convex, the walls' edges with the cap. `None` at any other star: a piece off the plane, on a curved
+/// surface, or an extra that is sharp.
+pub(super) fn flush_fan_at(
+    env: &Env<'_>,
+    faces: [FaceId; 2],
+    corners: [EdgeId; 2],
+    extras_at: &BTreeSet<EdgeId>,
+    vertex: VertexId,
+) -> Result<Option<Fan>, OpError> {
+    let Some((pieces, extras)) =
+        walk_fan(env, faces, corners, extras_at, vertex, Some(false), true)?
+    else {
+        return Ok(None);
+    };
+    let (m, view) = (env.m, env.view);
+    let at = m.vertex(vertex)?.point();
+    let mut first: Option<(Vec3, FaceId)> = None;
+    for &piece in &pieces {
+        let Surface::Plane { frame } = *m.surface(m.face(piece)?.surface())? else {
+            return Ok(None);
+        };
+        let n = view.outward(m, piece, Point2::origin())?;
+        let (n0, f0) = *first.get_or_insert((n, piece));
+        let off = (at - frame.origin()).dot(&frame.z()).abs();
+        if n0.dot(&n) <= 0.0
+            || n0.cross(&n).norm() > env.tol.angular
+            || off > faces_tolerance(m, f0, piece)?
+        {
+            return Ok(None);
+        }
+    }
+    Ok(Some((pieces, extras)))
+}
+
+/// The walk `fan_at` and `flush_fan_at` share: `smooth` asks the extras to
+/// be tangent rather than sharp of the blend's sense.
+fn walk_fan(
+    env: &Env<'_>,
+    faces: [FaceId; 2],
+    corners: [EdgeId; 2],
+    extras_at: &BTreeSet<EdgeId>,
+    vertex: VertexId,
+    convex: Option<bool>,
+    smooth: bool,
+) -> Result<Option<Fan>, OpError> {
     let (m, view) = (env.m, env.view);
     let tol = env.tol;
     let size = env.kind.size();
@@ -259,9 +315,14 @@ pub(super) fn fan_at(
         let Some(t) = parameter_at(m, x, vertex)? else {
             return Ok(None);
         };
+        // A smooth extra has no sense: its tangent faces make no wedge.
+        let extra = smooth && extras_at.contains(&x);
+        // A flush fan's corner edges are the walls' edges with the cap, convex
+        // as the concave blended edge's ends are (ADR-0082 §1).
+        let sense = if smooth { Some(true) } else { convex };
         if two_faces(x).is_none()
-            || view.tangent_at(m, x, t, size, tol)? != Some(false)
-            || view.convex(m, x)? != convex
+            || view.tangent_at(m, x, t, size, tol)? != Some(extra)
+            || (!extra && view.convex(m, x)? != sense)
         {
             return Ok(None);
         }
@@ -427,9 +488,24 @@ pub(super) fn corner_of(
                 edges: corner_edges,
                 pieces,
                 extras,
+                flush: false,
                 stays: Vec::new(),
                 spine: None,
             });
+        }
+        if convex == Some(false) {
+            if let Some((pieces, extras)) =
+                flush_fan_at(env, faces, corner_edges, &extras_at, vertex)?
+            {
+                return Ok(CornerAt {
+                    edges: corner_edges,
+                    pieces,
+                    extras,
+                    flush: true,
+                    stays: Vec::new(),
+                    spine: None,
+                });
+            }
         }
         let across =
             twice_at(env, faces, corner_edges, &extras_at, vertex)?.ok_or_else(vertex_blend)?;
@@ -437,6 +513,7 @@ pub(super) fn corner_of(
             edges: corner_edges,
             pieces: vec![across],
             extras: Vec::new(),
+            flush: false,
             stays: extras_at.into_iter().collect(),
             spine: None,
         });
@@ -494,6 +571,7 @@ pub(super) fn corner_of(
         edges: corner_edges,
         pieces: vec![across],
         extras: Vec::new(),
+        flush: false,
         stays: Vec::new(),
         spine,
     })
@@ -781,6 +859,10 @@ pub(super) fn face_end(
         )
     };
     let mut corner = corner_of(env, edge, &s.uses, vertex, at_lo)?;
+    if corner.flush {
+        // The flush fan's end is built from ADR-0082's construction.
+        return Err(vertex_blend());
+    }
     if corner.pieces.len() > 1 {
         return fan_end(env, meter, s, vertex, &corner);
     }
@@ -1395,4 +1477,111 @@ pub(super) fn fan_end(
         vertex_tolerance,
         stays: Vec::new(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use arris_math::{Axis, Control};
+    use arris_topo::Body;
+
+    use super::super::Kind;
+    use super::super::stripe::stripe;
+    use super::*;
+    use crate::{fuse, primitive_box, primitive_cylinder};
+
+    /// The corner at the vertex `at` of the edge of `body` whose midpoint is
+    /// `mid`, blended as `kind`.
+    fn corner_at(m: &Model, body: Body, mid: Point3, at: Point3, kind: Kind) -> CornerAt {
+        let tol = m.precision().tolerance();
+        let view = BodyView::of(m, body).unwrap();
+        let env = Env {
+            m,
+            view: &view,
+            kind,
+            tol,
+            samples: m.precision().check_samples,
+        };
+        let found: Vec<EdgeId> = (m.edges(body).unwrap().iter())
+            .map(|e| e.id)
+            .filter(|&e| {
+                m.edge(e).unwrap().curve().is_some_and(|(c, r)| {
+                    (m.curve(c).unwrap().point(r.midpoint()) - mid).norm() < 1e-9
+                })
+            })
+            .collect();
+        assert_eq!(found.len(), 1, "one edge at {mid:?}");
+        let s = stripe(m, &view, found[0], kind, tol).unwrap();
+        let at_lo = (m.vertex(s.start).unwrap().point() - at).norm() < 1e-9;
+        let vertex = if at_lo { s.start } else { s.end };
+        assert!((m.vertex(vertex).unwrap().point() - at).norm() < 1e-9);
+        corner_of(&env, found[0], &s.uses, vertex, at_lo).unwrap()
+    }
+
+    fn fused(m: &mut Model, a: Body, b: Body) -> Body {
+        fuse(m, a, b, &Control::NONE).unwrap().0
+    }
+
+    fn boxed(m: &mut Model, lo: [f64; 3], hi: [f64; 3]) -> Body {
+        primitive_box(m, lo, hi, &Control::NONE).unwrap().0
+    }
+
+    /// A planar face of `corner`'s pieces is across, in the walk's order,
+    /// with the smooth edges between them.
+    fn assert_flush(corner: &CornerAt, pieces: usize) {
+        assert!(corner.flush, "a flush fan");
+        assert_eq!(corner.pieces.len(), pieces);
+        assert_eq!(corner.extras.len(), pieces - 1);
+        assert!(corner.stays.is_empty());
+    }
+
+    /// The three bodies of ADR-0082 each hold a flush fan at the end of the
+    /// concave edge: the L of two fused boxes and the step of a slab and a
+    /// block, two pieces; the plate and its half-buried cylinder, the plate's
+    /// end and the cylinder's cap. A fillet or a chamfer reads the same site.
+    #[test]
+    fn the_three_flush_bodies_hold_a_flush_fan_at_the_concave_end() {
+        for kind in [
+            Kind::Fillet { radius: 0.2 },
+            Kind::Chamfer { distance: 0.2 },
+        ] {
+            let mut m = Model::default();
+            let (a, b) = (
+                boxed(&mut m, [0.0, 0.0, 0.0], [2.0, 1.0, 2.0]),
+                boxed(&mut m, [0.0, 1.0, 0.0], [1.0, 2.0, 2.0]),
+            );
+            let l = fused(&mut m, a, b);
+            let at = |z| Point3::new(1.0, 1.0, z);
+            assert_flush(&corner_at(&m, l, at(1.0), at(0.0), kind), 2);
+            assert_flush(&corner_at(&m, l, at(1.0), at(2.0), kind), 2);
+
+            let mut m = Model::default();
+            let (slab, block) = (
+                boxed(&mut m, [0.0, 0.0, 0.0], [3.0, 2.0, 1.0]),
+                boxed(&mut m, [1.0, 0.0, 1.0], [3.0, 2.0, 2.0]),
+            );
+            let step = fused(&mut m, slab, block);
+            let at = |y| Point3::new(1.0, y, 1.0);
+            assert_flush(&corner_at(&m, step, at(1.0), at(0.0), kind), 2);
+            assert_flush(&corner_at(&m, step, at(1.0), at(2.0), kind), 2);
+        }
+        let mut m = Model::default();
+        let plate = boxed(&mut m, [0.0, 0.0, 0.0], [10.0, 6.0, 2.0]);
+        let axis = Axis::new(Point3::new(0.0, 0.0, 1.0), Vec3::y()).unwrap();
+        let knuckle = primitive_cylinder(&mut m, axis, 4.0, 6.0, &Control::NONE)
+            .unwrap()
+            .0;
+        let body = fused(&mut m, plate, knuckle);
+        let x = 15.0_f64.sqrt();
+        let kind = Kind::Fillet { radius: 0.8 };
+        let corner = corner_at(
+            &m,
+            body,
+            Point3::new(x, 3.0, 2.0),
+            Point3::new(x, 0.0, 2.0),
+            kind,
+        );
+        assert!(corner.flush, "the knuckle join's end is a flush fan");
+        assert!(corner.pieces.len() >= 2);
+        assert_eq!(corner.extras.len(), corner.pieces.len() - 1);
+    }
 }

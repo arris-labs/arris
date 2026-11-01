@@ -559,17 +559,17 @@ fn next_at_vertex(m: &Model, face: FaceId, edge: EdgeId, vertex: VertexId) -> Op
     found
 }
 
-/// What the faces across a blended edge's end are at `vertex`: the one face
-/// met by both corner edges (*the face across met twice*), or the faces in
-/// the vertex's star from one corner edge to the other, each a piece of the
-/// end (*a fan of k faces across*). `None` where the star is not one simple
-/// walk between the two corner edges (ADR-0043).
-fn faces_across(
+/// The faces across a blended edge's end at `vertex`: the one face met by
+/// both corner edges (*the face across met twice*), or the faces in the
+/// vertex's star from one corner edge to the other, each a piece of the end
+/// (*a fan of k faces across*). `None` where the star is not one simple walk
+/// between the two corner edges (ADR-0043).
+fn pieces_across(
     m: &Model,
     blended: EdgeId,
     vertex: VertexId,
     corners: &[EdgeId],
-) -> Option<String> {
+) -> Option<Vec<FaceId>> {
     let [c1, c2] = corners[..] else { return None };
     let blend_faces = faces_of(m, blended);
     let across = |c| match &faces_of(m, c)
@@ -582,25 +582,67 @@ fn faces_across(
     };
     let (a1, a2) = (across(c1)?, across(c2)?);
     if a1 == a2 {
-        return Some("the face across met twice".to_string());
+        return Some(vec![a1]);
     }
-    let (mut e, mut f, mut k) = (c1, a1, 1);
+    let (mut e, mut pieces) = (c1, vec![a1]);
     for _ in 0..m.vertex_edges(vertex).ok()?.len() {
+        let f = pieces[pieces.len() - 1];
         let next = next_at_vertex(m, f, e, vertex)?;
         if next == c2 {
-            return (f == a2).then(|| format!("a fan of {k} faces across"));
+            return (f == a2).then_some(pieces);
         }
-        f = *faces_of(m, next).iter().find(|&&x| x != f)?;
-        (e, k) = (next, k + 1);
+        pieces.push(*faces_of(m, next).iter().find(|&&x| x != f)?);
+        e = next;
     }
     None
+}
+
+/// What the faces across a blended edge's end are at `vertex`, as
+/// [`pieces_across`] walks them: *the face across met twice* or *a fan of k
+/// faces across*.
+fn faces_across(
+    m: &Model,
+    blended: EdgeId,
+    vertex: VertexId,
+    corners: &[EdgeId],
+) -> Option<String> {
+    match pieces_across(m, blended, vertex, corners)?[..] {
+        [_] => Some("the face across met twice".to_string()),
+        ref pieces => Some(format!("a fan of {} faces across", pieces.len())),
+    }
+}
+
+/// The number of pieces of a *flush fan* (ADR-0082) at `vertex`: the faces
+/// across walked by [`pieces_across`], all planes on one plane, each within
+/// its own tolerance of the vertex and with its normal parallel to the
+/// first's. `None` for any other star.
+fn flush_fan(m: &Model, blended: EdgeId, vertex: VertexId, corners: &[EdgeId]) -> Option<usize> {
+    let pieces = pieces_across(m, blended, vertex, corners)?;
+    if pieces.len() < 2 {
+        return None;
+    }
+    let at = m.vertex(vertex).ok()?.point();
+    let mut first: Option<Vec3> = None;
+    for &f in &pieces {
+        let face = m.face(f).ok()?;
+        let arris_geom::Surface::Plane { frame } = *m.surface(face.surface()).ok()? else {
+            return None;
+        };
+        let n = frame.z().into_inner();
+        let n0 = *first.get_or_insert(n);
+        if !parallel(n0, n) || (at - frame.origin()).dot(&n).abs() > face.tolerance() {
+            return None;
+        }
+    }
+    Some(pieces.len())
 }
 
 /// Which site refused a `VertexBlend` of `edge` blended alone, from the
 /// entities the error names and the vertex's edges (`None` for any other
 /// refusal): *a vertex of more than three edges*, with what the extra edges
 /// are (sharp edges between two faces across, named by what they make of the
-/// end: a fan of k faces across, or the face across met twice; a smooth edge; a seam; a
+/// end: a fan of k faces across, or the face across met twice; a smooth edge,
+/// or a flush fan of k faces across where the pieces are planes on one plane (ADR-0082); a seam; a
 /// degenerate edge; the blended edge's tangent continuation; an edge
 /// continuing a corner edge); *a corner edge with
 /// no curve*; *corner edges that share no face across*; *a closed edge's
@@ -652,8 +694,20 @@ pub fn vertex_blend_cause(m: &Model, edge: EdgeId, e: &OpError) -> Option<String
                 kinds.sort_unstable();
                 kinds.dedup();
                 let sharp = kinds == ["a sharp edge between two faces across"];
+                // A smooth seam collinear with a corner edge reads as the
+                // second in `extra_kind`; the site is the same.
+                let smooth = at
+                    .iter()
+                    .filter(|&&x| x != edge && !corners.contains(&x))
+                    .all(|&x| smooth_edge(m, x));
+                let flush = smooth.then(|| flush_fan(m, edge, v, &corners)).flatten();
                 match sharp.then(|| faces_across(m, edge, v, &corners)).flatten() {
                     Some(across) => format!("a vertex of {} edges, {across}", at.len()),
+                    None if flush.is_some() => format!(
+                        "a vertex of {} edges, a flush fan of {} faces across",
+                        at.len(),
+                        flush.unwrap_or_default()
+                    ),
                     None => format!(
                         "a vertex of {} edges, the extra: {}",
                         at.len(),
@@ -1861,6 +1915,47 @@ mod tests {
         assert!(
             set.starts_with("1 blended edges at a vertex of 5 edges"),
             "{set}"
+        );
+    }
+
+    /// The fixture `regression/flush-l-inner-fillet`: the inner edge of an L
+    /// of two fused boxes ends at a vertex of four edges whose fourth is the
+    /// smooth seam between the cap's two pieces, one plane (ADR-0082). The
+    /// census names the site a flush fan.
+    #[test]
+    fn a_vertex_of_two_flush_pieces_is_named_a_flush_fan() {
+        use crate::unmetered::{fuse, primitive_box};
+        use arris_topo::{Orientation, Shape};
+        let mut m = Model::default();
+        let (a, _) = primitive_box(&mut m, P3::new(0.0, 0.0, 0.0), P3::new(2.0, 1.0, 2.0)).unwrap();
+        let (b, _) = primitive_box(&mut m, P3::new(0.0, 1.0, 0.0), P3::new(1.0, 2.0, 2.0)).unwrap();
+        let (l, _) = fuse(&mut m, a, b).unwrap();
+        // As a file reads: the operands are not in the model to share edges.
+        m.retain(&[l]).unwrap();
+        let inner = m
+            .edges(l)
+            .unwrap()
+            .into_iter()
+            .find(|h| {
+                edge_midpoint(&m, h.id).is_some_and(|p| (p - P3::new(1.0, 1.0, 1.0)).norm() < 1e-9)
+            })
+            .unwrap();
+        let end = m
+            .vertices(l)
+            .unwrap()
+            .into_iter()
+            .find(|v| (m.vertex(v.id).unwrap().point() - P3::new(1.0, 1.0, 0.0)).norm() < 1e-9)
+            .unwrap();
+        let e = OpError::Degenerate {
+            entities: vec![
+                Shape::new(inner.id, Orientation::Forward),
+                Shape::new(end.id, Orientation::Forward),
+            ],
+            reason: Reason::Blend(BlendReason::VertexBlend),
+        };
+        assert_eq!(
+            vertex_blend_cause(&m, inner.id, &e).unwrap(),
+            "a vertex of 4 edges, a flush fan of 2 faces across; edge plane × plane"
         );
     }
 

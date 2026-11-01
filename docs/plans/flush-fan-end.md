@@ -83,7 +83,7 @@ a geometric or numeric case within the design; **[3]** unproven.
 
   Each has its Open CASCADE oracle and is `#[ignore]`d. Write ADR-0082 from
   their counts: which piece takes the region, and whether `v` survives.
-- [ ] Step 2 **[2]** — `flush_fan_at` recognises the site, and `corner_of`
+- [x] Step 2 **[2]** — `flush_fan_at` recognises the site, and `corner_of`
   routes it. A unit test over the three bodies' stars checks the pieces and
   the smooth extras. The census names the site "a flush fan"
   (`census::vertex_blend_cause`).
@@ -138,7 +138,9 @@ a geometric or numeric case within the design; **[3]** unproven.
 - Settled (step 1, ADR-0082): `A1` takes the end's region. Open CASCADE's
   counts (+4 vertices, +5 edges, +1 face) show no new face and `v` kept, and
   cannot tell `A1` from `Ak`; `A1` keeps the face count and is deterministic.
-- ⚠ OPEN: the coincidence test for the pieces. It could be the planes'
-  normals and offsets within the faces' tolerance (as `tangent_at` reads
-  them), or `same_surface` from the reader. The agent decides at step 2.
-  There must be no new literal.
+- Settled (step 2): the coincidence test is the pieces' outward normals the
+  same way within `tol.angular` and the vertex within `faces_tolerance` of
+  each plane, no new literal. The walk's corner edges are **convex** (the
+  walls' edges with the cap) where the blended edge is concave; the smooth
+  extras are `tangent_at`. `corner_of` returns `CornerAt { flush: true }`,
+  and `end_at` refuses it `VertexBlend` until step 3 builds it.
