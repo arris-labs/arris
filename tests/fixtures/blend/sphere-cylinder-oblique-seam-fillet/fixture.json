@@ -1,5 +1,5 @@
 {
-  "description": "the ball and cylinder of blend/sphere-cylinder-fillet with the cylinder's axis moved to (0, 0.5, 0), off the plane y = 0 of the ball's seam, so the loop crosses the seam at a slant, filleted at r 0.1 (a point 60\u00b0 round from the top). Open CASCADE builds it. Arris refuses it as VertexBlend (it was a kernel bug, \"the corner edge through the trim point was not found\", until step 9): the junction of the two walked stripes at a vertex on the seam ends on the ball's arc in the vertex's normal plane, and the contact on the sphere is not on the seam there unless the loop crosses it square; the seam wants cutting where the contact crosses it, a point of the contact edge beside the junction (plans/nurbs-face-blend step 9 finding)",
+  "description": "the ball and cylinder of blend/sphere-cylinder-fillet with the cylinder's axis moved to (0, 0.5, 0), off the plane y = 0 of the ball's seam, so the loop crosses the seam at a slant, filleted at r 0.1 (a point 60\u00b0 round from the top). Open CASCADE builds it. Arris builds it: the junction of the two walked stripes at a vertex on the ball's seam slides along the spine to the ball whose contact on the sphere is on the seam, the seam cut there and the vertex consumed (ADR-0083, plans/walked-seam-junction)",
   "params": {
     "r": 0.1
   },

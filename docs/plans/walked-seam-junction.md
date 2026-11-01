@@ -43,7 +43,7 @@ measures. A property holds the blend to be independent of where the seam lies.
   ball `B(t*)` on the spine whose contact on `Fi` lies on the seam. `t*` is
   the root of the contact's signed distance to the seam's isocurve in `Fi`'s
   `(u, v)`. It is bracketed within the reach on either side of `v`, then found
-  by bisection and Newton, as `reach_past` and the snaps are.
+  by sampling for a change of sign and halving the bracket, as `reach_past` is.
   - A square crossing gives back the normal plane's ball, `t* = t(v)`.
   - When both faces are seamed at `v` (the square sibling has the ball's and
     the pin's seams in one plane), the two roots must agree within the
@@ -90,7 +90,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   - the square sibling's vertex gives `t(v)`;
   - an analytic sphere and cylinder give the contact on the seam to `1e-10`;
   - a run with no root in reach gives `None`.
-- [ ] Step 3 **[2]** — Build the slid junction for two walked fillet runs
+- [x] Step 3 **[2]** — Build the slid junction for two walked fillet runs
   with one seamed face: skins cut at `t*`, the seam cut at its contact, `v`
   deleted, provenance as above.
   `regression/sphere-cylinder-oblique-seam-fillet` moves to `blend/` and is

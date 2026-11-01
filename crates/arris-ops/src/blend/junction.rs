@@ -396,8 +396,42 @@ pub(super) fn junction(
         "the other contacts through one point of the third edge",
     )?;
     // A walked run's contact is on a seam of the curved face only where the
-    // loop crosses it square; at a slant the seam would be cut where the
-    // contact crosses it, beside the junction, which is not built.
+    // loop crosses it square; at a slant the junction slides along the spine
+    // to the ball whose contact is on the seam (ADR-0083), and the seam is
+    // cut there. Any other corner edge the contact misses is refused by name.
+    let mut slid = false;
+    let mut q = q;
+    let mut p = p;
+    if walked && kink.is_none() && !leans {
+        let off = [(wq, q), (w, p)]
+            .into_iter()
+            .filter_map(|(edge, at)| edge.map(|edge| (edge, at)))
+            .map(|(edge, at)| on_corner_edge(m, edge, at).map(|on| (edge, on)))
+            .collect::<Result<Vec<_>, _>>()?;
+        if let [(seam, false)] = off
+            .iter()
+            .copied()
+            .filter(|&(_, on)| !on)
+            .collect::<Vec<_>>()[..]
+        {
+            if !slide(m, view, [a, b], [&mut ra, &mut rb], seam)? {
+                return Err(vertex_blend());
+            }
+            slid = true;
+            q = meet(
+                ra.points[ka],
+                rb.points[kb],
+                tolerance,
+                "the contacts on the shared face through one point",
+            )?;
+            p = meet(
+                ra.points[1 - ka],
+                rb.points[1 - kb],
+                tolerance,
+                "the other contacts through one point of the third edge",
+            )?;
+        }
+    }
     for (edge, at) in [(wq, q), (w, p)] {
         if let Some(edge) = edge
             && walked
@@ -485,7 +519,7 @@ pub(super) fn junction(
         trim,
         q_trim,
         trim_arc: None,
-        leaning: leans,
+        leaning: leans || slid,
         kink,
         tolerance,
         q_tolerance: match wq {
@@ -1027,6 +1061,124 @@ fn leaning(
     Ok(true)
 }
 
+/// Slides the walked junction of `runs` along their spines to the
+/// ball whose contact on the seamed face is on `seam`, the corner edge a
+/// contact missed at the vertex (ADR-0083 §2, §3): both runs are read again
+/// there, their contacts, ball centres and parameters. The root is found on
+/// the first run's contact on that face, within its surface's reach, and the
+/// second run's parameter is the foot of that contact point on its own.
+/// `false` where the construction does not apply: `seam` is no seam of a
+/// periodic face the runs share, a run is no walked stripe, or the second
+/// run's contact does not meet the first's within the stripes' tolerance.
+///
+/// Errors: `BlendReason::TooLarge` naming the first run's edge and the seam,
+/// where no root lies within the reach or the root lies past the second
+/// run's surface.
+fn slide(
+    m: &Model,
+    view: &BodyView,
+    runs: [Run<'_>; 2],
+    at: [&mut RunAt<'_>; 2],
+    seam: EdgeId,
+) -> Result<bool, OpError> {
+    let [Run::Line(sa), Run::Line(sb)] = runs else {
+        return Ok(false);
+    };
+    let [ra, rb] = at;
+    if !matches!(sa.section, Section::Walked { .. })
+        || !matches!(sb.section, Section::Walked { .. })
+    {
+        return Ok(false);
+    }
+    let uses = view
+        .uses
+        .get(&seam)
+        .ok_or(invariant("the junction's seam's uses"))?;
+    let [first, second] = uses[..] else {
+        return Ok(false);
+    };
+    let Some((_, range)) = m.edge(seam)?.curve() else {
+        return Ok(false);
+    };
+    if first.face != second.face {
+        return Ok(false);
+    }
+    let face = first.face;
+    let (Some(ka), Some(kb)) = (
+        ra.faces.iter().position(|&f| f == face),
+        rb.faces.iter().position(|&f| f == face),
+    ) else {
+        return Ok(false);
+    };
+    // The seam is the isocurve of the periodic parameter its pcurve holds.
+    let surface = m.surface(m.face(face)?.surface())?;
+    let pcurve = m.curve2(first.pcurve)?;
+    let (lo, hi) = (pcurve.point(range.lo()), pcurve.point(range.hi()));
+    let period = surface.period();
+    let moved = |axis: usize| {
+        if axis == 0 {
+            (hi.x - lo.x).abs()
+        } else {
+            (hi.y - lo.y).abs()
+        }
+    };
+    let Some(axis) = [0, 1]
+        .into_iter()
+        .filter(|&axis| period[axis].is_some())
+        .min_by(|&i, &j| moved(i).total_cmp(&moved(j)))
+    else {
+        return Ok(false);
+    };
+    let value = if axis == 0 { lo.x } else { lo.y };
+    let too_large = || {
+        degenerate(
+            vec![forward(sa.edge), forward(seam)],
+            Reason::Blend(BlendReason::TooLarge),
+        )
+    };
+    let on_a = |t: f64| sa.lines[ka].point(t);
+    let Some(ta) = seam_ball(surface, axis, value, &on_a, ra.t, {
+        let v = sa.surface.domain()[1];
+        [v.lo(), v.hi()]
+    }) else {
+        return Err(too_large());
+    };
+    let foot = sb.lines[kb].project(on_a(ta)).map_err(fault_of)?;
+    let tb = foot.t;
+    let domain_b = sb.surface.domain()[1];
+    if tb < domain_b.lo() || domain_b.hi() < tb {
+        return Err(too_large());
+    }
+    if foot.distance > sa.tolerance.max(sb.tolerance) {
+        return Ok(false);
+    }
+    for (s, at, t) in [(sa, ra, ta), (sb, rb, tb)] {
+        let points = [0, 1].map(|k| s.lines[k].point(t));
+        // The ball's centre: a contact's point a radius from its face along
+        // the normal, into the material for a convex blend, away from it
+        // for a concave one.
+        at.centre = match at.centre {
+            Some(old) => {
+                let radius = (at.points[0] - old).norm();
+                let sign = if at.convex { -1.0 } else { 1.0 };
+                let mut sum = Vec3::zeros();
+                for (k, point) in points.iter().enumerate() {
+                    let surface = m.surface(m.face(at.faces[k])?.surface())?;
+                    let uv = surface.project(*point).map_err(fault_of)?.uv;
+                    let n = UnitVec3::try_new(view.outward(m, at.faces[k], uv)?, 0.0)
+                        .ok_or(invariant("a face's normal"))?;
+                    sum += point.coords + sign * radius * n.into_inner();
+                }
+                Some(Point3::from(sum * 0.5))
+            }
+            None => None,
+        };
+        at.points = points;
+        at.t = t;
+    }
+    Ok(true)
+}
+
 /// The samples [`seam_ball`] takes across its span to find the contact
 /// crossing the seam, and the halvings that then close the bracket. A
 /// sampling density and a structural bound, not tolerances.
@@ -1046,7 +1198,6 @@ const SEAM_HALVINGS: usize = 64;
 /// `None` where `axis` is no seam of `surface`, no root lies in `span`, or
 /// the sign changes across the antipode of the seam where the wrapped
 /// distance jumps, not at a root.
-#[cfg_attr(not(test), allow(dead_code))] // the slid junction of step 3 calls it
 pub(super) fn seam_ball(
     surface: &Surface,
     axis: usize,

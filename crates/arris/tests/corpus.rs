@@ -1072,6 +1072,11 @@ corpus_tests! {
     /// junctions.
     blend_tee_cylinders_fillet => run "blend/tee-cylinders-fillet";
     blend_sphere_cylinder_fillet => run "blend/sphere-cylinder-fillet";
+    /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
+    /// cylinder's axis off the plane of the ball's seam, so the loop crosses
+    /// the seam at a slant: the junction slides along the spine to the ball
+    /// whose contact is on the seam (ADR-0083).
+    blend_sphere_cylinder_oblique_seam_fillet => run "blend/sphere-cylinder-oblique-seam-fillet";
     blend_bspline_rim_fillet => run "blend/bspline-rim-fillet";
     /// A torus drilled parallel to its axis and off it, the bore's edge
     /// filleted: a torus against a cylinder off its axis, two walked stripes
@@ -1327,11 +1332,6 @@ corpus_tests! {
     /// run on through a kink of 3.9° the vertex's tolerance writes as
     /// tangent, its junction the two runs' mean ball's arc (ADR-0075).
     blend_nist_ftc_11_ap242_slot_chain_fillet => run "blend/nist-ftc-11-ap242-slot-chain-fillet";
-    /// The ball and cylinder of `blend/sphere-cylinder-fillet` with the
-    /// cylinder's axis off the plane of the ball's seam, so the loop crosses
-    /// the seam at a slant.
-    #[ignore = "VertexBlend: the junction of two walked stripes at a vertex on a seam the loop crosses at a slant ends on the ball's arc, where the contact is not on the seam; the seam wants cutting beside the junction (docs/BACKLOG.md)"]
-    regression_sphere_cylinder_oblique_seam_fillet => run "regression/sphere-cylinder-oblique-seam-fillet";
     /// The same ball and pin chamfered: the chord of the walked junction's
     /// ball at a vertex on the ball's seam the loop crosses at a slant.
     #[ignore = "VertexBlend: the junction of two walked chamfer runs at a vertex on a seam the loop crosses at a slant ends on the chord in the vertex's normal plane, where the contact is not on the seam (plans/walked-seam-junction)"]

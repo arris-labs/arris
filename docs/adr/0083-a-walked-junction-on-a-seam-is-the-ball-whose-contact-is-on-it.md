@@ -41,8 +41,8 @@ holding the same balls to the tolerance.
 **2. The junction is the ball on the spine whose contact on the seamed face
 is on its seam.** `B(t*)`, with `t*` the root of the contact's signed
 distance to the seam's isocurve in the face's `(u, v)`, bracketed within the
-reach on either side of `v`, then bisection and Newton as `reach_past` is
-found. A square crossing gives back the normal plane's ball, `t* = t(v)`.
+reach on either side of `v`: sampled for a change of sign, then the bracket
+halved (bisection, as `reach_past` is found). A square crossing gives back the normal plane's ball, `t* = t(v)`.
 When both faces are seamed at `v` the two roots must agree within the
 tolerance, else `VertexBlend`.
 
