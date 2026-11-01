@@ -1,0 +1,128 @@
+{
+  "description": "the ball and pin of blend/sphere-cylinder-oblique-seam-fillet with the pin's axis at y = 0.58, so shallow a slant that the ball whose contact on the sphere is on the seam lies past the spine's reach: the end is BlendTooLarge, named, where Open CASCADE builds it (plans/walked-seam-junction step 6). At y = 0.55 Arris builds it",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "half",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outer": {
+        "start": [
+          0,
+          -1.5
+        ],
+        "segments": [
+          {
+            "line_to": [
+              1.3228756555322954,
+              -1.5
+            ]
+          },
+          {
+            "arc_to": [
+              1.3228756555322954,
+              1.5
+            ],
+            "via": [
+              2,
+              0
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              1.5
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              -1.5
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ball",
+      "op": "revolve",
+      "profile": "half",
+      "axis": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      },
+      "angle_deg": 360
+    },
+    {
+      "name": "pin",
+      "op": "cylinder",
+      "base": [
+        0,
+        0.58,
+        0
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "radius": 0.6,
+      "height": 3
+    },
+    {
+      "name": "fused",
+      "op": "fuse",
+      "a": "ball",
+      "b": "pin"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "fused",
+      "edges": [
+        [
+          1.7459667808981933,
+          0.8,
+          0.5582114294781144
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "tolerances": {
+    "volume_rel": 5e-07,
+    "area_rel": 1e-06,
+    "centroid_abs": 1e-06,
+    "inertia_rel": 1e-06
+  },
+  "analytic": {
+    "expect_error": "blend-too-large"
+  }
+}

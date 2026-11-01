@@ -1086,6 +1086,8 @@ corpus_tests! {
     /// ball at a vertex on the ball's seam the loop crosses at a slant
     /// (ADR-0083).
     blend_sphere_cylinder_oblique_seam_chamfer => run "blend/sphere-cylinder-oblique-seam-chamfer";
+    /// The oblique-seam ball and pin with the pin's axis at y = 0.58, a slant so shallow that the ball whose contact on the sphere is on the seam lies past the spine's reach: refused by name as BlendTooLarge, where Open CASCADE builds it (ADR-0083).
+    blend_sphere_cylinder_shallow_seam_fillet => run "blend/sphere-cylinder-shallow-seam-fillet";
     blend_bspline_rim_fillet => run "blend/bspline-rim-fillet";
     /// A torus drilled parallel to its axis and off it, the bore's edge
     /// filleted: a torus against a cylinder off its axis, two walked stripes

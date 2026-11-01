@@ -110,13 +110,20 @@ a geometric or numeric case within the design; **[3]** unproven.
 - [x] Step 5 **[2]** — The walked chamfer's junction slides the same way, by
   the chord at `t*`. `sphere-cylinder-oblique-seam-chamfer` moves to
   `blend/`.
-- [ ] Step 6 **[1]** — Refusals by name, each a `blend/` fixture holding its
-  expected refusal:
-  - a slant so shallow that `t*` lies past the reach, or past the other run's
-    end: `BlendTooLarge`;
-  - a seam vertex carrying a second blended edge: `VertexBlend`.
-
-  `census::vertex_blend_cause` names "a seam junction" for the second.
+- [x] Step 6 **[1]** — Refusal by name: a slant so shallow that `t*` lies past
+  the reach: `BlendTooLarge`. `blend/sphere-cylinder-shallow-seam-fillet` (the
+  oblique fixture's body with the pin's axis at y = 0.58; Open CASCADE builds
+  it, Arris names the refusal, `analytic.expect_error`). *Settled*
+  (2026-11-01): the second bullet, a seam vertex carrying a second blended
+  edge as a `VertexBlend` fixture, is dropped. A second blended edge at the
+  vertex is refused before the junction is reached, by the generic site "N
+  edges of the run meet at a vertex of M edges" (`census::vertex_blend_cause`),
+  which is not a seam junction's; bodies built for it either build (a full
+  sphere with concave arcs or a convex box edge at the seam vertex) or give
+  `TangentChain` (the seam edge itself, which Open CASCADE drops), or have no
+  closed oracle result. The seam-site refusals that are reachable (two
+  disagreeing roots, no root in reach) are held by step 4's and step 2's unit
+  tests, so `vertex_blend_cause` gains no "seam junction" naming.
 - [ ] Step 7 **[2]** — Property: the seam does not matter. A ball revolved
   with its profile plane at a random angle `φ` about the axis, fused with a pin
   at a random offset and pose, filleted and chamfered at random `r`. Volume and
