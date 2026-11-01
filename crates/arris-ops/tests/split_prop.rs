@@ -717,3 +717,61 @@ prop_shards! {
             Ok(())
         }
 }
+
+/// A drilled cylinder of radius 3.0017, split, then cut by a box ±3: the
+/// box's x = 3 face crosses the wall at 1.9°, so the hole's loop meets the
+/// section line 28 tolerances along it, 1e-8 from the plane. The vertex is
+/// on the section by both surfaces (`regression/split-cap-offset-checker-fault`
+/// is a different residue); before, the line lost its end and the face's
+/// arrangement a node with one way out.
+#[test]
+fn a_hole_loop_meets_a_shallow_section_line_beyond_the_vertex_tolerance() {
+    use arris_debug::prop::body::MultiTool;
+    use arris_math::nalgebra::{Quaternion, Unit};
+    let q = Unit::new_unchecked(Quaternion::new(0.0, 0.0, 1.0, 0.0));
+    let case = Case {
+        cut: MultiCut {
+            target: MultiTarget::Cylinder {
+                radius: 3.001712627617507,
+                height: 10.872610206543003,
+            },
+            tools: vec![
+                MultiTool {
+                    through: (0.6024451735314507, 0.5077082371909682, 0.1),
+                    direction: Unit::new_unchecked(Vec3::new(
+                        0.7520971583995482,
+                        0.0,
+                        -0.6590522470391288,
+                    )),
+                    radius: 0.3016690657981536,
+                },
+                MultiTool {
+                    through: (0.1, 0.1, 0.46168585659285805),
+                    direction: Unit::new_unchecked(Vec3::new(1.0, 0.0, 0.0)),
+                    radius: 0.1,
+                },
+            ],
+            pose: Isometry::new(q, Vec3::zeros()),
+        },
+        kind: Kind::Drilled(1),
+        at: [0.0, 0.0, 0.0],
+        turn: q,
+    };
+    let mut m = Model::default();
+    let (_, _, halves) = split_of(&mut m, &case).unwrap().unwrap();
+    let (probe, _) = primitive_box(
+        &mut m,
+        Point3::new(-3.0, -3.0, -3.0),
+        Point3::new(3.0, 3.0, 3.0),
+    )
+    .unwrap();
+    let probe = transform(&mut m, probe, &case.cut.pose).unwrap().0;
+    let made = cut(&mut m, halves.positive, probe);
+    settle(
+        &m,
+        "cut of the positive side",
+        &[halves.positive, probe],
+        made,
+    )
+    .unwrap();
+}

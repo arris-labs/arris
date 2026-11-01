@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A boolean, split or multi-tool cut where a face meets a curved wall at a
+  shallow angle (a plane a hair inside a cylinder, crossing at about two
+  degrees) and a hole's rim passes through the section no longer fails with
+  an internal `Split` fault; it builds.
 - A fillet or a chamfer of a straight edge where two cylinders with parallel
   axes meet along a ruling now builds, where it was refused as unsupported.
   A corner with another blend on the same pair is still refused as

@@ -17,6 +17,13 @@ use crate::boolean::{
 };
 use crate::error::{Fault, OpError};
 
+/// The sine of the angle between two faces' surfaces below which a vertex
+/// within the vertex tolerance of both is not taken to be on their section
+/// by that alone ([`Build::on_by_surfaces`]): the distance to the curve it
+/// allows, `tol / sin θ`, is at most a hundred tolerances. A structural
+/// bound on the amplification, not a tolerance.
+const SHALLOW_SECTION_SINE: f64 = 0.01;
+
 impl<'m, 'c> Build<'m, 'c> {
     /// The section curves of every pair, paved and cut into blocks, the
     /// blocks interior to both faces kept as section edges. A pair's
@@ -133,6 +140,42 @@ impl<'m, 'c> Build<'m, 'c> {
 
     /// One section curve: its paves from the vertices on it, a seed
     /// vertex for a closed curve with none, then its blocks.
+    /// `true` when `point`, `distance` from the section curve of `fa` and
+    /// `fb` at `on`, lies within `tol` of both surfaces and the distance
+    /// is what that leaves at the angle the surfaces meet at: a point `d`
+    /// from each surface is up to `d / sin θ` from their section, so two
+    /// surfaces crossing at a shallow angle (a plane a hair inside a
+    /// cylinder's wall) put a vertex well within `tol` of both a few
+    /// `tol` from the curve. Only down to [`SHALLOW_SECTION_SINE`]: nearer
+    /// tangent, the band is the tangent contact's, not a vertex's.
+    fn on_by_surfaces(
+        &self,
+        fa: &FaceInfo<'m>,
+        fb: &FaceInfo<'m>,
+        point: Point3,
+        on: Point3,
+        distance: f64,
+        tol: f64,
+    ) -> bool {
+        let (Ok(pa), Ok(pb)) = (fa.surface.project(point), fb.surface.project(point)) else {
+            return false;
+        };
+        if pa.distance > tol || pb.distance > tol {
+            return false;
+        }
+        let (Ok(qa), Ok(qb)) = (fa.surface.project(on), fb.surface.project(on)) else {
+            return false;
+        };
+        let (Some(na), Some(nb)) = (
+            fa.surface.normal(qa.uv.x, qa.uv.y),
+            fb.surface.normal(qb.uv.x, qb.uv.y),
+        ) else {
+            return false;
+        };
+        let sine = na.cross(&nb).norm();
+        sine >= SHALLOW_SECTION_SINE && distance * sine <= tol
+    }
+
     pub(super) fn section_curve(
         &mut self,
         pi: usize,
@@ -174,7 +217,16 @@ impl<'m, 'c> Build<'m, 'c> {
             if at_an_end {
                 continue;
             }
-            if projection.distance <= v.tolerance(m) {
+            if projection.distance <= v.tolerance(m)
+                || self.on_by_surfaces(
+                    fa,
+                    fb,
+                    point,
+                    projection.point,
+                    projection.distance,
+                    v.tolerance(m),
+                )
+            {
                 // Where a section crossing of this curve and another, or
                 // a triple point found on this curve, is one of the
                 // vertex's members, the curve is paved at that member's

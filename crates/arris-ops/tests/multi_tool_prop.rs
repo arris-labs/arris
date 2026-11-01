@@ -323,3 +323,58 @@ prop_shards! {
             Ok(())
         }
 }
+
+/// A box and two oblique cylinders fused in the reverse order of the call:
+/// the box's face and a cylinder's wall meet at a shallow angle, and a
+/// loop's vertex 28 tolerances along the section line, 1e-8 off the plane,
+/// was not paved on it, so a face's arrangement had a node with one way out
+/// (`Split(Turn)`). The vertex is on the section by both surfaces.
+#[test]
+fn a_loop_vertex_on_a_shallow_section_is_paved_on_it_in_either_order() {
+    use arris_debug::prop::body::{MultiCut, MultiTarget, MultiTool};
+    use arris_math::Vec3;
+    use arris_math::nalgebra::{Quaternion, Unit};
+    let case = MultiCut {
+        target: MultiTarget::Box {
+            extent: Vec3::new(15.777420901194933, 9.125825428449875, 14.768700226810129),
+        },
+        tools: vec![
+            MultiTool {
+                through: (0.10288760435274684, 0.29953015029635977, 0.2720702204583475),
+                direction: Unit::new_unchecked(Vec3::new(
+                    0.9535222984483605,
+                    -0.07548827255633339,
+                    0.2917134674097455,
+                )),
+                radius: 0.28491045717539665,
+            },
+            MultiTool {
+                through: (0.2634249620660938, 0.228514979532497, 0.5604847378873233),
+                direction: Unit::new_unchecked(Vec3::new(
+                    0.6458828712580326,
+                    0.5168166439737986,
+                    0.5619037934799335,
+                )),
+                radius: 0.24854827943141095,
+            },
+        ],
+        pose: Isometry::new(
+            Unit::new_unchecked(Quaternion::new(0.0, 0.0, 1.0, 0.0)),
+            Vec3::zeros(),
+        ),
+    };
+    let mut m = Model::default();
+    let (target, tools) = case.build(&mut m).unwrap();
+    let inputs: Vec<Body> = core::iter::once(target)
+        .chain(tools.iter().copied())
+        .collect();
+    let mut backwards = inputs.clone();
+    backwards.reverse();
+    let forward = fuse_many(&mut m, &inputs);
+    let backward = fuse_many(&mut m, &backwards);
+    let f = settle(&m, "fuse_many", &inputs, forward).unwrap();
+    let b = settle(&m, "fuse_many reversed", &inputs, backward).unwrap();
+    if let (Some(f), Some(b)) = (f, b) {
+        same(&m, "fuse_many in the reverse order", f, b).unwrap();
+    }
+}
