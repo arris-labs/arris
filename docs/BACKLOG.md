@@ -217,6 +217,16 @@ but no fixture yet, `fixture` and `excluded` are pinned somewhere that
 fails when the bug moves. Any of these three becomes a fixture and a line
 above when it wants a fix; the block moves or is deleted then.
 
+### flush-walked-skins-at-a-square-seam-junction-are-undecided
+
+- What: two walked fillet skins meeting at a seam junction in the vertex's normal plane (the loop crossing the seam square, no slide) overlap as surfaces past their faces, so the NURBS march refuses them as `is_flush` (`Unsupported`) and S5 leaves the pair unchecked (`S5? … is not decided`); the slid junction's skins, cut at one ball, are decided since plans/walked-seam-junction step 3a.
+- Where: `two_skins_adjoining_on_a_slid_seam_junction_are_decided`'s case (`crates/arris-ops/tests/multi_tool_prop.rs`) with the second pin turned 0.0710581 rad about its own axis, so its seam crosses the top face's loop square.
+- Seen: 2026-11-01, local, no seed (deterministic; measure zero in the random draw).
+- Reproduce: in that test, `transform` the second tool by a rotation of 0.0710581 about its cylinder's axis before `cut_many`, fillet the first edge at 0.05, check at `Full`.
+- Evidence: skins' `v` domains [3.0549, 5.3091] and [0.4331, 3.2283] overlap over 0.17; the march's `is_flush` is true; `unchecked` holds `S5?` for the pair.
+- State: measured.
+- The fix is: S5 for two NURBS faces flush over part of their surfaces reads the faces' regions on the shared part (as `regions_overlap` does for coincident analytic surfaces) and marches the rest, or the walked junction trims both skins at its ball as the slid one does.
+
 ### provenance-origins-misses-a-body-face-read-back-with-its-orientation
 
 - What: `Provenance.origins(face)` returns `[]` for a face taken from `Model.faces(body)` when the body holds it reversed, though `generated` and `modified` list the face as an output: the lookup compares the shape with its orientation, the record stores outputs forward.

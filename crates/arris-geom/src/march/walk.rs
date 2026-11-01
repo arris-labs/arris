@@ -212,6 +212,131 @@ fn stopped(halt: Halt<impl Sized>) -> GeomError {
 
 const FLUSH_SAMPLES: usize = 8;
 
+/// The most halvings [`Marcher::narrows_onto`] takes a continuum's box
+/// through toward an exact isocurve: a structural count, past the `2⁻⁶⁴`
+/// of a domain any tolerance is.
+const NARROW_HALVINGS: usize = 64;
+
+/// How deep [`Marcher::apart`] halves a box it cannot show apart at
+/// once: a structural count, each halving shrinking the spread that keeps
+/// the section's bounds from one sign.
+const APART_DEPTH: usize = 24;
+
+/// How deep [`Marcher::apart`] halves the far part of a box cut close to
+/// a line at once, before the box is halved instead: a structural count.
+const JUMP_DEPTH: usize = 8;
+
+/// How deep [`Marcher::accounted`] halves an uncertified box it cannot
+/// show apart at once: a structural count, smaller than [`APART_DEPTH`],
+/// for a box beside the section and not across a line it is held to.
+const EMPTY_DEPTH: usize = 4;
+
+/// An exact isocurve of one surface lying on the other: the line
+/// `dir = value` of surface `surface`, the section's curve `curve` in
+/// the march's list.
+struct Isoline {
+    surface: usize,
+    dir: usize,
+    value: f64,
+    curve: usize,
+}
+
+/// Both surfaces' Bézier patches as nets moved to one origin: what the
+/// section over an uncertified box is read from.
+struct Patches {
+    first: Vec<Net>,
+    second: Vec<Net>,
+}
+
+impl Patches {
+    fn of(one: &NurbsSurface, two: &NurbsSurface) -> Patches {
+        let origin = middle(one, two);
+        let nets = |s: &NurbsSurface| -> Vec<Net> {
+            s.patches().iter().map(|p| Net::of(p, origin)).collect()
+        };
+        Patches {
+            first: nets(one),
+            second: nets(two),
+        }
+    }
+
+    /// The box `lo..hi` cut along every patch's span ends inside it: the
+    /// parts, each within one patch of each surface.
+    fn within(&self, (lo, hi): ([f64; 4], [f64; 4])) -> Vec<([f64; 4], [f64; 4])> {
+        let mut parts = vec![(lo, hi)];
+        for k in 0..4 {
+            let nets = if k < 2 { &self.first } else { &self.second };
+            let mut cuts: Vec<f64> = nets
+                .iter()
+                .flat_map(|n| n.span[k % 2])
+                .filter(|&x| lo[k] < x && x < hi[k])
+                .collect();
+            cuts.sort_by(f64::total_cmp);
+            cuts.dedup();
+            if cuts.is_empty() {
+                continue;
+            }
+            parts = parts
+                .into_iter()
+                .flat_map(|(l, h)| {
+                    let ends: Vec<f64> = core::iter::once(l[k])
+                        .chain(cuts.iter().copied())
+                        .chain(core::iter::once(h[k]))
+                        .collect();
+                    ends.windows(2)
+                        .map(|w| {
+                            let (mut a, mut b) = (l, h);
+                            (a[k], b[k]) = (w[0], w[1]);
+                            (a, b)
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+        }
+        parts
+    }
+
+    /// The section's three coordinates over the box `lo..hi` of
+    /// `(u₁, v₁, u₂, v₂)` as polynomials on the box's own unit cube, and
+    /// their rounding floor; `None` where the box is not inside one patch
+    /// of each surface, within [`PATCH_SLACK`] of its spans.
+    fn section_over(&self, lo: [f64; 4], hi: [f64; 4]) -> Option<([PolyN<4>; 3], f64)> {
+        let holds = |n: &&Net, at: usize| {
+            (0..2).all(|i| {
+                let [a, b] = n.span[i];
+                let slack = PATCH_SLACK * (b - a).max(1.0);
+                a - slack <= lo[at + i] && hi[at + i] <= b + slack
+            })
+        };
+        let a = self.first.iter().find(|n| holds(n, 0))?;
+        let b = self.second.iter().find(|n| holds(n, 2))?;
+        let (f, floor) = section(a, b);
+        let spans = [a.span[0], a.span[1], b.span[0], b.span[1]];
+        let mut f = f;
+        for k in 0..4 {
+            let [s0, s1] = spans[k];
+            let width = s1 - s0;
+            if width <= 0.0 {
+                return None;
+            }
+            let x0 = ((lo[k] - s0) / width).clamp(0.0, 1.0);
+            let x1 = ((hi[k] - s0) / width).clamp(0.0, 1.0);
+            if x1 <= x0 {
+                return None;
+            }
+            f = f.map(|c| {
+                let below = if x1 < 1.0 { c.split(k, x1).0 } else { c };
+                if x0 > 0.0 {
+                    below.split(k, x0 / x1).1
+                } else {
+                    below
+                }
+            });
+        }
+        Some((f, floor))
+    }
+}
+
 /// Whether `surface` has a Bézier patch flush with `other` over an area:
 /// every point of a 9×9 grid over the patch within `tol.linear` of `other`
 /// (ADR-0061 §4).
@@ -257,8 +382,22 @@ fn is_flush(surface: &NurbsSurface, other: &NurbsSurface, tol: Tolerance) -> boo
     false
 }
 
-fn contains_curve(isocurves: &[Curve], curve: &Curve, tol: f64) -> bool {
-    isocurves.iter().any(|c| {
+/// Where `curve` is in `isocurves`, pushed there unless one is already
+/// ([`position_of`]).
+fn index_of(isocurves: &mut Vec<Curve>, curve: Curve, tol: f64) -> usize {
+    match position_of(isocurves, &curve, tol) {
+        Some(k) => k,
+        None => {
+            isocurves.push(curve);
+            isocurves.len() - 1
+        }
+    }
+}
+
+/// Where `curve` is in `isocurves`, as one curve within `tol` at both
+/// ends and the middle, either way round.
+fn position_of(isocurves: &[Curve], curve: &Curve, tol: f64) -> Option<usize> {
+    isocurves.iter().position(|c| {
         let (d1, d2) = (c.domain(), curve.domain());
         let (p0, p1, p2) = (c.point(d1.lo()), c.point(d1.midpoint()), c.point(d1.hi()));
         let (q0, q1, q2) = (
@@ -288,7 +427,8 @@ pub(crate) fn march(
     }
     let marcher = Marcher::new(one, two, tol);
     let mut isocurves = Vec::new();
-    let mut seeds = marcher.boundary_seeds(&mut isocurves, meter)?;
+    let mut lines = Vec::new();
+    let mut seeds = marcher.boundary_seeds(&mut isocurves, &mut lines, meter)?;
     let mut singular: Vec<Singular> = Vec::new();
 
     // Check poles of both surfaces that lie on the other surface
@@ -324,6 +464,8 @@ pub(crate) fn march(
     }
 
     let found = loop_seeds(one, two, meter)?;
+    // The patches an uncertified box is read from, made at the first.
+    let mut patches: Option<Patches> = None;
     let absorbed = |singular: &[Singular], z: &Zero<4>| {
         let p = marcher.surfaces[0].eval(z.at[0], z.at[1]).point;
         singular.iter().any(|s| {
@@ -336,6 +478,8 @@ pub(crate) fn march(
     };
     // The singular points first, from every uncertified box, so that a
     // continuum or a box about one is the point's before it is judged.
+    // One on an exact isocurve is the isocurve's, where two adjoining
+    // pieces of one surface are tangent all along the line they meet on.
     let mut descended = vec![false; found.seeds.len()];
     for (z, done) in found.seeds.iter().zip(&mut descended) {
         if z.certified || absorbed(&singular, z) {
@@ -344,7 +488,17 @@ pub(crate) fn march(
         meter.tick()?;
         if let Some(at) = marcher.singular(z.at, meter)? {
             *done = true;
-            marcher.add_singular(&mut singular, at);
+            // Where the first surface is: a descent may end a rounding's
+            // step past an edge of its domain.
+            let [u, v] =
+                [0, 1].map(|k| at[k].clamp(marcher.domain[k].lo(), marcher.domain[k].hi()));
+            let point = marcher.surfaces[0].eval(u, v).point;
+            if !isocurves
+                .iter()
+                .any(|c| c.project(point).is_ok_and(|p| p.distance <= tol.linear))
+            {
+                marcher.add_singular(&mut singular, at);
+            }
         }
     }
     // A continuum is accounted for where its middle lies on an exact
@@ -359,6 +513,10 @@ pub(crate) fn march(
         let at_singular =
             |singular: &[Singular]| singular.iter().any(|s| (s.point - p).norm() <= s.reach);
         if on_isocurve || at_singular(&singular) {
+            continue;
+        }
+        let patches = patches.get_or_insert_with(|| Patches::of(one, two));
+        if marcher.accounted(z, &lines, &isocurves, patches, meter)? {
             continue;
         }
         meter.tick()?;
@@ -377,6 +535,10 @@ pub(crate) fn march(
             continue;
         }
         if done || absorbed(&singular, z) {
+            continue;
+        }
+        let patches = patches.get_or_insert_with(|| Patches::of(one, two));
+        if marcher.accounted(z, &lines, &isocurves, patches, meter)? {
             continue;
         }
         meter.tick()?;
@@ -586,17 +748,23 @@ impl<'a> Marcher<'a> {
     }
 
     /// Every edge line and seam of both domains against the other
-    /// surface.
+    /// surface. The exact isocurves among them, and among the inner knot
+    /// lines, are found first, each pushed to `isocurves` once and its
+    /// line to `lines` from every surface it is one of: a hit on one of
+    /// them is that isocurve's, even a tangent one, where two adjoining
+    /// pieces of one surface meet along it.
     fn boundary_seeds(
         &self,
         isocurves: &mut Vec<Curve>,
+        lines: &mut Vec<Isoline>,
         meter: &mut Meter,
     ) -> Result<Vec<Seed>, GeomError> {
         let mut seeds: Vec<Seed> = Vec::new();
+        // The edge lines that are no isocurve, with their hits.
+        let mut crossed = Vec::new();
         for s in 0..2 {
             let (surface, other) = (self.surfaces[s], self.surfaces[1 - s]);
             let poles = surface.collapsed_rows();
-            let other_poles = other.collapsed_rows();
             for dir in 0..2 {
                 let axis = 2 * s + dir;
                 let d = self.domain[axis];
@@ -612,57 +780,19 @@ impl<'a> Marcher<'a> {
                     }
                     let line = surface.isocurve(dir, value)?;
                     let curve = Curve::Nurbs(line.clone());
-                    let hits = match spline_nurbs(&curve, &line, other, self.tol, meter)? {
-                        CurveSurfaceIntersection::Points(hits) => hits,
+                    match spline_nurbs(&curve, &line, other, self.tol, meter)? {
+                        CurveSurfaceIntersection::Points(hits) => {
+                            crossed.push((s, dir, end, value, closed, hits));
+                        }
                         CurveSurfaceIntersection::Coincident => {
-                            if !contains_curve(isocurves, &curve, self.tol.linear) {
-                                isocurves.push(curve);
-                            }
-                            continue;
+                            let curve = index_of(isocurves, curve, self.tol.linear);
+                            lines.push(Isoline {
+                                surface: s,
+                                dir,
+                                value,
+                                curve,
+                            });
                         }
-                    };
-                    for hit in hits {
-                        // A hit at a pole of either surface belongs to the pole.
-                        if poles
-                            .iter()
-                            .any(|&(_, _, p)| (hit.point - p).norm() <= self.tol.linear)
-                        {
-                            continue;
-                        }
-                        if other_poles
-                            .iter()
-                            .any(|&(_, _, p)| (hit.point - p).norm() <= self.tol.linear)
-                        {
-                            continue;
-                        }
-                        // The section touching an edge, entering the
-                        // domain there or not, is ADR-0061's refusal.
-                        if hit.tangent && !closed {
-                            return Err(refused(SectionFault::UnresolvedTurning));
-                        }
-                        let mut own = [hit.t; 2];
-                        own[dir] = value;
-                        let at = if s == 0 {
-                            [own[0], own[1], hit.uv.x, hit.uv.y]
-                        } else {
-                            [hit.uv.x, hit.uv.y, own[0], own[1]]
-                        };
-                        let edges = if closed {
-                            Vec::new()
-                        } else {
-                            vec![[s, dir, end]]
-                        };
-                        let point = self.surfaces[0].eval(at[0], at[1]).point;
-                        add(
-                            &mut seeds,
-                            Seed {
-                                at,
-                                point,
-                                edges,
-                                departure: None,
-                            },
-                            self.tol,
-                        );
                     }
                 }
             }
@@ -690,21 +820,289 @@ impl<'a> Marcher<'a> {
                         if sample_on
                             && let Ok(CurveSurfaceIntersection::Coincident) =
                                 spline_nurbs(&curve, &line, other, self.tol, meter)
-                            && !contains_curve(isocurves, &curve, self.tol.linear)
                         {
-                            isocurves.push(curve);
+                            let curve = index_of(isocurves, curve, self.tol.linear);
+                            lines.push(Isoline {
+                                surface: s,
+                                dir,
+                                value: val,
+                                curve,
+                            });
                         }
                     }
                 }
             }
         }
-        seeds.retain(|seed| {
-            !isocurves.iter().any(|c| {
-                c.project(seed.point)
+        let on_isocurve = |point: Point3| {
+            isocurves.iter().any(|c| {
+                c.project(point)
                     .is_ok_and(|p| p.distance <= self.tol.linear)
             })
-        });
+        };
+        for (s, dir, end, value, closed, hits) in crossed {
+            let poles = self.surfaces[s].collapsed_rows();
+            let other_poles = self.surfaces[1 - s].collapsed_rows();
+            for hit in hits {
+                // A hit at a pole of either surface belongs to the pole.
+                if poles
+                    .iter()
+                    .any(|&(_, _, p)| (hit.point - p).norm() <= self.tol.linear)
+                {
+                    continue;
+                }
+                if other_poles
+                    .iter()
+                    .any(|&(_, _, p)| (hit.point - p).norm() <= self.tol.linear)
+                {
+                    continue;
+                }
+                // A hit on an exact isocurve is the isocurve's: where an
+                // edge line of one piece of a surface ends on the line the
+                // other piece adjoins it along, it lies on the other
+                // surface's extension and touches it there.
+                if on_isocurve(hit.point) {
+                    continue;
+                }
+                // The section touching an edge, entering the
+                // domain there or not, is ADR-0061's refusal.
+                if hit.tangent && !closed {
+                    return Err(refused(SectionFault::UnresolvedTurning));
+                }
+                let mut own = [hit.t; 2];
+                own[dir] = value;
+                let at = if s == 0 {
+                    [own[0], own[1], hit.uv.x, hit.uv.y]
+                } else {
+                    [hit.uv.x, hit.uv.y, own[0], own[1]]
+                };
+                let edges = if closed {
+                    Vec::new()
+                } else {
+                    vec![[s, dir, end]]
+                };
+                let point = self.surfaces[0].eval(at[0], at[1]).point;
+                add(
+                    &mut seeds,
+                    Seed {
+                        at,
+                        point,
+                        edges,
+                        departure: None,
+                    },
+                    self.tol,
+                );
+            }
+        }
+        seeds.retain(|seed| !on_isocurve(seed.point));
         Ok(seeds)
+    }
+
+    /// Whether every point the two surfaces share over the box `z` lies
+    /// on an exact isocurve of `lines`, within the tolerance: the box is
+    /// halved along each line's own parameter whose value it holds, the
+    /// half away from the line shown to hold no common point
+    /// ([`Marcher::apart`]), until the half on a line is within the
+    /// tolerance of it at its middle. `false` where the box holds no
+    /// line's value, is not within one patch of each surface, or no half
+    /// is shown apart within
+    /// [`NARROW_HALVINGS`]. A continuum of two adjoining pieces of one
+    /// surface lies along the line they meet on, and the isolation's
+    /// boxes may stay as wide across it as their patch; halving along
+    /// both pieces' lines narrows the box from both sides.
+    fn narrows_onto(
+        &self,
+        (mut lo, mut hi): ([f64; 4], [f64; 4]),
+        lines: &[Isoline],
+        isocurves: &[Curve],
+        patches: &Patches,
+        meter: &mut Meter,
+    ) -> Result<bool, GeomError> {
+        let held: Vec<(&Isoline, &Curve)> = lines
+            .iter()
+            .filter(|l| {
+                let k = 2 * l.surface + l.dir;
+                let slack = PATCH_SLACK * self.domain[k].length();
+                lo[k] - slack <= l.value && l.value <= hi[k] + slack
+            })
+            .filter_map(|l| Some((l, isocurves.get(l.curve)?)))
+            .collect();
+        if held.is_empty() {
+            return Ok(false);
+        }
+        let Some((mut f, floor)) = patches.section_over(lo, hi) else {
+            return Ok(false);
+        };
+        for _ in 0..NARROW_HALVINGS {
+            meter.tick()?;
+            let mut cut = false;
+            for &(line, curve) in &held {
+                let k = 2 * line.surface + line.dir;
+                let (u, v) = (2 * line.surface, 2 * line.surface + 1);
+                let e =
+                    self.surfaces[line.surface].eval(0.5 * (lo[u] + hi[u]), 0.5 * (lo[v] + hi[v]));
+                if curve
+                    .project(e.point)
+                    .is_ok_and(|p| p.distance <= self.tol.linear)
+                {
+                    return Ok(true);
+                }
+                // The line is at an end of the box: the box is clipped to
+                // the domains and cut at the patches' spans, which hold
+                // every knot line.
+                let length = hi[k] - lo[k];
+                let low_side = line.value - lo[k] <= hi[k] - line.value;
+                let speed = if line.dir == 0 { e.du } else { e.dv }.norm();
+                // First the cut that puts the near part's middle within the
+                // tolerance by the speed across the line, its far part
+                // halved a little; then half the box.
+                let jump = self.tol.linear / speed / length;
+                let mut shares = vec![(0.5, APART_DEPTH)];
+                if jump.is_finite() && 0.0 < jump && jump < 0.5 {
+                    shares.insert(0, (jump, JUMP_DEPTH));
+                }
+                for (share, depth) in shares {
+                    let at = if low_side { share } else { 1.0 - share };
+                    let parts = f.each_ref().map(|c| c.split(k, at));
+                    let lower = parts.each_ref().map(|h| h.0.clone());
+                    let upper = parts.map(|h| h.1);
+                    let cut_at = lo[k] + at * length;
+                    let (near, far) = if low_side {
+                        (lower, upper)
+                    } else {
+                        (upper, lower)
+                    };
+                    let (mut far_lo, mut far_hi) = (lo, hi);
+                    if low_side {
+                        far_lo[k] = cut_at;
+                    } else {
+                        far_hi[k] = cut_at;
+                    }
+                    if self.apart(&far, floor, far_lo, far_hi, Some(line), depth, meter)? {
+                        f = near;
+                        if low_side {
+                            hi[k] = cut_at;
+                        } else {
+                            lo[k] = cut_at;
+                        }
+                        cut = true;
+                        break;
+                    }
+                }
+            }
+            if !cut {
+                return Ok(false);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Whether an uncertified box `z` is accounted for without a point
+    /// in it: in each of its parts within one patch of each surface, the
+    /// common points all on an exact isocurve of `lines`
+    /// ([`Marcher::narrows_onto`]), where two adjoining pieces of one
+    /// surface meet, or none at all, the isolation having halted before
+    /// it dropped the box ([`Marcher::apart`]).
+    fn accounted(
+        &self,
+        z: &Zero<4>,
+        lines: &[Isoline],
+        isocurves: &[Curve],
+        patches: &Patches,
+        meter: &mut Meter,
+    ) -> Result<bool, GeomError> {
+        let Some(clipped) = self.clipped(z) else {
+            return Ok(true);
+        };
+        for (lo, hi) in patches.within(clipped) {
+            if self.narrows_onto((lo, hi), lines, isocurves, patches, meter)? {
+                continue;
+            }
+            let Some((f, floor)) = patches.section_over(lo, hi) else {
+                return Ok(false);
+            };
+            if !self.apart(&f, floor, lo, hi, None, EMPTY_DEPTH, meter)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// The box of `z` clipped to the domains, `None` where it is empty.
+    fn clipped(&self, z: &Zero<4>) -> Option<([f64; 4], [f64; 4])> {
+        let lo: [f64; 4] = core::array::from_fn(|i| z.lo[i].max(self.domain[i].lo()));
+        let hi: [f64; 4] = core::array::from_fn(|i| z.hi[i].min(self.domain[i].hi()));
+        (0..4).all(|i| lo[i] < hi[i]).then_some((lo, hi))
+    }
+
+    /// Whether the two surfaces share no point over the box `lo..hi` of
+    /// `(u₁, v₁, u₂, v₂)`, the section's coordinates `f` over its unit
+    /// cube: a coordinate keeps one sign past `floor`, or its component
+    /// across `line`, along the line's surface's derivative at the box's
+    /// middle; else the box is halved along the coordinate it is longest
+    /// along in space, but `line`'s own, and both halves shown apart, up
+    /// to `depth` halvings deep.
+    #[allow(clippy::too_many_arguments)]
+    fn apart(
+        &self,
+        f: &[PolyN<4>; 3],
+        floor: f64,
+        lo: [f64; 4],
+        hi: [f64; 4],
+        line: Option<&Isoline>,
+        depth: usize,
+        meter: &mut Meter,
+    ) -> Result<bool, GeomError> {
+        meter.tick()?;
+        if f.iter().any(|c| c.keeps_sign(floor)) {
+            return Ok(true);
+        }
+        let mid: [f64; 4] = core::array::from_fn(|i| 0.5 * (lo[i] + hi[i]));
+        let at = [0, 1].map(|s| self.surfaces[s].eval(mid[2 * s], mid[2 * s + 1]));
+        if let Some(line) = line {
+            // Across the line in its surface's tangent plane, square to the
+            // line: a section point off the line moves along it to first
+            // order, and along the line not at all.
+            let e = &at[line.surface];
+            let (off, on) = if line.dir == 0 {
+                (e.du, e.dv)
+            } else {
+                (e.dv, e.du)
+            };
+            let square = match on.try_normalize(0.0) {
+                Some(t) => off - t * off.dot(&t),
+                None => off,
+            };
+            if let Some(d) = square.try_normalize(0.0) {
+                let across = PolyN::combine(&[(d.x, &f[0]), (d.y, &f[1]), (d.z, &f[2])]);
+                if across.keeps_sign(floor * (d.x.abs() + d.y.abs() + d.z.abs())) {
+                    return Ok(true);
+                }
+            }
+        }
+        if depth == 0 {
+            return Ok(false);
+        }
+        let keep = line.map(|l| 2 * l.surface + l.dir);
+        let length = |i: usize| {
+            let e = &at[i / 2];
+            let speed = if i % 2 == 0 { e.du.norm() } else { e.dv.norm() };
+            speed * (hi[i] - lo[i])
+        };
+        let Some(along) = (0..4)
+            .filter(|&i| Some(i) != keep)
+            .max_by(|&i, &j| length(i).total_cmp(&length(j)))
+        else {
+            return Ok(false);
+        };
+        let halves = f.each_ref().map(|c| c.split(along, 0.5));
+        let lower = halves.each_ref().map(|h| h.0.clone());
+        let upper = halves.map(|h| h.1);
+        let (mut lower_hi, mut upper_lo) = (hi, lo);
+        (lower_hi[along], upper_lo[along]) = (mid[along], mid[along]);
+        Ok(
+            self.apart(&lower, floor, lo, lower_hi, line, depth - 1, meter)?
+                && self.apart(&upper, floor, upper_lo, hi, line, depth - 1, meter)?,
+        )
     }
 
     /// The tangent at `e`, `None` where the surfaces are tangent within

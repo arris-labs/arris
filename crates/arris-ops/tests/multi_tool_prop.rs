@@ -378,3 +378,63 @@ fn a_loop_vertex_on_a_shallow_section_is_paved_on_it_in_either_order() {
         same(&m, "fuse_many in the reverse order", f, b).unwrap();
     }
 }
+
+/// A cylinder cut by two oblique pins, its first edge filleted (shrunk
+/// from `a_multi_tool_result_is_an_operand_of_every_operation`, seed
+/// `61727269…`, 256 cases): the edge is the top face's loop round one
+/// pin, split by the pin's seam, and the blend's junction slides to the
+/// ball whose contact is on the seam (ADR-0083). The two walked skins are
+/// adjoining pieces of one rolling-ball surface, tangent along the arc
+/// they meet on; the checker could not decide them against each other
+/// (`S5?`). Every radius of a sweep is clean at `Full` with nothing
+/// unchecked.
+#[test]
+fn two_skins_adjoining_on_a_slid_seam_junction_are_decided() {
+    use arris_debug::prop::body::{MultiCut, MultiTarget, MultiTool};
+    use arris_math::Vec3;
+    use arris_math::nalgebra::{Quaternion, Unit};
+    let case = MultiCut {
+        target: MultiTarget::Cylinder {
+            radius: 6.448044468338119,
+            height: 3.274663839217768,
+        },
+        tools: vec![
+            MultiTool {
+                through: (0.826605142848527, 0.1, 0.1),
+                direction: Unit::new_unchecked(Vec3::new(
+                    0.6770620917427433,
+                    0.0,
+                    0.7359258956749253,
+                )),
+                radius: 0.1,
+            },
+            MultiTool {
+                through: (0.1, 0.11238561146319175, 0.1),
+                direction: Unit::new_unchecked(Vec3::new(
+                    -0.11870725294985189,
+                    -0.8515767661847793,
+                    -0.510612964378475,
+                )),
+                radius: 0.3362811090233578,
+            },
+        ],
+        pose: Isometry::new(
+            Unit::new_unchecked(Quaternion::new(
+                0.0,
+                0.9747860110068362,
+                -0.22314173241547727,
+                0.0,
+            )),
+            Vec3::zeros(),
+        ),
+    };
+    let mut m = Model::default();
+    let (target, tools) = case.build(&mut m).unwrap();
+    let (whole, _) = cut_many(&mut m, target, &tools).unwrap();
+    let edge = m.edges(whole).unwrap()[0];
+    for r in [0.02, 0.05, 0.15] {
+        let made = fillet(&mut m, whole, &[edge], r);
+        let body = settle(&m, "fillet of a result", &[whole], made).unwrap();
+        assert!(body.is_some(), "r {r}: the fillet builds");
+    }
+}

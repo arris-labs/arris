@@ -312,6 +312,7 @@ blend/rounded-slab-tilted-split-cap-rim-fillet: 127340
 blend/s-bend-oblique-top-fillet: 190333
 blend/second-fillet: 6
 blend/sphere-cylinder-fillet: 2924842
+blend/sphere-cylinder-oblique-seam-fillet: 257940
 blend/spindle-blend-cylinder-fuse: 14079
 blend/split-boss-base-chamfer: 8
 blend/split-boss-base-fillet: 8

@@ -96,6 +96,13 @@ a geometric or numeric case within the design; **[3]** unproven.
   `regression/sphere-cylinder-oblique-seam-fillet` moves to `blend/` and is
   checker-green at `Full`, at the oracle's counts and measures (ADR-0062's
   walked allowance).
+- [x] Step 3a **[3]** — The checker decides abutting pieces of one offset
+  surface. *Settled* (2026-11-01): step 3's slide turned a `VertexBlend`
+  into two walked skins tangent along the junction arc that S5 left
+  undecided (`multi_tool_prop` shard_2); the same body unslid, at a square
+  crossing, is undecided too, so the limit was the checker's. The NURBS
+  march accounts such boxes on the arc (ADR-0068's 2026-11-01 amendment);
+  test `two_skins_adjoining_on_a_slid_seam_junction_are_decided`.
 - [ ] Step 4 **[2]** — Two seams at one vertex: the roots are held to agree
   within the tolerance. `blend/sphere-cylinder-fillet` stays at its blessed
   dump, and `sphere-cylinder-pin-seam-slant-fillet` moves to `blend/`. A unit

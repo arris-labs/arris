@@ -233,3 +233,42 @@ the table above with both conditions.
   `CrowdedSingularity`; BACKLOG): the loop condition vanishes on the
   rulings through the tangent points and the isolation halves a long
   twin's short parameters only.
+
+## Amendment, 2026-11-01
+
+- **Two adjoining pieces of one surface (plans/walked-seam-junction step
+  3a).** Two walked blend skins that meet at a slid seam junction
+  (ADR-0083) are pieces of one rolling-ball surface, one ending on the
+  arc where the other begins and tangent to it all along it. The march
+  found the arc as an exact isocurve, but the loop condition's
+  isolation halted with a front of boxes as wide across the arc as their
+  patch, whose middles are off it (`TubeCircle`); an edge line ending on
+  the arc touched the other skin there (`UnresolvedTurning`); and a
+  descent found tangent points on the arc (`CrowdedSingularity`). The
+  checker left the pair undecided, `S5?`.
+- **The lines are known first.** `boundary_seeds` finds every exact
+  isocurve (edge lines and inner knot lines) before it looks at any
+  edge line's hits, and records each one's line in each surface it is
+  one of. A hit on an exact isocurve is the isocurve's, a tangent one
+  included, as the seeds on it already were.
+- **An uncertified box is accounted for on a line or empty.** A
+  continuum's box, and an uncertified seed's box no singular point
+  absorbs, is cut at the patches' spans; each part is read from its
+  patch pair's section, restricted to it (no surface is cut). It is
+  accounted for where it is halved along a line it ends on, each far half
+  shown to hold no common point, until the near part's middle is within
+  `tol.linear` of the line: the far half is shown apart where a
+  coordinate of the section, or its component across the line in the
+  line's surface (square to the line), keeps one sign past the rounding
+  floor, halving the far half along its longest other coordinate up to
+  24 times. A box shown apart whole is accounted for too. The halvings
+  are structural counts; nothing new is compared against a length but
+  `tol.linear`, as the existing "middle on an isocurve" rule is.
+- **A singular point on an exact isocurve is the isocurve's**, read where
+  the first surface is (the descent clamped to its domain), and is not
+  added.
+- The pair of skins at any radius from 0.02 to 0.25 on the shrunk case is
+  decided clean, the check taking 3–4.5 s against 2.3 s refused. Two
+  skins whose surfaces overlap past their faces (the junction in the
+  normal plane, cut at one parameter) are still `is_flush` and
+  `Unsupported`: a backlog line.
