@@ -216,6 +216,7 @@ blend/chamfered-stadium-foot-fillet: 18
 blend/concave-fillet-into-a-step: 6
 blend/cone-boss-base-chamfer: 3
 blend/cone-boss-base-fillet: 3
+blend/convex-end-at-a-seam-vertex-blend: refused
 blend/cusp-crescent-both-arcs-fillet: refused
 blend/cusp-crescent-chamfer: 445
 blend/cusp-crescent-fillet: 1456
@@ -243,6 +244,8 @@ blend/fillet-into-a-step: 6
 blend/fillet-into-a-turned-step: 2340
 blend/fillet-miter: 303
 blend/five-edge-vertex: 6
+blend/flush-cylinder-pieces-vertex-blend: refused
+blend/flush-fan-arc-past-its-wall: refused
 blend/flush-l-inner-chamfer: 6
 blend/flush-l-inner-fillet: 6
 blend/flush-step-concave-chamfer: 6
