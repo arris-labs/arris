@@ -95,7 +95,7 @@ a geometric or numeric case within the design; **[3]** unproven.
   `knuckle-join-flush-end-fillet` and `flush-step-concave-*` move to `blend/`.
   The hinge leaf's `outcome.json` becomes `ok` at `knuckle_joins` and matches
   its oracle checkpoint.
-- [ ] Step 5 **[1]** — Refusals by name, each a `blend/` fixture holding its
+- [x] Step 5 **[1]** — Refusals by name, each a `blend/` fixture holding its
   expected refusal:
   - an end whose arc runs past an extra: `BlendTooLarge`;
   - flush pieces on a cylinder: `VertexBlend`;
@@ -144,3 +144,12 @@ a geometric or numeric case within the design; **[3]** unproven.
   walls' edges with the cap) where the blended edge is concave; the smooth
   extras are `tangent_at`. `corner_of` returns `CornerAt { flush: true }`,
   and `end_at` refuses it `VertexBlend` until step 3 builds it.
+- Settled (step 5): the arc of a flush fan lies in the empty wedge, where no
+  extra can be: an extra leaves `v` on the walk side, and a seam's range
+  starts at `v`, so the arc cannot reach one. The `BlendTooLarge` refusal is
+  therefore the arc running past the far vertex of a corner edge
+  (`blend/flush-fan-arc-past-its-wall`, a leg of 0.2 under r 0.5), which the
+  end's own length check holds. The convex case's smooth edge is a corner
+  of the convex end, not an extra: a convex walk's corners are sharp, so
+  its smooth seam refuses `VertexBlend` at the corner
+  (`blend/convex-end-at-a-seam-vertex-blend`).

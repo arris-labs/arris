@@ -1,0 +1,14 @@
+{
+  "description": "the L of two fused boxes of flush-l-inner-fillet, its back leg short: the leg [0, 1] x [1, 1.2] x [0, 2], so the wall the concave edge at (1, 1) meets on its notch side ends at y = 1.2. A fillet at r 0.5 has its end arc run past that far vertex, out of the body: its end is a flush fan that the arc leaves, refused BlendTooLarge, naming the edge and the face across (ADR-0082 §4, ADR-0007). Open CASCADE's record holds the refusal as its own result (plans/flush-fan-end step 5)",
+  "params": {
+    "r": 0.5
+  },
+  "steps": [
+    {"name": "a", "op": "box", "min": [0, 0, 0], "max": [2, 1, 2]},
+    {"name": "b", "op": "box", "min": [0, 1, 0], "max": [1, 1.2, 2]},
+    {"name": "ell", "op": "fuse", "a": "a", "b": "b"},
+    {"name": "result", "op": "fillet", "of": "ell", "edges": [[1, 1, 1]], "radius": "r"}
+  ],
+  "result": "result",
+  "analytic": {"expect_error": "blend-too-large"}
+}

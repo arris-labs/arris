@@ -1,0 +1,16 @@
+{
+  "description": "a tall cylinder of radius 1 on z, made of two coaxial cylinders stacked (z 0..2 and z 2..4) that a fuse leaves as two lateral faces on one cylinder, the circle at z = 2 smooth between them; a box [0.6, 1.8] x [-0.2, 0.2] x [0, 2] fused on its side. The concave edge where the box's face y = 0.2 meets the cylinder ends at z = 2, on the circle, at a vertex whose face across is those flush cylinder pieces. Flush pieces are a fan on one plane only (ADR-0082 §4): on one cylinder the end is VertexBlend, named, where Open CASCADE builds it (plans/flush-fan-end step 5)",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {"name": "lower", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": 1, "height": 2},
+    {"name": "upper", "op": "cylinder", "base": [0, 0, 2], "axis": [0, 0, 1], "radius": 1, "height": 2},
+    {"name": "tower", "op": "fuse", "a": "lower", "b": "upper"},
+    {"name": "wing", "op": "box", "min": [0.6, -0.2, 0], "max": [1.8, 0.2, 2]},
+    {"name": "body", "op": "fuse", "a": "tower", "b": "wing"},
+    {"name": "result", "op": "fillet", "of": "body", "edges": [["sqrt(1 - 0.04)", 0.2, 1]], "radius": "r"}
+  ],
+  "result": "result",
+  "analytic": {"expect_error": "vertex-blend"}
+}

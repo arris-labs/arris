@@ -1,0 +1,59 @@
+{
+  "description": "the L of two fused boxes (flush-l-inner-fillet's operands), its convex edge along y at the top of the cap of the front box, from (1, 1, 2) to (2, 1, 2), filleted at r 0.2. The edge's end at (1, 1, 2) is the L's inner corner, a vertex of four edges, one of them the cap's smooth seam at y = 1 between the two flush pieces. A corner of a convex blend that is smooth is VertexBlend, the walk's corner edges being sharp (ADR-0043 \u00a71, ADR-0039 \u00a74): Arris refuses it by name, where Open CASCADE builds it (plans/flush-fan-end step 5)",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "a",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "b",
+      "op": "box",
+      "min": [
+        0,
+        1,
+        0
+      ],
+      "max": [
+        1,
+        2,
+        2
+      ]
+    },
+    {
+      "name": "ell",
+      "op": "fuse",
+      "a": "a",
+      "b": "b"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "ell",
+      "edges": [
+        [
+          1.5,
+          1,
+          2
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "expect_error": "vertex-blend"
+  }
+}

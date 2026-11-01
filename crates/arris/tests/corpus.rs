@@ -963,6 +963,12 @@ corpus_tests! {
     blend_flush_l_inner_fillet => run "blend/flush-l-inner-fillet";
     /// The same fused L, its inner edge chamfered.
     blend_flush_l_inner_chamfer => run "blend/flush-l-inner-chamfer";
+    /// A convex edge of the fused L ending at its inner corner, where the cap's seam is smooth: a convex blend whose corner is a smooth edge is refused by name as VertexBlend, where Open CASCADE builds it.
+    blend_convex_end_at_a_seam_vertex_blend => run "blend/convex-end-at-a-seam-vertex-blend";
+    /// A box fused on the side of a cylinder made of two stacked coaxial cylinders: the concave edge ends on the flush cylinder pieces' circle, a fan on one cylinder, refused by name as VertexBlend, where Open CASCADE builds it.
+    blend_flush_cylinder_pieces_vertex_blend => run "blend/flush-cylinder-pieces-vertex-blend";
+    /// The L of two fused boxes with a short back leg: a fillet whose arc at r 0.5 runs past the leg's far vertex is refused by name as BlendTooLarge on the flush fan's first piece.
+    blend_flush_fan_arc_past_its_wall => run "blend/flush-fan-arc-past-its-wall";
     /// A slab and a block on it, fused, the concave edge between the block's wall and the slab's top filleted into the front plane, which is two flush faces: the end is a flush fan of two pieces, as the fused L's.
     blend_flush_step_concave_fillet => run "blend/flush-step-concave-fillet";
     /// The same step, the concave edge chamfered.
