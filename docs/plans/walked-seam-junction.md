@@ -124,11 +124,17 @@ a geometric or numeric case within the design; **[3]** unproven.
   closed oracle result. The seam-site refusals that are reachable (two
   disagreeing roots, no root in reach) are held by step 4's and step 2's unit
   tests, so `vertex_blend_cause` gains no "seam junction" naming.
-- [ ] Step 7 **[2]** — Property: the seam does not matter. A ball revolved
+- [x] Step 7 **[2]** — Property: the seam does not matter. A ball revolved
   with its profile plane at a random angle `φ` about the axis, fused with a pin
   at a random offset and pose, filleted and chamfered at random `r`. Volume and
   area are held equal, at `1e-7` relative, to the same body with `φ` moved
   away from the loop, and the result is checker-green.
+  *Settled* (2026-11-01): the reference is the seam through the loop a
+  quarter pin-radius above the pin's axis, not a seam away from the loop: a
+  seam that misses the loop leaves a ring on the pin's seam vertex alone,
+  which is refused today (a backlog line), as is a chamfer with the seam at
+  the pin's axis height (a second line). The seam's height `t` is drawn over
+  the pin's whole span; the pose is the pin's offset.
 - [ ] Step 8 **[1]** — Census: re-run the real-parts battery (the blend row
   stays 0 of 38, no new refusal) and `tools/script-corpus.sh` (`fillet`
   refusals stay 0). Count the seam-junction `VertexBlend` edges of
