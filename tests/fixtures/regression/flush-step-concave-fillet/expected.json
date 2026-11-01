@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "e63f1298555a23a41d80bd3dabdaa93367b716089d682d8995c755fddd5eff12",
+  "results": {
+    "default": {
+      "area": 29.781106126665403,
+      "centroid": [
+        1.697048567830908,
+        1.0,
+        0.9006426507708952
+      ],
+      "counts": {
+        "edges": 28,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          6.580738301241578,
+          3.552713678800501e-15,
+          -1.1951427084341084
+        ],
+        [
+          3.552713678800501e-15,
+          9.690622213064103,
+          0.0
+        ],
+        [
+          -1.1951427084341084,
+          0.0,
+          9.802302798881506
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 28,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_slab",
+          "point": [
+            0.5,
+            1.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_block",
+          "point": [
+            2.0,
+            1.0,
+            1.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "filled",
+          "point": [
+            0.98,
+            1.0,
+            1.02
+          ]
+        },
+        {
+          "class": "out",
+          "label": "open",
+          "point": [
+            0.5,
+            1.0,
+            1.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_blend",
+          "point": [
+            0.9121320343559642,
+            1.0,
+            1.0878679656440358
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front_arc",
+          "point": [
+            0.9121320343559642,
+            0.0,
+            1.0878679656440358
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_back_arc",
+          "point": [
+            0.9121320343559642,
+            2.0,
+            1.0878679656440358
+          ]
+        }
+      ],
+      "volume": 10.038628330588459
+    }
+  }
+}

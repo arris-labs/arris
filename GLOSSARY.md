@@ -221,6 +221,11 @@ _sense_ is whether it is convex or concave.
 A cusp whose two edges have opposite senses, its walls on either side of
 the face they share (ADR-0079).
 
+**Flush fan**:
+The face across a concave blend's end when a fuse left it as several pieces on
+one plane: the seam between two pieces is a smooth edge at the end's vertex.
+The end is one lone face's section, in that plane (ADR-0082).
+
 **Healing**:
 What the STEP reader repairs in a file it reads (grown tolerances, turned
 faces), recorded on the body (ADR-0058).

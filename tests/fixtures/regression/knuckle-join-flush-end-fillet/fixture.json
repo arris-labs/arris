@@ -1,0 +1,97 @@
+{
+  "description": "the hinge leaf shrunk: a plate [0,10]x[0,6]x[0,2] and a cylinder of radius 4 on the axis x = 0, z = 1 along y 0..6, half of it in the plate, fused, and the join edge where the cylinder meets the plate's top z = 2 (at x = sqrt(15)) filleted at r 0.8. Its ends are in the plane y = 0 (and y = 6) shared by the plate's face and the cylinder's cap, two or three faces of one plane after the fuse, the join's vertex holding the seam between them as a further edge. The desired result is the blend with its ends in those planes (plans/flush-fan-end step 1, the script corpus's hinge leaf, knuckle_joins)",
+  "params": {
+    "r": 0.8
+  },
+  "steps": [
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        10,
+        6,
+        2
+      ]
+    },
+    {
+      "name": "knuckle",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        1
+      ],
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "radius": 4,
+      "height": 6
+    },
+    {
+      "name": "body",
+      "op": "fuse",
+      "a": "plate",
+      "b": "knuckle"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "body",
+      "edges": [
+        [
+          "sqrt(15)",
+          3,
+          2
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside_plate",
+      "point": [
+        8,
+        3,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_knuckle",
+      "point": [
+        -2,
+        3,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above_plate",
+      "point": [
+        8,
+        3,
+        2.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_plate_top",
+      "point": [
+        8,
+        3,
+        2
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {}
+}

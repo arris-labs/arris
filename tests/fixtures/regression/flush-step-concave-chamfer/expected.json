@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "f745a426b99019ec5fe9aa1b9e1d86880fa652cbf09c54105736c37a62c744e1",
+  "results": {
+    "default": {
+      "area": 29.738528137423856,
+      "centroid": [
+        1.692864222001982,
+        1.0000000000000002,
+        0.9017839444995043
+      ],
+      "counts": {
+        "edges": 28,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          6.600684555665666,
+          3.552713678800501e-15,
+          -1.1859534440039639
+        ],
+        [
+          3.552713678800501e-15,
+          9.728220779649824,
+          1.7763568394002505e-15
+        ],
+        [
+          -1.1859534440039639,
+          1.7763568394002505e-15,
+          9.854202890650804
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 28,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_slab",
+          "point": [
+            0.5,
+            1.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_block",
+          "point": [
+            2.0,
+            1.0,
+            1.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "filled",
+          "point": [
+            0.98,
+            1.0,
+            1.02
+          ]
+        },
+        {
+          "class": "out",
+          "label": "open",
+          "point": [
+            0.5,
+            1.0,
+            1.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chamfer",
+          "point": [
+            0.85,
+            1.0,
+            1.15
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_front_chord",
+          "point": [
+            0.85,
+            0.0,
+            1.15
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_back_chord",
+          "point": [
+            0.85,
+            2.0,
+            1.15
+          ]
+        }
+      ],
+      "volume": 10.09
+    }
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "description": "the L of l-inner-edge made by fusing two boxes that touch along a face \u2014 [0,2]x[0,1]x[0,2] and [0,1]x[1,2]x[0,2] \u2014 so the cap at z = 0 and the one at z = 2 are each two faces on one plane, not one L-shaped face (same-domain faces are not merged). The inner vertical edge filleted at r 0.2: a concave blend whose ends are on a face that is two flush pieces, the vertex at the end holding the seam between them as a fourth edge. The desired result is the lone-L result: the same volume and area, the section on the caps' plane (plans/flush-fan-end step 1)",
+  "params": {
+    "r": 0.2
+  },
+  "steps": [
+    {
+      "name": "a",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "b",
+      "op": "box",
+      "min": [
+        0,
+        1,
+        0
+      ],
+      "max": [
+        1,
+        2,
+        2
+      ]
+    },
+    {
+      "name": "ell",
+      "op": "fuse",
+      "a": "a",
+      "b": "b"
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "ell",
+      "edges": [
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0.5,
+        0.5,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "notch_filled",
+      "point": [
+        1.02,
+        1.02,
+        1
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "notch_open",
+      "point": [
+        1.5,
+        1.5,
+        1
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "past_blend",
+      "point": [
+        "1 + r - r / sqrt(2) + 0.01",
+        "1 + r - r / sqrt(2) + 0.01",
+        1
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_blend",
+      "point": [
+        "1 + r - r / sqrt(2)",
+        "1 + r - r / sqrt(2)",
+        1
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_arc",
+      "point": [
+        "1 + r - r / sqrt(2)",
+        "1 + r - r / sqrt(2)",
+        0
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_top_arc",
+      "point": [
+        "1 + r - r / sqrt(2)",
+        "1 + r - r / sqrt(2)",
+        2
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "6 + (1 - pi / 4) * r^2 * 2",
+    "area": "22 - 4 * r + 2 * (1 - pi / 4) * r^2 + pi * r"
+  }
+}

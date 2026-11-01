@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "dce5445a64a537c76ad05513531ffacb474fd49b9e087a42ea985d9359be0907",
+  "results": {
+    "default": {
+      "area": 348.0806114437919,
+      "centroid": [
+        1.3550240240698677,
+        3.000000000000001,
+        1.0010326829424936
+      ],
+      "counts": {
+        "edges": 28,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          2354.4458049631376,
+          2.2737367544323206e-13,
+          -1.0073089367497232
+        ],
+        [
+          2.2737367544323206e-13,
+          5507.381393068808,
+          2.2737367544323206e-13
+        ],
+        [
+          -1.0073089367497232,
+          2.2737367544323206e-13,
+          5399.6147602313795
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 28,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_plate",
+          "point": [
+            8.0,
+            3.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_knuckle",
+          "point": [
+            -2.0,
+            3.0,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_plate",
+          "point": [
+            8.0,
+            3.0,
+            2.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_plate_top",
+          "point": [
+            8.0,
+            3.0,
+            2.0
+          ]
+        }
+      ],
+      "volume": 374.44652868761847
+    }
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "description": "a slab [0,3]x[0,2]x[0,1] and a block [1,3]x[0,2]x[1,2] standing on its top, fused, so the front face y = 0 is two faces on one plane (the slab's and the block's, a seam between them along z = 1 from x = 1 to 3). The concave edge where the block's wall x = 1 meets the slab's top z = 1 chamfered at d 0.3: a concave blend, its ends on those flush pieces, the corner at each end holding the seam as a fourth edge. The desired result has the blend end in the front plane, the face count of a lone end (plans/flush-fan-end step 1)",
+  "params": {
+    "d": 0.3
+  },
+  "steps": [
+    {
+      "name": "slab",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        3,
+        2,
+        1
+      ]
+    },
+    {
+      "name": "block",
+      "op": "box",
+      "min": [
+        1,
+        0,
+        1
+      ],
+      "max": [
+        3,
+        2,
+        2
+      ]
+    },
+    {
+      "name": "step",
+      "op": "fuse",
+      "a": "slab",
+      "b": "block"
+    },
+    {
+      "name": "result",
+      "op": "chamfer",
+      "of": "step",
+      "edges": [
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "distance": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside_slab",
+      "point": [
+        0.5,
+        1,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "inside_block",
+      "point": [
+        2,
+        1,
+        1.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "filled",
+      "point": [
+        0.98,
+        1,
+        1.02
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "open",
+      "point": [
+        0.5,
+        1,
+        1.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "on_chamfer",
+      "point": [
+        "1 - d / 2",
+        1,
+        "1 + d / 2"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_front_chord",
+      "point": [
+        "1 - d / 2",
+        0,
+        "1 + d / 2"
+      ],
+      "expect": "on"
+    },
+    {
+      "label": "on_back_chord",
+      "point": [
+        "1 - d / 2",
+        2,
+        "1 + d / 2"
+      ],
+      "expect": "on"
+    }
+  ],
+  "analytic": {
+    "volume": "6 + 4 + d^2"
+  }
+}

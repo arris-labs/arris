@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "1e6a0c6a9804f92246b763f2cd0f5ab3e06f477743a71fa1804cf809b4d8d59c",
+  "results": {
+    "default": {
+      "area": 21.80568542494924,
+      "centroid": [
+        0.8348785871964679,
+        0.8348785871964679,
+        1.0
+      ],
+      "counts": {
+        "edges": 28,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          3.8489189109639437,
+          0.6645477557027224,
+          8.881784197001252e-16
+        ],
+        [
+          0.6645477557027224,
+          3.84891891096394,
+          0.0
+        ],
+        [
+          8.881784197001252e-16,
+          0.0,
+          3.6711711552612254
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 28,
+        "faces": 12,
+        "loops": 12,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 18
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.5,
+            0.5,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "notch_filled",
+          "point": [
+            1.02,
+            1.02,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "notch_open",
+          "point": [
+            1.5,
+            1.5,
+            1.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_chamfer",
+          "point": [
+            1.11,
+            1.11,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chamfer",
+          "point": [
+            1.1,
+            1.1,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chord",
+          "point": [
+            1.1,
+            1.1,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_top_chord",
+          "point": [
+            1.1,
+            1.1,
+            2.0
+          ]
+        }
+      ],
+      "volume": 6.04
+    }
+  }
+}
