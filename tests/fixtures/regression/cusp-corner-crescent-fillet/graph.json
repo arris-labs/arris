@@ -1,0 +1,374 @@
+{
+  "occt": "8.0.1.0.0",
+  "records": [
+    {
+      "fixture": "cusp-corner-crescent-fillet",
+      "size": 0.02,
+      "oracle": {
+        "patch_area": 0.007521,
+        "patch_cone_volume": 0.001818,
+        "patch_tolerance": 0.001421,
+        "boundary_length": 0.8652,
+        "body_volume": 4.712,
+        "body_area": 20.77,
+        "samples": 181
+      },
+      "least_bending_graph": [
+        {
+          "spans": 16,
+          "halvings": 3,
+          "volume_over_bound": -1.922,
+          "area_over_bound": -1.398,
+          "boundary_miss_over_r": 0.07672,
+          "below_oracle_over_r": {
+            "mean": 0.3095,
+            "max": 0.7593
+          }
+        },
+        {
+          "spans": 24,
+          "halvings": 4,
+          "volume_over_bound": -2.659,
+          "area_over_bound": -1.416,
+          "boundary_miss_over_r": 0.07759,
+          "below_oracle_over_r": {
+            "mean": 0.3055,
+            "max": 0.7604
+          }
+        }
+      ],
+      "ruled_hermite": {
+        "volume_over_bound": 2.543,
+        "area_over_bound": 2.998
+      }
+    },
+    {
+      "fixture": "cusp-corner-crescent-fillet",
+      "size": 0.1,
+      "oracle": {
+        "patch_area": 0.08484,
+        "patch_cone_volume": 0.02191,
+        "patch_tolerance": 0.006095,
+        "boundary_length": 2.132,
+        "body_volume": 4.694,
+        "body_area": 20.45,
+        "samples": 196
+      },
+      "least_bending_graph": [
+        {
+          "spans": 16,
+          "halvings": 3,
+          "volume_over_bound": -2.353,
+          "area_over_bound": -1.082,
+          "boundary_miss_over_r": 0.02269,
+          "below_oracle_over_r": {
+            "mean": 0.2107,
+            "max": 0.5288
+          }
+        },
+        {
+          "spans": 24,
+          "halvings": 4,
+          "volume_over_bound": -2.57,
+          "area_over_bound": -1.142,
+          "boundary_miss_over_r": 0.04281,
+          "below_oracle_over_r": {
+            "mean": 0.2172,
+            "max": 0.5366
+          }
+        }
+      ],
+      "ruled_hermite": {
+        "volume_over_bound": 3.222,
+        "area_over_bound": 3.245
+      }
+    },
+    {
+      "fixture": "cusp-corner-crescent-fillet",
+      "size": 0.3,
+      "oracle": {
+        "patch_area": 0.4619,
+        "patch_cone_volume": 0.1314,
+        "patch_tolerance": 0.01152,
+        "boundary_length": 4.226,
+        "body_volume": 4.557,
+        "body_area": 19.65,
+        "samples": 231
+      },
+      "least_bending_graph": [
+        {
+          "spans": 16,
+          "halvings": 3,
+          "volume_over_bound": -3.064,
+          "area_over_bound": -1.02,
+          "boundary_miss_over_r": 0.02451,
+          "below_oracle_over_r": {
+            "mean": 0.1595,
+            "max": 0.3558
+          }
+        },
+        {
+          "spans": 24,
+          "halvings": 4,
+          "volume_over_bound": -2.625,
+          "area_over_bound": -1.004,
+          "boundary_miss_over_r": 0.01924,
+          "below_oracle_over_r": {
+            "mean": 0.1373,
+            "max": 0.3183
+          }
+        }
+      ],
+      "ruled_hermite": {
+        "volume_over_bound": 5.892,
+        "area_over_bound": 4.746
+      }
+    },
+    {
+      "fixture": "cusp-corner-pocket-fillet",
+      "size": 0.02,
+      "oracle": {
+        "patch_area": 0.007521,
+        "patch_cone_volume": 0.001756,
+        "patch_tolerance": 0.001421,
+        "boundary_length": 0.8652,
+        "body_volume": 43.29,
+        "body_area": 99.34,
+        "samples": 181
+      },
+      "least_bending_graph": [
+        {
+          "spans": 16,
+          "halvings": 3,
+          "volume_over_bound": 3.215,
+          "area_over_bound": -1.398,
+          "boundary_miss_over_r": 0.07672,
+          "below_oracle_over_r": {
+            "mean": 0.3095,
+            "max": 0.7593
+          }
+        },
+        {
+          "spans": 24,
+          "halvings": 4,
+          "volume_over_bound": 2.449,
+          "area_over_bound": -1.416,
+          "boundary_miss_over_r": 0.07759,
+          "below_oracle_over_r": {
+            "mean": 0.3055,
+            "max": 0.7604
+          }
+        }
+      ],
+      "ruled_hermite": {
+        "volume_over_bound": -2.673,
+        "area_over_bound": 2.998
+      }
+    },
+    {
+      "fixture": "cusp-corner-pocket-fillet",
+      "size": 0.1,
+      "oracle": {
+        "patch_area": 0.08484,
+        "patch_cone_volume": 0.0189,
+        "patch_tolerance": 0.006095,
+        "boundary_length": 2.132,
+        "body_volume": 43.31,
+        "body_area": 99.03,
+        "samples": 196
+      },
+      "least_bending_graph": [
+        {
+          "spans": 16,
+          "halvings": 3,
+          "volume_over_bound": 2.306,
+          "area_over_bound": -1.082,
+          "boundary_miss_over_r": 0.02269,
+          "below_oracle_over_r": {
+            "mean": 0.2107,
+            "max": 0.5288
+          }
+        },
+        {
+          "spans": 24,
+          "halvings": 4,
+          "volume_over_bound": 2.078,
+          "area_over_bound": -1.142,
+          "boundary_miss_over_r": 0.04281,
+          "below_oracle_over_r": {
+            "mean": 0.2172,
+            "max": 0.5366
+          }
+        }
+      ],
+      "ruled_hermite": {
+        "volume_over_bound": -3.278,
+        "area_over_bound": 3.245
+      }
+    },
+    {
+      "fixture": "cusp-corner-pocket-fillet",
+      "size": 0.3,
+      "oracle": {
+        "patch_area": 0.4619,
+        "patch_cone_volume": 0.09468,
+        "patch_tolerance": 0.01152,
+        "boundary_length": 4.226,
+        "body_volume": 43.44,
+        "body_area": 98.22,
+        "samples": 231
+      },
+      "least_bending_graph": [
+        {
+          "spans": 16,
+          "halvings": 3,
+          "volume_over_bound": 3.072,
+          "area_over_bound": -1.02,
+          "boundary_miss_over_r": 0.02451,
+          "below_oracle_over_r": {
+            "mean": 0.1595,
+            "max": 0.3558
+          }
+        },
+        {
+          "spans": 24,
+          "halvings": 4,
+          "volume_over_bound": 2.641,
+          "area_over_bound": -1.004,
+          "boundary_miss_over_r": 0.01924,
+          "below_oracle_over_r": {
+            "mean": 0.1373,
+            "max": 0.3183
+          }
+        }
+      ],
+      "ruled_hermite": {
+        "volume_over_bound": -5.663,
+        "area_over_bound": 4.746
+      }
+    },
+    {
+      "fixture": "cusp-corner-spandrel-fillet",
+      "size": 0.02,
+      "oracle": {
+        "patch_area": 0.01067,
+        "patch_cone_volume": 0.002464,
+        "patch_tolerance": 0.001102,
+        "boundary_length": 1.194,
+        "body_volume": 3.433,
+        "body_area": 21.06,
+        "samples": 187
+      },
+      "least_bending_graph": [
+        {
+          "spans": 16,
+          "halvings": 3,
+          "volume_over_bound": -4.1,
+          "area_over_bound": -2.011,
+          "boundary_miss_over_r": 0.02792,
+          "below_oracle_over_r": {
+            "mean": 0.3297,
+            "max": 0.819
+          }
+        },
+        {
+          "spans": 24,
+          "halvings": 4,
+          "volume_over_bound": -4.54,
+          "area_over_bound": -2.034,
+          "boundary_miss_over_r": 0.04661,
+          "below_oracle_over_r": {
+            "mean": 0.331,
+            "max": 0.8136
+          }
+        }
+      ],
+      "ruled_hermite": {
+        "volume_over_bound": 0.6531,
+        "area_over_bound": 3.884
+      }
+    },
+    {
+      "fixture": "cusp-corner-spandrel-fillet",
+      "size": 0.1,
+      "oracle": {
+        "patch_area": 0.1187,
+        "patch_cone_volume": 0.02517,
+        "patch_tolerance": 0.005277,
+        "boundary_length": 2.842,
+        "body_volume": 3.415,
+        "body_area": 20.68,
+        "samples": 190
+      },
+      "least_bending_graph": [
+        {
+          "spans": 16,
+          "halvings": 3,
+          "volume_over_bound": -3.891,
+          "area_over_bound": -1.65,
+          "boundary_miss_over_r": 0.02014,
+          "below_oracle_over_r": {
+            "mean": 0.2625,
+            "max": 0.6641
+          }
+        },
+        {
+          "spans": 24,
+          "halvings": 4,
+          "volume_over_bound": -3.845,
+          "area_over_bound": -1.645,
+          "boundary_miss_over_r": 0.03492,
+          "below_oracle_over_r": {
+            "mean": 0.2622,
+            "max": 0.6658
+          }
+        }
+      ],
+      "ruled_hermite": {
+        "volume_over_bound": 0.9811,
+        "area_over_bound": 3.82
+      }
+    },
+    {
+      "fixture": "cusp-corner-spandrel-fillet",
+      "size": 0.3,
+      "oracle": {
+        "patch_area": 0.6103,
+        "patch_cone_volume": 0.1007,
+        "patch_tolerance": 0.02124,
+        "boundary_length": 5.313,
+        "body_volume": 3.285,
+        "body_area": 19.64,
+        "samples": 201
+      },
+      "least_bending_graph": [
+        {
+          "spans": 16,
+          "halvings": 3,
+          "volume_over_bound": -2.182,
+          "area_over_bound": -0.8631,
+          "boundary_miss_over_r": 0.02108,
+          "below_oracle_over_r": {
+            "mean": 0.1901,
+            "max": 0.4954
+          }
+        },
+        {
+          "spans": 24,
+          "halvings": 4,
+          "volume_over_bound": -2.149,
+          "area_over_bound": -0.8596,
+          "boundary_miss_over_r": 0.03494,
+          "below_oracle_over_r": {
+            "mean": 0.1887,
+            "max": 0.4933
+          }
+        }
+      ],
+      "ruled_hermite": {
+        "volume_over_bound": 0.8298,
+        "area_over_bound": 2.652
+      }
+    }
+  ]
+}

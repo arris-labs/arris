@@ -137,7 +137,7 @@ on its commit's own tree (ADR-0081), with the existing unrelated waits named.
 
 ## Open questions
 Evidence: `tests/fixtures/regression/cusp-corner-crescent-fillet/README.md`
-and `law.json` beside it.
+and `law.json`, `graph.json` beside it.
 - *Settled* (step 1, ADR-0084): the cut-back is the ball at the walls'
   offsets' meeting, both stripes ending on its arcs; a fillet's corner patch
   runs from those arcs to the retained cusp vertex along the walls'
@@ -148,6 +148,16 @@ and `law.json` beside it.
   their exact section and the spine is cut at `h − σd`, so step 5 builds an
   exact section, not a patch. Fixtures are held within the oracle's own bound
   of its patch. Step 2 proves the graph's fit against the oracle.
+- ⚠ OPEN (step 2, for the human: it changes the acceptance's measures): the
+  least-bending graph misses the oracle's own bound. Converged at two
+  resolutions it lies 0.14–0.31 r below the oracle's patch on average, its
+  volume 1.9–4.5 and its area 0.86–2.0 bounds off in all nine runs (crescent
+  at 0.1: 2.4–2.6 and 1.1); the G1 Hermite fill over a chart that does not
+  fold lies 0.65–5.9 and 2.7–4.7 bounds the other way (`graph.json`). Only
+  the folding square fill lands inside, so the oracle's interior is its own
+  construction's, not a law's. Recommended: a second oracle's crescent
+  (ADR-0073); if it sides with the graph, hold the fillets' measures to it
+  and keep §5, else §5 changes. Step 2's construction waits on this.
 - ⚠ OPEN: What size domain, fit budget and regularity test admit each family
   without folding? Agent fixes the bounds by step 2, extends them for chamfers
   by step 5 and records evidence. A change to C11 scope belongs to the human.

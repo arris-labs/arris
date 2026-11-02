@@ -23,6 +23,21 @@ boundaries against ADR-0084's, its tolerance and angles to each
 neighbour, its normal's `z` range (one sign: a graph), the oracle's own
 bound on the measures, the rejected square fill's measures and folds, the
 miter's measures, and each chamfer's section edge.
+ADR-0084 §5's interior is held to the oracle's own bound by
+
+```sh
+uv run --project tools/oracle tools/oracle/cusp_corner_graph.py
+```
+
+whose record is `graph.json` beside it: per fillet run, the oracle
+patch's measures and bound, the least-bending height graph solved in
+plain numpy at two resolutions, and a G1 Hermite fill over a ruled chart
+of the domain that does not fold, each one's volume and area less the
+oracle's in units of that bound. The graph converges 1.9 to 4.5 bounds
+below on volume and 0.86 to 2.0 on area, 0.14 to 0.31 r under the
+oracle's interior on average; the Hermite fill lies 0.65 to 5.9 and 2.7 to
+4.7 bounds above. Neither is inside: the plan's open question.
+
 Six desired-result fixtures under `regression/cusp-corner-*` cover crescent,
 pocket and spandrel, each filleted and chamfered. Their `expected.json`
 files come from `expected.py`, not Arris. At sizes 0.02, 0.1 and 0.3 all
