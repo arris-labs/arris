@@ -134,7 +134,10 @@ a geometric or numeric case within the design; **[3]** unproven.
   seam that misses the loop leaves a ring on the pin's seam vertex alone,
   which is refused today (a backlog line), as is a chamfer with the seam at
   the pin's axis height (a second line). The seam's height `t` is drawn over
-  the pin's whole span; the pose is the pin's offset.
+  the pin's span (-0.8 to 0.8 pin radii from its axis) except (-0.1, 0.1):
+  the full gate at 256 cases found fillets refused at isolated heights near
+  the axis (that second line, now extended), so the property skips that
+  band; the pose is the pin's offset.
 - [x] Step 8 **[1]** — Census: re-run the real-parts battery (the blend row
   stays 0 of 38, no new refusal) and `tools/script-corpus.sh` (`fillet`
   refusals stay 0). Count the seam-junction `VertexBlend` edges of
