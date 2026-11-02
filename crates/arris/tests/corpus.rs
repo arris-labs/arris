@@ -1412,6 +1412,25 @@ corpus_tests! {
     /// Both of the crescent's top arcs filleted: the stripes meet at the cusp in
     /// a corner patch, refused as `TangentChain` (ADR-0042 §6).
     blend_cusp_crescent_both_arcs_fillet => run "blend/cusp-crescent-both-arcs-fillet";
+    /// Both cusp edges: the corner join is not implemented.
+    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
+    regression_cusp_corner_crescent_fillet => run "regression/cusp-corner-crescent-fillet";
+    /// Both cusp edges: the corner join is not implemented.
+    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
+    regression_cusp_corner_crescent_chamfer => run "regression/cusp-corner-crescent-chamfer";
+    /// Both cusp edges: the corner join is not implemented.
+    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
+    regression_cusp_corner_pocket_fillet => run "regression/cusp-corner-pocket-fillet";
+    /// Both cusp edges: the corner join is not implemented.
+    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
+    regression_cusp_corner_pocket_chamfer => run "regression/cusp-corner-pocket-chamfer";
+    /// Both cusp edges: the corner join is not implemented.
+    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
+    regression_cusp_corner_spandrel_fillet => run "regression/cusp-corner-spandrel-fillet";
+    /// Both cusp edges: the corner join is not implemented.
+    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
+    regression_cusp_corner_spandrel_chamfer => run "regression/cusp-corner-spandrel-chamfer";
+
     /// A lip's underside arc filleted to an overhang tip, the cusp of FTC-06,
     /// its edges of opposite senses: the pillar wall cuts the exact stripe,
     /// kept as one face rather than Open CASCADE's two patches. Both hands at
