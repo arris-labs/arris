@@ -1430,23 +1430,20 @@ corpus_tests! {
     /// is run, as `blend/cusp-crescent-both-arcs-fillet`.
     #[ignore = "built as blend/cusp-crescent-both-arcs-fillet, the same recipe and records; this directory holds the cusp corner evidence"]
     regression_cusp_corner_crescent_fillet => run "regression/cusp-corner-crescent-fillet";
-    /// Both cusp edges: the corner join is not implemented.
-    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
-    regression_cusp_corner_crescent_chamfer => run "regression/cusp-corner-crescent-chamfer";
+    /// The crescent prism's two top arcs chamfered together: the two cones run on and meet on their own section from the top's contact to the spine, which is cut there; the cusp vertex goes and no face is added (ADR-0084 §3, §4′), held to Open CASCADE's counts and measures.
+    blend_cusp_crescent_both_arcs_chamfer => run "blend/cusp-crescent-both-arcs-chamfer";
     /// The fillet twin, kept for the cusp corner records beside the crescent's;
     /// the recipe builds, and is run, as `blend/cusp-pocket-both-arcs-fillet`.
     #[ignore = "built as blend/cusp-pocket-both-arcs-fillet, the same recipe and records"]
     regression_cusp_corner_pocket_fillet => run "regression/cusp-corner-pocket-fillet";
-    /// Both cusp edges: the corner join is not implemented.
-    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
-    regression_cusp_corner_pocket_chamfer => run "regression/cusp-corner-pocket-chamfer";
+    /// The pocket's two floor arcs chamfered together: concave cones meeting on their own section, the spine cut where they meet it (ADR-0084 §3, §4′), held to Open CASCADE.
+    blend_cusp_pocket_both_arcs_chamfer => run "blend/cusp-pocket-both-arcs-chamfer";
     /// The fillet twin, kept for the cusp corner records beside the crescent's;
     /// the recipe builds, and is run, as `blend/cusp-spandrel-both-arcs-fillet`.
     #[ignore = "built as blend/cusp-spandrel-both-arcs-fillet, the same recipe and records"]
     regression_cusp_corner_spandrel_fillet => run "regression/cusp-corner-spandrel-fillet";
-    /// Both cusp edges: the corner join is not implemented.
-    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
-    regression_cusp_corner_spandrel_chamfer => run "regression/cusp-corner-spandrel-chamfer";
+    /// A spandrel's line and arc chamfered together: the chamfer's plane and the cone meet on their section (ADR-0084 §3, §4′), held to Open CASCADE.
+    blend_cusp_spandrel_both_arcs_chamfer => run "blend/cusp-spandrel-both-arcs-chamfer";
 
     /// A lip's underside arc filleted to an overhang tip, the cusp of FTC-06,
     /// its edges of opposite senses: the pillar wall cuts the exact stripe,

@@ -217,6 +217,7 @@ blend/concave-fillet-into-a-step: 6
 blend/cone-boss-base-chamfer: 3
 blend/cone-boss-base-fillet: 3
 blend/convex-end-at-a-seam-vertex-blend: refused
+blend/cusp-crescent-both-arcs-chamfer: 449
 blend/cusp-crescent-both-arcs-fillet: 4408
 blend/cusp-crescent-both-arcs-too-large-fillet: refused
 blend/cusp-crescent-chamfer: 445
@@ -225,8 +226,10 @@ blend/cusp-crescent-small-arc-fillet: 1384
 blend/cusp-overhang-tip-chamfer: 445
 blend/cusp-overhang-tip-fillet: 1368
 blend/cusp-overhang-tip-pillar-fillet: refused
+blend/cusp-pocket-both-arcs-chamfer: 449
 blend/cusp-pocket-both-arcs-fillet: 4408
 blend/cusp-pocket-fillet: 1448
+blend/cusp-spandrel-both-arcs-chamfer: 303
 blend/cusp-spandrel-both-arcs-fillet: 5507
 blend/cusp-spandrel-fillet: 702
 blend/cut-torus-rims-chamfer: 6

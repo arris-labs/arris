@@ -171,20 +171,28 @@ impl CuspJoin {
 /// angles, each widened by `tolerance`. A ring on any other surface has no
 /// band this law reads (ADR-0084 §4′ is two tori).
 fn ring_band(r: &Ring, p: Point3, tolerance: f64) -> Result<bool, OpError> {
-    let Surface::Torus {
-        frame,
-        minor_radius,
-        ..
-    } = r.surface
-    else {
-        return Err(invariant("a cusp join's ring on a torus"));
+    let (frame, tube) = match r.surface {
+        Surface::Torus {
+            frame,
+            minor_radius,
+            ..
+        } => (frame, Some(minor_radius)),
+        Surface::Cone { frame, .. } => (frame, None),
+        _ => return Err(invariant("a cusp join's ring on a torus or a cone")),
     };
     let uv = r.surface.project(p).map_err(fault_of)?.uv;
     let v_of = |c: usize| r.contacts[c].on_blend.point(r.contacts[c].range.lo()).y;
     let (v0, v1) = (v_of(0), v_of(1));
-    let slack = tolerance / minor_radius;
-    let w = v0 + (uv.y - v0).rem_euclid(TAU);
-    let across = w <= v1 + slack || w >= v0 + TAU - slack;
+    let across = match tube {
+        Some(minor_radius) => {
+            let slack = tolerance / minor_radius;
+            let w = v0 + (uv.y - v0).rem_euclid(TAU);
+            w <= v1 + slack || w >= v0 + TAU - slack
+        }
+        // A cone's `v` runs along a ruling, a length: between its two
+        // contacts', each widened by the tolerance.
+        None => uv.y >= v0.min(v1) - tolerance && uv.y <= v0.max(v1) + tolerance,
+    };
     let us: Vec<f64> = (r.contacts.iter())
         .flat_map(|c| [c.range.lo(), c.range.hi()].map(|t| c.on_blend.point(t).x))
         .collect();
@@ -211,12 +219,17 @@ fn stripe_band(
     p: Point3,
     tolerance: f64,
 ) -> Result<bool, OpError> {
-    let Section::Round { radius, .. } = s.section else {
-        return Err(invariant("a cusp join's stripe on a cylinder"));
+    let uv = s.surface.project(p).map_err(fault_of)?.uv;
+    let across = match s.section {
+        Section::Round { radius, .. } => {
+            let u = uv.x.rem_euclid(TAU);
+            let slack = tolerance / radius;
+            u <= s.u1 + slack || u >= TAU - slack
+        }
+        // A chamfer's plane: `u` across from one contact to the other.
+        Section::Flat => uv.x >= -tolerance && uv.x <= s.u1 + tolerance,
+        Section::Walked { .. } => return Err(invariant("a cusp join's stripe on a cylinder")),
     };
-    let u = (s.surface.project(p).map_err(fault_of)?.uv.x).rem_euclid(TAU);
-    let slack = tolerance / radius;
-    let across = u <= s.u1 + slack || u >= TAU - slack;
     // `d` points away from the vertex where the edge starts there.
     let away = if s.start == vertex_id { 1.0 } else { -1.0 };
     let along = away * (p - vertex).dot(&s.d);

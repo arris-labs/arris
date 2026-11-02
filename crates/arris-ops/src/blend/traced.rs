@@ -8,7 +8,10 @@
 
 use core::f64::consts::PI;
 
-use arris_geom::{Curve, FitError, GeomError, SectionBranch, Surface, fit_branch, trace_section};
+use arris_geom::{
+    Curve, FitError, GeomError, SectionBranch, Surface, fit_branch, intersect_surfaces,
+    trace_section,
+};
 use arris_math::roots::golden_section;
 use arris_math::{Aabb, Interval, Meter, Point3, Tolerance, is_negligible};
 
@@ -163,7 +166,8 @@ fn golden(f: impl Fn(f64) -> f64, a: f64, b: f64) -> f64 {
 /// cuts in no closed form: the section's stretch from `points[0]` to
 /// `points[1]`, the trim points where the two contacts pierce `across`,
 /// on the side of them the stripe is — the one whose midpoint `inside`
-/// takes (the blend's band between its contacts). `within` bounds a
+/// takes (the blend's band between its contacts). A plane against a cone
+/// is the intersector's exact conic, taken whole, not traced. `within` bounds a
 /// ruled pair's trace and is ignored by a torus's (`trace_section`).
 ///
 /// Guarantees: the curve lies within `SECTION_FIT_FRACTION · tol.linear`
@@ -186,15 +190,35 @@ pub(super) fn traced_end(
 ) -> Result<TracedEnd, OpError> {
     meter.tick()?;
     let [blend, across] = surfaces;
-    let trace = trace_section(blend, across, within, tol, meter).map_err(|e| match e {
-        GeomError::DegenerateSection { .. } | GeomError::Unsupported { .. } => refuse(),
-        other => fault_of(other),
-    })?;
-    let pieces = trace
-        .circles()
-        .iter()
-        .map(|c| Piece::Circle(&c.circle))
-        .chain(trace.branches().iter().map(Piece::Branch));
+    // A plane against a cone has its conic in closed form in the
+    // intersector (ADR-0018): an ellipse, or a parabola or hyperbola as an
+    // exact rational curve, taken whole and never traced.
+    let plane_cone = matches!(
+        (blend, across),
+        (Surface::Plane { .. }, Surface::Cone { .. })
+            | (Surface::Cone { .. }, Surface::Plane { .. })
+    );
+    let (trace, exact) = if plane_cone {
+        let hit = intersect_surfaces(blend, across, within, tol, meter).map_err(|e| match e {
+            GeomError::DegenerateSection { .. } | GeomError::Unsupported { .. } => refuse(),
+            other => fault_of(other),
+        })?;
+        let curves: Vec<Curve> = hit.curves().iter().map(|m| m.curve.clone()).collect();
+        (None, curves)
+    } else {
+        let trace = trace_section(blend, across, within, tol, meter).map_err(|e| match e {
+            GeomError::DegenerateSection { .. } | GeomError::Unsupported { .. } => refuse(),
+            other => fault_of(other),
+        })?;
+        (Some(trace), Vec::new())
+    };
+    let traced = trace.iter().flat_map(|t| {
+        t.circles()
+            .iter()
+            .map(|c| Piece::Circle(&c.circle))
+            .chain(t.branches().iter().map(Piece::Branch))
+    });
+    let pieces = exact.iter().map(Piece::Circle).chain(traced);
     let mut found: Option<(Piece<'_>, Interval, bool)> = None;
     for piece in pieces {
         let (t0, d0) = piece.locate(points[0])?;

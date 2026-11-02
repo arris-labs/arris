@@ -559,8 +559,8 @@ fn vertex_joins(
             junctions.insert(v);
             continue;
         }
-        // Both edges of a cusp blended: two arcs of one sense filleted
-        // under a plane are the stripes' mutual trim (ADR-0084 §4′); any
+        // Both edges of a cusp blended: two arcs of one sense, filleted or
+        // chamfered under a plane, are the stripes' mutual trim (ADR-0084 §4′); any
         // other such cusp keeps ADR-0042 §6's refusal.
         if let [ea, eb] = es[..]
             && let Some((next, spine)) = cusp_at(m, view, ea, v, kind.size(), tol)?
@@ -603,10 +603,10 @@ fn vertex_joins(
 }
 
 /// The cusp at `vertex` of the blended `edges` and the `spine`, read for
-/// the mutual trim (ADR-0084 §1, §4′): the edges filleted, of one sense,
+/// the mutual trim (ADR-0084 §1, §4′): the edges blended, of one sense,
 /// sharing one face `T`, a plane, and each with a wall square to it, and
 /// each an arc among `arcs` (a circle, its wall a cylinder about an axis
-/// normal to `T`) or a line among `open` (a closed-form fillet stripe, its
+/// normal to `T`) or a line among `open` (a closed-form stripe, its
 /// wall a plane normal to `T`), not both lines. `None` for any other such
 /// cusp, which keeps its refusal.
 fn cusp_of(
@@ -617,9 +617,7 @@ fn cusp_of(
     (open, arcs): (&[EdgeId], &[EdgeId]),
 ) -> Result<Option<CuspJoin>, OpError> {
     let (m, view) = (env.m, env.view);
-    let Kind::Fillet { radius } = env.kind else {
-        return Ok(None);
-    };
+    let size = env.kind.size();
     let is_arc = edges.map(|e| arcs.contains(&e));
     if is_arc == [false, false] || !edges.iter().all(|e| arcs.contains(e) || open.contains(e)) {
         return Ok(None);
@@ -669,7 +667,7 @@ fn cusp_of(
             let Ok(s) = stripe(m, view, e, env.kind, env.tol) else {
                 return Ok(None);
             };
-            let (Section::Round { .. }, Some(k)) =
+            let (Section::Round { .. } | Section::Flat, Some(k)) =
                 (s.section, s.faces.iter().position(|&f| f == top))
             else {
                 return Ok(None);
@@ -702,7 +700,7 @@ fn cusp_of(
             vertex: point,
             side: m.curve(curve)?.point(range.midpoint()),
             inward,
-            size: radius,
+            size,
         },
     }))
 }

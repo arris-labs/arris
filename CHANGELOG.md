@@ -13,8 +13,10 @@ into its version (ADR-0027).
   as `TangentChain`: the two rounds run on into the cusp and meet along
   their own intersection, which cuts the edge between the walls; no face is
   added. This holds for a straight edge and an arc (a spandrel's line and
-  arc) and for concave arcs (a pocket's floor) as well. A chamfer of both,
-  or edges of opposite convexity are still refused as `TangentChain`.
+  arc) and for concave arcs (a pocket's floor) as well. A chamfer of both edges of such a cusp
+  builds the same way, the two chamfer faces meeting along their own
+  intersection. Two straight edges, or edges of opposite convexity, are
+  still refused as `TangentChain`.
 - A fillet or chamfer along a curve that crosses a seam of a curved face at a
   slant (a pin off a ball's axis) now builds, where it was refused as
   `VertexBlend`. A crossing so shallow that the seam lies beyond the

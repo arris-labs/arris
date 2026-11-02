@@ -78,7 +78,7 @@ an algorithm's robustness or bound must be established. Each step is a commit.
   `measure_differs`/`counts_differ`, build them, promote as they pass;
   check shared-face rewrites, spine cut, orientation, provenance. Add
   oracle-held `BlendTooLarge` and mixed-sense refusal guards.
-- [ ] Step 5 **[2]** — Chamfers: the same join with the chamfer faces'
+- [x] Step 5 **[2]** — Chamfers: the same join with the chamfer faces'
   exact conic section (ADR-0084 §3, Open CASCADE's counts already 9/14/7).
   Promote the three chamfer fixtures held to Open CASCADE at the default
   tolerances, counts and `Full`; a missing closed form is an intersector
@@ -169,3 +169,9 @@ and `law.json`, `graph.json`, `second.json` beside it.
   a mixed-sense pair of the overhang tip, so that guard is a test pinning
   `TangentChain` (`fillet.rs`), not an oracle-held refusal; the
   oracle-held `BlendTooLarge` is the crescent at r 1 (both kernels refuse).
+- *Settled* (step 5): the chamfers are `blend/cusp-{crescent,pocket,spandrel}-both-arcs-chamfer`,
+  moved from `regression/` (no twin kept: nothing reads them), held to Open
+  CASCADE's record at the default tolerances (9/14/7, 17/26/12), decided at
+  `Full`. Cone against cone is traced; a plane against a cone (the
+  spandrel's line) is the intersector's exact conic, taken whole by
+  `traced_end`. `cusp_of` reads the size from the kind.
