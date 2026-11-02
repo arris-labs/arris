@@ -1,0 +1,429 @@
+{
+  "occt": "8.0.1.0.0",
+  "records": [
+    {
+      "fixture": "cusp-corner-crescent-fillet",
+      "size": 0.02,
+      "bound": {
+        "volume": 1.069e-05,
+        "area": 0.001229
+      },
+      "operand_off_relative": {
+        "volume": 1.885e-16,
+        "area": 3.408e-16
+      },
+      "second_oracle": {
+        "volume": -0.0007797,
+        "area": -0.08367,
+        "faces": 7,
+        "edges": 14
+      },
+      "occt_patch": {
+        "volume": -0.0007769,
+        "area": -0.08005,
+        "faces": 8,
+        "edges": 17,
+        "volume_off_over_bound": 0.2635,
+        "volume_off_relative": 5.976e-07,
+        "area_off_over_bound": 2.941,
+        "area_off_relative": 0.0001741
+      },
+      "least_bending_graph": {
+        "volume": -0.0008053,
+        "area": -0.08179,
+        "volume_off_over_bound": -2.396,
+        "volume_off_relative": -5.434e-06,
+        "area_off_over_bound": 1.525,
+        "area_off_relative": 9.026e-05
+      },
+      "mutual_trim": {
+        "volume": -0.0007797,
+        "area": -0.08367,
+        "faces": 7,
+        "edges": 14,
+        "valid": true,
+        "volume_off_over_bound": -1.518e-06,
+        "volume_off_relative": -3.444e-12,
+        "area_off_over_bound": 7.812e-08,
+        "area_off_relative": 4.625e-12
+      }
+    },
+    {
+      "fixture": "cusp-corner-crescent-fillet",
+      "size": 0.1,
+      "bound": {
+        "volume": 0.0005171,
+        "area": 0.01299
+      },
+      "operand_off_relative": {
+        "volume": 1.885e-16,
+        "area": 3.408e-16
+      },
+      "second_oracle": {
+        "volume": -0.01857,
+        "area": -0.438,
+        "faces": 7,
+        "edges": 14
+      },
+      "occt_patch": {
+        "volume": -0.01849,
+        "area": -0.3982,
+        "faces": 8,
+        "edges": 17,
+        "volume_off_over_bound": 0.1569,
+        "volume_off_relative": 1.729e-05,
+        "area_off_over_bound": 3.061,
+        "area_off_relative": 0.001949
+      },
+      "least_bending_graph": {
+        "volume": -0.01982,
+        "area": -0.413,
+        "volume_off_over_bound": -2.413,
+        "volume_off_relative": -0.0002658,
+        "area_off_over_bound": 1.919,
+        "area_off_relative": 0.001222
+      },
+      "mutual_trim": {
+        "volume": -0.01857,
+        "area": -0.438,
+        "faces": 7,
+        "edges": 14,
+        "valid": true,
+        "volume_off_over_bound": -1.176e-05,
+        "volume_off_relative": -1.296e-09,
+        "area_off_over_bound": 1.588e-06,
+        "area_off_relative": 1.011e-09
+      }
+    },
+    {
+      "fixture": "cusp-corner-crescent-fillet",
+      "size": 0.3,
+      "bound": {
+        "volume": 0.005321,
+        "area": 0.04868
+      },
+      "operand_off_relative": {
+        "volume": 1.885e-16,
+        "area": 3.408e-16
+      },
+      "second_oracle": {
+        "volume": -0.1557,
+        "area": -1.406,
+        "faces": 7,
+        "edges": 14
+      },
+      "occt_patch": {
+        "volume": -0.1549,
+        "area": -1.202,
+        "faces": 8,
+        "edges": 17,
+        "volume_off_over_bound": 0.1503,
+        "volume_off_relative": 0.0001755,
+        "area_off_over_bound": 4.193,
+        "area_off_relative": 0.0105
+      },
+      "least_bending_graph": {
+        "volume": -0.1689,
+        "area": -1.251,
+        "volume_off_over_bound": -2.475,
+        "volume_off_relative": -0.00289,
+        "area_off_over_bound": 3.189,
+        "area_off_relative": 0.007984
+      },
+      "mutual_trim": {
+        "volume": -0.1557,
+        "area": -1.406,
+        "faces": 7,
+        "edges": 14,
+        "valid": true,
+        "volume_off_over_bound": -0.00242,
+        "volume_off_relative": -2.826e-06,
+        "area_off_over_bound": 0.0008679,
+        "area_off_relative": 2.173e-06
+      }
+    },
+    {
+      "fixture": "cusp-corner-pocket-fillet",
+      "size": 0.02,
+      "bound": {
+        "volume": 1.069e-05,
+        "area": 0.001229
+      },
+      "operand_off_relative": {
+        "volume": 0.0,
+        "area": 1.429e-16
+      },
+      "second_oracle": {
+        "volume": 0.0007797,
+        "area": -0.08367,
+        "faces": 12,
+        "edges": 26
+      },
+      "occt_patch": {
+        "volume": 0.0007803,
+        "area": -0.08005,
+        "faces": 13,
+        "edges": 29,
+        "volume_off_over_bound": 0.0558,
+        "volume_off_relative": 1.378e-08,
+        "area_off_over_bound": 2.941,
+        "area_off_relative": 3.639e-05
+      },
+      "least_bending_graph": {
+        "volume": 0.0008065,
+        "area": -0.08179,
+        "volume_off_over_bound": 2.505,
+        "volume_off_relative": 6.184e-07,
+        "area_off_over_bound": 1.525,
+        "area_off_relative": 1.887e-05
+      },
+      "mutual_trim": {
+        "volume": 0.0007797,
+        "area": -0.08367,
+        "faces": 12,
+        "edges": 26,
+        "valid": true,
+        "volume_off_over_bound": -0.003498,
+        "volume_off_relative": -8.637e-10,
+        "area_off_over_bound": -0.0001324,
+        "area_off_relative": -1.639e-09
+      }
+    },
+    {
+      "fixture": "cusp-corner-pocket-fillet",
+      "size": 0.1,
+      "bound": {
+        "volume": 0.0005171,
+        "area": 0.01299
+      },
+      "operand_off_relative": {
+        "volume": 0.0,
+        "area": 1.429e-16
+      },
+      "second_oracle": {
+        "volume": 0.01857,
+        "area": -0.438,
+        "faces": 12,
+        "edges": 26
+      },
+      "occt_patch": {
+        "volume": 0.01856,
+        "area": -0.3982,
+        "faces": 13,
+        "edges": 29,
+        "volume_off_over_bound": -0.02843,
+        "volume_off_relative": -3.394e-07,
+        "area_off_over_bound": 3.061,
+        "area_off_relative": 0.0004019
+      },
+      "least_bending_graph": {
+        "volume": 0.01963,
+        "area": -0.413,
+        "volume_off_over_bound": 2.05,
+        "volume_off_relative": 2.447e-05,
+        "area_off_over_bound": 1.919,
+        "area_off_relative": 0.000252
+      },
+      "mutual_trim": {
+        "volume": 0.0187,
+        "area": -0.4374,
+        "faces": 12,
+        "edges": 26,
+        "valid": true,
+        "volume_off_over_bound": 0.2399,
+        "volume_off_relative": 2.865e-06,
+        "area_off_over_bound": 0.04033,
+        "area_off_relative": 5.294e-06
+      }
+    },
+    {
+      "fixture": "cusp-corner-pocket-fillet",
+      "size": 0.3,
+      "bound": {
+        "volume": 0.005321,
+        "area": 0.04868
+      },
+      "operand_off_relative": {
+        "volume": 0.0,
+        "area": 1.429e-16
+      },
+      "second_oracle": {
+        "volume": 0.1557,
+        "area": -1.406,
+        "faces": 12,
+        "edges": 26
+      },
+      "occt_patch": {
+        "volume": 0.1549,
+        "area": -1.202,
+        "faces": 13,
+        "edges": 29,
+        "volume_off_over_bound": -0.1469,
+        "volume_off_relative": -1.799e-05,
+        "area_off_over_bound": 4.193,
+        "area_off_relative": 0.002082
+      },
+      "least_bending_graph": {
+        "volume": 0.169,
+        "area": -1.251,
+        "volume_off_over_bound": 2.494,
+        "volume_off_relative": 0.0003055,
+        "area_off_over_bound": 3.189,
+        "area_off_relative": 0.001584
+      },
+      "mutual_trim": {
+        "volume": 0.1557,
+        "area": -1.406,
+        "faces": 12,
+        "edges": 26,
+        "valid": true,
+        "volume_off_over_bound": 1.096e-06,
+        "volume_off_relative": 1.342e-10,
+        "area_off_over_bound": 2.881e-07,
+        "area_off_relative": 1.431e-10
+      }
+    },
+    {
+      "fixture": "cusp-corner-spandrel-fillet",
+      "size": 0.02,
+      "bound": {
+        "volume": 1.176e-05,
+        "area": 0.001316
+      },
+      "operand_off_relative": {
+        "volume": -5.173e-16,
+        "area": -5.039e-16
+      },
+      "second_oracle": {
+        "volume": -0.0008273,
+        "area": -0.0964,
+        "faces": 7,
+        "edges": 14
+      },
+      "occt_patch": {
+        "volume": -0.0008337,
+        "area": -0.09121,
+        "faces": 8,
+        "edges": 17,
+        "volume_off_over_bound": -0.547,
+        "volume_off_relative": -1.874e-06,
+        "area_off_over_bound": 3.943,
+        "area_off_relative": 0.0002464
+      },
+      "least_bending_graph": {
+        "volume": -0.0008871,
+        "area": -0.09388,
+        "volume_off_over_bound": -5.087,
+        "volume_off_relative": -1.742e-05,
+        "area_off_over_bound": 1.909,
+        "area_off_relative": 0.0001193
+      },
+      "mutual_trim": {
+        "volume": -0.0008272,
+        "area": -0.0964,
+        "faces": 7,
+        "edges": 14,
+        "valid": true,
+        "volume_off_over_bound": 0.009088,
+        "volume_off_relative": 3.113e-08,
+        "area_off_over_bound": -0.0003148,
+        "area_off_relative": -1.967e-08
+      }
+    },
+    {
+      "fixture": "cusp-corner-spandrel-fillet",
+      "size": 0.1,
+      "bound": {
+        "volume": 0.0006264,
+        "area": 0.015
+      },
+      "operand_off_relative": {
+        "volume": -5.173e-16,
+        "area": -5.039e-16
+      },
+      "second_oracle": {
+        "volume": -0.019,
+        "area": -0.5329,
+        "faces": 7,
+        "edges": 14
+      },
+      "occt_patch": {
+        "volume": -0.01894,
+        "area": -0.4753,
+        "faces": 8,
+        "edges": 17,
+        "volume_off_over_bound": 0.09453,
+        "volume_off_relative": 1.734e-05,
+        "area_off_over_bound": 3.842,
+        "area_off_relative": 0.002795
+      },
+      "least_bending_graph": {
+        "volume": -0.02135,
+        "area": -0.5,
+        "volume_off_over_bound": -3.75,
+        "volume_off_relative": -0.000688,
+        "area_off_over_bound": 2.197,
+        "area_off_relative": 0.001598
+      },
+      "mutual_trim": {
+        "volume": -0.019,
+        "area": -0.5329,
+        "faces": 7,
+        "edges": 14,
+        "valid": true,
+        "volume_off_over_bound": 5.7e-05,
+        "volume_off_relative": 1.046e-08,
+        "area_off_over_bound": -2.871e-05,
+        "area_off_relative": -2.089e-08
+      }
+    },
+    {
+      "fixture": "cusp-corner-spandrel-fillet",
+      "size": 0.3,
+      "bound": {
+        "volume": 0.01296,
+        "area": 0.1128
+      },
+      "operand_off_relative": {
+        "volume": -5.173e-16,
+        "area": -5.039e-16
+      },
+      "second_oracle": {
+        "volume": -0.1513,
+        "area": -1.806,
+        "faces": 7,
+        "edges": 14
+      },
+      "occt_patch": {
+        "volume": -0.1485,
+        "area": -1.511,
+        "faces": 8,
+        "edges": 17,
+        "volume_off_over_bound": 0.2214,
+        "volume_off_relative": 0.0008745,
+        "area_off_over_bound": 2.617,
+        "area_off_relative": 0.01526
+      },
+      "least_bending_graph": {
+        "volume": -0.1763,
+        "area": -1.608,
+        "volume_off_over_bound": -1.928,
+        "volume_off_relative": -0.007613,
+        "area_off_over_bound": 1.757,
+        "area_off_relative": 0.01025
+      },
+      "mutual_trim": {
+        "volume": -0.1513,
+        "area": -1.806,
+        "faces": 7,
+        "edges": 14,
+        "valid": true,
+        "volume_off_over_bound": 1.533e-05,
+        "volume_off_relative": 6.055e-08,
+        "area_off_over_bound": -3.007e-06,
+        "area_off_relative": -1.754e-08
+      }
+    }
+  ],
+  "refused": []
+}

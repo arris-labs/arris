@@ -38,6 +38,35 @@ below on volume and 0.86 to 2.0 on area, 0.14 to 0.31 r under the
 oracle's interior on average; the Hermite fill lies 0.65 to 5.9 and 2.7 to
 4.7 bounds above. Neither is inside: the plan's open question.
 
+A second oracle's runs of the three fillets at the three sizes (ADR-0073;
+each recipe scaled ×100, both edges in one feature, accuracy 1.0, its
+operand measured by the same kernel to 5·10⁻¹⁶ of Open CASCADE's) are
+`second_oracle_runs.json`. Open CASCADE measuring each exported result
+agrees with the run's own measure within its export tolerance. They are
+held to the candidates by
+
+```sh
+uv run --project tools/oracle tools/oracle/cusp_corner_second.py
+```
+
+whose record is `second.json` beside it. The second oracle builds all
+nine, and builds **no corner patch**: 7 faces and 14 edges (the pocket 12
+and 26), against Open CASCADE's 8 and 17 (13 and 29). Its two stripes run
+past the ball at `Q` to the cusp and meet on their own intersection, from
+`T*` down to the spine at `h − σr`; the cusp vertex is gone and the spine
+is cut there, as ADR-0084 §3's chamfer and its rejected miter. Each
+kernel's change against the second oracle's:
+
+- the mutual trim (each edge filleted alone by Open CASCADE, the results
+  combined by `common`, or `fuse` on the pocket) agrees to 1.3·10⁻⁹ of the
+  body at the acceptance size, 2.9·10⁻⁶ at worst, 0.24 bounds at worst;
+- Open CASCADE's patch is 0.03–0.55 bounds off on volume but 2.6–4.2 on
+  area;
+- ADR-0084 §5's graph is 1.9–5.1 bounds off on volume and 1.5–3.2 on area.
+
+The second oracle sides with neither the graph nor Open CASCADE's patch:
+the plan's open question goes back to the human.
+
 Six desired-result fixtures under `regression/cusp-corner-*` cover crescent,
 pocket and spandrel, each filleted and chamfered. Their `expected.json`
 files come from `expected.py`, not Arris. At sizes 0.02, 0.1 and 0.3 all

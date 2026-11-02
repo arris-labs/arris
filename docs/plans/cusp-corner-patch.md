@@ -158,6 +158,14 @@ and `law.json`, `graph.json` beside it.
   construction's, not a law's. Recommended: a second oracle's crescent
   (ADR-0073); if it sides with the graph, hold the fillets' measures to it
   and keep §5, else §5 changes. Step 2's construction waits on this.
+  Decided (a), and run (`second.json`): the second oracle builds no patch
+  in all nine runs. Its stripes run on to the cusp and meet on their own
+  intersection, ADR-0084's rejected miter, 9/14/7 against the acceptance's
+  11/17/8; Open CASCADE's mutual trim of the two single-edge fillets
+  matches it to 1.3·10⁻⁹ at 0.1. The graph is 1.9–5.1 bounds off on
+  volume and 1.5–3.2 on area, Open CASCADE's patch 2.6–4.2 on area. Neither
+  agrees, so §5 is not kept on this evidence; whether the fillet becomes
+  the miter (which changes the acceptance's counts) is the human's.
 - ⚠ OPEN: What size domain, fit budget and regularity test admit each family
   without folding? Agent fixes the bounds by step 2, extends them for chamfers
   by step 5 and records evidence. A change to C11 scope belongs to the human.
