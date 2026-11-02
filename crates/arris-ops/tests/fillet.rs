@@ -1127,6 +1127,125 @@ fn a_cusp_of_two_filleted_arcs_is_their_mutual_trim() {
     assert_eq!(p.modified_from(fwd(spine)).len(), 1);
 }
 
+/// A cusp whose edges are a line and an arc (ADR-0084 §4′, §7′), the
+/// fixture `blend/cusp-spandrel-both-arcs-fillet`: the line's cylinder and
+/// the arc's torus are cut by each other along their section from `T*`,
+/// over the offsets' meeting, to `S`, one radius below the top on the
+/// spine; the records are the crescent's.
+#[test]
+fn a_cusp_of_a_line_and_an_arc_is_their_mutual_trim() {
+    let dir = fixtures::corpus_root().join("blend/cusp-spandrel-both-arcs-fillet");
+    let chain = corpus::chain(&dir, "default").unwrap();
+    let (m, blended) = (&chain.model, chain.result().unwrap());
+    let result = &chain.steps["result"];
+    let report = check(m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(report.unchecked().is_empty(), "{report}");
+    audit(m, &result.inputs, blended, &result.provenance).unwrap();
+
+    let part = result.inputs[0];
+    let fwd = |e: Edge| Shape::new(e.id, Orientation::Forward);
+    let line = edge_at(m, part, Point3::new(2.0, 0.0, 1.0));
+    let arc = edge_at(
+        m,
+        part,
+        Point3::new(2.8284271247461903, 1.1715728752538097, 1.0),
+    );
+    let spine = edge_at(m, part, Point3::new(0.0, 0.0, 0.5));
+    let p = &result.provenance;
+    let shared = p.generated_pair(fwd(line), fwd(arc));
+    assert_eq!(shared.len(), 3, "{shared:?}");
+    let EntityId::Edge(section) = shared[0].id else {
+        panic!("the section edge first: {shared:?}");
+    };
+    let points: Vec<Point3> = (shared[1..].iter())
+        .map(|s| match s.id {
+            EntityId::Vertex(v) => m.vertex(v).unwrap().point(),
+            other => panic!("a trim vertex: {other:?}"),
+        })
+        .collect();
+    // `T*` over the offsets' meeting, `(4 sqrt r, r)` on the top, and `S`
+    // on the spine one radius below it.
+    let r: f64 = 0.1;
+    let t_star = Point3::new(4.0 * r.sqrt(), r, 1.0);
+    let s = Point3::new(0.0, 0.0, 1.0 - r);
+    assert!((points[0] - t_star).norm() < 1e-9, "T* {}", points[0]);
+    assert!((points[1] - s).norm() < 1e-9, "S {}", points[1]);
+    let entity = m.edge(section).unwrap();
+    let ends = [entity.start(), entity.end()].map(|v| m.vertex(v).unwrap().point());
+    assert!(ends.iter().any(|e| (e - t_star).norm() < 1e-9));
+    assert!(ends.iter().any(|e| (e - s).norm() < 1e-9));
+    for edge in [line, arc] {
+        let generated = p.generated_from(fwd(edge));
+        // The three shared come last, after the edge's own.
+        assert!(generated.len() > 3, "{generated:?}");
+        assert_eq!(
+            &generated[generated.len() - 3..],
+            &shared[..],
+            "{generated:?}"
+        );
+        assert!(p.is_deleted(fwd(edge)));
+    }
+    assert_eq!(p.modified_from(fwd(spine)).len(), 1);
+}
+
+/// The pocket's two concave floor arcs (`blend/cusp-pocket-both-arcs-fillet`)
+/// meet in the same mutual trim, above the floor: the record audits, `Full`
+/// is clean, and the section edge, `T*` and `S` are the pair's.
+#[test]
+fn a_cusp_of_two_concave_arcs_is_their_mutual_trim() {
+    let dir = fixtures::corpus_root().join("blend/cusp-pocket-both-arcs-fillet");
+    let chain = corpus::chain(&dir, "default").unwrap();
+    let (m, blended) = (&chain.model, chain.result().unwrap());
+    let result = &chain.steps["result"];
+    let report = check(m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(report.unchecked().is_empty(), "{report}");
+    audit(m, &result.inputs, blended, &result.provenance).unwrap();
+
+    let part = result.inputs[0];
+    let fwd = |e: Edge| Shape::new(e.id, Orientation::Forward);
+    let big = edge_at(m, part, Point3::new(0.0, -2.0, 1.0));
+    let small = edge_at(m, part, Point3::new(-1.0, -1.0, 1.0));
+    let p = &result.provenance;
+    let shared = p.generated_pair(fwd(big), fwd(small));
+    assert_eq!(shared.len(), 3, "{shared:?}");
+    // `S` is on the spine one radius above the floor.
+    let EntityId::Vertex(at) = shared[2].id else {
+        panic!("a trim vertex last: {shared:?}");
+    };
+    let s = m.vertex(at).unwrap().point();
+    assert!((s - Point3::new(-2.0, 0.0, 1.1)).norm() < 1e-9, "S {s}");
+    for edge in [big, small] {
+        assert!(p.is_deleted(fwd(edge)));
+    }
+}
+
+/// A cusp of mixed senses — the overhang tip's convex bite arc and
+/// concave pillar arc, both selected (non-goal of ADR-0084, ADR-0079) — is
+/// not the mutual trim: `TangentChain` naming the cusp, as before the join.
+/// Open CASCADE builds this pair, so no oracle holds the refusal; the test
+/// pins it until a mixed-sense join is planned.
+#[test]
+fn a_cusp_of_mixed_senses_is_still_a_tangent_chain() {
+    let recipe: fixtures::Recipe = serde_json::from_str(
+        r#"{"params":{"r":0.1},"steps":[{"name":"pillar_seed","op":"cylinder","base":[0,0,0],"axis":[0,0,1],"radius":2,"height":3},{"name":"pillar","op":"transform","of":"pillar_seed","rotate":{"axis":[0,0,1],"angle_deg":90}},{"name":"outline","op":"profile","plane":{"origin":[0,0,1],"x":[1,0,0],"y":[0,1,0]},"outer":{"start":[-2,0],"segments":[{"arc_to":[-4,0],"via":[-3,-1]},{"line_to":[-5,0]},{"line_to":[-5,-5]},{"line_to":[5,-5]},{"line_to":[5,0]},{"line_to":[2,0]},{"arc_to":[-2,0],"via":[0,-2]}]}},{"name":"lip","op":"extrude","profile":"outline","direction":[0,0,1],"length":1},{"name":"part","op":"fuse","a":"pillar","b":"lip"},{"name":"result","op":"fillet","of":"part","edges":[[0,-2,1],[-3,-1,1]],"radius":"r"}],"result":"result"}"#,
+    )
+    .unwrap();
+    let inputs = corpus::inputs_for_step("generated/mixed-cusp", &recipe, "result").unwrap();
+    let mut model = inputs.model.clone();
+    let Err(corpus::CorpusError::Op { source, .. }) =
+        inputs.run_result(&mut model, &arris_ops::Control::NONE)
+    else {
+        panic!("the pair is refused by an operation");
+    };
+    assert_eq!(
+        reason(&source),
+        Some(Reason::Blend(BlendReason::TangentChain)),
+        "{source}"
+    );
+}
+
 /// A second fillet on a filleted body, `blend/second-fillet`: the
 /// extruded square's rise at (2, 0) filleted, then the rise at (2, 2) of
 /// that result. Each step's record audits, and the three records composed

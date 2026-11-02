@@ -175,7 +175,8 @@ struct Blend {
 /// contact meets the third edge, both shortened there, on the section
 /// traced and fitted as an end on a curved face across is (ADR-0042,
 /// ADR-0079). Where the next edge of a cusp is filleted too — two
-/// circular arcs of one sense under a plane, a crescent's two top edges —
+/// circular arcs of one sense under a plane, a crescent's two top edges, or
+/// an arc and a straight edge, a spandrel's —
 /// the two stripes are each other's cutter (ADR-0084): each runs on toward
 /// the cusp, the contacts on the plane ending where they cross and the
 /// other two on the spine one radius from the plane, and the two meet
@@ -242,7 +243,8 @@ struct Blend {
 /// the chain does not run on through and that is no cusp it is cut at —
 /// the next edge turning back without a cusp or itself a tangent dihedral,
 /// a concave blended edge at an overhang tip, or both cusp edges blended
-/// but for two circular arcs of one sense filleted under a plane —
+/// but for two circular arcs, or an arc and a line, of one sense filleted
+/// under a plane —
 /// [`BlendReason::VertexBlend`] at a corner the closed
 /// forms do not cover — a vertex of other than three edges that the chain
 /// does not run on through and that is no fan — the faces across not one

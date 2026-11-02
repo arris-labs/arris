@@ -1,0 +1,117 @@
+{
+  "description": "the crescent of blend/cusp-crescent-both-arcs-fillet with both top arcs filleted at r 1, the prism's whole height: the contacts on the top, circles of radius 1 and 2 about centres one apart, touch and no longer cross where the stripes would meet, so the offsets' meeting is gone and both kernels refuse. Arris returns BlendTooLarge naming the blend (ADR-0084 \u00a72\u2032)",
+  "params": {
+    "r": 1.0
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              2,
+              0
+            ],
+            "via": [
+              0,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              -2,
+              0
+            ],
+            "via": [
+              -1,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          -2,
+          1
+        ],
+        [
+          -1,
+          -1,
+          1
+        ]
+      ],
+      "radius": "r"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        -1.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        0,
+        1,
+        0.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "expect_error": "blend-too-large",
+    "genus": 0
+  }
+}

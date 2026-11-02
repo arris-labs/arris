@@ -73,7 +73,7 @@ an algorithm's robustness or bound must be established. Each step is a commit.
   Settle Open CASCADE's STEP read-back (its patch's gap, the twin's
   README) by the existing keys. Update `build.rs`'s and `corpus.rs`'s
   refusal comments; changelog and rustdoc for the new case.
-- [ ] Step 4 **[2]** — Pocket and spandrel fillets: import each one's
+- [x] Step 4 **[2]** — Pocket and spandrel fillets: import each one's
   second-oracle run at 0.1 into its fixture (`second_oracle.py`) with
   `measure_differs`/`counts_differ`, build them, promote as they pass;
   check shared-face rewrites, spine cut, orientation, provenance. Add
@@ -155,3 +155,17 @@ and `law.json`, `graph.json`, `second.json` beside it.
   to its record. `regression/cusp-corner-crescent-fillet` stays, ignored,
   as the evidence directory the oracle scripts read the recipe from; the
   area fixture runs that recipe.
+- *Settled* (step 4): the pocket and the spandrel are promoted as
+  `blend/cusp-{pocket,spandrel}-both-arcs-fillet`, their regression twins
+  kept ignored as the crescent's is. The spandrel's cusp is a line and an
+  arc: `cusp_of` takes an arc among the rings or a closed-form line stripe
+  (its wall a plane normal to `T`), each side's contact on `T` read before
+  the rings are built, and `cusp_join` takes the two sides as `Run`s, a
+  stripe's contacts ending at the trim points' parameters on its lines.
+  The second oracle's record of the spandrel is 6.2e-9 above Arris's volume
+  and Arris matches a 20-digit quadrature of the mutual trim's height field
+  to 1e-11, so the fixture's tolerances are the record's (1e-8, 3e-8
+  centroid and inertia), said in its `measure_differs`. Open CASCADE builds
+  a mixed-sense pair of the overhang tip, so that guard is a test pinning
+  `TangentChain` (`fillet.rs`), not an oracle-held refusal; the
+  oracle-held `BlendTooLarge` is the crescent at r 1 (both kernels refuse).

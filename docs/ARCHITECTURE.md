@@ -1110,8 +1110,10 @@ surfaces runs between them, traced and fitted (`blend::mutual`), its
 branch ending at the tangency at both trim points. It is assembled once
 as a miter's edge is, shared by both stripes; the spine is cut at `S`
 and the cusp vertex goes; no face is added. Two open circular arcs of one
-sense filleted under a plane build so; any other cusp of two blended edges
-(a line among them, a chamfer, mixed senses) is still refused. A
+sense filleted under a plane build so, and so does an arc with a straight
+edge (a plane wall normal to the plane, the line's stripe a cylinder); any
+other cusp of two blended edges (two lines, a chamfer, mixed senses) is
+still refused. A
 tangent dihedral, or an end at a vertex where a corner edge's two faces
 are tangent but which is neither a tangent vertex nor such a cusp — a
 concave blended edge at an overhang tip (Open CASCADE refuses the pillar's but

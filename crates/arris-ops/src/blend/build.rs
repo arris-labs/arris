@@ -17,7 +17,9 @@ use super::ends::{EndKind, Pole, Trim, face_end};
 use super::junction::{Run, junction, pin_kinks};
 use super::miter::{Miter, miter};
 use super::mutual::{Cusp, CuspJoin, cusp_join};
-use super::ring::{CuspEnd, Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
+use super::ring::{
+    CuspEnd, Ring, RingEnd, RingEnds, contact_on, in_row, placed_uv, ring, vertex_tolerance_of,
+};
 use super::ring_rolled::add_ring_rolled_faces;
 use super::rolled::{Rolled, RolledMade, add_crowded_edge, add_rolled_faces, add_run_over, rolled};
 use super::stripe::Section;
@@ -564,7 +566,7 @@ fn vertex_joins(
             && let Some((next, spine)) = cusp_at(m, view, ea, v, kind.size(), tol)?
             && next == eb
         {
-            match cusp_of(&env, [ea, eb], spine, v, arcs)? {
+            match cusp_of(&env, [ea, eb], spine, v, (open, arcs))? {
                 Some(join) => {
                     cusps.push(join);
                     continue;
@@ -601,22 +603,25 @@ fn vertex_joins(
 }
 
 /// The cusp at `vertex` of the blended `edges` and the `spine`, read for
-/// the mutual trim (ADR-0084 §1, §4′): both edges circular arcs among
-/// `arcs`, filleted, of one sense, sharing one face `T`, a plane, and each
-/// with a cylinder for its other face, its rulings square to `T`. `None`
-/// for any other such cusp, which keeps its refusal.
+/// the mutual trim (ADR-0084 §1, §4′): the edges filleted, of one sense,
+/// sharing one face `T`, a plane, and each with a wall square to it, and
+/// each an arc among `arcs` (a circle, its wall a cylinder about an axis
+/// normal to `T`) or a line among `open` (a closed-form fillet stripe, its
+/// wall a plane normal to `T`), not both lines. `None` for any other such
+/// cusp, which keeps its refusal.
 fn cusp_of(
     env: &Env<'_>,
     edges: [EdgeId; 2],
     spine: EdgeId,
     vertex: VertexId,
-    arcs: &[EdgeId],
+    (open, arcs): (&[EdgeId], &[EdgeId]),
 ) -> Result<Option<CuspJoin>, OpError> {
     let (m, view) = (env.m, env.view);
     let Kind::Fillet { radius } = env.kind else {
         return Ok(None);
     };
-    if !edges.iter().all(|e| arcs.contains(e)) {
+    let is_arc = edges.map(|e| arcs.contains(&e));
+    if is_arc == [false, false] || !edges.iter().all(|e| arcs.contains(e) || open.contains(e)) {
         return Ok(None);
     }
     let [Some(convex), Some(other)] = [view.convex(m, edges[0])?, view.convex(m, edges[1])?] else {
@@ -641,18 +646,40 @@ fn cusp_of(
         return Ok(None);
     };
     let normal = frame.z().into_inner();
-    for e in edges {
+    let mut tops: Vec<Curve> = Vec::with_capacity(2);
+    for (e, is_arc) in edges.into_iter().zip(is_arc) {
         for wall in faces_of(e).into_iter().filter(|&f| f != top) {
-            let arris_geom::Surface::Cylinder { frame: axis, .. } =
-                m.surface(m.face(wall)?.surface())?
-            else {
-                return Ok(None);
+            let square = match m.surface(m.face(wall)?.surface())? {
+                arris_geom::Surface::Cylinder { frame: axis, .. } if is_arc => {
+                    axis.z().cross(&normal).norm() <= env.tol.angular
+                }
+                arris_geom::Surface::Plane { frame: wall } if !is_arc => {
+                    wall.z().dot(&normal).abs() <= env.tol.angular
+                }
+                _ => false,
             };
-            if axis.z().cross(&normal).norm() > env.tol.angular {
+            if !square {
                 return Ok(None);
             }
         }
+        // The edge's contact with `T`, before any end trims it.
+        if is_arc {
+            tops.push(contact_on(env, e, top)?);
+        } else {
+            let Ok(s) = stripe(m, view, e, env.kind, env.tol) else {
+                return Ok(None);
+            };
+            let (Section::Round { .. }, Some(k)) =
+                (s.section, s.faces.iter().position(|&f| f == top))
+            else {
+                return Ok(None);
+            };
+            tops.push(s.lines[k].clone());
+        }
     }
+    let Ok(tops) = <[Curve; 2]>::try_from(tops) else {
+        return Err(invariant("a cusp join's two contacts"));
+    };
     let point = m.vertex(vertex)?.point();
     let uv = frame.to_local(point);
     let outward = view.outward(m, top, Point2::new(uv.x, uv.y))?;
@@ -669,6 +696,7 @@ fn cusp_of(
         edges,
         spine,
         top,
+        tops,
         cusp: Cusp {
             top: frame,
             vertex: point,
@@ -797,13 +825,10 @@ fn join_blends(
     // The cusps' mutual trims, recorded as miters (ADR-0084 §4′).
     let mut cusp_miters: BTreeSet<usize> = BTreeSet::new();
     for join in cusps {
-        let [ra, rb] = join.edges.map(|e| ring_of.get(&e).map(|&i| &rings[i]));
-        let (Some(ra), Some(rb)) = (ra, rb) else {
-            return Err(invariant("a cusp join's two rings"));
-        };
+        let [ra, rb] = join.edges.map(run);
         miter_at.insert(join.vertex, miters.len());
         cusp_miters.insert(miters.len());
-        miters.push(cusp_join(&env, meter, [ra, rb], join)?);
+        miters.push(cusp_join(&env, meter, [ra?, rb?], join)?);
     }
     Ok(Joins {
         miters,
@@ -2417,13 +2442,20 @@ fn record(
     for (blend, made) in blends.iter().zip(made) {
         let origin = forward(blend.stripe.edge);
         p.add_generated(origin, forward(out.added[made.added]));
-        for &k in made.contacts.iter().chain(made.arcs.iter().flatten()) {
+        // An end at a cusp's mutual trim is the join's, recorded after.
+        let at_cusp =
+            |end: &EndKind| matches!(end, EndKind::Miter { at, .. } if cusps.contains(at));
+        let arcs = (made.arcs.iter().zip(&blend.ends))
+            .filter(|(_, end)| !at_cusp(end))
+            .flat_map(|(arcs, _)| arcs);
+        for &k in made.contacts.iter().chain(arcs) {
             p.add_generated(origin, forward(out.edges[k]));
         }
         // A pole's vertex is the operand's, kept, unless the stripe stops
         // short of it.
         let made_here = (made.vertices.iter().zip(&blend.ends))
             .filter(|(_, end)| !matches!(end, EndKind::Pole(p) if p.remnant.is_none()))
+            .filter(|(_, end)| !at_cusp(end))
             .flat_map(|(vertices, _)| vertices);
         for &v in made_here.chain(&made.crossings) {
             p.add_generated(origin, forward(out.vertices[v]));

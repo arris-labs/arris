@@ -1413,6 +1413,18 @@ corpus_tests! {
     /// cut by the other along their section from `T*` to the spine (ADR-0084
     /// §4′), held to the second oracle's measures and counts (ADR-0073).
     blend_cusp_crescent_both_arcs_fillet => run "blend/cusp-crescent-both-arcs-fillet";
+    /// The crescent cut as a pocket, both floor arcs filleted: concave stripes
+    /// adding material and cut by each other, the spine cut where they meet it
+    /// (ADR-0084 §4′), held to the second oracle's record (ADR-0073).
+    blend_cusp_pocket_both_arcs_fillet => run "blend/cusp-pocket-both-arcs-fillet";
+    /// A spandrel's line and arc both filleted at their cusp: the cylinder
+    /// stripe and the torus stripe cut by each other (ADR-0084 §4′), held to
+    /// the second oracle's record (ADR-0073).
+    blend_cusp_spandrel_both_arcs_fillet => run "blend/cusp-spandrel-both-arcs-fillet";
+    /// The crescent's two top arcs filleted at the prism's whole height: the
+    /// contacts on the top no longer cross, and both kernels refuse (ADR-0084
+    /// §2′).
+    blend_cusp_crescent_both_arcs_too_large_fillet => run "blend/cusp-crescent-both-arcs-too-large-fillet";
     /// The acceptance fixture's twin, kept for the cusp corner records beside
     /// it and the oracle scripts that read its recipe; the recipe builds, and
     /// is run, as `blend/cusp-crescent-both-arcs-fillet`.
@@ -1421,14 +1433,16 @@ corpus_tests! {
     /// Both cusp edges: the corner join is not implemented.
     #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
     regression_cusp_corner_crescent_chamfer => run "regression/cusp-corner-crescent-chamfer";
-    /// Both cusp edges: the corner join is not implemented.
-    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
+    /// The fillet twin, kept for the cusp corner records beside the crescent's;
+    /// the recipe builds, and is run, as `blend/cusp-pocket-both-arcs-fillet`.
+    #[ignore = "built as blend/cusp-pocket-both-arcs-fillet, the same recipe and records"]
     regression_cusp_corner_pocket_fillet => run "regression/cusp-corner-pocket-fillet";
     /// Both cusp edges: the corner join is not implemented.
     #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
     regression_cusp_corner_pocket_chamfer => run "regression/cusp-corner-pocket-chamfer";
-    /// Both cusp edges: the corner join is not implemented.
-    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
+    /// The fillet twin, kept for the cusp corner records beside the crescent's;
+    /// the recipe builds, and is run, as `blend/cusp-spandrel-both-arcs-fillet`.
+    #[ignore = "built as blend/cusp-spandrel-both-arcs-fillet, the same recipe and records"]
     regression_cusp_corner_spandrel_fillet => run "regression/cusp-corner-spandrel-fillet";
     /// Both cusp edges: the corner join is not implemented.
     #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]

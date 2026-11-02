@@ -17,8 +17,10 @@ use arris_topo::{EdgeId, FaceId, VertexId};
 
 use super::build::Env;
 use super::ends::cut_corner;
+use super::junction::Run;
 use super::miter::Miter;
-use super::ring::{CuspEnd, Ring, Trace, contact_on, placed_uv};
+use super::ring::{CuspEnd, Ring, Trace, placed_uv};
+use super::stripe::{Section, Stripe};
 use super::traced::{TracedEnd, traced_end};
 use super::{degenerate, invariant};
 use crate::error::{BlendReason, OpError, Reason, fault_of};
@@ -126,13 +128,18 @@ fn top_meeting(tops: [&Curve; 2], cusp: &Cusp, tol: Tolerance) -> Option<Point3>
 
 /// A cusp both of whose edges are blended (ADR-0084 §1), as the build
 /// joins it: the vertex, its two blended edges in the body's order, the
-/// spine and the shared face `T`, and the cusp read in `T`'s plane.
-#[derive(Debug, Clone, Copy)]
+/// spine and the shared face `T`, each edge's contact on `T` and the cusp
+/// read in `T`'s plane. At least one edge is an arc; the other is an arc
+/// or a line.
+#[derive(Debug, Clone)]
 pub(super) struct CuspJoin {
     pub(super) vertex: VertexId,
     pub(super) edges: [EdgeId; 2],
     pub(super) spine: EdgeId,
     pub(super) top: FaceId,
+    /// Each edge's contact with `T`, before any end trims it: a circle
+    /// about an axis normal to `T` for an arc, a line for a line edge.
+    pub(super) tops: [Curve; 2],
     pub(super) cusp: Cusp,
 }
 
@@ -147,11 +154,11 @@ impl CuspJoin {
     }
 
     /// Each arc's end at the cusp ([`CuspEnd`]): `T*`, where the two
-    /// rings' contacts on `T` cross, read off the contacts before either
-    /// ring is built. Where they do not cross, `too_large`.
+    /// edges' contacts on `T` cross, read off the contacts before any ring
+    /// is built. Where they do not cross, `too_large`.
     pub(super) fn end(&self, env: &Env<'_>) -> Result<CuspEnd, OpError> {
-        let [a, b] = [0, 1].map(|i| contact_on(env, self.edges[i], self.top));
-        let point = top_meeting([&a?, &b?], &self.cusp, env.tol).ok_or_else(|| self.too_large())?;
+        let point = top_meeting([&self.tops[0], &self.tops[1]], &self.cusp, env.tol)
+            .ok_or_else(|| self.too_large())?;
         Ok(CuspEnd {
             top: self.top,
             point,
@@ -194,52 +201,72 @@ fn ring_band(r: &Ring, p: Point3, tolerance: f64) -> Result<bool, OpError> {
     Ok(across && along)
 }
 
-/// The join of the two rings at a cusp both of whose edges are blended
-/// (ADR-0084 §4′), recorded as a miter is: the section of the two tori
-/// from `T*`, where the contacts on the shared face end (`q`), to `S` on
-/// the spine, where the other two end (`p3`), the spine shortened to `S`.
-/// Its pcurve on each torus placed at its contact's end there. The rings
-/// are `join.edges`' in that order, each built with the join's
-/// [`CuspEnd`]. Errors: [`mutual_section`]'s, `too_large` being
+/// Whether `p` lies on the line stripe `s`'s band: on its cylinder between
+/// its two contacts round the tube, and along its edge on the side of
+/// `vertex` the edge runs (`d` points away from `vertex` where the edge
+/// starts there), each widened by `tolerance`.
+fn stripe_band(
+    s: &Stripe,
+    (vertex_id, vertex): (VertexId, Point3),
+    p: Point3,
+    tolerance: f64,
+) -> Result<bool, OpError> {
+    let Section::Round { radius, .. } = s.section else {
+        return Err(invariant("a cusp join's stripe on a cylinder"));
+    };
+    let u = (s.surface.project(p).map_err(fault_of)?.uv.x).rem_euclid(TAU);
+    let slack = tolerance / radius;
+    let across = u <= s.u1 + slack || u >= TAU - slack;
+    // `d` points away from the vertex where the edge starts there.
+    let away = if s.start == vertex_id { 1.0 } else { -1.0 };
+    let along = away * (p - vertex).dot(&s.d);
+    Ok(across && along >= -tolerance)
+}
+
+/// The join of the two blends at a cusp both of whose edges are blended
+/// (ADR-0084 §4′), recorded as a miter is: the section of the two stripe
+/// surfaces from `T*`, where the contacts on the shared face end (`q`), to
+/// `S` on the spine, where the other two end (`p3`), the spine shortened to
+/// `S`. Its pcurve on each surface placed at its contact's end there. The
+/// runs are `join.edges`' in that order: a ring built with the join's
+/// [`CuspEnd`], or a line's stripe (a cylinder), whose contacts end at the
+/// two trim points. Errors: [`mutual_section`]'s, `too_large` being
 /// `BlendTooLarge` naming both edges and `refuse` `Unsupported` naming
-/// both tori; a contact's end off its trim point, `refuse`; a spine
+/// both surfaces; a contact's end off its trim point, `refuse`; a spine
 /// shorter than the cut, `BlendTooLarge` naming it.
 pub(super) fn cusp_join(
     env: &Env<'_>,
     meter: &mut Meter<'_>,
-    rings: [&Ring; 2],
+    runs: [Run<'_>; 2],
     join: &CuspJoin,
 ) -> Result<Miter, OpError> {
     let m = env.m;
-    let tolerance = rings.iter().map(|r| r.tolerance).fold(0.0, f64::max);
+    let at = [runs[0].at(m, join.vertex)?, runs[1].at(m, join.vertex)?];
+    let tolerance = at.iter().map(|a| a.tolerance).fold(0.0, f64::max);
     let tol = Tolerance::new(tolerance, env.tol.angular);
     let refuse = || OpError::Unsupported {
-        a: (
-            GeomKind::Surface(rings[0].surface.kind()),
-            forward(rings[0].edge),
-        ),
-        b: (
-            GeomKind::Surface(rings[1].surface.kind()),
-            forward(rings[1].edge),
-        ),
+        a: (GeomKind::Surface(at[0].surface.kind()), forward(at[0].edge)),
+        b: (GeomKind::Surface(at[1].surface.kind()), forward(at[1].edge)),
     };
     let too_large = || join.too_large();
-    // Each ring's end at the vertex, and its contact on `T`.
-    let mut j = [0usize; 2];
+    let vertex = (join.vertex, m.vertex(join.vertex)?.point());
+    // Each run's contact on `T`.
     let mut shared = [0usize; 2];
-    for (i, r) in rings.iter().enumerate() {
-        j[i] = usize::from(m.edge(r.edge)?.start() != join.vertex);
-        shared[i] = (r.contacts.iter())
-            .position(|c| c.face == join.top)
-            .ok_or(invariant("a cusp ring's contact on the shared face"))?;
+    for (i, a) in at.iter().enumerate() {
+        shared[i] = (a.faces.iter())
+            .position(|&f| f == join.top)
+            .ok_or(invariant("a cusp run's contact on the shared face"))?;
     }
     let bands = [0, 1].map(|i| {
-        let r = rings[i];
-        move |p: Point3| ring_band(r, p, tolerance)
+        let run = runs[i];
+        move |p: Point3| match run {
+            Run::Arc(r) => ring_band(r, p, tolerance),
+            Run::Line(s) => stripe_band(s, vertex, p, tolerance),
+        }
     });
     let stripes = [0, 1].map(|i| CuspStripe {
-        surface: &rings[i].surface,
-        top: &rings[i].contacts[shared[i]].curve,
+        surface: at[i].surface,
+        top: &join.tops[i],
         band: &bands[i],
     });
     let section = mutual_section(
@@ -252,12 +279,33 @@ pub(super) fn cusp_join(
     )?;
     let [q, p3] = section.points;
     // Each contact ends at its trim point: the one on `T` at `T*`, the
-    // other on the spine at `S`.
-    for (i, r) in rings.iter().enumerate() {
-        for (c, contact) in r.contacts.iter().enumerate() {
-            let at = if c == shared[i] { q } else { p3 };
-            if (contact.points[j[i]] - at).norm() > tolerance {
-                return Err(refuse());
+    // other on the spine at `S`. A ring's ends are its contacts' range
+    // ends; a line's are the parameters of the trim points on its contact
+    // lines.
+    let mut t = [[0.0; 2]; 2];
+    for (i, run) in runs.iter().enumerate() {
+        for (c, slot) in t[i].iter_mut().enumerate() {
+            let to = if c == shared[i] { q } else { p3 };
+            match run {
+                Run::Arc(r) => {
+                    let contact = &r.contacts[c];
+                    let j = usize::from(m.edge(r.edge)?.start() != join.vertex);
+                    if (contact.points[j] - to).norm() > tolerance {
+                        return Err(refuse());
+                    }
+                    *slot = if j == 0 {
+                        contact.range.lo()
+                    } else {
+                        contact.range.hi()
+                    };
+                }
+                Run::Line(s) => {
+                    let on = s.lines[c].project(to).map_err(fault_of)?;
+                    if on.distance > tolerance {
+                        return Err(refuse());
+                    }
+                    *slot = on.t;
+                }
             }
         }
     }
@@ -269,25 +317,19 @@ pub(super) fn cusp_join(
     } = section.end;
     let at_q = if lo_first { range.lo() } else { range.hi() };
     let mut on_blend = Vec::with_capacity(2);
-    for (i, r) in rings.iter().enumerate() {
-        let pcurve = pcurve_on(&curve, range, &r.surface, tol, meter).map_err(fault_of)?;
-        let contact = &r.contacts[shared[i]];
-        let t = if j[i] == 0 {
-            contact.range.lo()
-        } else {
-            contact.range.hi()
-        };
-        on_blend.push(placed_uv(pcurve, at_q, contact.on_blend.point(t)));
+    for (i, run) in runs.iter().enumerate() {
+        let pcurve = pcurve_on(&curve, range, at[i].surface, tol, meter).map_err(fault_of)?;
+        on_blend.push(match run {
+            Run::Arc(r) => {
+                let contact = &r.contacts[shared[i]];
+                placed_uv(pcurve, at_q, contact.on_blend.point(t[i][shared[i]]))
+            }
+            Run::Line(s) => s.place(pcurve, at_q, if shared[i] == 0 { 0.0 } else { s.u1 }),
+        });
     }
     let on_blend: [_; 2] = on_blend
         .try_into()
         .map_err(|_| invariant("the cusp join's two pcurves"))?;
-    let t = [0, 1].map(|i| {
-        [0, 1].map(|c| {
-            let range = rings[i].contacts[c].range;
-            if j[i] == 0 { range.lo() } else { range.hi() }
-        })
-    });
     let trim = cut_corner(m, join.edges[0], join.spine, join.vertex, p3)?;
     let spine_tolerance = m.edge(join.spine)?.tolerance();
     Ok(Miter {

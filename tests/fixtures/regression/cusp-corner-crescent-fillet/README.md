@@ -72,7 +72,10 @@ scale of 100, which the tool divides out); its `analytic` holds Arris to
 it and to the record's 9 / 14 / 7. The recipe is the acceptance
 fixture's, `blend/cusp-crescent-both-arcs-fillet`, which took both when
 it built (plan step 3) and is the test that runs the recipe; this
-directory stays as the evidence the scripts above read. There Open
+directory stays as the evidence the scripts above read. The pocket and the
+spandrel are built likewise as `blend/cusp-pocket-both-arcs-fillet` and
+`blend/cusp-spandrel-both-arcs-fillet` (plan step 4), their twins here
+ignored. There Open
 CASCADE's own STEP stays refused on read-back as a gap past the cap
 (`analytic.occt_step_refused`): its patch misses its neighbours by its
 6.1·10⁻³ tolerance, past the reader's cap for a part this size, the
