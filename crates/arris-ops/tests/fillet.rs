@@ -1066,6 +1066,67 @@ fn two_edges_at_a_vertex_meet_in_a_miter() {
     assert_eq!(result.provenance, provenance2);
 }
 
+/// A cusp both of whose edges are filleted (ADR-0084 §4′, §7′), the
+/// fixture `blend/cusp-crescent-both-arcs-fillet`: the two stripes are
+/// cut by each other along their section from `T*` to `S` and nothing is
+/// added. The section edge, `T*` and `S` are generated from both arcs,
+/// after each arc's own records, and are all `generated_pair` returns;
+/// both arcs and the cusp vertex are deleted, the spine is modified into
+/// its piece below `S`, and the record audits. `Full` is clean with
+/// nothing unchecked.
+#[test]
+fn a_cusp_of_two_filleted_arcs_is_their_mutual_trim() {
+    let dir = fixtures::corpus_root().join("blend/cusp-crescent-both-arcs-fillet");
+    let chain = corpus::chain(&dir, "default").unwrap();
+    let (m, blended) = (&chain.model, chain.result().unwrap());
+    let result = &chain.steps["result"];
+    let report = check(m, blended, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(report.unchecked().is_empty(), "{report}");
+    audit(m, &result.inputs, blended, &result.provenance).unwrap();
+
+    let part = result.inputs[0];
+    let fwd = |e: Edge| Shape::new(e.id, Orientation::Forward);
+    let big = edge_at(m, part, Point3::new(0.0, -2.0, 1.0));
+    let small = edge_at(m, part, Point3::new(-1.0, -1.0, 1.0));
+    let spine = edge_at(m, part, Point3::new(-2.0, 0.0, 0.5));
+    let p = &result.provenance;
+    let shared = p.generated_pair(fwd(big), fwd(small));
+    assert_eq!(shared.len(), 3, "{shared:?}");
+    let EntityId::Edge(section) = shared[0].id else {
+        panic!("the section edge first: {shared:?}");
+    };
+    let points: Vec<Point3> = (shared[1..].iter())
+        .map(|s| match s.id {
+            EntityId::Vertex(v) => m.vertex(v).unwrap().point(),
+            other => panic!("a trim vertex: {other:?}"),
+        })
+        .collect();
+    // `T*` on the top over the offsets' meeting, `S` on the spine one
+    // radius below it.
+    let (r, x) = (0.1, (1.1f64 * 1.1 - 1.9 * 1.9 - 1.0) / 2.0);
+    let t_star = Point3::new(x, -(1.9f64 * 1.9 - x * x).sqrt(), 1.0);
+    let s = Point3::new(-2.0, 0.0, 1.0 - r);
+    assert!((points[0] - t_star).norm() < 1e-9, "T* {}", points[0]);
+    assert!((points[1] - s).norm() < 1e-9, "S {}", points[1]);
+    let entity = m.edge(section).unwrap();
+    let ends = [entity.start(), entity.end()].map(|v| m.vertex(v).unwrap().point());
+    assert!(ends.iter().any(|e| (e - t_star).norm() < 1e-9));
+    assert!(ends.iter().any(|e| (e - s).norm() < 1e-9));
+    for edge in [big, small] {
+        let generated = p.generated_from(fwd(edge));
+        // The face, two contacts, the far end's arc and two vertices, then
+        // the three shared.
+        assert_eq!(generated.len(), 9, "{generated:?}");
+        assert_eq!(&generated[6..], &shared[..], "{generated:?}");
+        assert!(p.is_deleted(fwd(edge)));
+    }
+    let cusp = m.edge(big.id).unwrap().start();
+    assert_eq!(m.vertex(cusp).unwrap().point(), Point3::new(-2.0, 0.0, 1.0));
+    assert!(p.is_deleted(Shape::new(cusp, Orientation::Forward)));
+    assert_eq!(p.modified_from(fwd(spine)).len(), 1);
+}
+
 /// A second fillet on a filleted body, `blend/second-fillet`: the
 /// extruded square's rise at (2, 0) filleted, then the rise at (2, 2) of
 /// that result. Each step's record audits, and the three records composed

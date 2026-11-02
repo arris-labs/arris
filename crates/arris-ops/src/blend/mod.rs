@@ -34,13 +34,6 @@ mod ends;
 mod junction;
 mod miter;
 mod mixed;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the cusp join that routes a crescent's two stripes here is plans/cusp-corner-patch step 3"
-    )
-)]
 mod mutual;
 mod ring;
 mod ring_rolled;
@@ -181,7 +174,14 @@ struct Blend {
 /// the contact on the shared face crosses the next edge to where the other
 /// contact meets the third edge, both shortened there, on the section
 /// traced and fitted as an end on a curved face across is (ADR-0042,
-/// ADR-0079). Two
+/// ADR-0079). Where the next edge of a cusp is filleted too — two
+/// circular arcs of one sense under a plane, a crescent's two top edges —
+/// the two stripes are each other's cutter (ADR-0084): each runs on toward
+/// the cusp, the contacts on the plane ending where they cross and the
+/// other two on the spine one radius from the plane, and the two meet
+/// along their own section between those points, traced and fitted; the
+/// spine is shortened to its point, the cusp vertex goes and no face is
+/// added. Two
 /// faces are tangent for the blend where their normals agree to the
 /// angular precision, or where the radius times the sine between them is
 /// within the faces' tolerance: a ball touching one then touches the
@@ -213,6 +213,10 @@ struct Blend {
 /// edges, as a miter's are, the third edge — or, at a vertex of four, both
 /// tangent edges, at the seam's vertex of a split rim its seam (both seams
 /// where both faces turn), and at a vertex of two edges none — `Modified` and the vertex `Deleted`.
+/// At a cusp of two filleted edges the section edge and its two vertices
+/// are `Generated` from both edges, each listing them after its own
+/// records, so that `generated_pair` of the two is exactly those three; the
+/// spine is `Modified` and the cusp vertex `Deleted`.
 /// `arris_topo::provenance::audit` holds on every result
 /// (`docs/DATA-MODEL.md` §Provenance).
 ///
@@ -237,7 +241,8 @@ struct Blend {
 /// tangent dihedral or an end's corner edge has tangent faces at a vertex
 /// the chain does not run on through and that is no cusp it is cut at —
 /// the next edge turning back without a cusp or itself a tangent dihedral,
-/// a concave blended edge at an overhang tip, or both cusp edges blended —
+/// a concave blended edge at an overhang tip, or both cusp edges blended
+/// but for two circular arcs of one sense filleted under a plane —
 /// [`BlendReason::VertexBlend`] at a corner the closed
 /// forms do not cover — a vertex of other than three edges that the chain
 /// does not run on through and that is no fan — the faces across not one

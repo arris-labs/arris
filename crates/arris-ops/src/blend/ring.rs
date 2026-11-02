@@ -2,7 +2,7 @@
 
 use arris_math::real;
 use core::f64::consts::{PI, TAU};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::Side;
 use arris_geom::{Curve, Curve2, GeomKind, Surface, pcurve_on};
@@ -99,7 +99,8 @@ pub(super) struct RingSeam {
 
 /// One end of an open arc's blend: trimmed by the face across, or a
 /// junction at a tangent vertex, whose arc and vertices the junction holds
-/// (ADR-0035 §3).
+/// (ADR-0035 §3) — or a cusp's mutual trim, which the join's section holds
+/// the same way (ADR-0084 §4′).
 pub(super) enum RingEnd {
     Face(Box<ArcEnd>),
     Junction(VertexId),
@@ -148,6 +149,32 @@ pub(super) struct Ring {
     /// Where a contact runs over an edge of its face, the ball rolling on
     /// it between the crossings (ADR-0071).
     pub(super) rolled: Option<Box<Rolled>>,
+}
+
+/// An open arc's end at a cusp whose other edge is blended too, the two
+/// blends' mutual trim (ADR-0084 §4′): the contact on the shared face `top`
+/// ends at `point`, `T*`, where the two blends' contacts on it cross, and
+/// the other at the vertex's angle, on the spine. The join's section holds
+/// the end's arc and both vertices, as a junction's does.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct CuspEnd {
+    pub(super) top: FaceId,
+    pub(super) point: Point3,
+}
+
+/// The contact of `edge`'s ring on `face`, one of its two faces, before
+/// any end trims it: the circle about the axis the ring's surface is
+/// built on, over the edge's own range. The errors are [`ring`]'s for the
+/// edge's faces, its section and its surface.
+pub(super) fn contact_on(env: &Env<'_>, edge: EdgeId, face: FaceId) -> Result<Curve, OpError> {
+    let rd = read_ring(env, edge)?;
+    let sec = read_section(env, &rd)?;
+    let bl = blend_surface(env, &rd, &sec)?;
+    match rd.faces.iter().position(|&f| f == face) {
+        Some(0) => Ok(bl.on_a),
+        Some(_) => Ok(bl.on_b),
+        None => Err(invariant("a contact on one of the edge's faces")),
+    }
 }
 
 /// A face of revolution's meridian in the half-plane bounded by the axis,
@@ -428,7 +455,11 @@ impl Across {
 /// a corner edge lengthened past the vertex at a mixed corner (ADR-0038),
 /// and at a cusp the contact on the wall tangent to that face trimmed on
 /// the spine at the vertex's angle and the other on the edge's side of it
-/// (ADR-0042) — or one of the `junctions`, which the junction builds. A
+/// (ADR-0042) — or one of the `junctions`, which the junction builds, or
+/// one of the `cusps`, where the other cusp edge is blended too and the
+/// contact on the shared face ends at the two blends' `T*`, the other on
+/// the spine at the vertex's angle (ADR-0084 §4′), the join building the
+/// end itself. A
 /// torus whose stripe leaves the regular band (ADR-0080: it crosses
 /// `v = π` with `R − r` not above the tolerance), a centre circle on or past
 /// the axis, and a contact that reaches the axis or a cone's apex are
@@ -440,12 +471,13 @@ pub(super) fn ring(
     meter: &mut Meter<'_>,
     edge: EdgeId,
     junctions: &BTreeSet<VertexId>,
+    cusps: &BTreeMap<VertexId, CuspEnd>,
 ) -> Result<Ring, OpError> {
     meter.tick()?;
     let rd = read_ring(env, edge)?;
     let sec = read_section(env, &rd)?;
     let bl = blend_surface(env, &rd, &sec)?;
-    let placed = place_contacts(env, meter, &rd, &bl, junctions)?;
+    let placed = place_contacts(env, meter, &rd, &bl, junctions, cusps)?;
     let ends = if rd.entity.start() != rd.entity.end() {
         open_ends(env, meter, &rd, &bl, &placed)?
     } else {
@@ -1077,6 +1109,7 @@ fn place_contacts(
     rd: &RingRead<'_>,
     bl: &Blended,
     junctions: &BTreeSet<VertexId>,
+    cusps: &BTreeMap<VertexId, CuspEnd>,
 ) -> Result<Placed, OpError> {
     let m = env.m;
     let (tol, samples) = (env.tol, env.samples);
@@ -1136,7 +1169,7 @@ fn place_contacts(
         let contact_uses = [use_of(by_v[0].1)?, use_of(by_v[1].1)?];
         for (j, at_lo) in [(0, true), (1, false)] {
             let vertex = if at_lo { entity.start() } else { entity.end() };
-            if !junctions.contains(&vertex) {
+            if !junctions.contains(&vertex) && !cusps.contains_key(&vertex) {
                 corners[j] =
                     Some(corner_of(env, edge, &contact_uses, vertex, at_lo)?.lone(edge, vertex)?);
             }
@@ -1182,6 +1215,27 @@ fn place_contacts(
                 .ok_or_else(|| too_large(face))?;
             let t = contact.project(point).map_err(geometry)?.t;
             ends_at[slot][j] = t + TAU * ((t_end - t) / TAU).round();
+        }
+    }
+    // At a cusp both of whose edges are blended (ADR-0084 §4′), the
+    // contact on the shared face ends at `T*`, where it crosses the other
+    // blend's, and the other runs on to the spine at the vertex's angle.
+    if open {
+        for (j, at_lo) in [(0, true), (1, false)] {
+            let vertex = if at_lo { entity.start() } else { entity.end() };
+            let Some(end) = cusps.get(&vertex) else {
+                continue;
+            };
+            let slot = (by_v.iter())
+                .position(|(_, face, _, _)| *face == end.top)
+                .ok_or(invariant("a cusp's shared face among the contacts'"))?;
+            let contact = &by_v[slot].2;
+            let at = contact.project(end.point).map_err(geometry)?;
+            if at.distance > tolerance {
+                return Err(invariant("the cusp's T* on the contact"));
+            }
+            let t_end = if at_lo { range.lo() } else { range.hi() };
+            ends_at[slot][j] = at.t + TAU * ((t_end - at.t) / TAU).round();
         }
     }
     for (slot, (i, face, contact, v)) in by_v.into_iter().enumerate() {

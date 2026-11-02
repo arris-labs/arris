@@ -64,7 +64,7 @@ an algorithm's robustness or bound must be established. Each step is a commit.
   tolerance, the branch chosen, and agreement with the section edge of
   Open CASCADE's `common` of its two single-edge fillets (sampled by an
   oracle script); refuse a branch that leaves either band, by name.
-- [ ] Step 3 **[3]** — Route the convex crescent's two arcs through the
+- [x] Step 3 **[3]** — Route the convex crescent's two arcs through the
   new join: cut both stripes on the shared section, shorten `w` to `S`,
   provenance per §7′. Convert `blend/cusp-crescent-both-arcs-fillet` from
   refusal to success, taking its regression twin's `second_oracle.json` and
@@ -147,3 +147,11 @@ and `law.json`, `graph.json`, `second.json` beside it.
 - *Settled* (step 2): no fit budget or graph regularity is needed; the
   size domain is §5′'s, derived by step 7. A change to C11 scope belongs
   to the human.
+- *Settled* (step 3): the join is recorded as a miter (`Miter`, `q = T*`,
+  `p3 = S`, the spine its third edge) and each ring's end at the cusp as a
+  junction's, `T*` read off the two contacts before the rings are built.
+  It takes two open arcs of one sense, so the pocket's concave arcs build
+  too (12 faces, 26 edges, the second oracle's counts); step 4 holds them
+  to its record. `regression/cusp-corner-crescent-fillet` stays, ignored,
+  as the evidence directory the oracle scripts read the recipe from; the
+  area fixture runs that recipe.

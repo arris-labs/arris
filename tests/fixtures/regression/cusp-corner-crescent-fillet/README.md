@@ -70,8 +70,13 @@ fixture's `second_oracle.json` is the run at 0.1, imported by
 `tools/oracle/second_oracle.py` (the run's record multiplied back to its
 scale of 100, which the tool divides out); its `analytic` holds Arris to
 it and to the record's 9 / 14 / 7. The recipe is the acceptance
-fixture's, `blend/cusp-crescent-both-arcs-fillet`, which takes both when
-it builds.
+fixture's, `blend/cusp-crescent-both-arcs-fillet`, which took both when
+it built (plan step 3) and is the test that runs the recipe; this
+directory stays as the evidence the scripts above read. There Open
+CASCADE's own STEP stays refused on read-back as a gap past the cap
+(`analytic.occt_step_refused`): its patch misses its neighbours by its
+6.1·10⁻³ tolerance, past the reader's cap for a part this size, the
+gap noted at the end of this file.
 
 The section the two stripes are cut along, from `T*` to `S`, is sampled
 from Open CASCADE's mutual trim by

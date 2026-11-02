@@ -217,7 +217,7 @@ blend/concave-fillet-into-a-step: 6
 blend/cone-boss-base-chamfer: 3
 blend/cone-boss-base-fillet: 3
 blend/convex-end-at-a-seam-vertex-blend: refused
-blend/cusp-crescent-both-arcs-fillet: refused
+blend/cusp-crescent-both-arcs-fillet: 4408
 blend/cusp-crescent-chamfer: 445
 blend/cusp-crescent-fillet: 1456
 blend/cusp-crescent-small-arc-fillet: 1384

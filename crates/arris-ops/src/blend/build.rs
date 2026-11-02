@@ -16,7 +16,8 @@ use super::corner::{Corner, corner};
 use super::ends::{EndKind, Pole, Trim, face_end};
 use super::junction::{Run, junction, pin_kinks};
 use super::miter::{Miter, miter};
-use super::ring::{Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
+use super::mutual::{Cusp, CuspJoin, cusp_join};
+use super::ring::{CuspEnd, Ring, RingEnd, RingEnds, in_row, placed_uv, ring, vertex_tolerance_of};
 use super::ring_rolled::add_ring_rolled_faces;
 use super::rolled::{Rolled, RolledMade, add_crowded_edge, add_rolled_faces, add_run_over, rolled};
 use super::stripe::Section;
@@ -288,10 +289,22 @@ struct Classified {
     kinks: BTreeSet<VertexId>,
 }
 
+/// How the blended edges meet at their vertices, before the joins are
+/// built: the edges at each vertex, the vertices that are junctions and
+/// the cusps both of whose edges are blended.
+struct Meets {
+    at_vertex: AtVertex,
+    junctions: BTreeSet<VertexId>,
+    cusps: Vec<CuspJoin>,
+}
+
 /// The vertex joins of the blended edges, by vertex.
 struct Joins {
     miters: Vec<Miter>,
     miter_at: BTreeMap<VertexId, usize>,
+    /// The miters that are cusps' mutual trims (ADR-0084 §4′), whose
+    /// edge and vertices each edge records after its own.
+    cusps: BTreeSet<usize>,
     corners: Vec<Corner>,
     corner_at: BTreeMap<VertexId, usize>,
 }
@@ -331,11 +344,9 @@ pub(super) fn build(
         mut rings,
         kinks,
     } = classify(&mut ctx, body, edges)?;
-    let (at_vertex, junctions) = vertex_joins(&mut ctx, &open, &arcs, &mut rings, &kinks)?;
+    let meets = vertex_joins(&mut ctx, &open, &arcs, &mut rings, &kinks)?;
     let stripes = make_stripes(&mut ctx, &open)?;
-    let mut joins = join_blends(
-        &mut ctx, &open, &stripes, &rings, &at_vertex, &junctions, &kinks,
-    )?;
+    let mut joins = join_blends(&mut ctx, &open, &stripes, &rings, &meets, &kinks)?;
     let mut blends = make_blends(&mut ctx, stripes, &joins)?;
     pin_kinks(ctx.m, &mut joins.miters, &mut blends)?;
     let mut draft = Draft {
@@ -407,7 +418,7 @@ fn classify(
                 rings.push(if walk {
                     walked_ring(&env, meter, e)?
                 } else {
-                    ring(&env, meter, e, &no_junctions)?
+                    ring(&env, meter, e, &no_junctions, &BTreeMap::new())?
                 });
             }
             Some((curve, _)) if !walk && matches!(m.curve(curve)?, Curve::Circle { .. }) => {
@@ -510,14 +521,16 @@ fn end_meets_nothing(
     }
 }
 
-/// The blended edges at each vertex, and the vertices that are junctions; the arcs' rings are built here.
+/// The blended edges at each vertex, the vertices that are junctions and
+/// the cusps both of whose edges are blended; the arcs' rings are built
+/// here.
 fn vertex_joins(
     ctx: &mut BlendCtx<'_, '_>,
     open: &[EdgeId],
     arcs: &[EdgeId],
     rings: &mut Vec<Ring>,
     kinks: &BTreeSet<VertexId>,
-) -> Result<(AtVertex, BTreeSet<VertexId>), OpError> {
+) -> Result<Meets, OpError> {
     let (env, meter) = ctx.split();
     let Env {
         m, view, kind, tol, ..
@@ -535,6 +548,7 @@ fn vertex_joins(
         }
     }
     let mut junctions: BTreeSet<VertexId> = BTreeSet::new();
+    let mut cusps: Vec<CuspJoin> = Vec::new();
     for (&v, es) in &at_vertex {
         // A kink the chain runs through is a junction too (ADR-0075 §2).
         if let [ea, eb] = es[..]
@@ -543,16 +557,25 @@ fn vertex_joins(
             junctions.insert(v);
             continue;
         }
-        // Both edges of a cusp blended meet in a corner patch, which no
-        // closed form holds (ADR-0042 §6).
+        // Both edges of a cusp blended: two arcs of one sense filleted
+        // under a plane are the stripes' mutual trim (ADR-0084 §4′); any
+        // other such cusp keeps ADR-0042 §6's refusal.
         if let [ea, eb] = es[..]
             && let Some((next, spine)) = cusp_at(m, view, ea, v, kind.size(), tol)?
             && next == eb
         {
-            return Err(degenerate(
-                vec![forward(ea), forward(spine), forward(v)],
-                Reason::Blend(BlendReason::TangentChain),
-            ));
+            match cusp_of(&env, [ea, eb], spine, v, arcs)? {
+                Some(join) => {
+                    cusps.push(join);
+                    continue;
+                }
+                None => {
+                    return Err(degenerate(
+                        vec![forward(ea), forward(spine), forward(v)],
+                        Reason::Blend(BlendReason::TangentChain),
+                    ));
+                }
+            }
         }
         if es.len() > 3 || (es.len() > 1 && es.iter().any(|e| arcs.contains(e))) {
             let entities = es.iter().map(|&e| forward(e)).chain([forward(v)]).collect();
@@ -562,11 +585,98 @@ fn vertex_joins(
             ));
         }
     }
+    let mut ends: BTreeMap<VertexId, CuspEnd> = BTreeMap::new();
+    for join in &cusps {
+        ends.insert(join.vertex, join.end(&env)?);
+    }
     for &e in arcs {
-        rings.push(ring(&env, meter, e, &junctions)?);
+        rings.push(ring(&env, meter, e, &junctions, &ends)?);
     }
     at_vertex.retain(|v, es| junctions.contains(v) || !es.iter().any(|e| arcs.contains(e)));
-    Ok((at_vertex, junctions))
+    Ok(Meets {
+        at_vertex,
+        junctions,
+        cusps,
+    })
+}
+
+/// The cusp at `vertex` of the blended `edges` and the `spine`, read for
+/// the mutual trim (ADR-0084 §1, §4′): both edges circular arcs among
+/// `arcs`, filleted, of one sense, sharing one face `T`, a plane, and each
+/// with a cylinder for its other face, its rulings square to `T`. `None`
+/// for any other such cusp, which keeps its refusal.
+fn cusp_of(
+    env: &Env<'_>,
+    edges: [EdgeId; 2],
+    spine: EdgeId,
+    vertex: VertexId,
+    arcs: &[EdgeId],
+) -> Result<Option<CuspJoin>, OpError> {
+    let (m, view) = (env.m, env.view);
+    let Kind::Fillet { radius } = env.kind else {
+        return Ok(None);
+    };
+    if !edges.iter().all(|e| arcs.contains(e)) {
+        return Ok(None);
+    }
+    let [Some(convex), Some(other)] = [view.convex(m, edges[0])?, view.convex(m, edges[1])?] else {
+        return Ok(None);
+    };
+    if convex != other {
+        return Ok(None);
+    }
+    let faces_of = |e: EdgeId| -> BTreeSet<FaceId> {
+        (view.uses.get(&e).into_iter().flatten())
+            .map(|u| u.face)
+            .collect()
+    };
+    let shared: Vec<FaceId> = faces_of(edges[0])
+        .intersection(&faces_of(edges[1]))
+        .copied()
+        .collect();
+    let [top] = shared[..] else {
+        return Ok(None);
+    };
+    let &arris_geom::Surface::Plane { frame } = m.surface(m.face(top)?.surface())? else {
+        return Ok(None);
+    };
+    let normal = frame.z().into_inner();
+    for e in edges {
+        for wall in faces_of(e).into_iter().filter(|&f| f != top) {
+            let arris_geom::Surface::Cylinder { frame: axis, .. } =
+                m.surface(m.face(wall)?.surface())?
+            else {
+                return Ok(None);
+            };
+            if axis.z().cross(&normal).norm() > env.tol.angular {
+                return Ok(None);
+            }
+        }
+    }
+    let point = m.vertex(vertex)?.point();
+    let uv = frame.to_local(point);
+    let outward = view.outward(m, top, Point2::new(uv.x, uv.y))?;
+    let inward = if convex { -outward } else { outward };
+    let Some(inward) = arris_math::UnitVec3::try_new(inward, env.tol.linear) else {
+        return Err(invariant("a plane's unit normal"));
+    };
+    let (curve, range) = m
+        .edge(edges[0])?
+        .curve()
+        .ok_or(invariant("a cusp edge's curve"))?;
+    Ok(Some(CuspJoin {
+        vertex,
+        edges,
+        spine,
+        top,
+        cusp: Cusp {
+            top: frame,
+            vertex: point,
+            side: m.curve(curve)?.point(range.midpoint()),
+            inward,
+            size: radius,
+        },
+    }))
 }
 
 /// One stripe per open edge.
@@ -595,10 +705,14 @@ fn join_blends(
     open: &[EdgeId],
     stripes: &[Stripe],
     rings: &[Ring],
-    at_vertex: &AtVertex,
-    junctions: &BTreeSet<VertexId>,
+    meets: &Meets,
     kinks: &BTreeSet<VertexId>,
 ) -> Result<Joins, OpError> {
+    let Meets {
+        at_vertex,
+        junctions,
+        cusps,
+    } = meets;
     let (env, meter) = ctx.split();
     let Env { m, view, tol, .. } = env;
     let edges = open;
@@ -680,9 +794,21 @@ fn join_blends(
             _ => {}
         }
     }
+    // The cusps' mutual trims, recorded as miters (ADR-0084 §4′).
+    let mut cusp_miters: BTreeSet<usize> = BTreeSet::new();
+    for join in cusps {
+        let [ra, rb] = join.edges.map(|e| ring_of.get(&e).map(|&i| &rings[i]));
+        let (Some(ra), Some(rb)) = (ra, rb) else {
+            return Err(invariant("a cusp join's two rings"));
+        };
+        miter_at.insert(join.vertex, miters.len());
+        cusp_miters.insert(miters.len());
+        miters.push(cusp_join(&env, meter, [ra, rb], join)?);
+    }
     Ok(Joins {
         miters,
         miter_at,
+        cusps: cusp_miters,
         corners,
         corner_at,
     })
@@ -700,6 +826,7 @@ fn make_blends(
         miter_at,
         corners,
         corner_at,
+        ..
     } = joins;
     // Each stripe's ends, then its contacts between them.
     let mut blends: Vec<Blend> = Vec::with_capacity(stripes.len());
@@ -936,6 +1063,7 @@ fn add_stripes(
     let Joins {
         miters,
         miter_at: _,
+        cusps: _,
         corners,
         corner_at: _,
     } = joins;
@@ -2216,10 +2344,12 @@ fn add_ring_faces(
                     RingEnd::Junction(vertex) => {
                         let junction = &miters[miter_at[vertex]];
                         let side = usize::from(junction.edges[0] != r.edge);
+                        // Up from the lower contact when `range.lo()`
+                        // is on it: at `q` when `q` is.
                         (
                             made.arcs[j],
                             junction.on_blend[side].clone(),
-                            junction.shared[side] == 0,
+                            junction.q_first == (junction.shared[side] == 0),
                         )
                     }
                 };
@@ -2268,7 +2398,12 @@ fn record(
     joins: &Joins,
     drafted: &Drafted,
 ) -> (Body, Provenance) {
-    let Joins { miters, .. } = joins;
+    let Joins {
+        miters,
+        miter_at,
+        cusps,
+        ..
+    } = joins;
     let corners = &joins.corners;
     let (made, miter_made, corner_made, ring_made) = (
         &drafted.stripes,
@@ -2333,12 +2468,19 @@ fn record(
         }
     }
     // A ring's face, its two contacts, its seam or its two ends, and its
-    // two or four vertices.
+    // two or four vertices; an end at a cusp's mutual trim is the join's,
+    // recorded after.
     for (r, made) in rings.iter().zip(ring_made) {
         let origin = forward(r.edge);
-        let ends = match r.ends {
-            RingEnds::Seam(_) => 1,
-            RingEnds::Open(_) => 2,
+        let (ends, own) = match &r.ends {
+            RingEnds::Seam(_) => (1, [true, false]),
+            RingEnds::Open(ends) => (
+                2,
+                ends.each_ref().map(|end| match end {
+                    RingEnd::Junction(v) => !miter_at.get(v).is_some_and(|at| cusps.contains(at)),
+                    RingEnd::Face(_) => true,
+                }),
+            ),
         };
         p.add_generated(origin, forward(out.added[made.added]));
         let arcs = if made.rolled.is_some() {
@@ -2346,11 +2488,15 @@ fn record(
         } else {
             &made.arcs[..ends]
         };
-        for &k in made.contacts.iter().chain(arcs) {
+        let arcs = arcs.iter().zip(own).filter(|(_, own)| *own);
+        for &k in made.contacts.iter().chain(arcs.map(|(k, _)| k)) {
             p.add_generated(origin, forward(out.edges[k]));
         }
-        for &v in made.vertices[..ends].iter().flatten() {
-            p.add_generated(origin, forward(out.vertices[v]));
+        let vertices = made.vertices[..ends].iter().zip(own);
+        for (vertices, _) in vertices.filter(|(_, own)| *own) {
+            for &v in vertices {
+                p.add_generated(origin, forward(out.vertices[v]));
+            }
         }
         // A run-over's rolled face, its contacts' other pieces, the rolled
         // face's foot, the section arcs and the crossings (ADR-0071 §4).
@@ -2363,6 +2509,18 @@ fn record(
                 p.add_generated(origin, forward(out.edges[k]));
             }
             for &v in rolled.vertices.iter().flatten() {
+                p.add_generated(origin, forward(out.vertices[v]));
+            }
+        }
+    }
+    // A cusp's section edge, `T*` and `S`, from each of its two edges after
+    // that edge's own records (ADR-0084 §7′).
+    for &at in cusps {
+        let (mt, made) = (&miters[at], &miter_made[at]);
+        for &edge in &mt.edges {
+            let origin = forward(edge);
+            p.add_generated(origin, forward(out.edges[made.edge]));
+            for &v in &made.vertices {
                 p.add_generated(origin, forward(out.vertices[v]));
             }
         }

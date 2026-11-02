@@ -1409,11 +1409,14 @@ corpus_tests! {
     /// the cusp where the arc leaves it tangent: the stripe's cylinder cut by
     /// the arc's, ending at the node on the spine (ADR-0042).
     blend_cusp_spandrel_fillet => run "blend/cusp-spandrel-fillet";
-    /// Both of the crescent's top arcs filleted: the stripes meet at the cusp in
-    /// a corner patch, refused as `TangentChain` (ADR-0042 §6).
+    /// Both of the crescent's top arcs filleted: the stripes' mutual trim, each
+    /// cut by the other along their section from `T*` to the spine (ADR-0084
+    /// §4′), held to the second oracle's measures and counts (ADR-0073).
     blend_cusp_crescent_both_arcs_fillet => run "blend/cusp-crescent-both-arcs-fillet";
-    /// Both cusp edges: the corner join is not implemented.
-    #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]
+    /// The acceptance fixture's twin, kept for the cusp corner records beside
+    /// it and the oracle scripts that read its recipe; the recipe builds, and
+    /// is run, as `blend/cusp-crescent-both-arcs-fillet`.
+    #[ignore = "built as blend/cusp-crescent-both-arcs-fillet, the same recipe and records; this directory holds the cusp corner evidence"]
     regression_cusp_corner_crescent_fillet => run "regression/cusp-corner-crescent-fillet";
     /// Both cusp edges: the corner join is not implemented.
     #[ignore = "TangentChain: both cusp edges selected; corner construction pending"]

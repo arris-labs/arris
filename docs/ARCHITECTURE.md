@@ -1097,13 +1097,26 @@ stretch ending at the node where a fillet touches that wall on the spine
 — a branch that starts and ends at the node reaches it at either end.
 At an overhang tip the cut extends the next wall outside its old face
 domain; at a same-sense cusp it lies inside. The stripe stays one exact
-face, including the portion Open CASCADE splits off as a fitted cap. A
+face, including the portion Open CASCADE splits off as a fitted cap.
+A cusp whose next edge is blended too is the two stripes' mutual trim
+(ADR-0084 §4′), joined before `build::vertex_joins` refuses a cusp and
+apart from a tangent chain's junction, a miter and a corner of three:
+each stripe runs on toward the cusp and the other is the cutter, ADR-0042's
+cut by the next wall with the other stripe in that wall's place. The
+contacts on the shared plane `T` end at `T*`, where they cross (over the
+walls' offsets' meeting `Q`), the contacts on the walls at `S`, on the
+spine one size from `T`, both closed forms; the section of the two exact
+surfaces runs between them, traced and fitted (`blend::mutual`), its
+branch ending at the tangency at both trim points. It is assembled once
+as a miter's edge is, shared by both stripes; the spine is cut at `S`
+and the cusp vertex goes; no face is added. Two open circular arcs of one
+sense filleted under a plane build so; any other cusp of two blended edges
+(a line among them, a chamfer, mixed senses) is still refused. A
 tangent dihedral, or an end at a vertex where a corner edge's two faces
 are tangent but which is neither a tangent vertex nor such a cusp — a
 concave blended edge at an overhang tip (Open CASCADE refuses the pillar's but
 builds FTC-06's with fitted caps, ADR-0079); a cusp whose next edge is
-blended too, which takes a corner
-patch; the next edge turning back with no cusp, or itself a tangent
+blended too where the mutual trim above does not take it; the next edge turning back with no cusp, or itself a tangent
 dihedral — is `BlendReason::TangentChain`; a
 vertex of
 other than three edges (but the chain junctions of two and four above), a miter

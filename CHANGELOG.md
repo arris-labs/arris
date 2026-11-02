@@ -8,6 +8,12 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A fillet of both edges at a cusp — a crescent's two top arcs, whose walls
+  are tangent along the edge between them — now builds, where it was refused
+  as `TangentChain`: the two rounds run on into the cusp and meet along
+  their own intersection, which cuts the edge between the walls; no face is
+  added. A cusp whose blended edges include a straight one, a chamfer of
+  both, or edges of opposite convexity are still refused as `TangentChain`.
 - A fillet or chamfer along a curve that crosses a seam of a curved face at a
   slant (a pin off a ball's axis) now builds, where it was refused as
   `VertexBlend`. A crossing so shallow that the seam lies beyond the
