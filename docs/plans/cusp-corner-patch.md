@@ -87,7 +87,7 @@ an algorithm's robustness or bound must be established. Each step is a commit.
   fuse/common with that tool, a split through it, a second blend on a
   surviving edge; mesh and STEP round trip. Oracle-valued fixtures; new
   undecided pairs resolved in the shared intersectors, no exclusions.
-- [ ] Step 7 **[2]** — `cusp_corner` properties in `blend_prop`: safe
+- [x] Step 7 **[2]** — `cusp_corner` properties in `blend_prop`: safe
   sizes/scales and random poses, convex/concave, fillet/chamfer; rigid
   motion and mirror covariance, selection-order and repeated-run
   determinism, provenance stability, cancellation and refusal rollback.
@@ -194,3 +194,15 @@ and `law.json`, `graph.json`, `second.json` beside it.
   kernel's stripes, validated against the second oracle's runs (ADR-0084
   amendment, ADR-0073 note). Open CASCADE's STEP of each is
   `occt_step_refused` (its patch's gap).
+- *Settled* (step 7, conductor): the size domain is ADR-0084's amendment
+  (crescent and pocket `r < min(big − small, h)`, spandrel `r < min(a/4, h)`).
+  Fillets over it have two findings, a spindle torus (`r > big/2`) left
+  undecided by `Full` and a pose-dependent `Unsupported` (the node match of
+  the line above in BACKLOG). The domain is not narrowed to hide them: the
+  chamfer properties are live over all of it; the full-domain fillet
+  properties are `#[ignore]`d with their hand-picked repros beside them, and
+  live fillet properties draw the complement (no spindle, scene at rest, since
+  no predicate separates the failing poses), a stated residue. No oracle
+  record applies to the repros (`corpus_lint` wants area, centroid and
+  inertia for `measure_differs` and Open CASCADE's patch is 0.6 to 4.6 %
+  off), so they assert `Full` clean and the closed-form volume.

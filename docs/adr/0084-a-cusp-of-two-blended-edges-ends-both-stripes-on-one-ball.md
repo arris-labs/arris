@@ -197,6 +197,38 @@ in that order.
   quadrature (the fit budget no longer cancels), so those fixtures carry
   `volume_rel` and `inertia_rel` 5e-9.
 
+- **The safe size domain (plan step 7, `blend_prop`'s `cusp_corner`
+  properties).** §5′'s conditions, derived. With `C = big − small` the
+  distance between the circles' centres and `h` the height:
+  - crescent and pocket: `r < min(C, h)`. At depth `t` below the shared
+    face the section's inset from each wall is `w(t)` (a fillet's
+    `r − √(2rt − t²)`, a chamfer's `r − t`), so the offsets are circles of
+    radii `big − w` and `small + w` about points `C` apart; they meet
+    below the axis for every `t` in `[0, r]` exactly when `r < C` (at
+    `r = C` they are tangent on the axis and the contacts on `T` do not
+    cross). The spine is cut at depth `r`, so `r < h`.
+  - spandrel: `r < min(a/4, h)`. The line's offset `y = w` meets the
+    arc's circle of radius `a + w` about `(0, a)` at `x = 2√(a·w)`, which
+    must stay in front of the wall `x = a`: `w ≤ r < a/4`.
+  - a size past the gap is `BlendTooLarge` naming both edges; the property
+    holds the model unchanged after it.
+  The properties draw `r` from 0.05 to 0.9 of the bound, and the volume is
+  the closed form `∓∫₀ʳ A(t) dt`, `A(t)` the outline's plan area where
+  either wall is within `w(t)`. Chamfers hold over the whole domain at 256
+  cases. **Fillets have two known holes inside it**, so the live fillet
+  properties draw the complement and the full-domain ones are ignored until
+  the `BACKLOG.md` lines are fixed: (1) the big arc's torus a spindle,
+  `r > big / 2` (crescent 1.5 / 0.45 / 1.78 at 0.84): built, but a plane
+  against the torus is undecided at `Full`; (2) poses in which the trace of
+  the section is refused `Unsupported` (spandrel a 5.6949232644320285, h
+  0.8743198834582826, floor edges, r 0.5810549060509224, quaternion
+  (i, j, k, w) = (0.5306348074725354, −0.7012934674725672,
+  0.45964957952058433, 0.1238403715491793), translation (0, −71.48262894551169,
+  0); seed `61727269732d70726f70657274792d74657374732d736565642d763100000000`,
+  16 cases). No predicate separates those poses from the ones that build,
+  so the complement is drawn at rest: it is a stated residue, not the
+  domain.
+
 ## Alternatives considered
 
 - **§5's least-bending height graph** (the decision until the amendment):
