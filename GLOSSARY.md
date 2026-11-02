@@ -222,6 +222,11 @@ _sense_ is whether it is convex or concave.
 A cusp whose two edges have opposite senses, its walls on either side of
 the face they share (ADR-0079).
 
+**Corner patch**:
+The fitted face that ends two fillets at a cusp where both edges are
+blended: from the ball both stripes end on to the cusp vertex, a height
+graph over the face they share (ADR-0084). Not a junction's shared arc.
+
 **Flush fan**:
 The face across a concave blend's end when a fuse left it as several pieces on
 one plane: the seam between two pieces is a smooth edge at the end's vertex.

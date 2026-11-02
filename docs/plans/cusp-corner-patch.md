@@ -43,7 +43,8 @@ failures get fixtures and backlog entries, not silent scope expansion.
   retain their contracts and Python methods. A necessary public fitting API
   must first be named with its exact signature in this plan and the ADR.
 - `docs/DATA-MODEL.md` §NURBS, §Tolerances, §Invariants: document the patch's
-  parametrisation, any collapsed row, and positional/tangent error bounds.
+  parametrisation (a B-spline graph over the shared plane, trimmed; no
+  collapsed row, ADR-0084 §5) and positional/tangent error bounds.
   Partition the entity tolerance among the surface, boundary curves and
   pcurves; refinement is bounded and metered. Check regularity in the patch
   interior and compatible limits at corners; no tolerance growth to hide a
@@ -62,13 +63,13 @@ Grades are tiers (`.agents/tiers.md`): **[1]** routine, design fixed and tests
 mechanical; **[2]** careful, geometry within a given design; **[3]** unproven,
 an algorithm's robustness or bound must be established. Each step is a commit.
 
-- [ ] Step 1 **[3]** — Establish the corner law and record the ADR. Inspect
+- [x] Step 1 **[3]** — Establish the corner law and record the ADR. Inspect
   the crescent oracle's patch, trims, normals and interior over several sizes;
   compare pocket, spandrel and chamfer twins. Commit reproducible measurements
   and desired-result fixtures (ignored in `regression/` until built), retaining
   the existing refusal fixture until step 3. Resolve the first open question.
 - [ ] Step 2 **[3]** — Construct the bounded patch privately from step 1's
-  boundary data. Test boundary positions, tangent planes, regularity, refinement
+  boundary data: ADR-0084 §5's least-bending height graph, trimmed. Test boundary positions, tangent planes, regularity, refinement
   convergence and cancellation against independent checks and oracle samples;
   reject incompatible constraints. Record measured error budgets in the ADR.
 - [ ] Step 3 **[3]** — Route the convex crescent's two selected arcs through
@@ -135,10 +136,18 @@ on its commit's own tree (ADR-0081), with the existing unrelated waits named.
 - `docs/BACKLOG.md` — retire the both-edges cusp line, retain measured residue.
 
 ## Open questions
-Evidence: `tests/fixtures/regression/cusp-corner-crescent-fillet/README.md`; step 1 remains unchecked.
-- ⚠ OPEN: Which cut-back and filling law reproduces the oracle's corner,
-  and which boundaries require tangency? Agent decides by step 1 from measured
-  surfaces, records the ADR, and proves the fit by step 2 before integration.
+Evidence: `tests/fixtures/regression/cusp-corner-crescent-fillet/README.md`
+and `law.json` beside it.
+- *Settled* (step 1, ADR-0084): the cut-back is the ball at the walls'
+  offsets' meeting, both stripes ending on its arcs; a fillet's corner patch
+  runs from those arcs to the retained cusp vertex along the walls'
+  (u, v)-straight curves, G1 to the ball and G0 on the walls, its interior
+  the least-bending height graph over the shared plane. A square Coons fill
+  folds at the cusp corner, and the miter's area falls outside the oracle's
+  own bound, so both are rejected. A chamfer adds no patch: its faces meet on
+  their exact section and the spine is cut at `h − σd`, so step 5 builds an
+  exact section, not a patch. Fixtures are held within the oracle's own bound
+  of its patch. Step 2 proves the graph's fit against the oracle.
 - ⚠ OPEN: What size domain, fit budget and regularity test admit each family
   without folding? Agent fixes the bounds by step 2, extends them for chamfers
   by step 5 and records evidence. A change to C11 scope belongs to the human.

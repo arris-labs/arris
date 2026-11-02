@@ -1,7 +1,9 @@
-# Cusp corner measurements — construction unresolved
+# Cusp corner measurements
 
-Observed 2026-11-02, Open CASCADE 8.0.1.0.0. This is evidence for the
-active cusp-corner-patch plan, not an accepted construction ADR.
+Observed 2026-11-02, Open CASCADE 8.0.1.0.0. The evidence ADR-0084 decides
+the corner law from: the cut-back on one ball, the patch boundaries, the
+chamfer's section, the patch as a height graph, and the oracle's own
+bound on its measures.
 
 Reproduce the 18 observations with:
 
@@ -10,6 +12,17 @@ uv run --project tools/oracle tools/oracle/cusp_corner.py
 ```
 
 The record is `tests/fixtures/regression/cusp-corner-crescent-fillet/measurements.json`.
+The laws are held to the oracle by
+
+```sh
+uv run --project tools/oracle tools/oracle/cusp_corner_law.py
+```
+
+whose record is `law.json` beside it: per run, the patch's corners and
+boundaries against ADR-0084's, its tolerance and angles to each
+neighbour, its normal's `z` range (one sign: a graph), the oracle's own
+bound on the measures, the rejected square fill's measures and folds, the
+miter's measures, and each chamfer's section edge.
 Six desired-result fixtures under `regression/cusp-corner-*` cover crescent,
 pocket and spandrel, each filleted and chamfered. Their `expected.json`
 files come from `expected.py`, not Arris. At sizes 0.02, 0.1 and 0.3 all
@@ -27,18 +40,17 @@ patch is degree 8 by 8. At radius 0.1 its boundary has four curves:
 
 The top contact is the intersection of the two offset contact circles:
 centres (0,0), (-1,0), radii 2-r and 1+r. The stripe cross-sections there
-supply the two lower contacts. Samples of the wall curves interpolate
-height linearly with angle; this observation still needs a residual bound
-and confirmation on the other families. Sampling a B-spline's entire
-rectangular carrier is insufficient: much lies outside the trimmed face.
+supply the two lower contacts. The wall curves are straight in each
+wall's (u, v), within 7.2e-5 on all three families (`law.json`).
+Sampling a B-spline's entire rectangular carrier is insufficient: much
+lies outside the trimmed face.
 
 Reference trees read: `ChFi3d_Builder_CnCrn` and `ChFi3d_FilBuilder_C2`.
 The former contains a third-order plate solve followed by degree-at-most-8
-approximation; boundary orders vary between G0 and G1. This is a candidate
-explanation, not proof of which branch the recipe takes. No implementation
-or identifiers were copied. Arris's independent surface law and interior
-comparison remain unresolved. A generic Coons fill is not established by
-these boundary observations, nor does matching them establish measures.
+approximation; boundary orders vary between G0 and G1. No implementation
+or identifiers were copied. ADR-0084 settles Arris's own interior law (the
+least-bending height graph); a square Coons fill was measured and rejected
+for folding at the cusp corner.
 
 The oracle STEP cannot yet serve as an Arris-rendered inspection:
 

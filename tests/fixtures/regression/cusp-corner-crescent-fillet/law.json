@@ -1,0 +1,536 @@
+{
+  "occt": "8.0.1.0.0",
+  "records": [
+    {
+      "fixture": "cusp-corner-crescent-chamfer",
+      "size": 0.02,
+      "section_edge": "Ellipse",
+      "section_tolerance": 1e-07,
+      "cusp_vertex_at_h": false
+    },
+    {
+      "fixture": "cusp-corner-crescent-chamfer",
+      "size": 0.1,
+      "section_edge": "Ellipse",
+      "section_tolerance": 1e-07,
+      "cusp_vertex_at_h": false
+    },
+    {
+      "fixture": "cusp-corner-crescent-chamfer",
+      "size": 0.3,
+      "section_edge": "Ellipse",
+      "section_tolerance": 1e-07,
+      "cusp_vertex_at_h": false
+    },
+    {
+      "fixture": "cusp-corner-crescent-fillet",
+      "size": 0.02,
+      "corner_error": 4.666e-13,
+      "patch_tolerance": 0.001421,
+      "edges": [
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 10.59,
+          "off_law": 3.227e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 109.9,
+          "off_law": 8.554e-06
+        },
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 20.43,
+          "off_law": 3.608e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 85.78,
+          "off_law": 6.563e-05
+        }
+      ],
+      "interior": {
+        "samples": 287,
+        "max_dev_over_r": 0.09141,
+        "mean_dev_over_r": -0.0002135
+      },
+      "outward_nz": [
+        0.2877,
+        0.9999
+      ],
+      "square_fill": {
+        "volume_rel": 1.74e-07,
+        "area_rel": 9.13e-06,
+        "fold_min_cos": -0.7473
+      },
+      "own_bound": {
+        "volume_rel": 2.268e-06,
+        "area_rel": 5.92e-05
+      },
+      "miter": {
+        "valid": true,
+        "faces": 7,
+        "volume_rel": -5.976e-07,
+        "area_rel": -0.0001741
+      }
+    },
+    {
+      "fixture": "cusp-corner-crescent-fillet",
+      "size": 0.1,
+      "corner_error": 5.383e-13,
+      "patch_tolerance": 0.006095,
+      "edges": [
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 10.59,
+          "off_law": 1.943e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 124.0,
+          "off_law": 3.14e-06
+        },
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 17.47,
+          "off_law": 2.359e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 78.67,
+          "off_law": 3.89e-05
+        }
+      ],
+      "interior": {
+        "samples": 316,
+        "max_dev_over_r": 0.0832,
+        "mean_dev_over_r": -0.00682
+      },
+      "outward_nz": [
+        0.2638,
+        0.9999
+      ],
+      "square_fill": {
+        "volume_rel": 2.249e-05,
+        "area_rel": 0.0001479,
+        "fold_min_cos": -0.8673
+      },
+      "own_bound": {
+        "volume_rel": 0.0001102,
+        "area_rel": 0.0006355
+      },
+      "miter": {
+        "valid": true,
+        "faces": 7,
+        "volume_rel": -1.729e-05,
+        "area_rel": -0.001945
+      }
+    },
+    {
+      "fixture": "cusp-corner-crescent-fillet",
+      "size": 0.3,
+      "corner_error": 4.279e-13,
+      "patch_tolerance": 0.01152,
+      "edges": [
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 3.419,
+          "off_law": 2.776e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 151.5,
+          "off_law": 7.186e-05
+        },
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 6.309,
+          "off_law": 2.776e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 70.86,
+          "off_law": 2.333e-05
+        }
+      ],
+      "interior": {
+        "samples": 365,
+        "max_dev_over_r": 0.08356,
+        "mean_dev_over_r": -0.01889
+      },
+      "outward_nz": [
+        0.1115,
+        0.9993
+      ],
+      "square_fill": {
+        "volume_rel": 0.0005558,
+        "area_rel": 0.001207,
+        "fold_min_cos": -0.9976
+      },
+      "own_bound": {
+        "volume_rel": 0.001167,
+        "area_rel": 0.002477
+      },
+      "miter": {
+        "valid": true,
+        "faces": 7,
+        "volume_rel": -0.0001783,
+        "area_rel": -0.01039
+      }
+    },
+    {
+      "fixture": "cusp-corner-pocket-chamfer",
+      "size": 0.02,
+      "section_edge": "Ellipse",
+      "section_tolerance": 1e-07,
+      "cusp_vertex_at_h": false
+    },
+    {
+      "fixture": "cusp-corner-pocket-chamfer",
+      "size": 0.1,
+      "section_edge": "Ellipse",
+      "section_tolerance": 1e-07,
+      "cusp_vertex_at_h": false
+    },
+    {
+      "fixture": "cusp-corner-pocket-chamfer",
+      "size": 0.3,
+      "section_edge": "Ellipse",
+      "section_tolerance": 1e-07,
+      "cusp_vertex_at_h": false
+    },
+    {
+      "fixture": "cusp-corner-pocket-fillet",
+      "size": 0.02,
+      "corner_error": 4.666e-13,
+      "patch_tolerance": 0.001421,
+      "edges": [
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 10.59,
+          "off_law": 2.914e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 109.9,
+          "off_law": 8.554e-06
+        },
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 20.43,
+          "off_law": 3.747e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 85.78,
+          "off_law": 6.563e-05
+        }
+      ],
+      "interior": {
+        "samples": 287,
+        "max_dev_over_r": 0.09143,
+        "mean_dev_over_r": 0.000207
+      },
+      "outward_nz": [
+        0.2877,
+        0.9999
+      ],
+      "square_fill": {
+        "volume_rel": -5.829e-08,
+        "area_rel": 1.904e-06,
+        "fold_min_cos": -0.7473
+      },
+      "own_bound": {
+        "volume_rel": 2.469e-07,
+        "area_rel": 1.238e-05
+      },
+      "miter": {
+        "valid": true,
+        "faces": 12,
+        "volume_rel": -1.464e-08,
+        "area_rel": -3.639e-05
+      }
+    },
+    {
+      "fixture": "cusp-corner-pocket-fillet",
+      "size": 0.1,
+      "corner_error": 5.383e-13,
+      "patch_tolerance": 0.006095,
+      "edges": [
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 10.59,
+          "off_law": 1.665e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 124.0,
+          "off_law": 3.14e-06
+        },
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 17.47,
+          "off_law": 2.776e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 78.67,
+          "off_law": 3.89e-05
+        }
+      ],
+      "interior": {
+        "samples": 316,
+        "max_dev_over_r": 0.0832,
+        "mean_dev_over_r": 0.006822
+      },
+      "outward_nz": [
+        0.2638,
+        0.9999
+      ],
+      "square_fill": {
+        "volume_rel": -3.768e-06,
+        "area_rel": 3.054e-05,
+        "fold_min_cos": -0.8673
+      },
+      "own_bound": {
+        "volume_rel": 1.194e-05,
+        "area_rel": 0.0001312
+      },
+      "miter": {
+        "valid": true,
+        "faces": 12,
+        "volume_rel": 3.204e-06,
+        "area_rel": -0.0003964
+      }
+    },
+    {
+      "fixture": "cusp-corner-pocket-fillet",
+      "size": 0.3,
+      "corner_error": 4.279e-13,
+      "patch_tolerance": 0.01152,
+      "edges": [
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 3.419,
+          "off_law": 2.22e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 151.5,
+          "off_law": 7.186e-05
+        },
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 6.309,
+          "off_law": 3.331e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 70.86,
+          "off_law": 2.333e-05
+        }
+      ],
+      "interior": {
+        "samples": 365,
+        "max_dev_over_r": 0.08356,
+        "mean_dev_over_r": 0.01889
+      },
+      "outward_nz": [
+        0.1115,
+        0.9993
+      ],
+      "square_fill": {
+        "volume_rel": -5.807e-05,
+        "area_rel": 0.0002415,
+        "fold_min_cos": -0.9976
+      },
+      "own_bound": {
+        "volume_rel": 0.0001225,
+        "area_rel": 0.0004956
+      },
+      "miter": {
+        "valid": true,
+        "faces": 12,
+        "volume_rel": 1.799e-05,
+        "area_rel": -0.002078
+      }
+    },
+    {
+      "fixture": "cusp-corner-spandrel-chamfer",
+      "size": 0.02,
+      "section_edge": "Parabola",
+      "section_tolerance": 1e-07,
+      "cusp_vertex_at_h": false
+    },
+    {
+      "fixture": "cusp-corner-spandrel-chamfer",
+      "size": 0.1,
+      "section_edge": "Parabola",
+      "section_tolerance": 1e-07,
+      "cusp_vertex_at_h": false
+    },
+    {
+      "fixture": "cusp-corner-spandrel-chamfer",
+      "size": 0.3,
+      "section_edge": "Parabola",
+      "section_tolerance": 1.998e-07,
+      "cusp_vertex_at_h": false
+    },
+    {
+      "fixture": "cusp-corner-spandrel-fillet",
+      "size": 0.02,
+      "corner_error": 2.633e-13,
+      "patch_tolerance": 0.001102,
+      "edges": [
+        {
+          "neighbour": "stripe Cylinder",
+          "max_angle_deg": 11.68,
+          "off_law": 1.804e-16
+        },
+        {
+          "neighbour": "wall Plane",
+          "max_angle_deg": 97.66,
+          "off_law": 2.445e-15
+        },
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 16.06,
+          "off_law": 2.082e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 86.32,
+          "off_law": 4.138e-06
+        }
+      ],
+      "interior": {
+        "samples": 293,
+        "max_dev_over_r": 0.1092,
+        "mean_dev_over_r": 0.005897
+      },
+      "outward_nz": [
+        0.2752,
+        0.9999
+      ],
+      "square_fill": {
+        "volume_rel": -2.163e-06,
+        "area_rel": 5.857e-06,
+        "fold_min_cos": 0.667
+      },
+      "own_bound": {
+        "volume_rel": 3.424e-06,
+        "area_rel": 6.246e-05
+      },
+      "miter": {
+        "valid": true,
+        "faces": 7,
+        "volume_rel": 1.905e-06,
+        "area_rel": -0.0002464
+      }
+    },
+    {
+      "fixture": "cusp-corner-spandrel-fillet",
+      "size": 0.1,
+      "corner_error": 5.09e-13,
+      "patch_tolerance": 0.005277,
+      "edges": [
+        {
+          "neighbour": "stripe Cylinder",
+          "max_angle_deg": 11.48,
+          "off_law": 1.388e-16
+        },
+        {
+          "neighbour": "wall Plane",
+          "max_angle_deg": 112.6,
+          "off_law": 8.882e-16
+        },
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 14.8,
+          "off_law": 3.192e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 83.27,
+          "off_law": 8.975e-07
+        }
+      ],
+      "interior": {
+        "samples": 301,
+        "max_dev_over_r": 0.1028,
+        "mean_dev_over_r": 0.003598
+      },
+      "outward_nz": [
+        0.27,
+        0.9995
+      ],
+      "square_fill": {
+        "volume_rel": -6.751e-05,
+        "area_rel": 8.511e-05,
+        "fold_min_cos": 0.4859
+      },
+      "own_bound": {
+        "volume_rel": 0.0001834,
+        "area_rel": 0.0007252
+      },
+      "miter": {
+        "valid": true,
+        "faces": 7,
+        "volume_rel": -1.733e-05,
+        "area_rel": -0.002787
+      }
+    },
+    {
+      "fixture": "cusp-corner-spandrel-fillet",
+      "size": 0.3,
+      "corner_error": 3.357e-13,
+      "patch_tolerance": 0.02124,
+      "edges": [
+        {
+          "neighbour": "stripe Cylinder",
+          "max_angle_deg": 11.02,
+          "off_law": 2.22e-16
+        },
+        {
+          "neighbour": "wall Plane",
+          "max_angle_deg": 126.4,
+          "off_law": 1.776e-15
+        },
+        {
+          "neighbour": "stripe Torus",
+          "max_angle_deg": 13.09,
+          "off_law": 3.331e-16
+        },
+        {
+          "neighbour": "wall Cylinder",
+          "max_angle_deg": 77.37,
+          "off_law": 1.289e-05
+        }
+      ],
+      "interior": {
+        "samples": 315,
+        "max_dev_over_r": 0.08604,
+        "mean_dev_over_r": -0.0005031
+      },
+      "outward_nz": [
+        0.2499,
+        0.9996
+      ],
+      "square_fill": {
+        "volume_rel": -0.0006872,
+        "area_rel": 0.0006775,
+        "fold_min_cos": 0.4263
+      },
+      "own_bound": {
+        "volume_rel": 0.003945,
+        "area_rel": 0.005745
+      },
+      "miter": {
+        "valid": true,
+        "faces": 7,
+        "volume_rel": -0.0008737,
+        "area_rel": -0.01504
+      }
+    }
+  ]
+}
