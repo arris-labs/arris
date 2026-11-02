@@ -222,10 +222,12 @@ _sense_ is whether it is convex or concave.
 A cusp whose two edges have opposite senses, its walls on either side of
 the face they share (ADR-0079).
 
-**Corner patch**:
-The fitted face that ends two fillets at a cusp where both edges are
-blended: from the ball both stripes end on to the cusp vertex, a height
-graph over the face they share (ADR-0084). Not a junction's shared arc.
+**Mutual trim**:
+How two blends end at a cusp where both edges are blended: each stripe
+runs on past the ball at the offsets' meeting and is cut by the other
+along their section, from the face they share down to the spine, which is
+cut there; the cusp vertex goes and no face is added (ADR-0084).
+_Avoid_: corner patch (a fitted face, rejected there)
 
 **Flush fan**:
 The face across a concave blend's end when a fuse left it as several pieces on

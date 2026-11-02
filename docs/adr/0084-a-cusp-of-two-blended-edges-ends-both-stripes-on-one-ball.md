@@ -1,6 +1,7 @@
 # ADR-0084 — A cusp of two blended edges ends both stripes on one ball: a fillet fills the rest with a height graph, a chamfer meets on its section
 
-- Status: accepted (2026-11-02)
+- Status: accepted (2026-11-02); §2's stripe ends and §4–§7 superseded the
+  same day by the amendment below (the mutual trim, the human's decision)
 - Plan: `cusp-corner-patch` step 1 (the law, against the oracle); step 2
   records the fit budget below, steps 3–5 build it
 - Amends: ADR-0042 §6 and ADR-0079 (a cusp with both edges blended is no
@@ -70,6 +71,8 @@ cut by each other along their exact section from `T*` (at `Q_d`) to
 `(cusp, h − σd)`, the walls' contacts at `h − σd` meet there, and `w` is
 cut at that point. `v` is deleted.
 
+_§4–§7 are superseded by the amendment below._
+
 **4. A fillet ends on a corner patch** (`GLOSSARY.md`), bounded by the two
 arcs, and on each wall the curve straight in its (u, v) from `A_i` to `v`.
 `v` and `w` survive unchanged. The patch is **G1 to the ball** along the
@@ -113,7 +116,81 @@ in that order.
   where `D` stays a graph's domain.
 - `Reason` gains no variant; the binding does not change.
 
+## Amendments
+
+- **The mutual trim (2026-11-02, plans/cusp-corner-patch step 2; the
+  human's decision).** §5's graph was held to Open CASCADE's patch and
+  missed its own bound in all nine runs: 1.9–4.5 bounds below on volume
+  and 0.86–2.0 on area (`graph.json`). A second oracle's runs of the three
+  fillets at the three sizes (ADR-0073; `second_oracle_runs.json`, held to
+  every candidate by `tools/oracle/cusp_corner_second.py` in `second.json`)
+  build all nine and **no corner patch**: the two stripes run on past the
+  ball at `Q` and meet on their own intersection, from `T*` down to the
+  spine at `h − σr`; `v` is gone and `w` is cut there, 9 / 14 / 7 (the
+  pocket 12 faces and 26 edges) against Open CASCADE's 11 / 17 / 8 (13 and
+  29). Each kernel's change `result − operand` against the second
+  oracle's, in units of Open CASCADE's own bound on its patch:
+  - the mutual trim (each edge filleted alone by Open CASCADE, an exact
+    rolling-ball stripe cut by the next wall, ADR-0042; the two results
+    combined by `common`, or `fuse` on the pocket) agrees to 1.3·10⁻⁹ of
+    the body at the acceptance size, 2.9·10⁻⁶ at worst, 0.24 bounds at worst;
+  - Open CASCADE's patch is 0.03–0.55 bounds off on volume, 2.6–4.2 on area;
+  - the graph is 1.9–5.1 bounds off on volume and 1.5–3.2 on area.
+
+  So Open CASCADE's patch is its own construction, not the shape: it misses
+  its neighbours by 5.5–7 % of `r` and its boundary does not close
+  (§Context), and the second kernel's result is the exact mutual trim,
+  which ADR-0073 §4 asks for as local evidence. The rejected miter below is
+  that shape; its "outside the oracle's bound" was a bound on Open
+  CASCADE's patch. The human chose the mutual trim over keeping §5 or
+  matching Open CASCADE's counts. In place of §2's stripe ends and §4–§7:
+
+  **2′. `Q` locates the section, not the stripes' ends.** `Q`, `T* =
+  (Q, h)` and `BlendTooLarge` stand as §2 has them. Neither stripe ends on
+  the ball's cross-section: the arcs and chords `A_i → T*` are no edges,
+  and `A_i` no vertices.
+
+  **4′. A fillet is the stripes' mutual trim.** Each stripe is its edge's
+  rolling-ball blend (ADR-0007's table), run on toward the cusp; each is
+  cut by the other along their section, from `T*` to `S = (cusp, h − σr)`
+  where the two contacts on the walls meet the spine. Both trim points are
+  closed forms, as ADR-0042 §2's are, with the other stripe in place of
+  `W_n`. The section is the intersector's closed form where one exists,
+  else traced and fitted between the trim points under ADR-0042 §3 (two
+  tori on parallel axes on the crescent and pocket, a torus against a
+  ruling stripe's cylinder on the spandrel). The two stripes are tangent
+  at both trim points (at `T*` both touch `T`; at `S` both touch walls
+  tangent along `w`), and ADR-0042 §4 already admits a singular point at a
+  trim point. No face is added and no fitted surface: each stripe keeps its
+  exact surface. `w` is cut at `S`; `v` is deleted. §3's chamfer is this
+  law with its faces' exact section: one construction for both.
+
+  **5′. Nothing is fitted.** §5's graph is rejected (above); the patch's
+  fit budget and graph domain lapse. The safe size domain is where `Q`
+  lies between `v` and both far ends and the section's branch runs from
+  `T*` to `S` inside both stripes' bands; plan step 7 derives it.
+
+  **6′. Fixtures.** A fillet is held to the second oracle's record
+  (`second_oracle.json`, ADR-0073) with `analytic.measure_differs`, and to
+  its counts with `analytic.counts_differ`; Open CASCADE's patch stays in
+  `expected.json` as the record. The first is the crescent's at 0.1
+  (`regression/cusp-corner-crescent-fillet`, its recipe the acceptance
+  fixture's). A chamfer is held to Open CASCADE at the default tolerances,
+  §3 unchanged.
+
+  **7′. Provenance.** Each stripe's face, contacts and far end are
+  `Generated` from its own edge. The section edge, `T*` and `S` are
+  `Generated` from both `e` and `n`, in that order after each edge's own
+  records, and `generated_pair(e, n)` is exactly those three. `e`, `n` and
+  `v` are `Deleted`; `w` is `Modified` (cut at `S`), and the walls and `T`
+  are `Modified` once. The same for a chamfer.
+
 ## Alternatives considered
+
+- **§5's least-bending height graph** (the decision until the amendment):
+  convex and fold-free, but 1.9–5.1 of Open CASCADE's bounds off the
+  second oracle on volume and 1.5–3.2 on area in all nine runs, and off
+  Open CASCADE's patch too. A fitted face nobody's kernel builds.
 
 - **A square fill on the corners `v`, `A_1`, `T*`, `A_2`**: the bilinear
   Coons patch, corrected G1 to the ball along the arcs. Its volume and area

@@ -1,5 +1,5 @@
 {
-  "description": "Both same-sense cusp edges of the crescent fillet: desired successful result; the current join refuses TangentChain.",
+  "description": "the crescent prism of blend/cusp-crescent-both-arcs-fillet, both same-sense cusp edges filleted at r 0.1: the desired result, the two stripes run on past the ball at the offsets' meeting and meet on their own intersection, from the top's contact down to the spine, which is cut there; the cusp vertex is gone (the mutual trim, ADR-0084). Open CASCADE closes the cusp with a fitted corner patch instead, which misses its own neighbours; a second kernel builds the mutual trim, and the fixture is held to that kernel's measurements and counts (ADR-0073). Arris refuses it as TangentChain until plans/cusp-corner-patch step 3",
   "params": {
     "r": 0.1
   },
@@ -109,5 +109,17 @@
       ],
       "expect": "out"
     }
-  ]
+  ],
+  "analytic": {
+    "genus": 0,
+    "counts": {
+      "vertices": 9,
+      "edges": 14,
+      "faces": 7,
+      "loops": 7,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE adds an eighth face, a B-spline corner patch from the ball at the offsets' meeting to the cusp vertex, which it keeps (11 / 17 / 8). The two stripes need none: each is its edge's exact rolling-ball blend, and run on they meet on their own intersection from the top's contact to the spine at the radius below the top, which cuts the spine and removes the cusp vertex (9 / 14 / 7). The second kernel builds exactly that, and so does Open CASCADE's common of its own two single-edge fillets (ADR-0084)",
+    "measure_differs": "Open CASCADE's corner patch is an approximation that misses its own neighbours: its tolerance there is 6.1e-3, 6 % of r, it leaves the stripes at up to 17.5 degrees, and its faces' cone volumes sum to 2.5e-5 more than its solid's volume, so its boundary does not close. Its area is 0.0398 (1.9e-3 relative) and its volume 8.1e-5 (1.7e-5 relative) above the second kernel's, three times its own bound on the patch (the patch's area or boundary length times its tolerance) in area. The second kernel's volume and area, in second_oracle.json, agree to 1.3e-9 of the body with Open CASCADE's common of its own two single-edge fillets, whose stripes lie on the rolling ball, so the record is the exact mutual trim and not a third fit (ADR-0073, ADR-0084)"
+  }
 }

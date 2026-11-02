@@ -64,8 +64,14 @@ kernel's change against the second oracle's:
   area;
 - ADR-0084 §5's graph is 1.9–5.1 bounds off on volume and 1.5–3.2 on area.
 
-The second oracle sides with neither the graph nor Open CASCADE's patch:
-the plan's open question goes back to the human.
+The second oracle sides with neither the graph nor Open CASCADE's patch.
+The human decided for the mutual trim (ADR-0084 as amended). This
+fixture's `second_oracle.json` is the run at 0.1, imported by
+`tools/oracle/second_oracle.py` (the run's record multiplied back to its
+scale of 100, which the tool divides out); its `analytic` holds Arris to
+it and to the record's 9 / 14 / 7. The recipe is the acceptance
+fixture's, `blend/cusp-crescent-both-arcs-fillet`, which takes both when
+it builds.
 
 Six desired-result fixtures under `regression/cusp-corner-*` cover crescent,
 pocket and spandrel, each filleted and chamfered. Their `expected.json`
