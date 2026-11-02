@@ -86,7 +86,7 @@ vertex on a seam, even at a slant, builds at the ball whose contact is on it.
   `.agents/rules/docs-lifecycle.md`.
 - `/work <slug>` with no step **conducts** the plan: each step a fresh
   subagent on its tier (`.agents/tiers.md` maps tiers to models), then the
-  conducting session runs `/retire-plan`. Waits (gate, CI) run in the
+  conducting session follows `retire-plan`'s SKILL.md (the Skill tool refuses it). Waits (gate, CI) run in the
   background, never in a foreground loop.
 - Trunk-based git, `main` always green (a pushed tip is a verified commit,
   ADR-0078), commit per plan step, never push or publish unasked: `.agents/rules/git.md`. `main` carries the next

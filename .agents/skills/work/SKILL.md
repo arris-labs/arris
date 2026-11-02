@@ -94,6 +94,11 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    hand back the commit id and anything surprising, or the question that
    stopped you." The conductor writes no code itself; it alone talks to
    the human.
+   A notice that the subagent "is waiting on its own background work" is
+   interim, not a hand-back: `SendMessage` it to finish in the foreground
+   and hand back. Every wait on a subagent or the gate also sets a
+   `ScheduleWakeup` of 20 minutes or more, so a lost notification costs one
+   interval, not the session.
 3. On each hand-back, check what landed: the last commit names `(plans/<slug>
    step N)`, the plan has step N ticked, `git status` is clean. Its test
    half may still be running: that is not a failure, and the next hook or
@@ -108,8 +113,9 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    a run in flight. `pass` is the plan's tip verified. `fail` is an earlier
    step's red: a fresh subagent on that step's tier fixes it in a commit
    carrying that step's suffix, before retirement. Then retire the plan in
-   this session by
-   `.agents/skills/retire-plan/SKILL.md`; its review subagent runs on
+   this session by reading and following
+   `.agents/skills/retire-plan/SKILL.md` (the Skill tool refuses
+   `/retire-plan`; never call it); its review subagent runs on
    tier 3. A hard finding goes to a fresh subagent on the tier of the step
    it repairs, the finding as its brief; the conductor commits only the
    retirement.
