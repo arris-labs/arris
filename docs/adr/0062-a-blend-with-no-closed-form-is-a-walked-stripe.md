@@ -277,6 +277,7 @@ with its Python class, `GeomOffsetFoldsError`.
   (rational quadratic) walks as any table pair whose edge is not the
   table's curve, and meets the torus's closed form to rounding; Open
   CASCADE's walked blend of the same edge lies `6.9e-8` below it.
+  *Superseded by ADR-0083:* the junction slides onto the seam.
 
 - **Step 9b (the pole).** A vanishing end (§5) is a **pole** where the
   ball there touches both faces at one point within the surface's share

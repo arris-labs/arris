@@ -203,7 +203,8 @@ through it only where the end across meets nothing (ADR-0075).
 Where two stripes of a chain meet on one ball's arc, at a tangent vertex
 or, where the tangent edge leans, on that edge's offset away from it
 (ADR-0035, ADR-0072). Across a kink the two balls stand apart, and they
-meet on their mean ball's arc within the vertex's tolerance (ADR-0075).
+meet on their mean ball's arc within the vertex's tolerance (ADR-0075), or,
+at a vertex on a seam, at the ball whose contact is on it (ADR-0083).
 
 **Vanishing end**:
 An end of a walked stripe where the edge's two faces turn tangent within

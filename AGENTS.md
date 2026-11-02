@@ -55,6 +55,8 @@ M7 `parallel-cylinder-blend` done 2026-11-01 (ADR-0036 §5 amended): a fillet or
 chamfer of two parallel-axis cylinders along a ruling builds in closed form.
 M8 `flush-fan-end` done 2026-11-01 (ADR-0082): a concave blend ends on a
 fan of flush pieces; the script corpus's `fillet` refusals are 0.
+M9 `walked-seam-junction` done 2026-11-02 (ADR-0083): a walked chain through a
+vertex on a seam, even at a slant, builds at the ball whose contact is on it.
 **Next:** the cycle's next plan (`docs/ROADMAP.md` §C11).
 
 ## Rules that are not derivable from the code

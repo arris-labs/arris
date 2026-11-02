@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A fillet or chamfer along a curve that crosses a seam of a curved face at a
+  slant (a pin off a ball's axis) now builds, where it was refused as
+  `VertexBlend`. A crossing so shallow that the seam lies beyond the
+  blended edge's ends is refused as `BlendTooLarge`.
 - A concave fillet or chamfer whose end face a fuse left in flush pieces (the
   inner edge of an L or a step made by fusing two boxes, a hinge leaf's
   knuckle joins) now builds, where it was refused as `VertexBlend`. Flush

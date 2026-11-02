@@ -1153,7 +1153,11 @@ centre `c* = w_r ∩ offset(P, r)` lies on both spines, both runs end at
 `c*`, the walked skin refitted along its spine to end there, and `w` is cut
 at `p = c* − r·n`. Where `w` is not a line (a face turning tangent along a
 curve that plane crosses, an annulus into a torus), or `c*` lies past the
-spine's reach, the vertex is `VertexBlend`. At a *vanishing end*, where
+spine's reach, the vertex is `VertexBlend`. Where the vertex is on a seam of
+an end face, the junction is the ball on the spine whose contact on that face
+lies on the seam (`seam_ball`): both runs end there, the seam is cut at its
+contact and the vertex is consumed; no root within the reach is
+`BlendTooLarge` (ADR-0083). At a *vanishing end*, where
 the edge's faces turn tangent within its tolerance, the stripe narrows to a
 pole at the vertex where the ball there touches both faces at it (ADR-0062
 §5). Where they only run within that tolerance of tangent, it stops short

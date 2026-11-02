@@ -267,7 +267,7 @@ the table above with both conditions.
 - **A singular point on an exact isocurve is the isocurve's**, read where
   the first surface is (the descent clamped to its domain), and is not
   added.
-- The pair of skins at any radius from 0.02 to 0.25 on the shrunk case is
+- The pair of skins at radii 0.02, 0.05 and 0.15 on the shrunk case is
   decided clean, the check taking 3–4.5 s against 2.3 s refused. Two
   skins whose surfaces overlap past their faces (the junction in the
   normal plane, cut at one parameter) are still `is_flush` and
