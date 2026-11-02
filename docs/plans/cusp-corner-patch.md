@@ -56,7 +56,7 @@ an algorithm's robustness or bound must be established. Each step is a commit.
   compare pocket, spandrel and chamfer twins. Commit reproducible measurements
   and desired-result fixtures (ignored in `regression/` until built), retaining
   the existing refusal fixture until step 3. Resolve the first open question.
-- [ ] Step 2 **[3]** — The mutual section, privately: given two stripes at
+- [x] Step 2 **[3]** — The mutual section, privately: given two stripes at
   a cusp, the closed-form trim points `T*` and `S` and the section of the
   two stripe surfaces between them (torus/torus on parallel axes, torus/
   ruling cylinder), its branch ending at the tangency at both ends.

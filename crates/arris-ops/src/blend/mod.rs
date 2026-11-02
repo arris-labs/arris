@@ -34,6 +34,14 @@ mod ends;
 mod junction;
 mod miter;
 mod mixed;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the cusp join that routes a crescent's two stripes here is plans/cusp-corner-patch step 3"
+    )
+)]
+mod mutual;
 mod ring;
 mod ring_rolled;
 mod rolled;

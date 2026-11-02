@@ -73,6 +73,23 @@ it and to the record's 9 / 14 / 7. The recipe is the acceptance
 fixture's, `blend/cusp-crescent-both-arcs-fillet`, which takes both when
 it builds.
 
+The section the two stripes are cut along, from `T*` to `S`, is sampled
+from Open CASCADE's mutual trim by
+
+```sh
+uv run --project tools/oracle tools/oracle/cusp_corner_section.py
+```
+
+whose record is `section.json` beside it: per fillet run, the edge the
+two stripes share, its tolerance, its vertices with theirs and 33 points
+along it. Arris's section (`blend::mutual`, plan step 2) lies within the
+edge's tolerance of every point but the oracle's end at the spine, where
+the stripes are tangent: there the oracle's curve stops 2.8·10⁻⁶ to
+3.6·10⁻⁵ short of its vertex (the pocket at 0.02 and 0.1, the crescent
+at 0.3), on both surfaces to 3·10⁻¹⁰ but off the section, and the
+vertex's tolerance is raised to that gap. Elsewhere the two agree within
+3·10⁻⁸.
+
 Six desired-result fixtures under `regression/cusp-corner-*` cover crescent,
 pocket and spandrel, each filleted and chamfered. Their `expected.json`
 files come from `expected.py`, not Arris. At sizes 0.02, 0.1 and 0.3 all
