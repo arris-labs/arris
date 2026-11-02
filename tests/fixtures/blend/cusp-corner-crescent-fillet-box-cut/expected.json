@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "9e6bec83b56bcee22246ffff76d67f0b8172057c4951f3aa11ac6f80a3c042ee",
+  "results": {
+    "default": {
+      "area": 20.39985437567444,
+      "centroid": [
+        0.3357970148865996,
+        -0.9898237945686359,
+        0.497997207476783
+      ],
+      "counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          1.65088144168043,
+          -0.8881648441527307,
+          -0.0055178630714040056
+        ],
+        [
+          -0.8881648441527307,
+          4.1464713866965885,
+          -0.001069179475152282
+        ],
+        [
+          -0.0055178630714040056,
+          -0.001069179475152282,
+          5.020939811915115
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 24,
+        "faces": 11,
+        "loops": 11,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 15
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.0,
+            -1.5,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in the cut",
+          "point": [
+            -1.9,
+            -0.5,
+            0.925
+          ]
+        },
+        {
+          "class": "in",
+          "label": "cusp sliver below the cut",
+          "point": [
+            -1.95,
+            -0.38,
+            0.5
+          ]
+        }
+      ],
+      "volume": 4.692608267829185
+    }
+  }
+}

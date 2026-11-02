@@ -1,0 +1,135 @@
+{
+  "description": "A crescent prism one high, its two top arcs chamfered at 0.1 so that the stripes meet on their own section from the top's contact (-1.7, -0.8485, 1) down to the spine at (-2, 0, 0.9) (the mutual trim, ADR-0084), the cusp vertex gone. Split by the vertical plane y = -0.3, which crosses both stripes and the section edge; the side away from the cusp (y < -0.3) is the result. The section edge is the cone/cone (or torus/torus) section fitted within SECTION_FIT_FRACTION of the linear tolerance, 2.5e-8 (ADR-0042, ADR-0062); where the cut puts a vertex on it that error no longer cancels between the two faces, so the fixture's volume and inertia are held at 5e-9, not the default 1e-9. A 20-digit quadrature of the chamfered height field gives the exact volume, 4.06874384412: Open CASCADE is 2e-10 off it and Arris's body 4.1e-9 in memory.",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              2,
+              0
+            ],
+            "via": [
+              0,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              -2,
+              0
+            ],
+            "via": [
+              -1,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "blended",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          -2,
+          1
+        ],
+        [
+          -1,
+          -1,
+          1
+        ]
+      ],
+      "distance": "r"
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "blended",
+      "plane": {
+        "origin": [
+          0,
+          -0.3,
+          0
+        ],
+        "normal": [
+          0,
+          1,
+          0
+        ]
+      },
+      "side": -1
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "far side",
+      "point": [
+        0,
+        -1.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "near the cusp",
+      "point": [
+        -1.98,
+        -0.24,
+        0.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 5e-09,
+    "inertia_rel": 5e-09
+  }
+}

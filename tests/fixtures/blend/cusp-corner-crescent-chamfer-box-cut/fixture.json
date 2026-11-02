@@ -1,0 +1,146 @@
+{
+  "description": "A crescent prism one high, its two top arcs chamfered at 0.1 so that the stripes meet on their own section from the top's contact (-1.7, -0.8485, 1) down to the spine at (-2, 0, 0.9) (the mutual trim, ADR-0084), the cusp vertex gone. A box [-2.5, -0.7, 0.92]-[-1.75, 0.2, 2] cut from it: its planes z = 0.92 and y = -0.7 cross both stripes and the section edge, which the cut shortens to the part outside the box. The section edge is the cone/cone (or torus/torus) section fitted within SECTION_FIT_FRACTION of the linear tolerance, 2.5e-8 (ADR-0042, ADR-0062); where the cut puts a vertex on it that error no longer cancels between the two faces, so the fixture's volume and inertia are held at 5e-9, not the default 1e-9. A 20-digit quadrature of the chamfered height field gives the exact volume, 4.66989739705: Open CASCADE is 3e-11 off it and Arris's body 1.2e-9 in memory and 5.1e-9 as Open CASCADE reads Arris's STEP.",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              2,
+              0
+            ],
+            "via": [
+              0,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              -2,
+              0
+            ],
+            "via": [
+              -1,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "blended",
+      "op": "chamfer",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          -2,
+          1
+        ],
+        [
+          -1,
+          -1,
+          1
+        ]
+      ],
+      "distance": "r"
+    },
+    {
+      "name": "tool",
+      "op": "box",
+      "min": [
+        -2.5,
+        -0.7,
+        0.92
+      ],
+      "max": [
+        -1.75,
+        0.2,
+        2
+      ]
+    },
+    {
+      "name": "result",
+      "op": "cut",
+      "target": "blended",
+      "tool": "tool"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "inside",
+      "point": [
+        0,
+        -1.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in the cut",
+      "point": [
+        -1.9,
+        -0.5,
+        0.925
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "cusp sliver below the cut",
+      "point": [
+        -1.95,
+        -0.38,
+        0.5
+      ],
+      "expect": "in"
+    }
+  ],
+  "tolerances": {
+    "volume_rel": 5e-09,
+    "inertia_rel": 5e-09
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "description": "A crescent prism one high, its two top arcs filleted at 0.1 so that the stripes meet on their own section from the top's contact (-1.7, -0.8485, 1) down to the spine at (-2, 0, 0.9) (the mutual trim, ADR-0084), the cusp vertex gone. Split by the vertical plane y = -0.3, which crosses both stripes and the section edge; the side away from the cusp (y < -0.3) is the result. Held to the mutual trim of Open CASCADE's two single-edge fillets, combined by common and then given the same later steps (tools/oracle/cusp_corner_closure.py): a construction by the same law from an independent kernel's exact single-edge stripes, which agrees with the second oracle's runs of the crescent to 1.3e-9 of the body (ADR-0084, ADR-0073); Open CASCADE's own result of the recipe has its corner patch and is the record in expected.json. Volume and inertia are held at 5e-9, not 1e-9: the section's fit budget, 2.5e-8 (ADR-0042, ADR-0062), no longer cancels where the cut puts a vertex on it (the same cuts of the chamfered crescent, whose exact volumes a 20-digit quadrature gives, are Arris-off by 1 to 5e-9), and the reference itself agrees with the second oracle's runs only to 1.3e-9 of the body at this size.",
+  "params": {
+    "r": 0.1
+  },
+  "steps": [
+    {
+      "name": "section",
+      "op": "profile",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "x": [
+          1,
+          0,
+          0
+        ],
+        "y": [
+          0,
+          1,
+          0
+        ]
+      },
+      "outer": {
+        "start": [
+          -2,
+          0
+        ],
+        "segments": [
+          {
+            "arc_to": [
+              2,
+              0
+            ],
+            "via": [
+              0,
+              -2
+            ]
+          },
+          {
+            "line_to": [
+              0,
+              0
+            ]
+          },
+          {
+            "arc_to": [
+              -2,
+              0
+            ],
+            "via": [
+              -1,
+              -1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "part",
+      "op": "extrude",
+      "profile": "section",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "length": 1
+    },
+    {
+      "name": "blended",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          0,
+          -2,
+          1
+        ],
+        [
+          -1,
+          -1,
+          1
+        ]
+      ],
+      "radius": "r"
+    },
+    {
+      "name": "result",
+      "op": "split",
+      "of": "blended",
+      "plane": {
+        "origin": [
+          0,
+          -0.3,
+          0
+        ],
+        "normal": [
+          0,
+          1,
+          0
+        ]
+      },
+      "side": -1
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "far side",
+      "point": [
+        0,
+        -1.5,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "near the cusp",
+      "point": [
+        -1.98,
+        -0.24,
+        0.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {
+    "genus": 0,
+    "counts": {
+      "vertices": 12,
+      "edges": 18,
+      "faces": 8,
+      "loops": 8,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE keeps its corner patch as an extra face (V / E / F 13 / 20 / 9); the stripes need none, and run on they meet on their own section, which is what Open CASCADE's common of its two single-edge fillets and Arris build (ADR-0084)",
+    "measure_differs": "Open CASCADE's corner patch is an approximation that misses its neighbours by up to 6.1e-3 and does not close (the crescent fixture's measure_differs); the record is the exact mutual trim from its single-edge fillets, whose agreement with the second oracle is in regression/cusp-corner-crescent-fillet/second.json (ADR-0073, ADR-0084)",
+    "occt_step_refused": {
+      "kind": "gap past the cap",
+      "why": "Open CASCADE's corner patch misses its neighbours by up to its tolerance there, 6.1e-3 (6 % of r): its own STEP writes the patch's boundary with a gap of 5.6e-3, past the reader's cap of 2.3e-3 for a part this size, and closing it would move geometry. Arris's own STEP is still read back by Open CASCADE and compared"
+    }
+  },
+  "tolerances": {
+    "volume_rel": 5e-09,
+    "inertia_rel": 5e-09
+  }
+}

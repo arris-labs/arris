@@ -1444,6 +1444,30 @@ corpus_tests! {
     regression_cusp_corner_spandrel_fillet => run "regression/cusp-corner-spandrel-fillet";
     /// A spandrel's line and arc chamfered together: the chamfer's plane and the cone meet on their section (ADR-0084 §3, §4′), held to Open CASCADE.
     blend_cusp_spandrel_both_arcs_chamfer => run "blend/cusp-spandrel-both-arcs-chamfer";
+    /// A box cut from the chamfered crescent across the section edge: its planes cross both cones and the section, which the cut shortens (ADR-0084 §4′), held to Open CASCADE.
+    blend_cusp_corner_crescent_chamfer_box_cut => run "blend/cusp-corner-crescent-chamfer-box-cut";
+    /// A box fused to the chamfered crescent across the section edge and over the cusp, held to Open CASCADE.
+    blend_cusp_corner_crescent_chamfer_fuse => run "blend/cusp-corner-crescent-chamfer-fuse";
+    /// The chamfered crescent's common with a box whose plane crosses both cones and the section edge, held to Open CASCADE.
+    blend_cusp_corner_crescent_chamfer_common => run "blend/cusp-corner-crescent-chamfer-common";
+    /// The chamfered crescent split by a plane across both cones and the section edge; the top side, held to Open CASCADE.
+    blend_cusp_corner_crescent_chamfer_split_top => run "blend/cusp-corner-crescent-chamfer-split-top";
+    /// The chamfered crescent split by the plane y = -0.3 across both cones and the section edge; the side holding the cusp and the far end, held to Open CASCADE.
+    blend_cusp_corner_crescent_chamfer_split_oblique => run "blend/cusp-corner-crescent-chamfer-split-oblique";
+    /// A second chamfer, on a bottom line edge the cusp join leaves alone, of the chamfered crescent, held to Open CASCADE.
+    blend_cusp_corner_crescent_chamfer_second_blend => run "blend/cusp-corner-crescent-chamfer-second-blend";
+    /// A box cut from the filleted crescent across the section edge: its planes cross both tori and the section, which the cut shortens (ADR-0084 §4′), held to the mutual trim of Open CASCADE's single-edge fillets (ADR-0073).
+    blend_cusp_corner_crescent_fillet_box_cut => run "blend/cusp-corner-crescent-fillet-box-cut";
+    /// A box fused to the filleted crescent across the section edge and over the cusp, held to the mutual-trim reference (ADR-0073).
+    blend_cusp_corner_crescent_fillet_fuse => run "blend/cusp-corner-crescent-fillet-fuse";
+    /// The filleted crescent's common with a box whose plane crosses both tori and the section edge, held to the mutual-trim reference (ADR-0073).
+    blend_cusp_corner_crescent_fillet_common => run "blend/cusp-corner-crescent-fillet-common";
+    /// The filleted crescent split by a plane across both tori and the section edge; the lower side, held to the mutual-trim reference (ADR-0073).
+    blend_cusp_corner_crescent_fillet_split_top => run "blend/cusp-corner-crescent-fillet-split-top";
+    /// The filleted crescent split by the plane y = -0.3 across both tori and the section edge; the side away from the cusp, held to the mutual-trim reference (ADR-0073).
+    blend_cusp_corner_crescent_fillet_split_oblique => run "blend/cusp-corner-crescent-fillet-split-oblique";
+    /// A second fillet, on a bottom line edge the cusp join leaves alone, of the filleted crescent, held to the mutual-trim reference (ADR-0073).
+    blend_cusp_corner_crescent_fillet_second_blend => run "blend/cusp-corner-crescent-fillet-second-blend";
 
     /// A lip's underside arc filleted to an overhang tip, the cusp of FTC-06,
     /// its edges of opposite senses: the pillar wall cuts the exact stripe,

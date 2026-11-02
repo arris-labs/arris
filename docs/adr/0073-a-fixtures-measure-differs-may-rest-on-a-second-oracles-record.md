@@ -163,6 +163,12 @@ which kernel is right.
     tolerance (`within_own_tolerance`). `L·t` over CTC-05's whole
     boundary is far above the change, so any stripe, or none, would pass.
 
+**Extension (plans/cusp-corner-patch step 6).** A record's `source` may name
+a construction by the decided law from an independent kernel's exact pieces
+rather than a run of a second kernel on the recipe (the mutual trim of Open
+CASCADE's single-edge fillets, ADR-0084), where that construction has itself
+been held to a second kernel's runs.
+
 ## Alternatives considered
 
 - **Closed forms for the corner.** There are none: the blend of a

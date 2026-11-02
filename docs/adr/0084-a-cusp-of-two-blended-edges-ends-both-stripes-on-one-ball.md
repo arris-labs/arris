@@ -185,6 +185,18 @@ in that order.
   `v` are `Deleted`; `w` is `Modified` (cut at `S`), and the walls and `T`
   are `Modified` once. The same for a chamfer.
 
+- **Closure fixtures (plan step 6).** A fillet closure fixture (a cut, fuse,
+  common, split or second blend over the crescent) has no second-oracle run;
+  its record is the mutual trim of Open CASCADE's two single-edge fillets
+  combined by `common` and given the same later steps
+  (`tools/oracle/cusp_corner_closure.py`): the same law built from an
+  independent kernel's exact single-edge stripes, which agrees with the
+  second oracle's runs (`second.json`, at most 0.24 of Open CASCADE's bound).
+  The chamfer closures are held to Open CASCADE itself. Where a cut puts a
+  vertex on the fitted section, Arris's volume is 1 to 5e-9 off the exact
+  quadrature (the fit budget no longer cancels), so those fixtures carry
+  `volume_rel` and `inertia_rel` 5e-9.
+
 ## Alternatives considered
 
 - **§5's least-bending height graph** (the decision until the amendment):

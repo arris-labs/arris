@@ -83,7 +83,7 @@ an algorithm's robustness or bound must be established. Each step is a commit.
   Promote the three chamfer fixtures held to Open CASCADE at the default
   tolerances, counts and `Full`; a missing closed form is an intersector
   case, not a trace.
-- [ ] Step 6 **[2]** — Closure: a box cut crossing the section edge,
+- [x] Step 6 **[2]** — Closure: a box cut crossing the section edge,
   fuse/common with that tool, a split through it, a second blend on a
   surviving edge; mesh and STEP round trip. Oracle-valued fixtures; new
   undecided pairs resolved in the shared intersectors, no exclusions.
@@ -175,3 +175,22 @@ and `law.json`, `graph.json`, `second.json` beside it.
   `Full`. Cone against cone is traced; a plane against a cone (the
   spandrel's line) is the intersector's exact conic, taken whole by
   `traced_end`. `cusp_of` reads the size from the kind.
+- *Settled* (step 6, conductor): the closure fixtures are
+  `blend/cusp-corner-crescent-{chamfer,fillet}-{box-cut,fuse,common,split-top,
+  split-oblique,second-blend}`; no new undecided pair arose (all decided at
+  `Full`, STEP and mesh stages pass), so no intersector change. Where a cut
+  or split puts a vertex on the fitted section, the fit error (budget
+  `SECTION_FIT_FRACTION * tol.linear`, 2.5e-8, ADR-0042/0062; measured 3e-9 to
+  6e-9) no longer cancels between the two faces: Arris is 1 to 5e-9 off a
+  20-digit quadrature of the chamfered height field, Open CASCADE 1e-11 to
+  3e-10. Those fixtures (box-cut, common, split-top, split-oblique, and the
+  fillet twins and second-blend) carry `volume_rel`/`inertia_rel` 5e-9, the
+  smallest round value over the measured error, said in each description;
+  fuse and the chamfer second-blend stay at the default. The budget and
+  `cancel_counts` are untouched. The fillet closures are held to the mutual
+  trim of Open CASCADE's two single-edge fillets combined by `common` and given
+  the later steps (`tools/oracle/cusp_corner_closure.py`, imported by
+  `second_oracle.py`): a construction by the same law from an independent
+  kernel's stripes, validated against the second oracle's runs (ADR-0084
+  amendment, ADR-0073 note). Open CASCADE's STEP of each is
+  `occt_step_refused` (its patch's gap).
