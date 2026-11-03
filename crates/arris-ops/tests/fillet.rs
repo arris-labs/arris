@@ -433,6 +433,23 @@ fn faces_are_tangent_within_the_blends_tolerance() {
     assert!(matches!(err, OpError::Unsupported { .. }), "{err}");
 }
 
+/// A chamfer of an open arc whose ends are on a side plane parallel to its
+/// axis and off it meets the plane in a hyperbola of the chamfer's cone,
+/// which no tracer takes and no oracle holds: the end stays `Unsupported`
+/// (only the cusp join takes the intersector's whole conic).
+#[test]
+fn a_chamfered_open_arc_ending_on_a_plane_off_its_axis_is_unsupported() {
+    let mut m = Model::default();
+    let body = extruded(
+        &mut m,
+        (0.8, 0.6),
+        vec![arc_to(-0.8, 0.6, (0.0, 1.0)), line_to(0.8, 0.6)],
+    );
+    let top = edge_at(&m, body, Point3::new(0.0, 1.0, 2.0));
+    let err = chamfer(&mut m, body, &[top], 0.2).unwrap_err();
+    assert!(matches!(err, OpError::Unsupported { .. }), "{err}");
+}
+
 /// A revolve's cone ruling on its end cap — a plane through the cone's
 /// apex, along a ruling — is outside the table, and is walked (ADR-0062):
 /// a body clean at `Full` that has lost the corner's sliver.

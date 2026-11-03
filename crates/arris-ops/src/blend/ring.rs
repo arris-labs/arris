@@ -1664,6 +1664,20 @@ fn face_end_of(
             let within = Aabb::of_point(points[0])
                 .union(Aabb::of_point(points[1]))
                 .inflated(width);
+            // An end off a cusp on a plane against a cone is refused, as
+            // before the intersector's closed form reached `traced_end`:
+            // its hyperbola has no oracle. At a cusp (`spine`) the wall
+            // across is tangent to the arc's own and the spandrel's
+            // chamfers hold that end to Open CASCADE.
+            if spine.is_none()
+                && matches!(
+                    (surface, across_surface),
+                    (Surface::Plane { .. }, Surface::Cone { .. })
+                        | (Surface::Cone { .. }, Surface::Plane { .. })
+                )
+            {
+                return Err(refuse());
+            }
             let traced = traced::traced_end(
                 [surface, across_surface],
                 points,
