@@ -664,9 +664,7 @@ fn cusp_of(
         if is_arc {
             tops.push(contact_on(env, e, top)?);
         } else {
-            let Ok(s) = stripe(m, view, e, env.kind, env.tol) else {
-                return Ok(None);
-            };
+            let s = stripe(m, view, e, env.kind, env.tol)?;
             let (Section::Round { .. } | Section::Flat, Some(k)) =
                 (s.section, s.faces.iter().position(|&f| f == top))
             else {

@@ -1,5 +1,5 @@
 {
-  "description": "the spandrel prism of blend/cusp-spandrel-fillet, its line and its arc both filleted at r 0.1 where they meet in a cusp: the line's cylinder stripe and the arc's torus stripe meet on their own section from the top's contact down to the spine one radius below the top, which is cut there; the cusp vertex goes and no face is added (the mutual trim, ADR-0084). Held to a second kernel's record (ADR-0073)",
+  "description": "the spandrel prism of blend/cusp-spandrel-fillet, its line and its arc both filleted at r 0.1 where they meet in a cusp: the line's cylinder stripe and the arc's torus stripe meet on their own section from the top's contact down to the spine one radius below the top, which is cut there; the cusp vertex goes and no face is added (the mutual trim, ADR-0084). Held to a second kernel's record (ADR-0073). Volume is held at 7e-9 (Arris is 6.2e-9 from the second oracle's record), area at 2e-9 (1.8e-9) and inertia at 3e-8 (2.1e-8, on inertia[2][2]), not 1e-9: the torus and the cylinder meet on a section fitted within SECTION_FIT_FRACTION of the linear tolerance (ADR-0042, ADR-0062); the centroid holds at the default",
   "params": {
     "r": 0.1
   },
@@ -123,9 +123,8 @@
     }
   },
   "tolerances": {
-    "volume_rel": 1e-08,
-    "area_rel": 1e-08,
-    "centroid_abs": 3e-08,
+    "volume_rel": 7e-09,
+    "area_rel": 2e-09,
     "inertia_rel": 3e-08
   }
 }

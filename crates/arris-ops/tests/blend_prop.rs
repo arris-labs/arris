@@ -5238,7 +5238,9 @@ prop_shards! {
     /// the step count of a chamfer of both edges, or a poll that answers
     /// `true` there, stops it with `Interrupted` and the model's bytes
     /// unchanged; a size past the safe bound is refused `BlendTooLarge`
-    /// naming the edges, the bytes unchanged too.
+    /// (naming the cusp's edges only where the join's own check fires first,
+    /// which `a_cusp_of_two_arcs_past_the_gap_names_both_edges` pins), the
+    /// bytes unchanged too.
     cusp_corner_chamfer_cancel_and_refusal_roll_back
         [shard_0 shard_1] ((case, draw, past)) = (
             corner_case(),

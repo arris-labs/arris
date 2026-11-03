@@ -1,5 +1,5 @@
 {
-  "description": "A crescent prism one high, its two top arcs filleted at 0.1 so that the stripes meet on their own section from the top's contact (-1.7, -0.8485, 1) down to the spine at (-2, 0, 0.9) (the mutual trim, ADR-0084), the cusp vertex gone. Then the bottom line edge y = 0 of the flat wall filleted at 0.1 as well, an edge the join leaves alone. Held to the mutual trim of Open CASCADE's two single-edge fillets, combined by common and then given the same later steps (tools/oracle/cusp_corner_closure.py): a construction by the same law from an independent kernel's exact single-edge stripes, which agrees with the second oracle's runs of the crescent to 1.3e-9 of the body (ADR-0084, ADR-0073); Open CASCADE's own result of the recipe has its corner patch and is the record in expected.json. Volume and inertia are held at 5e-9, not 1e-9: the section's fit budget, 2.5e-8 (ADR-0042, ADR-0062), no longer cancels where the cut puts a vertex on it (the same cuts of the chamfered crescent, whose exact volumes a 20-digit quadrature gives, are Arris-off by 1 to 5e-9), and the reference itself agrees with the second oracle's runs only to 1.3e-9 of the body at this size.",
+  "description": "A crescent prism one high, its two top arcs filleted at 0.1 so that the stripes meet on their own section from the top's contact (-1.7, -0.8485, 1) down to the spine at (-2, 0, 0.9) (the mutual trim, ADR-0084), the cusp vertex gone. Then the bottom line edge y = 0 of the flat wall filleted at 0.1 as well, an edge the join leaves alone. Held to the mutual trim of Open CASCADE's two single-edge fillets, combined by common and then given the same later steps (tools/oracle/cusp_corner_closure.py): a construction by the same law from an independent kernel's exact single-edge stripes, which agrees with the second oracle's runs of the crescent to 1.3e-9 of the body (ADR-0084, ADR-0073); Open CASCADE's own result of the recipe has its corner patch and is the record in expected.json. Volume is held at 2e-9 and inertia at 3e-9, not 1e-9: Arris's volume is 1.7e-9 and its inertia[1][1] 2.2e-9 from the reference, which itself agrees with the second oracle's runs only to 1.3e-9 of the body at this size (area and centroid hold at the default).",
   "params": {
     "r": 0.1
   },
@@ -140,7 +140,7 @@
     }
   },
   "tolerances": {
-    "volume_rel": 5e-09,
-    "inertia_rel": 5e-09
+    "volume_rel": 2e-09,
+    "inertia_rel": 3e-09
   }
 }

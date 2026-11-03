@@ -374,8 +374,8 @@ pub fn cusp_pairs(m: &Model, body: Body, solid: &str) -> Result<Vec<CuspPair>, S
     Ok(out)
 }
 
-/// [`cusp_pairs`] of every solid of `file`, as a markdown table (one row
-/// per pair) and a count line.
+/// [`cusp_pairs`] of every solid of `file`, one [`CuspPair`] per pair, in
+/// the file's solid order.
 ///
 /// # Errors
 /// The file cannot be read, or [`cusp_pairs`] fails.
@@ -1817,6 +1817,24 @@ mod tests {
     use crate::unmetered::{fuse, primitive_box, primitive_cylinder};
     use arris_math::Point3 as P3;
     use arris_math::{Axis, Point3, Vec3};
+
+    /// The crescent prism of `blend/cusp-crescent-both-arcs-fillet` has one
+    /// cusp pair, its two top arcs, whose walls fold onto one side of the
+    /// top they share.
+    #[test]
+    fn the_crescent_has_one_cusp_pair() {
+        let dir = corpus_root().join("blend/cusp-crescent-both-arcs-fillet");
+        let chain = crate::corpus::chain(&dir, "default").unwrap();
+        let part = chain.steps["result"].inputs[0];
+        let pairs = cusp_pairs(&chain.model, part, "crescent").unwrap();
+        assert_eq!(pairs.len(), 1, "{pairs:?}");
+        let pair = &pairs[0];
+        assert_eq!(pair.solid, "crescent");
+        assert_ne!(pair.edges[0], pair.edges[1]);
+        assert_eq!(pair.walls_one_side, Some(true), "{pair:?}");
+        assert!(pair.radius > 0.0);
+        assert!(!pair.outcome.is_empty());
+    }
 
     #[test]
     fn a_box_blends_on_every_edge() {

@@ -1206,6 +1206,43 @@ fn a_cusp_of_a_line_and_an_arc_is_their_mutual_trim() {
     assert_eq!(p.modified_from(fwd(spine)).len(), 1);
 }
 
+/// A radius past the gap at a cusp of two filleted arcs: the crescent's top
+/// contacts, circles of radius `2 - r` and `1 + r` about centres one apart,
+/// stop crossing past `r = 1`. The fixture sits exactly there (it too is the
+/// join's refusal, naming both edges); at `r = 1.05` of a prism two high,
+/// under the height and every other bound, nothing else can fire, and the
+/// join names both edges, the model untouched.
+#[test]
+fn a_cusp_of_two_arcs_past_the_gap_names_both_edges() {
+    let mut m = Model::default();
+    let part = extruded(
+        &mut m,
+        (-2.0, 0.0),
+        vec![
+            arc_to(2.0, 0.0, (0.0, -2.0)),
+            line_to(0.0, 0.0),
+            arc_to(-2.0, 0.0, (-1.0, -1.0)),
+        ],
+    );
+    let big = edge_at(&m, part, Point3::new(0.0, -2.0, 2.0));
+    let small = edge_at(&m, part, Point3::new(-1.0, -1.0, 2.0));
+    let before = arris_io::native::to_bytes(&m).unwrap();
+    for r in [1.05, 1.2] {
+        let err = fillet(&mut m, part, &[big, small], r).unwrap_err();
+        let OpError::Degenerate { entities, reason } = &err else {
+            panic!("r {r}: {err}");
+        };
+        assert_eq!(*reason, Reason::Blend(BlendReason::TooLarge), "{err}");
+        assert_eq!(entities.len(), 2, "{err}");
+        for e in [big, small] {
+            assert!(entities.contains(&e.shape()), "r {r}: {err}");
+        }
+        assert_eq!(arris_io::native::to_bytes(&m).unwrap(), before);
+    }
+    // Under the gap it builds.
+    fillet(&mut m, part, &[big, small], 0.95).unwrap();
+}
+
 /// The pocket's two concave floor arcs (`blend/cusp-pocket-both-arcs-fillet`)
 /// meet in the same mutual trim, above the floor: the record audits, `Full`
 /// is clean, and the section edge, `T*` and `S` are the pair's.
@@ -1233,6 +1270,20 @@ fn a_cusp_of_two_concave_arcs_is_their_mutual_trim() {
     };
     let s = m.vertex(at).unwrap().point();
     assert!((s - Point3::new(-2.0, 0.0, 1.1)).norm() < 1e-9, "S {s}");
+    // The record's order is the section edge, `T*` on the floor, then `S`;
+    // the edge runs between the two.
+    let EntityId::Edge(section) = shared[0].id else {
+        panic!("the section edge first: {shared:?}");
+    };
+    let EntityId::Vertex(first) = shared[1].id else {
+        panic!("T* second: {shared:?}");
+    };
+    let t_star = m.vertex(first).unwrap().point();
+    assert!((t_star.z - 1.0).abs() < 1e-9, "T* on the floor: {t_star}");
+    let entity = m.edge(section).unwrap();
+    let ends = [entity.start(), entity.end()].map(|v| m.vertex(v).unwrap().point());
+    assert!(ends.iter().any(|e| (e - t_star).norm() < 1e-9));
+    assert!(ends.iter().any(|e| (e - s).norm() < 1e-9));
     for edge in [big, small] {
         assert!(p.is_deleted(fwd(edge)));
     }
