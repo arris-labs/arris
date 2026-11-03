@@ -11,6 +11,25 @@ argument-hint: <cycle or milestone, e.g. v0.2 — and optionally the next cycle'
 shrinks to its status line and the next is appended below it. Never a
 second roadmap file, never an `ARCHIVE.md` — git holds the history.
 
+## Who does what
+
+The session runs on tier 3 (`.agents/tiers.md`) and keeps what is
+judgement: the finished check (1), `ROADMAP.md` (its drift and 5–7, the
+next cycle's pick), `AGENTS.md`, the commit and the hand-over. The reading
+goes to fresh subagents started with the full gate, in the background, each
+editing only its own files and never committing:
+
+| Subagent | Tier | Files it edits |
+|---|---|---|
+| findings (2) | 2 | `docs/BACKLOG.md` |
+| drift (3), one per doc | 2 | `ARCHITECTURE.md`; `DATA-MODEL.md` with `GLOSSARY.md` |
+| public docs (4) | 2 | `README.md`, `docs/COMPARISON.md` |
+
+Each hands back its fixes with the code that proves each one, and anything
+it could not settle. The session reads each `git diff` against those
+hand-backs before step 9 and settles the open items itself; a fix it
+doubts is reverted, not argued.
+
 ## Do
 
 1. **Check it is finished.** Every line of the section done or moved to
