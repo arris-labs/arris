@@ -65,14 +65,17 @@ Deletion is the "done" signal; anything worth keeping moves first.
 9. `git rm docs/plans/<slug>.md`; commit all as `docs: retire plan <slug>`,
    the body listing the docs updated.
 10. **Sweep the build cache** (`target/` grows past 100 GB otherwise; build
-   output only, never `target/oracle-cache`):
+   output only, never `target/oracle-cache`), in the background under the
+   verification's lock, so it waits out a verification in flight and none
+   starts while it deletes their binaries:
 
    ```sh
-   cargo sweep --stamp
-   cargo nextest run --workspace --no-run && cargo clippy --workspace --all-targets
-   cargo sweep --file
-   rm -rf target/debug/incremental
-   CARGO_TARGET_DIR=target/verify cargo sweep --time 7
+   flock "$(git rev-parse --git-common-dir)/arris-verify/lock" sh -c '
+     cargo sweep --stamp
+     cargo nextest run --workspace --no-run && cargo clippy --workspace --all-targets
+     cargo sweep --file
+     rm -rf target/debug/incremental
+     CARGO_TARGET_DIR=target/verify cargo sweep --time 7'
    ```
 
    `target/verify` is the verification's build output (ADR-0078); its last
