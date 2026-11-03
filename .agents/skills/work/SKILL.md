@@ -100,7 +100,10 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    interim, not a hand-back: `SendMessage` it to finish in the foreground
    and hand back. Every wait on a subagent or the gate also sets a
    `ScheduleWakeup` of 20 minutes or more, so a lost notification costs one
-   interval, not the session.
+   interval, not the session: about 60 on the full gate, its prompt one
+   line ("conductor fallback for `<slug>`: check the hand-back or gate; if
+   none, set the next wakeup"), never `/work <slug>`, which loads this
+   skill again.
 3. On each hand-back, check what landed: the last commit names `(plans/<slug>
    step N)`, the plan has step N ticked, `git status` is clean. Its test
    half may still be running: that is not a failure, and the next hook or
