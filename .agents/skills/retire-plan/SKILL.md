@@ -63,7 +63,8 @@ Deletion is the "done" signal; anything worth keeping moves first.
    merge with bullets commits already added. Never the plan's history.
 8. Deferred work: one line each in `docs/BACKLOG.md`.
 9. `git rm docs/plans/<slug>.md`; commit all as `docs: retire plan <slug>`,
-   the body listing the docs updated.
+   the body listing the docs updated. `git grep -n <slug> -- ':!docs/plans'`
+   comes back empty first: the docs-refs test refuses a file citing it.
 10. **Sweep the build cache** (`target/` grows past 100 GB otherwise; build
    output only, never `target/oracle-cache`), in the background under the
    verification's lock, so it waits out a verification in flight and none
