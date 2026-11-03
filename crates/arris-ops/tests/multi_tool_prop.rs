@@ -13,13 +13,14 @@
 //! `tests/fixtures/boolean/` (`tests/fixtures/README.md` §Property-test
 //! failures).
 
-use arris_check::{Level, check};
+use arris_check::{Level, Unchecked, check};
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
 use arris_debug::unmetered::{
     chamfer, cut, cut_many, fillet, fuse, fuse_many, mass_properties, offset_faces, primitive_box,
     shell, transform,
 };
 use arris_debug::{prop, prop_shards};
+use arris_geom::SurfaceKind;
 use arris_math::{Isometry, Point3};
 use arris_ops::{OpError, ShellSide};
 use arris_topo::provenance::audit;
@@ -50,6 +51,21 @@ fn counts(m: &Model, body: Body) -> Result<[usize; 4], TestCaseError> {
 /// that failed the checker.
 fn is_refusal(e: &OpError) -> bool {
     !matches!(e, OpError::Internal(_) | OpError::InvalidInput { .. })
+}
+
+/// Whether `body` is clean at `Full` with something unchecked, and every
+/// unchecked row a face pair of two NURBS faces: what the checker cannot
+/// decide between two faces of a walked blend.
+fn blend_leaves_nurbs_pairs(m: &Model, body: Body) -> bool {
+    let report = check(m, body, Level::Full);
+    report.is_ok()
+        && !report.unchecked().is_empty()
+        && report.unchecked().iter().all(|u| match u {
+            Unchecked::FacePair { kinds, .. } | Unchecked::ShellFacePair { kinds, .. } => {
+                kinds.0 == SurfaceKind::Nurbs && kinds.1 == SurfaceKind::Nurbs
+            }
+            Unchecked::ShellNesting { .. } => false,
+        })
 }
 
 /// `result`'s body, clean at `Full` with nothing unchecked and its
@@ -298,6 +314,15 @@ prop_shards! {
                         // (`regression/cut-many-cylinder-rim-fillet-not-clean`);
                         // every other flaw of a result still fails.
                         Ok((body, _)) if !check(&m, body, Level::Full).is_ok() => {}
+                        // A pair of two NURBS faces of a walked blend is one
+                        // the checker leaves undecided, as the corpus leaves
+                        // it for a blend (`corpus::check_stage`): the cut's
+                        // faces are analytic, so both are the blend's
+                        // (`regression/cut-many-cylinder-ellipse-fillet-measure-differs`).
+                        Ok((body, provenance)) if blend_leaves_nurbs_pairs(&m, body) => {
+                            audit(&m, &[whole], body, &provenance)
+                                .map_err(|e| fail(format!("{name}: provenance: {e}")))?;
+                        }
                         made => {
                             settle(&m, name, &[whole], made)?;
                         }

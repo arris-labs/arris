@@ -1,0 +1,78 @@
+{
+  "description": "A cylinder (radius 9.38117860718074, height 16.731486953765412) in a skew pose cut in one call by two thin skew cylinders, then the ellipse edge one tool leaves on its side filleted at 0.05 (the multi-tool property a_multi_tool_result_is_an_operand_of_every_operation at the fixed seed 61727269732d70726f70657274792d74657374732d736565642d763100000000 and 1000 cases, CI run 41395171280, shard 3, shrunk): the fillet builds with the oracle's counts, one S5 pair of two NURBS blend faces left undecided as the corpus allows a blend, and measures 2.0e-4 more volume (0.34% of the 6.0e-2 the blend removes) and 3.9e-3 more area than Open CASCADE. The desired result matches Open CASCADE's measures, or a second oracle's record shows Arris's walked blend the nearer.",
+  "params": {},
+  "variants": {},
+  "steps": [
+    {
+      "name": "target",
+      "op": "cylinder",
+      "base": [
+        -96.80348656890564,
+        66.66664704890884,
+        67.47975641577563
+      ],
+      "axis": [
+        0.35338974850088356,
+        -0.7844507863493158,
+        0.5096593464760778
+      ],
+      "radius": 9.38117860718074,
+      "height": 16.731486953765412
+    },
+    {
+      "name": "tool0",
+      "op": "cylinder",
+      "base": [
+        -73.88696426815399,
+        101.37865117960428,
+        63.53542184480166
+      ],
+      "axis": [
+        -0.6018069710281728,
+        -0.781118066102247,
+        0.1663818993478009
+      ],
+      "radius": 1.1940291015587412,
+      "height": 94.10607190539642
+    },
+    {
+      "name": "tool1",
+      "op": "cylinder",
+      "base": [
+        -54.660825297627945,
+        81.92134432105594,
+        85.89832984738187
+      ],
+      "axis": [
+        -0.8489686128138368,
+        -0.39996119917458683,
+        -0.3453741936100268
+      ],
+      "radius": 3.2119481033646387,
+      "height": 94.10607190539642
+    },
+    {
+      "name": "cut",
+      "op": "cut",
+      "target": "target",
+      "tools": [
+        "tool0",
+        "tool1"
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "cut",
+      "edges": [
+        [
+          -103.66448538164119,
+          62.173508887684704,
+          65.32137528049991
+        ]
+      ],
+      "radius": 0.05
+    }
+  ],
+  "result": "result"
+}

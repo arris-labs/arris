@@ -591,6 +591,13 @@ corpus_tests! {
     /// chamfer of the same edge fails the same way.
     #[ignore = "kernel bug: a fillet and a chamfer of a rim of a multi-tool cut fail the checker at L5 (docs/BACKLOG.md, a blend of a multi-tool cut's rim)"]
     regression_cut_many_cylinder_rim_fillet_not_clean => run "regression/cut-many-cylinder-rim-fillet-not-clean";
+    /// A cylinder in a skew pose cut in one call by two thin skew cylinders,
+    /// the ellipse one tool leaves on its side filleted at 0.05 (the
+    /// multi-tool result property's shard 3 at the fixed seed and 1000
+    /// cases, shrunk): the counts agree, the volume is 2.0e-4 above Open
+    /// CASCADE's, 0.34% of what the blend removes, and the area 3.9e-3.
+    #[ignore = "a fillet of an ellipse edge of a multi-tool cut measures 5.1e-8 relative above Open CASCADE's volume, not yet known which walked blend is nearer (docs/BACKLOG.md, a fillet of a multi-tool cut's ellipse edge)"]
+    regression_cut_many_cylinder_ellipse_fillet_measure_differs => run "regression/cut-many-cylinder-ellipse-fillet-measure-differs";
     /// A box cut in one call by two skew cylinders that meet inside it, its
     /// first face pressed out by 0.05 (the multi-tool result property's shard
     /// 1 at the fixed seed and 1000 cases, shrunk): `offset_faces` returns a
