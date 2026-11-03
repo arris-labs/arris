@@ -1115,7 +1115,13 @@ edge (a plane wall normal to the plane, the line's stripe a cylinder); a
 chamfer of both is the same join of the chamfer faces (cones, a plane for a
 line), their section the intersector's closed form for a plane and a cone,
 traced for two cones; any other cusp of two blended edges (two lines, mixed
-senses) is still refused. A
+senses) is still refused. The join holds for a size under the gap the two
+stripes' contacts cross within and under the section's reach to the spine
+(a crescent or pocket: `r < min(big − small, h)`; a spandrel:
+`r < min(a/4, h)`); past it the cusp is `BlendTooLarge` naming both edges.
+Two fillet cases inside that domain are open: a spindle torus on the big
+arc, whose plane-against-torus pair `Full` leaves undecided, and some rigid
+poses refused `Unsupported` for want of a closed form (`docs/BACKLOG.md`). A
 tangent dihedral, or an end at a vertex where a corner edge's two faces
 are tangent but which is neither a tangent vertex nor such a cusp — a
 concave blended edge at an overhang tip (Open CASCADE refuses the pillar's but
@@ -1554,7 +1560,9 @@ surfaces the intersector cannot intersect, a shell no containment ray
 could be classified against — is never guessed at and never quietly
 passed: it is listed by `Report::unchecked()`, printed with a `?` after
 its row number, and left out of `is_ok()`. An operation that cannot afford
-an undecided row asks for the list.
+an undecided row asks for the list. A plane against a spindle torus is one
+such pair today: the two-edge cusp fillet over a spindle builds at the
+right volume and `Full` lists the pair.
 
 **In debug builds every operation runs `Level::Fast` on its output before
 returning `Ok`, and panics with the report if it fails.** A checker failure

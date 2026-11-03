@@ -3,7 +3,7 @@
 cusp-corner fillet closure fixture, imported as its `second_oracle.json`.
 
 Run with `uv run --project tools/oracle tools/oracle/cusp_corner_closure.py`.
-For each fixture (plan `cusp-corner-patch` step 6, ADR-0084 §4′, ADR-0073):
+For each fixture (ADR-0084 §4′, ADR-0073):
 the recipe up to its two-edge fillet is built with each edge filleted alone
 by Open CASCADE (an exact rolling-ball stripe cut by the next wall), the
 two combined by `common`, which is the stripes' mutual trim; the recipe's

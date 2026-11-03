@@ -3,7 +3,7 @@
 
 Run with `uv run --project tools/oracle tools/oracle/cusp_corner_graph.py`.
 The record is `tests/fixtures/regression/cusp-corner-crescent-fillet/graph.json`
-(ADR-0084 §5 and §6, plan `cusp-corner-patch` step 2). For each
+(ADR-0084 §5 and §6). For each
 `regression/cusp-corner-*-fillet` fixture at three sizes:
 
 - the oracle's patch as the body sees it: its area, its cone volume from

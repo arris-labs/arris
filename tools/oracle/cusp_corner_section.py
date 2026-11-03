@@ -3,7 +3,7 @@
 
 Run with `uv run --project tools/oracle tools/oracle/cusp_corner_section.py`.
 The record is `tests/fixtures/regression/cusp-corner-crescent-fillet/section.json`
-(plan `cusp-corner-patch` step 2, ADR-0084 §4′). For each of the three
+(ADR-0084 §4′). For each of the three
 `regression/cusp-corner-*-fillet` recipes at three sizes: each selected
 edge filleted alone by Open CASCADE (a single cusp stripe, cut by the other
 wall, ADR-0042), the two results combined by `common` where the blends

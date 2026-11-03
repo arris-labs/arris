@@ -7,7 +7,7 @@ the second oracle's runs of the three `regression/cusp-corner-*-fillet`
 fixtures at three sizes (ADR-0073's neutral record, unscaled into the
 fixtures' units, each run's operand measured by the same kernel, and its
 face and edge counts; a refused run keeps its verdict and message). The record written beside it is `second.json`
-(plan `cusp-corner-patch` step 2's open question). Per run, each kernel's
+(the open question ADR-0084's amendment closes). Per run, each kernel's
 own change, `result − operand`:
 
 - the second oracle's;
