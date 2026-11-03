@@ -35,7 +35,9 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    the commit body; the full gate pays sixteen times that, and `fast`
    stops a test at 8 min. A run expected past a minute goes with
    `run_in_background`, and the step goes on with what does not depend on
-   it (`.agents/rules/git.md`, no foreground waits). For a geometric change,
+   it (`.agents/rules/git.md`, no foreground waits) — a subagent of
+   *Conduct* runs it in the foreground under `timeout` instead, since its
+   turn ending is its hand-back. For a geometric change,
    look at the result (`inspect` skill) before trusting a green test.
 4. Read your own `git diff --cached` against `.agents/review.md` and
    `.agents/rules/kernel.md` before committing: an `unwrap` on geometry, a
