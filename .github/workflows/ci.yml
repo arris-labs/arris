@@ -142,7 +142,10 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --project tools/oracle
-      - run: cargo nextest run --workspace --no-fail-fast --partition hash:${{ matrix.partition }}/4
+      # `--test-threads num-cpus`: the default profile's 16 threads are the
+      # dev machine's; on this 4-vCPU runner they ran ~16 heavy properties
+      # at once and the shards took 4.5 h to past the 6 h limit (2026-11-03).
+      - run: cargo nextest run --workspace --no-fail-fast --test-threads num-cpus --partition hash:${{ matrix.partition }}/4
       - if: matrix.partition == 1
         run: cargo nextest run -p arris --test corpus --run-ignored only --no-tests pass -E 'not test(/^regression_/)'
       - if: matrix.partition == 1

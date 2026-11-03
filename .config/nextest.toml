@@ -12,6 +12,11 @@
 # 4 threads 1285 s, 8 675 s, 16 402 s, 32 372 s. Sixteen leaves half the
 # machine to the other terminal for 8% more time than all of it.
 test-threads = 16
+# A test past 4 h is stopped and fails by name. CI's `test` shards ran into
+# GitHub's 6 h job limit on 2026-11-02 and 11-03 with several property
+# shards and the differential still running (>5 h each), and a cancelled
+# job names no test. At the full gate's 256 cases no test comes near this.
+slow-timeout = { period = "30m", terminate-after = 8 }
 
 [profile.fast]
 # A test past 8 min at the hook's 16 cases is stopped and fails: the slowest
