@@ -293,7 +293,7 @@ pub struct CuspPair {
     pub solid: String,
     /// The two edges, as `{:?}` prints their ids.
     pub edges: [String; 2],
-    /// The surface kinds each edge separates ([`pair_of`]).
+    /// The surface kinds each edge separates (`pair_of`).
     pub kinds: [String; 2],
     /// Whether the cusp's walls fold onto one side of the face the edges
     /// share (`None` where it cannot be read).
