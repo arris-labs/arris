@@ -61,7 +61,7 @@ pub(super) struct Cusp {
     /// The unit direction from `T` toward the balls' centres, along the
     /// spine: `−σ` times `T`'s outward normal.
     pub(super) inward: UnitVec3,
-    /// The fillet's radius.
+    /// The fillet's radius or the chamfer's distance.
     pub(super) size: f64,
 }
 

@@ -1450,9 +1450,9 @@ corpus_tests! {
     blend_cusp_corner_crescent_chamfer_fuse => run "blend/cusp-corner-crescent-chamfer-fuse";
     /// The chamfered crescent's common with a box whose plane crosses both cones and the section edge, held to Open CASCADE.
     blend_cusp_corner_crescent_chamfer_common => run "blend/cusp-corner-crescent-chamfer-common";
-    /// The chamfered crescent split by a plane across both cones and the section edge; the top side, held to Open CASCADE.
+    /// The chamfered crescent split by a plane across both cones and the section edge; the lower side (side -1, volume 4.466), held to Open CASCADE.
     blend_cusp_corner_crescent_chamfer_split_top => run "blend/cusp-corner-crescent-chamfer-split-top";
-    /// The chamfered crescent split by the plane y = -0.3 across both cones and the section edge; the side holding the cusp and the far end, held to Open CASCADE.
+    /// The chamfered crescent split by the plane y = -0.3 across both cones and the section edge; the side away from the cusp (y < -0.3), held to Open CASCADE.
     blend_cusp_corner_crescent_chamfer_split_oblique => run "blend/cusp-corner-crescent-chamfer-split-oblique";
     /// A second chamfer, on a bottom line edge the cusp join leaves alone, of the chamfered crescent, held to Open CASCADE.
     blend_cusp_corner_crescent_chamfer_second_blend => run "blend/cusp-corner-crescent-chamfer-second-blend";

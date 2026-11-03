@@ -174,12 +174,14 @@ struct Blend {
 /// the contact on the shared face crosses the next edge to where the other
 /// contact meets the third edge, both shortened there, on the section
 /// traced and fitted as an end on a curved face across is (ADR-0042,
-/// ADR-0079). Where the next edge of a cusp is filleted too — two
+/// ADR-0079). Where the next edge of a cusp is blended too, by a fillet or
+/// a [`chamfer`] of the same size — two
 /// circular arcs of one sense under a plane, a crescent's two top edges, or
 /// an arc and a straight edge, a spandrel's —
 /// the two stripes are each other's cutter (ADR-0084): each runs on toward
 /// the cusp, the contacts on the plane ending where they cross and the
-/// other two on the spine one radius from the plane, and the two meet
+/// other two on the spine one radius (a chamfer's distance) from the
+/// plane, and the two meet
 /// along their own section between those points, traced and fitted; the
 /// spine is shortened to its point, the cusp vertex goes and no face is
 /// added. Two
@@ -214,7 +216,7 @@ struct Blend {
 /// edges, as a miter's are, the third edge — or, at a vertex of four, both
 /// tangent edges, at the seam's vertex of a split rim its seam (both seams
 /// where both faces turn), and at a vertex of two edges none — `Modified` and the vertex `Deleted`.
-/// At a cusp of two filleted edges the section edge and its two vertices
+/// At a cusp of two blended edges the section edge and its two vertices
 /// are `Generated` from both edges, each listing them after its own
 /// records, so that `generated_pair` of the two is exactly those three; the
 /// spine is `Modified` and the cusp vertex `Deleted`.
@@ -244,7 +246,7 @@ struct Blend {
 /// the next edge turning back without a cusp or itself a tangent dihedral,
 /// a concave blended edge at an overhang tip, or both cusp edges blended
 /// but for two circular arcs, or an arc and a line, of one sense filleted
-/// under a plane —
+/// or chamfered under a plane —
 /// [`BlendReason::VertexBlend`] at a corner the closed
 /// forms do not cover — a vertex of other than three edges that the chain
 /// does not run on through and that is no fan — the faces across not one
@@ -261,7 +263,10 @@ struct Blend {
 /// no such lengthening or whose stretch leaves its face, or a closed edge's torus stripe leaves the torus's
 /// regular band (ADR-0080) or its centre circle is on the axis, a contact reaches the axis or a cone's apex, or its seam is
 /// shorter than the trim, or the third edge or a tangent edge at
-/// a chain's junction is shorter than the cut; a closed edge whose vertex
+/// a chain's junction is shorter than the cut, or, at a cusp of two blended
+/// edges, the size is past the gap — the two contacts on the plane do not
+/// cross, the meeting point is off either stripe's band, or the section
+/// between the stripes leaves a band — naming both edges; a closed edge whose vertex
 /// carries more than the curved faces' seams, or an open arc that meets
 /// another blended edge at a vertex that is no tangent vertex, is
 /// [`BlendReason::VertexBlend`];
@@ -361,6 +366,14 @@ pub fn fillet(
 /// distance `distance` from the edge's point, and the chamfer is the ruled
 /// NURBS surface between the two contact curves, within the faces'
 /// tolerance. The refusals are the fillet's.
+///
+/// A cusp of two chamfered edges — two circular arcs of one sense under a
+/// plane, or an arc and a straight edge — builds as a [`fillet`]'s does:
+/// the two cones, or the cone and the plane, run on into the cusp and meet
+/// along their own section, which cuts the edge between the walls; the
+/// cusp vertex goes and no face is added. A distance past the gap there is
+/// [`BlendReason::TooLarge`] naming both edges; the other cusp refusals
+/// are the fillet's.
 ///
 /// ```
 /// use arris_ops::measure::mass_properties;

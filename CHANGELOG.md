@@ -8,15 +8,15 @@ into its version (ADR-0027).
 
 ## Unreleased
 
-- A fillet of both edges at a cusp — a crescent's two top arcs, whose walls
-  are tangent along the edge between them — now builds, where it was refused
-  as `TangentChain`: the two rounds run on into the cusp and meet along
-  their own intersection, which cuts the edge between the walls; no face is
-  added. This holds for a straight edge and an arc (a spandrel's line and
-  arc) and for concave arcs (a pocket's floor) as well. A chamfer of both edges of such a cusp
-  builds the same way, the two chamfer faces meeting along their own
-  intersection. Two straight edges, or edges of opposite convexity, are
-  still refused as `TangentChain`.
+- A fillet or chamfer of both edges at a cusp (a crescent's two top arcs,
+  whose walls are tangent along the edge between them; an arc and a straight
+  edge; concave arcs, a pocket's floor) now builds, where it was refused as
+  `TangentChain`: the two blends run on into the cusp and meet along their
+  own intersection, which cuts the edge between the walls; no face is added.
+  Still refused: two straight edges, edges of opposite convexity, a
+  curved shared face or walls that are not square
+  (`TangentChain`), and a size past the gap between the edges
+  (`BlendTooLarge`). A few poses of such a fillet are still `Unsupported`.
 - A fillet or chamfer along a curve that crosses a seam of a curved face at a
   slant (a pin off a ball's axis) now builds, where it was refused as
   `VertexBlend`. A crossing so shallow that the seam lies beyond the
