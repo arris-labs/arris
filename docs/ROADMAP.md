@@ -925,8 +925,8 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   AP242's four cylinder pairs waiting.
 - Corners the closed forms do not cover: a walked chain junction on a
   seam is **done 2026-11-02** (`walked-seam-junction`, M9, ADR-0083); a
-  cusp whose two edges are both blended, as the stripes' mutual trim
-  (`cusp-corner-patch`, ADR-0084 amended), is the next plan. The hinge leaf's knuckle joins are done
+  cusp whose two edges are both blended, as the stripes' mutual trim,
+  is **done 2026-11-03** (`cusp-corner-patch`, M10, ADR-0084 amended). The hinge leaf's knuckle joins are done
   (`flush-fan-end`, M8, ADR-0082). The flush-fan census
   (`flush-fan-end`, step 7, 2026-11-01): the script corpus's `fillet`
   refusals are 0 (from 1, the hinge leaf), and the real parts' blend row
@@ -938,6 +938,18 @@ patches Open CASCADE fits for these cases are no longer out of reach.*
   `fillet` refusals stay 0 (its histogram: 71 stages, 70 built, 1
   `SurfaceCollapses` shell), and the VertexBlend census holds 0 fetched
   edges and 3 committed, the FTC-06 cusp (NURBS), none a seam junction.
+  The cusp join's census (`cusp-corner-patch`, step 8, 2026-11-03): the
+  real parts' blend row stays 0 of 38 (the histogram: 142 agree, 7 both
+  refuse, 0 Arris refuses; the one unexcluded stage is CTC-02 AP242 e2's
+  drill along its first axis, the Open CASCADE miscount in BACKLOG), the
+  script corpus's `fillet` refusals stay 0 (71 stages, 70 built, 1
+  `SurfaceCollapses` shell; 21 of its 22 parts re-run green, `bottle-cap`
+  being the 40 minute part of BACKLOG). The cusp pair census counts 16
+  pairs in the fetched AP242 parts (CTC-04 4, FTC-06 8, STC-06 4) and 12
+  in the committed tier (CTC-04, FTC-06), all overhang tips with their walls
+  on either side and still `TangentChain`: no real part asks the join, which
+  its fixtures and properties hold; the one-edge cusp, overhang, flush-fan
+  and seam-junction results are unchanged.
 - [x] The parallel-cylinder row of the blend table (ADR-0036 §5): **done
   2026-11-01** (`parallel-cylinder-blend`). A fillet or chamfer of a
   straight edge where two cylinders with parallel axes meet along a

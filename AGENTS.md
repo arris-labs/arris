@@ -38,25 +38,15 @@ the NURBS cycle (NURBS faces against every kind and each other, walked
 blends, sweep, loft; NURBS blocks 0 of 38 parts). ADR-0001 to ADR-0068;
 PyPI `arris` beside them (ADR-0034); audience developers first, with the
 script corpus (ADR-0067).
-**C11, the blend residue** (opened 2026-10-22): M1–M4 done 2026-10-26 to
-10-30 (`battery-honesty`, `blend-runs-onto`, `three-edge-run-vertex`,
-`walked-saddle-cell`, `tolerant-tangency`; ADR-0070 to ADR-0077): the real
-parts' blend row is **0 of 38**, a vanishing end and a chain through a kink
-within a vertex's tolerance build, and a second oracle's records (ADR-0073)
-hold what Open CASCADE cannot. The modelling layer (`arris.build`,
-ADR-0067) and the multi-platform wheels landed 2026-10-22; 0.9.1 is the
-release prepared for the first multi-platform upload. The refactor
-sequence (`refactor-after-c10`, option B) is closed (2026-10-26).
-M5 `overhang-tip-cap` done 2026-10-31 (ADR-0079): a convex edge at an
-overhang tip builds, cut by the next wall; FTC-06's concave ones stay refused.
-M6 `horn-torus` done 2026-10-31 (ADR-0080): a torus face holds the regular
-band, so a fillet whose torus is horn or spindle builds and stays operable.
-M7 `parallel-cylinder-blend` done 2026-11-01 (ADR-0036 §5 amended): a fillet or
-chamfer of two parallel-axis cylinders along a ruling builds in closed form.
-M8 `flush-fan-end` done 2026-11-01 (ADR-0082): a concave blend ends on a
-fan of flush pieces; the script corpus's `fillet` refusals are 0.
-M9 `walked-seam-junction` done 2026-11-02 (ADR-0083): a walked chain through a
-vertex on a seam, even at a slant, builds at the ball whose contact is on it.
+**C11, the blend residue** (opened 2026-10-22): M1-M10 done 2026-10-26 to
+11-03 (ADR-0070 to ADR-0084): the real parts' blend row is **0 of 38** and the
+script corpus's `fillet` refusals 0; a second oracle's records (ADR-0073) hold
+what Open CASCADE cannot. M5-M9: overhang-tip cap, horn torus, parallel
+cylinders, flush fan, walked seam junction. M10 `cusp-corner-patch`
+(ADR-0084): two blended arcs (or an arc and a line) of one sense at a cusp
+join as the stripes' mutual trim; the census finds no real part asking it (16
+overhang tips, still `TangentChain`). The modelling layer (`arris.build`) and
+multi-platform wheels landed 2026-10-22; the refactor sequence is closed.
 **Next:** the cycle's next plan (`docs/ROADMAP.md` §C11).
 
 ## Rules that are not derivable from the code

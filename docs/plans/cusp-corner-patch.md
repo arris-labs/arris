@@ -92,7 +92,7 @@ an algorithm's robustness or bound must be established. Each step is a commit.
   motion and mirror covariance, selection-order and repeated-run
   determinism, provenance stability, cancellation and refusal rollback.
   Derive the safe size domain (ADR-0084 §5′) in the ADR.
-- [ ] Step 8 **[2]** — Re-run both real-part tiers and the script corpus,
+- [x] Step 8 **[2]** — Re-run both real-part tiers and the script corpus,
   print the histograms, census cusp pairs explicitly (single-edge requests
   cannot reach this join). Recipes and records for newly covered sites,
   named residuals in BACKLOG; hold the one-edge cusp, overhang, flush-fan
@@ -206,3 +206,12 @@ and `law.json`, `graph.json`, `second.json` beside it.
   record applies to the repros (`corpus_lint` wants area, centroid and
   inertia for `measure_differs` and Open CASCADE's patch is 0.6 to 4.6 %
   off), so they assert `Full` clean and the closed-form volume.
+- *Settled* (step 8, conductor): both tiers, the script corpus and the new
+  cusp pair census (`real_parts --cusp-pairs[-committed]`, `census::cusp_pairs`:
+  vertices of three edges where two blendable edges leave along one tangent,
+  each pair blended together at the battery's radius) are in the ROADMAP's
+  C11 and BACKLOG. Blend row 0 of 38, script `fillet` refusals 0, 71/70/1. The
+  16 fetched (12 committed) pairs are all overhang tips, so no recipe or
+  oracle record is newly owed. `tools/py-test.sh` cannot finish in a session:
+  `bottle-cap` is the 40 minute part (BACKLOG); the suite without it and the
+  script corpus's other 21 parts passed.

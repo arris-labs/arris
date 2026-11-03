@@ -27,6 +27,10 @@
 //!   edge alone by the site that refused it, and the battery's sample
 //!   together, each put to Open CASCADE. `tools/real-parts.sh` leaves the
 //!   table at `target/real-parts/vertex-blend.md` beside the others.
+//! - `real_parts --cusp-pairs <file.stp>...` and `--cusp-pairs-committed`
+//!   count the cusps whose two edges both blend and put each pair to the
+//!   blend together (`census::cusp_pairs_markdown`; ADR-0084, a join a
+//!   single-edge request cannot reach).
 //! - `real_parts --summary <manifest> <reports-dir> <waits> <out-dir>`
 //!   reads every report the manifest's files should have, writes
 //!   `histogram.md` and `failures.md` into `<out-dir>`, and `both.md`,
@@ -48,7 +52,7 @@ type Error = Box<dyn std::error::Error>;
 
 fn usage() -> ! {
     eprintln!(
-        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --census <file.stp>...\n       real_parts --census-committed\n       real_parts --gaps <file.stp>...\n       real_parts --gaps-committed\n       real_parts --tangent-chain <file.stp>...\n       real_parts --run-over <file.stp>...\n       real_parts --run-over-committed\n       real_parts --vertex-blend <file.stp>...\n       real_parts --vertex-blend-committed\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
+        "usage: real_parts --committed\n       real_parts --part <file.stp> <work-dir> <report.json> [source]\n       real_parts --census <file.stp>...\n       real_parts --census-committed\n       real_parts --gaps <file.stp>...\n       real_parts --gaps-committed\n       real_parts --cusp-pairs <file.stp>...\n       real_parts --cusp-pairs-committed\n       real_parts --tangent-chain <file.stp>...\n       real_parts --run-over <file.stp>...\n       real_parts --run-over-committed\n       real_parts --vertex-blend <file.stp>...\n       real_parts --vertex-blend-committed\n       real_parts --summary <manifest> <reports-dir> <waits> <out-dir>"
     );
     std::process::exit(2);
 }
@@ -126,6 +130,23 @@ fn main() -> Result<(), Error> {
             print!(
                 "{}",
                 census::run_over_markdown(&census::run_over_committed()?)
+            );
+            Ok(())
+        }
+        Some("--cusp-pairs") if args.len() >= 2 => {
+            let mut parts = Vec::new();
+            for file in &args[1..] {
+                let path = Path::new(file);
+                let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or(file);
+                parts.push((name.to_string(), census::cusp_pairs_file(path)?));
+            }
+            print!("{}", census::cusp_pairs_markdown(&parts));
+            Ok(())
+        }
+        Some("--cusp-pairs-committed") => {
+            print!(
+                "{}",
+                census::cusp_pairs_markdown(&census::cusp_pairs_committed()?)
             );
             Ok(())
         }
