@@ -20,7 +20,9 @@ ADR-0056), then **C9** (the healing cycle: sheet bodies, gap and orientation
 healing, the writer's length unit; done 2026-10-12, ADR-0057 to ADR-0060),
 then **C10** (the NURBS cycle: NURBS operands, sweep and loft; done
 2026-10-22, ADR-0061 to ADR-0065, ADR-0067, ADR-0068), then **C11** (the
-blend residue: the fillets the real parts and scripts are still refused).
+blend residue: the fillets the real parts and scripts were refused; done
+2026-11-04, ADR-0070 to ADR-0084), then **C12** (the plugin CAD's
+remaining asks: draft and thicken, then `region2`).
 An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
@@ -861,108 +863,50 @@ printed.
 *Goal: a fillet or chamfer that a real part or a script asks for, and
 Open CASCADE builds, builds, or is refused by a name that says why the
 geometry has no blend. Chosen at C10's close by ADR-0020's rule: no
-consumer has reported a regression, and the blend network is the one row
-of both histograms that is not 0. The blend network row stood at 12 of the 38 real parts
-at `fillet`; 8 of those were the battery's own sample asking edges the
-blend reads as tangent and Open CASCADE leaves out (ADR-0070). With the
-sample re-derived it blocked 4 of 38, all fetched; with the leaning ruling built
-(`three-edge-run-vertex`, ADR-0072) CTC-02 AP242 and FTC-07 AP242 build and
-2 of 38 remained, CTC-05 AP242 and
-FTC-11 at `TangentChain` (an end or a corner tangent within a tolerance,
-no sampled edge the edge itself), which `tolerant-tangency` built: the
-row is **0 of 38**, and the committed tier's is 0. STC-07
-AP242, whose fillet now builds, fails the checker at `Full` on four
-cylinder pairs S5 leaves undecided (`regression/nist-stc-07-ap242-fillet-checker-undecided`,
-waiting in `tools/real-parts.waits`). The residue also holds 3
-of the script corpus's 4 refusals (2 of them, a blend that leaves its
-face through an edge not the corner's own, now build): a corner the closed forms do not cover at
-the hinge leaf's knuckle joins (1). Shell's `SurfaceCollapses` at the vase
-is the other. With NURBS faces an operand since C10, the caps and corner
-patches Open CASCADE fits for these cases are no longer out of reach.*
+consumer had reported a regression, and the blend network was the one row
+of both histograms that was not 0: 12 of the 38 real parts at `fillet`, 4
+once the battery's sample left out the edges the blend reads as tangent
+and Open CASCADE drops (ADR-0070), and 3 of the script corpus's 4
+refusals. With NURBS faces an operand since C10, the caps and corner
+patches Open CASCADE fits for these cases were no longer out of reach.*
 
-**In**, by the parts each unblocks:
+**Status: done 2026-11-04, tag `c11`.** Retired the blend residue: the
+battery's sample re-derived (ADR-0070); a blend that runs over an edge not
+the corner's rolls on it (ADR-0071); a junction whose tangent edge leans
+meets on that edge's offset, held by a second oracle's record where Open
+CASCADE cannot (ADR-0072, ADR-0073); chains through ends and vertices
+tangent only within a tolerance (ADR-0074 to ADR-0077); a walked skin's
+saddle cell decided at `Full` (ADR-0061 amended); the convex overhang tip
+cut by the next wall (ADR-0079); the horn and spindle torus as a face on
+its regular band (ADR-0080); the parallel-cylinder ruling edge in closed
+form; the flush fan of the hinge leaf's knuckle (ADR-0082), a walked
+junction on a seam (ADR-0083) and a cusp of two blended edges as the
+stripes' mutual trim (ADR-0084). Beside it, a code commit's tests run
+after it on its own tree (ADR-0078) and a plan's full gate on its tip's
+(ADR-0081). The blend network row: **0 of 38** real parts (0 of 11
+committed, 0 of 27 fetched), from 4; the nightly of 2026-11-03 counts 142
+battery stages, 135 agreeing with Open CASCADE, 7 refused by both, 0 by
+Arris alone. The run-over census over CTC-01, CTC-03, FTC-08 and STC-06
+(`tests/horn_census.rs`) counts 54 `BlendTooLarge` edges where there were
+277 (the "contact leaves a face" rows 41, from 98), 953 edges building
+alone; Open CASCADE builds 43 of the 54, finds 3 invalid and refuses 8. The
+VertexBlend census holds 0 fetched edges and 3 committed (the FTC-06 cusp,
+NURBS). The script corpus: 71 stages, 70 built, its `fillet` refusals 0
+from 3, `SurfaceCollapses` at the vase's shell the one left. No real part
+asks the two-edge cusp: its 16 fetched pairs are overhang tips, still
+`TangentChain`. STC-07 AP242's fillet waits on S5's undecided cylinder
+pairs (`regression/nist-stc-07-ap242-fillet-checker-undecided`); draft and
+thicken, the side slot, did not start. Closed with five nightly findings
+open by the human's decision, two of them panics (docs/BACKLOG.md
+§Findings). ADR-0070 to ADR-0084.
 
-- [x] Tangent chains whose faces are tangent only within a tolerance:
-  **done 2026-10-30** (`tolerant-tangency`, ADR-0074 to ADR-0077). A
-  vanishing end (CTC-05) leaves the rest of its edge, and a corner edge
-  tangent within the vertex's tolerance (FTC-11's slot) chains through
-  a junction across the kink. The battery's `fillet` row is **0 of 38**
-  real parts (from 2), every battery stage agreeing with Open CASCADE or
-  refused by both (142 agree, 7 both refuse, 0 Arris refuses).
-- [x] A blend that runs over an edge that is not the corner's (the script
-  corpus's two): **done 2026-10-27** (`blend-runs-onto`, ADR-0071). The
-  ball rolls on the crossed edge between the two crossings and the
-  rolled face is fitted there; the pi mount plate and the phone stand run
-  to `ok` at every stage, so the script corpus's `fillet` refusals are 1
-  (the hinge leaf) and the real parts' `fillet` row stays at 4 of 38. An
-  ellipse for the crossed edge stays `BlendTooLarge`.
-- [x] The horn torus on an arc (`BlendTooLarge`): **done 2026-10-31**
-  (`horn-torus`, ADR-0080). A fillet whose torus is horn or spindle builds
-  as a face on the torus's regular band; the contact at the axis stays
-  refused. The run-over census over CTC-01, CTC-03, FTC-08 and STC-06
-  (`tests/horn_census.rs`) now counts 54 `BlendTooLarge` edges where there
-  were 277 (the "contact leaves a face" rows 41, from 98), 953 edges
-  building alone; Open CASCADE builds 43 of the 54, finds 3 invalid and
-  refuses 8. STC-06's two sampled edges build.
-- [x] Overhang tips (`TangentChain`): **done 2026-10-31** (`overhang-tip-cap`,
-  ADR-0079). A convex lip edge's fillet is cut by
-  the next wall on its exact stripe (ADR-0079); the concave pillar edge
-  stays refused on the pillar; FTC-06's 8 concave requests, which Open
-  CASCADE builds with fitted caps, are a regression fixture and a backlog
-  line. Variants, chamfers, the FTC-06 census and the cusp property are done.
-- [x] A junction whose tangent edge is a line that leans out of the
-  ball's normal plane: **done 2026-10-28** (`three-edge-run-vertex`,
-  ADR-0072, ADR-0073). The two stripes meet on one ball off the vertex, on
-  the ruling's offset; CTC-02 AP242 and FTC-07 AP242 build their `fillet`
-  stage. The torus half, a vertex of four edges and the seam stay
-  `VertexBlend`.
-- [x] The saddle cell of a walked blend beside a B-spline wall: **done
-  2026-10-29** (`walked-saddle-cell`, ADR-0061 amended five times). A
-  walked skin's corner saddle, its arc knot, its tangent arc, a touch on
-  its edge and a box of critical points beside its isoline are decided at
-  `Full`; CTC-02 AP242's ellipse chain and the S-bend under an oblique top
-  are built and checked (`blend/`), the S-bend's f37/f38 and STC-07
-  AP242's four cylinder pairs waiting.
-- Corners the closed forms do not cover: a walked chain junction on a
-  seam is **done 2026-11-02** (`walked-seam-junction`, M9, ADR-0083); a
-  cusp whose two edges are both blended, as the stripes' mutual trim,
-  is **done 2026-11-03** (`cusp-corner-patch`, M10, ADR-0084 amended). The hinge leaf's knuckle joins are done
-  (`flush-fan-end`, M8, ADR-0082). The flush-fan census
-  (`flush-fan-end`, step 7, 2026-11-01): the script corpus's `fillet`
-  refusals are 0 (from 1, the hinge leaf), and the real parts' blend row
-  stays 0 of 38 (0 of 11 committed, 0 of 27 fetched). The battery's one
-  unexcluded stage, CTC-02 AP242 e2's drill along its first axis, is the
-  known Open CASCADE miscount in BACKLOG, not this cycle's work.
-  The walked seam junction's census (`walked-seam-junction`, step 8,
-  2026-11-02): the real parts' blend row stays 0 of 38, the script corpus's
-  `fillet` refusals stay 0 (its histogram: 71 stages, 70 built, 1
-  `SurfaceCollapses` shell), and the VertexBlend census holds 0 fetched
-  edges and 3 committed, the FTC-06 cusp (NURBS), none a seam junction.
-  The cusp join's census (`cusp-corner-patch`, step 8, 2026-11-03): the
-  real parts' blend row stays 0 of 38 (the histogram: 142 agree, 7 both
-  refuse, 0 Arris refuses; the one unexcluded stage is CTC-02 AP242 e2's
-  drill along its first axis, the Open CASCADE miscount in BACKLOG), the
-  script corpus's `fillet` refusals stay 0 (71 stages, 70 built, 1
-  `SurfaceCollapses` shell; 21 of its 22 parts re-run green, `bottle-cap`
-  being the 40 minute part of BACKLOG). The cusp pair census counts 16
-  pairs in the fetched AP242 parts (CTC-04 4, FTC-06 8, STC-06 4) and 12
-  in the committed tier (CTC-04, FTC-06), all overhang tips with their walls
-  on either side and still `TangentChain`: no real part asks the join, which
-  its fixtures and properties hold; the one-edge cusp, overhang, flush-fan
-  and seam-junction results are unchanged.
-- [x] The parallel-cylinder row of the blend table (ADR-0036 §5): **done
-  2026-11-01** (`parallel-cylinder-blend`). A fillet or chamfer of a
-  straight edge where two cylinders with parallel axes meet along a
-  ruling builds in closed form. The census at the battery's radius counts
-  6 ruling edges in 3 parts (C6 counted 29 in 5 over every cylinder pair
-  the battery met): FTC-08 and STC-08, convex between planes, both
-  `built`; STC-10, concave between tori, both `Unsupported` torus × torus
-  at the ends. Open CASCADE refuses those two too ("There are no suitable
-  edges for chamfer or fillet"). The ogive bar and the figure eight's
-  waist are held to their closed forms.
-- Beside the cycle, in the second plan slot: draft and thicken (the plugin
-  CAD's A7), the modelling layer's first milestone having landed (§Beside
-  the cycles).
+**In:** tangent chains whose faces are tangent only within a tolerance; a
+blend that runs over an edge not the corner's; the horn torus on an arc;
+overhang tips; a junction whose tangent edge leans; the saddle cell of a
+walked blend beside a B-spline wall; corners the closed forms do not cover
+(the flush fan, a walked junction on a seam, a cusp of two blended edges);
+the parallel-cylinder row of the blend table (ADR-0036 §5). Beside the
+cycle: draft and thicken, *not started; C12's theme*.
 
 **Out:** variable-radius blends and the chamfer's other modes (two
 distances, a distance and an angle); the attribute cycle; IGES and
@@ -970,11 +914,60 @@ same-domain face merging; sheet operands of the boolean; free-edge
 sewing; two NURBS faces flush over an area; faceted solids.
 
 **Accept:** the histogram's blend network row re-run and printed, below
-4 of 38 (the corrected count; 0 of 38 after `tolerant-tangency`), every stage left a typed refusal naming the edge; each stage
+4 of 38, every stage left a typed refusal naming the edge; each stage
 newly built gives a checker-green body whose mass properties match Open
 CASCADE's within the fixture's tolerance, with a fixture per refusal it
 retires; the script corpus re-run, its `fillet` refusals below 3; the
 blend properties extended over the new cases; no panic.
+
+---
+
+## C12 — the plugin CAD's remaining asks
+
+*Goal: the plugin CAD's last recorded asks are API it can call. A face is
+drafted about a neutral plane or a parting line, a sheet is thickened into
+a solid, and a sketcher shades exactly the regions `extrude` accepts
+through a public `region2`. Chosen at C11's close by ADR-0020's amendment
+of 2026-09-26 (a consumer blocked on missing API ranks first), since the
+histogram no longer ranks a kernel cycle: over the 38 real parts every
+kernel row is 0 (NURBS, the blend network, sweep, healing; the nightly of
+2026-11-03), and the 3 parts still blocked all stop at `read` on the
+reader's own subset (faceted 1, outside the subset 1, unparsed 1). The
+script corpus refuses 1 of its 71 stages (`SurfaceCollapses` at shell),
+and no consumer has reported a regression. The plugin CAD's open asks
+(`docs/ideas/plugin-cad-consumer-asks.md`) are A7's draft and thicken,
+unstarted in the side slots of C10 and C11, A5's `region2`, and free-edge
+sewing, which no part of the corpus needs (ADR-0058 §6).*
+
+**In:**
+
+- Draft (A7): faces tapered by an angle about a neutral plane or a
+  parting line, on planes a plane turned about a line and on a cylinder a
+  cone (ADR-0047's line), with provenance, an operand of every boolean and
+  blend; what has no exact draft refused by name.
+- Thicken (A7): a sheet body (ADR-0057) grown into a solid on one side or
+  both, through the offset ADR-0048 built, with provenance; the modelling
+  layer's sheet values as its input where the binding has them.
+- `region2` as public API over `Curve2` with exact predicates (A5),
+  weighed against the backlog's narrowing of `pub` internals; the exact
+  polygon–polygon overlap S5's coincident arm waits on rides on it.
+- Beside the cycle, in the second plan slot: the nightly's open findings,
+  the two panics first, and the refactor review's milestone plans.
+
+**Out:** free-edge sewing (a backlog line until a part asks it); faceted
+solids and the reader's other refused subsets; variable-radius blends and
+the chamfer's other modes; the attribute cycle; IGES and same-domain face
+merging; sheet operands of the boolean; two NURBS faces flush over an area.
+
+**Accept:** draft and thicken fixtures on every analytic face kind they
+take match Open CASCADE (`BRepOffsetAPI_DraftAngle`,
+`BRepOffsetAPI_MakeThickSolid`) within the fixture's tolerance, each body
+checker-green, the rest a typed refusal naming the face; properties over
+random poses (a draft of angle 0 is the body, thicken's volume against the
+sheet's area times the distance on a plane); the capability matrix, the
+binding and its stubs carry both; `region2`'s predicates exact under a
+property against its own subdivision; the histogram and the script corpus
+re-run and printed, no row above C11's close; no panic.
 
 ---
 

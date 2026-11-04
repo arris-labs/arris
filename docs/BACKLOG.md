@@ -117,7 +117,7 @@ reproduces it.
 - Reading back Open CASCADE's smooth loft is slow: `loft/loft-closed-torus-like`'s two read-back stages (plain and `--nurbs`) take 12 s each on Open CASCADE's B-spline approximation of the ring, against 4 s for everything else the fixture runs, and `loft/loft-duct` is about 22 s in all; profile it beside the line above (plans/loft step 5)
 - The boolean's remaining hot passes are sequential: the edge-on-face hits of the pave model and the ray cast that classifies every piece (`classify_point`), plus the checker that runs after every operation in debug builds. `parallel` covers the face-pair intersections and the per-face splitting and buys 1.4× on the eight-cut bolt pattern; the hits are a candidate for the same treatment, and the classifier needs its ray casts to stay in a fixed order (M4 step 13 finding)
 - Adaptive or curvature-driven mesh refinement beyond a chord tolerance, if a consumer's mesh sizes come out too coarse or too dense against `arris-mesh`'s uniform (u, v) grid (M3 non-goal)
-- Draft (faces tapered about a neutral plane or a parting line) and thicken (a sheet grown into a solid): the plugin CAD's A7 beside shell and offset, left out of the prismatic-features cycle (C7) by its scope; draft on planes stays analytic (a plane turned about a line), on a cylinder it is a cone (ADR-0047) — C10's side-slot line, unstarted at its close (2026-10-22)
+- Draft (faces tapered about a neutral plane or a parting line) and thicken (a sheet grown into a solid): the plugin CAD's A7 beside shell and offset, left out of the prismatic-features cycle (C7) by its scope; draft on planes stays analytic (a plane turned about a line), on a cylinder it is a cone (ADR-0047) — C10's side-slot line, unstarted at its close (2026-10-22) and at C11's (2026-11-04); C12's theme, with A5's `region2`
 - Chamfers with two distances, or a distance and an angle (`BRepFilletAPI_MakeChamfer`'s other modes): `ops::chamfer` takes one distance measured on both faces (fillet-and-chamfer non-goal)
 - A revolve of an elliptic profile segment, refused today as `SweepReason::EllipticRevolve` (ADR-0014): it needs a surface of revolution with an elliptic meridian — a variant or a `Nurbs` — and ellipse sections in the meridian arm's table (ADR-0008), with its own corpus; for the first consumer or corpus that revolves an ellipse (facade-swap step 3)
 - A section of a horn or a spindle torus at its axis that the trace does not part: a plane holding the axis (the tube circles meet the axis point's collapsed row, `SectionFault::TubeCircle`; the shared-axis arm answers a horn's two circles and refuses a spindle's, which cross into the lemon) a surface crossing a horn along a tube circle (`TubeCircle`, the quotient by the circle double along the axis row) and one touching a horn's axis point alone, tangent to the axis (`TangentAlongCurve`) — one tangent along a tube circle, a horn blend's junction, is traced; a box cut through the middle of a filleted cylinder at a horn or spindle blend meets the first (horn-torus step 3 finding)
@@ -209,7 +209,7 @@ it. One block per finding, in this shape:
 - Seen: <workflow run>, commit <sha>, seed <64 hex>, <cases> cases
 - Reproduce: <the command, or the artifact and where to get it>
 - Evidence: <the measured numbers, and the fixture once shrunk>
-- State: raw | measured | fixture <regression/slug> | excluded <name>
+- State: raw | measured | fixture <regression/slug> | excluded <name> | open <why>, a finding a cycle closed around by the human's decision
 - The fix is: <one line>
 ```
 
@@ -268,7 +268,7 @@ above when it wants a fix; the block moves or is deleted then.
 - Seen: runs 41292271476 (11-01, `0514ac15`, seed `fc72dc4e5cf7e6f0cd4773a1e32cf26574d0a31f2ff33a98d7de0b643169db98`), 41421013263 (11-02, `bbcea937`, seed `bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc`), 41611704820 (11-03, seed `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81`), 5000 cases.
 - Reproduce: `ARRIS_PROPTEST_SEED=fc72dc4e5cf7e6f0cd4773a1e32cf26574d0a31f2ff33a98d7de0b643169db98 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test blend_prop -E 'test(/slot_chain_through_its_kink_is_pose_independent|an_elbows_vanishing_end/)'`.
 - Evidence: the same vertices (v99, v100) at 2.5e-3 in all 8 panics of the 11-03 shard; the `blend` job was cancelled at 350 minutes on the same three nights, so the property's other shards are unread. 11-01's elbow panic is the same message.
-- State: raw.
+- State: raw; open, deferred: the human accepted closing C11 with it open (2026-11-04). It panics, so it is the first nightly item to fix: bisect `5e4e7023..bbcea937`, then shrink to `regression/`.
 - The fix is: shrink to a `regression/` fixture, then find why the pcurve end is 2.5e-3 off its face. First seen the night after the properties were committed; the walked-seam-junction commits landed between (`2d084b01` to `5463bf4a`), so a bisect over `5e4e7023..bbcea937` comes first.
 
 ### blend-properties-leave-s5-undecided
@@ -368,7 +368,7 @@ above when it wants a fix; the block moves or is deleted then.
 - Seen: run 40469593843 (10-27, `83b4152d`), the Actions artifact `fuzz-intersect_curves` of that run (90 days); the other fuzz jobs ran to the limit without a crash.
 - Reproduce: download the artifact, then `cargo fuzz run -s none intersect_curves artifacts/intersect_curves/crash-5f19ce12954e6ffc61179812b2d850b31e0b0df7` in `fuzz/`; or `fuzz/show.rs`.
 - Evidence: the assertion message holds a denormal parameter, so it is a hit reported `Coincident` at a parameter indistinguishable from zero; the backlog line on `crossing_cylinders` and `plane_plane` is the same genus (axes a hair from parallel).
-- State: raw.
+- State: raw; open, deferred: the human accepted closing C11 with it open (2026-11-04). It panics; the crash input lives only in run 40469593843's artifact `fuzz-intersect_curves`, which expires about 2027-01-25 (90 days from 10-27), so it is downloaded and committed under `fuzz/` before then.
 - The fix is: tmin the input, commit it as `regression/` geometry fixture, fix the coincidence test for a hit at a denormal parameter.
 
 ### nightly-fuzz-jobs-exceed-their-90-minutes
@@ -378,7 +378,7 @@ above when it wants a fix; the block moves or is deleted then.
 - Seen: runs 39741382716 to 41805224954, every night; 11-03 intersect_curve_surface: seed example 09:32 to 10:19, fuzz 10:21 to 10:53, cmin 10:53 to the shutdown at 11:06; 11-04 intersect_surfaces: build and seed 33 min, fuzz 09:43 to 10:14, cmin 10:14 to 10:41, cancelled in `actions/cache/save`.
 - Reproduce: `gh run view 41611704820 --log --job 125834937624`.
 - Evidence: only 10-27's `intersect_curves` ended in a failure (a crash); the rest have conclusion `cancelled`.
-- State: measured.
+- State: measured; open, deferred: the human accepted closing C11 with it open (2026-11-04); `nightly.yml` unchanged.
 - The fix is: raise the job's limit past the sum (150 minutes), or cut the seed step and the `cmin` (minimise on a weekly night).
 
 ### nightly-property-jobs-reach-the-350-minute-limit
@@ -388,7 +388,7 @@ above when it wants a fix; the block moves or is deleted then.
 - Seen: every night 10-22 to 11-04; the `test` job of `ci.yml` got `--test-threads num-cpus` and a 4 h slow-timeout (commits `84873fef`, `d398a43b`); `nightly.yml:127` does not pass the flag, so its jobs still run the default profile's 16 threads on a 4-vCPU runner.
 - Reproduce: `gh run view 41611704820 --json jobs`.
 - Evidence: the default profile's `slow-timeout` of 30 min x 8 now applies to the nightly too, so a test past 4 h fails by name; the 11-04 run (41805224954) is the first to carry it and was still in progress at the close.
-- State: measured.
+- State: measured; open, deferred: the human accepted closing C11 with it open (2026-11-04); `nightly.yml` still runs nextest without `--test-threads num-cpus`.
 - The fix is: add `--test-threads num-cpus` to the nightly's nextest call and read the 11-04 run; re-split `sweep-bodies` and `workspace-rest` if they still reach 350 minutes.
 
 ### nightly-runner-disk-is-full
@@ -398,7 +398,7 @@ above when it wants a fix; the block moves or is deleted then.
 - Seen: runs 41292271476 (11-01, `0514ac15`), 41611704820 (11-03, `bbcea937`), 41805224954 (11-04, `d398a43b`); none on 10-22 to 10-31.
 - Reproduce: `gh api repos/arris-labs/arris/check-runs/126490500116/annotations`.
 - Evidence: a debug build of the whole workspace per matrix job on a 14 GB runner disk; the jobs that fit run for hours, those that fail do so at compile. Not a kernel failure.
-- State: measured.
+- State: measured; open, deferred: the human accepted closing C11 with it open (2026-11-04); `nightly.yml` unchanged.
 - The fix is: free the runner's disk before the build (remove preinstalled toolchains) or build only the test binary a filter names.
 
 ### flush-walked-skins-at-a-square-seam-junction-are-undecided
@@ -512,7 +512,7 @@ None yet.
 - What `VertexBlend` leaves on CTC-02 AP242 e2 (the census after plans/three-edge-run-vertex step 7; FTC-07 AP242 has none): 36 edges in four sites. A vertex of three edges where two cylinders meet, 12 edges, Open CASCADE refuses all 12; a vertex of three edges at a cylinder × plane edge, 20 edges of which 10 were asked, Open CASCADE builds 4 and refuses 6; a vertex of four edges, cylinder × cylinder (2) and plane × plane (2), Open CASCADE builds all 4 (the four-edge lean of the idea's non-goals, with its count)
 - A leaning junction's reach is held only by `leaning`'s tolerance comparison of the spine's foot and `walked_cut` clamps `within` to the domain; an explicit `REACH_RADII` test returning `VertexBlend` for a `c*` past it, and `leaning` building both runs' ends before it writes either, would make the bound and the all-or-nothing visible (plans/three-edge-run-vertex review)
 - ADR-0061's 2026-10-28 amendment decides a candidate, turning box or singular point as the isoline's or the touch's when a `CIRCLE_SAMPLES` grid stays within `tol.linear` of the other surface; a narrow crossing between samples would be dropped: a property that poses a real crossing beside such a touch would hold it (plans/three-edge-run-vertex review)
-- `tools/real-parts.sh` fails CTC-02 AP242 e2's `drill_x` on counts (643 faces against 649, 1446 edges against 1452) with no `tools/real-parts.waits` line, as it did before plans/three-edge-run-vertex; backlog line 98 is its open question
+- `tools/real-parts.sh` fails CTC-02 AP242 e2's `drill_x` on counts (643 faces against 649, 1446 edges against 1452) with no `tools/real-parts.waits` line, as it did before plans/three-edge-run-vertex; backlog line 98 is its open question. It keeps the nightly's `real-parts` job red every night from 10-22 to 11-04 (on 11-03 the part's survey timed out instead); open, deferred: the human accepted closing C11 with it open (2026-11-04), `tools/real-parts.waits` unchanged; a waits line on `regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder` is the candidate exclusion
 - A chain's walked blend past the fit's span cap (found by plans/tolerant-tangency step 8's census): CTC-05 AP242's plane-and-torus edges at (-140.35, 69.85, 44.85) and (-135.91, 70.81, 46.89), filleted alone at 0.978, and their mirror and AP203 copies (12 edges), chain through a kink and refuse `OpError::Internal` where the fit stays 6.6e-8 off at 3363 spans; they were `TangentChain` before, and Open CASCADE builds them valid (`regression/nist-ctc-05-ap242-chain-fit-span-cap`)
 - A kink's junction that is not found (same census): STC-08 AP242's #9306 plane-and-torus edge at (67.31, 39.69, 48.26) alone at r 0.5 refuses `OpError::Internal` ("a kink's junction of two runs was not found"), where it was `Unsupported end` before; Open CASCADE builds it valid (`regression/nist-stc-08-ap242-kink-junction-not-found`)
 - A fitted NURBS part's volume is not pose-independent: FTC-11's slot part read and moved by a random rotation measures 1e-6 of itself different (5135.0762 against 5135.0752), a hundred times the fillet's 1e-4 share, so `result − part` differs 5e-4 between poses; found by `slot_chain_through_its_kink_is_pose_independent`, which holds counts instead
