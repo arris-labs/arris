@@ -4693,7 +4693,7 @@ prop_shards! {
     /// hundredths of a pin radius of the pin's axis height, where either kind
     /// is refused at isolated heights: `t` skips (-0.1, 0.1) (`BACKLOG.md`).
     a_walked_blend_does_not_depend_on_where_the_seam_lies
-        [shard_0 shard_1]
+        [shard_0 shard_1 shard_2 shard_3 shard_4 shard_5 shard_6 shard_7]
         ((t, off, r, kind)) = (
             prop::finite_f64(-0.8..=0.6),
             prop::finite_f64(0.3..=0.7),
