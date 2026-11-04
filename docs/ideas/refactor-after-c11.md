@@ -1,6 +1,6 @@
 # Idea: refactor-after-c11
 
-- Status: Accepted (B); `rewrite-seams` first in the side slot, after the nightly's two panics
+- Status: Accepted (B); `rewrite-seams` absorbed by plans/rewrite-seams; the rest (`blend-phases`, then `census-and-tests`) waits for it
 - Raised: 2026-11-04
 - Prompt (verbatim from the human): "/refactor-review" (handed over by C11's close)
 
@@ -55,36 +55,8 @@ compared in the source) or **measured** (a count or a hash).
   *no longer apply*. `small-seams` read the descents and found two
   different algorithms. Each constant is its own budget.
 
-### For a `rewrite-seams` plan (read)
-- **The review's own parser hides 420 functions.** `_rust.py`'s
-  `functions` treats any `;` before the body's `{` as the end of a
-  declaration. That includes the one in `[Run<'_>; 2]`, so every function
-  with an array in its signature goes uncounted: 3207 counted, 3627 with
-  the depth-aware fix. `blend/junction.rs`'s `junction` (376 lines, the
-  longest library function) was among them, and so were the two
-  duplicates below. `duplicates.py` and `rule_patterns.py` share the
-  parser. → This is the plan's step 1, as the char-literal fix was
-  `long-functions`' step 1.
-- **Each element of a `Rewrite` is added by hand, about 35 times** in
-  `blend/build.rs`, `blend/rolled.rs` and `offset/faces.rs`: `let i =
-  rw.edges.len(); rw.edges.push(…)`, and the same for `vertices` and
-  `added`. → `Rewrite::vertex`, `edge` and `face` in `rebuild.rs`, each
-  returning its index (crate-private).
-- **`StoredUse { edge: EdgeKey::New(..), orientation, pcurve:
-  m.add_curve2(..) }` is written 30 times** (`blend/build.rs` 18,
-  `shell/rim.rs` 4, `offset/faces.rs` 3, `blend/rolled.rs` 2,
-  `blend/ring_rolled.rs` 2, `rebuild.rs` 1).
-  - The `bool → Orientation` conversion is written out 9 times as an
-    `if … { Forward } else { Reversed }`.
-  - `rolled.rs` defines the same `along` and `add` closures in both
-    `add_rolled_faces` and `push_rolled_face`.
-  - `ring_rolled.rs` writes `Orientation::flipped` out by hand.
-  - → `StoredUse::new(m, key, forward, &Curve2)` in `rebuild.rs`, and
-    `flipped` where the code flips.
-- **`near_closure` (`geom/trace.rs`) and `near` (`geom/march/walk.rs`)
-  are byte-identical** (a 4-D point moved by whole closures toward
-  another). → One crate-private function in `arris-geom` that both
-  call.
+### For a `rewrite-seams` plan
+Absorbed by `plans/rewrite-seams`.
 
 ### For a `blend-phases` plan (read structure, measured sizes)
 - **`blend/build.rs` is 2557 lines (1701 at the base)** and holds five
