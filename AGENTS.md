@@ -36,14 +36,14 @@ quadric pair, the STEP reader and real-part corpus, the consumer's API, the
 blend network, prismatic features, the query cycle, the healing cycle, and
 the NURBS cycle (NURBS blocks 0 of 38 parts). ADR-0001 to ADR-0068; PyPI
 `arris` beside them (ADR-0034); audience developers first (ADR-0067).
-**C11, the blend residue, done 2026-11-04** (ADR-0070 to ADR-0084, not yet
-released): the real parts' blend row **0 of 38** and the script corpus's
+**C11, the blend residue, done 2026-11-04** (ADR-0070 to ADR-0084, released
+as 0.10.0, 2026-11-04): the real parts' blend row **0 of 38** and the script corpus's
 `fillet` refusals 0, a second oracle's records (ADR-0073) holding what Open
 CASCADE cannot; closed with five nightly findings open, two of them panics
 (`docs/BACKLOG.md` §Findings). **C12, the plugin CAD's remaining asks**
 (opened 2026-11-04): draft and thicken, then `region2`; every kernel row of
 the histogram is 0, so ADR-0020's consumer amendment picked it.
-**Next:** `/release` (0.10.0), then C12's first `/idea` or `/plan`, with
+**Next:** C12's first `/idea` or `/plan`, with
 the nightly's two panics and `/refactor-review` in the side slot.
 
 ## Rules that are not derivable from the code

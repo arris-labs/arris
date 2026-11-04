@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.10.0 — 2026-11-04
+
 - A fillet or chamfer of both edges at a cusp (a crescent's two top arcs,
   whose walls are tangent along the edge between them; an arc and a straight
   edge; concave arcs, a pocket's floor) now builds, where it was refused as
