@@ -1,6 +1,6 @@
 # Idea: refactor-after-c11
 
-- Status: Open
+- Status: Accepted (B); `rewrite-seams` first in the side slot, after the nightly's two panics
 - Raised: 2026-11-04
 - Prompt (verbatim from the human): "/refactor-review" (handed over by C11's close)
 
@@ -231,3 +231,12 @@ No ADR: each plan is structure under existing ADRs. *Later*: the
 `arris-debug` split, as its own idea and ADR.
 
 ## Decision
+
+2026-11-04, round 1: the human answered "yes" to every recommendation.
+- **Q1: B**, interleaved in the side slot, in this order: the nightly's
+  two panics, `rewrite-seams` before C12's first code step,
+  `blend-phases`, `census-and-tests`.
+- **Q2: yes.** `_rust.py`'s parser fix is `rewrite-seams` step 1.
+- **Q3: yes.** `blend_prop` becomes `tests/blend_prop/`, still one binary.
+
+No ADR.
