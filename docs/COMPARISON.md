@@ -15,13 +15,13 @@ not the latest.
 
 ## Where each one stands
 
-| Area | Open CASCADE | Arris (0.9.0) |
+| Area | Open CASCADE | Arris (0.10.0) |
 |---|---|---|
 | Surfaces | Plane, cylinder, cone, sphere, torus, NURBS, offsets, and more | Plane, cylinder, elliptic cylinder, cone, sphere, torus; NURBS surfaces read, checked, sectioned against analytic surfaces and against each other (ADR-0061, ADR-0068), and swept/lofted (ADR-0063, ADR-0065) |
 | Curves | Lines, circles, ellipses, parabolas, hyperbolas, NURBS | Lines, circles, ellipses, NURBS (for sections, extrema, sweep paths, and lofts) |
 | Booleans (cut, fuse, common) | Over all of the above, NURBS included | Over every analytic face in any pose, multi-tool in one call; NURBS against analytic surfaces (ADR-0061) and against NURBS (ADR-0068); a NURBS face flush with another over an area is refused |
 | Sections | Full general sections | Exact for conic pairs; traced in a NURBS surface's parameter plane against an analytic one and marched between two NURBS surfaces, fitted elsewhere; planar section of a body as a sheet |
-| Fillet and chamfer | Constant and variable radius, on most face pairs | Constant radius (a chamfer: one distance), on chains of edges: in closed form between planes and cylinders (coaxial pairs included) and on cone, sphere and torus rims; elsewhere a walked NURBS stripe, on NURBS faces, between two of them and on analytic pairs no closed form holds (ADR-0062); no variable radius |
+| Fillet and chamfer | Constant and variable radius, on most face pairs | Constant radius (a chamfer: one distance), on chains of edges: in closed form between planes and cylinders (coaxial and parallel-axis pairs included) and on cone, sphere and torus rims, a ball large enough to make a horn or spindle torus included; elsewhere a walked NURBS stripe, on NURBS faces, between two of them and on analytic pairs no closed form holds (ADR-0062); runs over a hole's rim or a face's edge, across a seam, and into a cusp of two tangent walls; no variable radius, and some corners and tangent chains refused by name (`VertexBlend`, `TangentChain`, `BlendTooLarge`) |
 | Shell and offset | Yes, including on NURBS | Offset faces and shell on analytic faces (refuses elliptic cylinder and NURBS for offset and shell) |
 | Sweep, loft, pipe | Yes | Sweep along a path (lines, arcs, helix arcs, B-spline curves, ADR-0063); loft across sections by arc-length matching (ruled and smooth polynomial, ADR-0065) |
 | Distance, interference, clash | Yes (`BRepExtrema`, `BRepAlgoAPI`) | Yes, with a typed refusal for pairs without a formula |
@@ -94,9 +94,6 @@ fixture holds both to it.
 Cases where Open CASCADE's own result was measurably off and Arris matched
 the closed form:
 
-- `boolean/elliptic-operand-cut`: OCCT's area is 1.5e-7 relative off the
-  closed form, and its inertia 9.3e-7; Arris matches both to better than
-  1e-10.
 - `boolean/pole-slice-beside-seam-cut`: OCCT loses a sliver at a sphere's
   seam, 4.5e-6 relative in volume; Arris finds the second seam crossing.
 - `boolean/coaxial-fuse-four-off`: OCCT closes a 4e-7 crescent on one side

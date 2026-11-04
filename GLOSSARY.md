@@ -173,6 +173,12 @@ cross (ADR-0036 §5).
 The curve a stripe's ball centre runs along. Not the roadmap's `Spine:`
 line.
 
+**Contact**:
+The curve where a stripe's ball touches one of its two faces, an edge of the
+blend; a stripe has two, and an end arc joins them (ADR-0007). Not the
+boolean's contact curve, where two surfaces touch without crossing.
+_Avoid_: bare "contact curve" for this (the boolean's word)
+
 **Run-over**:
 A stripe whose contact leaves its face through a convex edge that is not
 the corner's own, an outer edge or a hole's rim. Between the two
@@ -205,6 +211,17 @@ or, where the tangent edge leans, on that edge's offset away from it
 (ADR-0035, ADR-0072). Across a kink the two balls stand apart, and they
 meet on their mean ball's arc within the vertex's tolerance (ADR-0075), or,
 at a vertex on a seam, at the ball whose contact is on it (ADR-0083).
+
+**Miter**:
+Where two stripes of equal radius meet at a vertex whose third edge stays
+sharp: their end arcs are one edge, the intersection of the two blend
+surfaces, shared by both and recorded as generated from both blended edges
+(ADR-0007, ADR-0044).
+
+**Remnant**:
+The stretch of a blended edge a vanishing end leaves between the vertex and
+the stripe's narrowest exact arc: a new edge on the same curve, with the
+edge's tolerance, running on to the vertex (ADR-0074).
 
 **Vanishing end**:
 An end of a walked stripe where the edge's two faces turn tangent within
@@ -306,7 +323,8 @@ _Avoid_: test suite (for this)
 
 **Census**:
 A breakdown of one operation's refusals over the real parts, edge by edge
-(`arris_debug::census`, the fillet column).
+(`arris_debug::census`, the fillet column), and of the cusp pairs the parts
+hold (`cusp_pairs`, ADR-0084).
 
 **Blend residue**:
 The blends Open CASCADE builds and Arris refuses once the blend network

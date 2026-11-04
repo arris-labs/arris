@@ -24,7 +24,7 @@ re-exports the public API. Lower crates never name types from upper ones.
 | `arris-ops` | Primitives, extrude and revolve of a `Profile`, `planar_face` (a `Profile` as a one-face sheet), transform, mirror, booleans, the blends, each returning `Provenance`; the queries `measure` (mass and surface properties) and `query` (projection onto a plane, a face's outward frame, `ray_fire`, `distance`, `interference`, `interference_many`), `section` (a solid's planar section as a sheet) | `arris-math`, `arris-geom`, `arris-topo`, `arris-check`, `thiserror`, `rayon` (feature) | 2 — algorithms |
 | `arris-mesh` | `TriMesh`, `Polyline`, the constrained Delaunay triangulation in (u, v) (`cdt`, ADR-0003), tessellation of faces and edges with shared edge discretisation; re-exports `arris-math`'s `Aabb` and `Interval`, which its signatures use | `arris-math`, `arris-geom`, `arris-topo`, `arris-check`, `thiserror`, `rayon` (feature) | 2 — algorithms |
 | `arris-io` | STEP AP214 Part 21 writer and reader (`step::write`, `step::read`, ADR-0025) over the Part 21 parser (`step::part21`), the native format (`native`), body bytes (`body`, ADR-0029), STL and OBJ mesh writers (`stl`, `obj`, ADR-0013) | `arris-math`, `arris-geom`, `arris-topo`, `arris-check`, `arris-mesh`, `thiserror`, `serde`, `serde_json`, `postcard` (the last three behind the `serde` feature) | 2 — algorithms |
-| `arris-debug` | Text dump, the hand-built sample bodies (`sample`), PNG render (own software rasteriser over `image`), Rerun stream (feature), the fixture loader and corpus lint, the corpus runner (`corpus`), the part fixtures' runner and lint (`part`), the battery run on every part's solid (`battery`), the refusal histogram and ADR-0026's table (`histogram`), a fetched part surveyed (`survey`), a STEP file seen solid by solid (`step_file`) and the oracle seam (`oracle`), the script-corpus refusal histogram (`script_corpus`), the seeded property-test runner and strategies (`prop`, `prop::recipe` among them), the differential over both kernels (`differential`), the benchmark timer (`bench`) | `arris-ops`, `arris-mesh`, `arris-io`, `arris-topo`, `arris-geom`, `arris-math`, `image`, `serde`, `serde_json`, `sha2`, `thiserror`, `proptest` (not on `wasm32`), `rerun` (feature) | 3 — dev-facing |
+| `arris-debug` | Text dump, the hand-built sample bodies (`sample`), PNG render (own software rasteriser over `image`), Rerun stream (feature), the fixture loader and corpus lint, the corpus runner (`corpus`), the part fixtures' runner and lint (`part`), the battery run on every part's solid (`battery`), the refusal histogram and ADR-0026's table (`histogram`), a fetched part surveyed (`survey`), a STEP file seen solid by solid (`step_file`) and the oracle seam (`oracle`), the fillet column by part (`census`), the script-corpus refusal histogram (the `script_corpus` example), the seeded property-test runner and strategies (`prop`, `prop::recipe` among them), the differential over both kernels (`differential`), the benchmark timer (`bench`) | `arris-ops`, `arris-mesh`, `arris-io`, `arris-topo`, `arris-geom`, `arris-math`, `image`, `serde`, `serde_json`, `sha2`, `thiserror`, `proptest` (not on `wasm32`), `rerun` (feature) | 3 — dev-facing |
 | `arris` | Facade: re-exports | `math` through `io`; `debug` as a dev-dependency only | 4 |
 | `arris-py` | The Python binding (PyPI `arris`, ADR-0034): a thin 1:1 layer over the facade (`Model`'s methods filed by concern in `model/`, one `#[pymethods]` block per file through pyo3's `multiple-pymethods`, registered at link time by `inventory`) with the pure-Python modelling layer `arris.build` above it (ADR-0067), `publish = false`, a `cdylib` + `rlib`, empty on `wasm32` | `arris`, `pyo3` (not on `wasm32`; `inventory` through it) | 5 — binding |
 
@@ -812,7 +812,7 @@ effective orientation and shell, every edge's uses and every vertex's edges
 in the body's own order, with `outward`, `convex` and `tangent_at` asked
 of them.
 
-`ops::fillet(m, body, edges: &[Edge], radius)` blends the listed edges
+`ops::fillet(m, body, edges: &[Edge], radius, control)` blends the listed edges
 with a rolling ball, one stripe per edge built in closed form from the
 edge's two faces (ADR-0007). The table: two planes blend to a cylinder
 of the radius on the line where the faces' offset planes meet — its
@@ -904,7 +904,7 @@ A torus is held to its
 regular band (ADR-0080), a horn or a spindle torus included; a stripe whose
 arc of the tube runs onto the axis, a contact that reaches the axis, a contact or an end
 section that leaves its face, or a seam or a corner edge shorter than the
-trim is `BlendTooLarge`. `ops::chamfer(m, body, edges, distance)` is the same
+trim is `BlendTooLarge`. `ops::chamfer(m, body, edges, distance, control)` is the same
 operation cut flat: two planes chamfer to the plane through the lines at
 `distance` from the edge along each face — its frame's origin on one
 contact, `X` across to the other and `Y` along the edge — and every end
@@ -1472,7 +1472,7 @@ that constructs it and sees it reported, and a level:
 
 - `Level::Fast` — combinatorial and local geometric checks (ids resolve,
   loops close, orientations compose, tolerances are ordered, pcurves match
-  their 3D curves at sample points). Linear in the body. This is what runs
+  their 3D curves at sample points, a torus face's pcurves off its axis — the regular band). Linear in the body. This is what runs
   after every operation.
 - `Level::Full` — adds the global checks: an edge does not cross itself,
   the loops of a face do not cross, faces of a shell intersect only at
@@ -1862,7 +1862,7 @@ B-Rep).
 ## Formats and tools
 
 - **STEP AP214** (`arris_io::step::write(&model, &[bodies]) -> Result<
-  String, StepError>`): the writer came first, in C1, because the
+  String, StepError>`): the writer came first because the
   oracle reads Arris's output through it. One product whose shape
   representation lists a solid entity per lump of each solid body
   (`arris_check::lumps`, ADR-0006): a `MANIFOLD_SOLID_BREP` over its
@@ -2442,7 +2442,7 @@ What the facade has today that Arris will not have: a tolerance nudge
 
 Collected from this document; each closes with an ADR.
 
-None. The three this document carried were C2's facade line, closed
+None. The three this document carried were the facade line, closed
 together: ADR-0009 (Arris owns no name grammar, and the split order is a
 contract), ADR-0010 (compaction keeps slots sparse) and ADR-0011 (the
 tessellation boundary is `f64`). `docs/DATA-MODEL.md` carries none

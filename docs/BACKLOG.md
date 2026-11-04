@@ -9,6 +9,7 @@ re-brainstormed. A *measured* defect is not a raw idea: it goes under
 reproduces it.
 
 - Verification robustness (verify-after-commit review): the runner's pid in `post-commit` assumes `setsid` execs rather than forks (absent on macOS), and a crashed `running` file can hang `--status` on a reused pid, so a per-sha `flock` held by the runner is the fix; a stale `arris-verify/next` after an aborted commit can let `post-commit` record a stale `pass`; an inline `pass` tests the working tree, unstaged edits included
+- A stale build in the main `target/` reddened the full gate at d398a43b (2026-11-04, C11's close): `multi_tool_prop::two_skins_adjoining_on_a_slid_seam_junction_are_decided` (S5? f26 against f27, NURBS, in 1.1 s) and `split_prop::a_side_is_an_operand_of_every_operation` shards 0, 1, 3 failed there, the same test passed in `target/verify` (13 s) on the same tree and rustc 1.99.0, and after `cargo clean -p arris-math -p arris-geom -p arris-topo -p arris-check -p arris-ops -p arris-debug` the whole gate passed; not attributed (an incremental artefact cargo reused, cause unknown). If it recurs, keep the bad `target/` for a diff of the two test binaries before cleaning, and consider `CARGO_INCREMENTAL=0` for `tools/full-gate.sh`
 - Verification resources (verify-after-commit review): the 20G/24G bound is unmeasured and the hook's 48G plus 24G exceeds the 61 GiB machine; `target/verify` is about 53G with /home at 85%; `hook-flow-test` and `verify-test` assert on wall-clock sleeps and are flaky under load, and CI runs neither
 - `pre-push` checks tips only, so commits behind a pushed tip can be red; "`main` always green" means every pushed tip (verify-after-commit review)
 - A time breakdown per plan (agent, gate, CI, human) in `/retro`'s session digest, from the transcripts
@@ -26,7 +27,6 @@ reproduces it.
 - The 116 s relink of the test binaries after a lower-crate change is now the larger half of a small hook; an idea if it stays so (plans/hook-gate-speed, ADR-0066). The 2026-10-31 hook split cannot see the relink apart from the test compile it sits in (the nextest stage, 20–485 s on five commits), so the measured order of D's items is: this and `opt-level` inside that stage first, `real_nist_ftc_07` not in the hook at all (verify-after-commit step 1)
 - Three `PipeElbow` outcomes in `crates/arris-ops/tests/tolerance_band.txt` (Radius +4 under fuse, common and cut: a torus against a cylinder, 4 units of tolerance band) went from `generic`/`flush` to `INTERNAL Geometry(the section of the torus surface and the cylinde)` when the libm switch moved a last digit (plans/libm-everywhere step 5); the section of those two surfaces is ulp-sensitive there, and its seven band neighbours already fail the same way. Blessed as the record; shrink it to a `regression/` fixture and fix the section
 - Nightly [38126162322](https://github.com/arris-labs/arris/actions/runs/38126162322) (commit `a83751b`, seed `71ff362cc834012beccbd071531ecf289dbacc8ad66c1c61138ddf5afb204c19`, 5000 property cases, 1000 differential): the differential's case 222 disagrees with Open CASCADE on counts (shrunk: Arris 16 vertices, 24 edges, 10 faces against 14, 22, 10; `volume_rel` 0.124 in the printed fixture), and in `workspace-rest` three properties failed: `a_random_line_crosses_a_quadric_where_its_distance_changes_sign` (a line against a cone of half angle 1.388, "no sign change at the crossing t = -3295933"), `a_cone_keeps_its_axis_and_half_angle_and_grows_by_d_over_cos` (aborted, "Too many global rejects") and `a_written_body_reads_back_as_itself::shard_0` (a ball cut by a cylinder reads back with "L4 f1: hole loop 0 lies outside every outer loop"); none panics, none is shrunk to a fixture yet
-- `arris-geom::extrema_surfaces` fails five of its NURBS shards and `random_pairs::s1` on the nightly seeds of 10-16 and 10-20 (runs 38865335276 and 39387168970, both commit `cd10106`, seeds `05c5e3bc…d965466` and `f39a418b…71da79d`, 5000 cases, `workspace-rest`): the grid's or the sample's extremum is not among the reported points, a degree-1 or degree-2 NURBS surface or a cone; 10-16 adds `intersect_curves::a_line_through_a_conics_point_hits_it_there`, `intersect_surfaces::every_non_coaxial_quadric_pose_is_decided::shard_2` and `trace::random_cone_pairs_trace`; none panics, none shrunk, not investigated (C10's close)
 - The differential's case 18 on the 10-14 nightly (run 38529547057, commit `cd10106`, seed `cf1ac2a9beae735e35b1444074ecd7837d84c90c6d23124248f8d68577b96438`, 1000 differential cases) classifies a probe point differently from Open CASCADE: shrunk in 47 candidates, probe `o1-x--in` at (-6.5695, -1.0920, -3.4704) is Out for Arris and In for the oracle; no panic, not replayed on a later commit (C10's close)
 - Global self-intersection of a sweep: a path that comes back through its own tube. The local fold is refused (`SweepReason::SweepFolds`); the global case is left to the checker's face-pair test, and Open CASCADE does not detect it either (sweep non-goal)
 - A NURBS segment in a `Profile` (`ProfileSegment` has lines, arcs and elliptic arcs only), so a swept or revolved outline cannot be a spline
@@ -221,6 +221,186 @@ but no fixture yet, `fixture` and `excluded` are pinned somewhere that
 fails when the bug moves. Any of these three becomes a fixture and a line
 above when it wants a fix; the block moves or is deleted then.
 
+### split-side-of-a-body-is-not-an-operand-clean-at-full
+
+- What: a fillet or chamfer of a split's side leaves a body the checker does not clean at `Full`: a fillet gives `L5 loop 0 intersects itself` (16 shards over the nights) or `S5 … intersect away from their shared edges` (11) or an NURBS pair `S5?` undecided (9); a chamfer gives `E8` (the output edge self-intersects at t near 2.9 to 3.4 or 6.0 to 6.6, 13 times).
+- Where: `a_side_is_an_operand_of_every_operation`, `crates/arris-ops/tests/split_prop.rs`, shards 0 to 3 of 4 (at the harness's `prop.rs:271`; no panic in the kernel).
+- Seen: 12 of the 14 nightlies from 10-22 to 11-04 (runs 39741382716, 40073513937, 40173291134, 40287906018, 40469593843, 40842304608, 41027790791, 41184510611, 41292271476, 41421013263, 41611704820, 41805224954), commits `52b039f5`, `83b4152d`, `0514ac15`, `bbcea937`, `d398a43b`; the latest seed `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81` (11-03, 5000 cases, shards 1, 2, 3); a night's seed is the sha256 of its UTC date.
+- Reproduce: `ARRIS_PROPTEST_SEED=5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test split_prop -E 'test(/a_side_is_an_operand_of_every_operation/)'` (a shard takes 3 to 130 minutes).
+- Evidence: 10-31 shard 2 fillets the negative side of a drilled rounded box (extent 9.98 x 6.45 x 19.90, corner 1.84) and leaves `f117` (plane) against `f135` (NURBS) undecided, shard 3 chamfers the positive side with E8 `e129` self-intersecting at t = 2.66 and 3.62; 11-04 shards 0, 2, 3 (cylinder of radius 7.87, height 13.2 with a multi-cut): `L5 f48`, `S5 s12: f3 and f52`. No shrunk case.
+- State: raw.
+- The fix is: shrink each signature (L5 of a fillet, S5 away from shared edges, E8 of a chamfer, NURBS pair undecided) to a `regression/` fixture, then fix the blend, the chamfer's edge curve, or S5.
+
+### cut-many-differs-from-the-chain-of-cuts
+
+- What: `cut_many` and the chain of single cuts disagree: counts (two more faces and two more loops, e.g. `[3, 26, 63, 42]` against `[3, 26, 65, 44]`) or the volume by 1e-8 to 1e-7 of itself (`300.3061907936` against `300.3061889940`); the same family fails the order-independence property (`154.43737258` against `154.43737382`, 10-29).
+- Where: `cut_many_is_the_chain_of_cuts` shards 0 to 7 of 8 (`multi_tool_prop.rs:94` volume, `:114` counts) and `the_geometry_is_independent_of_the_order_of_the_tools`, `crates/arris-ops/tests/multi_tool_prop.rs`.
+- Seen: eight nightlies for the chain (10-24, 10-26, 10-27, 10-29, 10-31, 11-01, 11-02, 11-03; runs 40073513937, 40287906018, 40469593843, 40842304608, 41184510611, 41292271476, 41421013263, 41611704820) and three for the order property (10-27, 10-29, 10-31), commits `83b4152d` to `bbcea937`; latest seed `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81` (11-03, shards 2 and 5), 10-31 `95d17cab42b9c0ff1c9a10c44cef534e01e57635ffe1d795124538a8ba8575d5` (shards 1 and 2: `[1, 8, 30, 20]` against `[1, 8, 32, 22]`, 419.10710508 against 419.10710742).
+- Reproduce: `ARRIS_PROPTEST_SEED=95d17cab42b9c0ff1c9a10c44cef534e01e57635ffe1d795124538a8ba8575d5 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test multi_tool_prop -E 'test(/cut_many_is_the_chain_of_cuts/)'` (about ten minutes a shard).
+- Evidence: the counts differ by +2 faces and +2 loops in every counts failure (7 of 7); the volume failures sit 1e-8 to 1e-7 above the property's bound. The differential's multi-tool cases fail the same way (`differential-multi-tool-disagreements`). No shrunk case.
+- State: raw.
+- The fix is: shrink one counts case and one volume case to `regression/` fixtures; the +2 faces are probably a face the one-pass builder splits and the chain merges (or the reverse).
+
+### face-arrangement-is-not-a-subdivision-in-split-and-multi-tool-properties
+
+- What: `Internal` "kernel bug: the face arrangement is not a subdivision" returned by a split, a section or a reversed `fuse_many` (a typed error, not a panic): `a cycle of f21's arrangement does not turn once` (split and section, 10-24, shard 6 of 8), `a cycle of f10's arrangement does not turn once` (`fuse_many` reversed, 10-27), `a cycle of f16's` (10-31), `a section edge of f27 ends at a node nothing else reaches` (cut of the positive side, 10-31).
+- Where: `the_geometry_is_independent_of_the_order_of_the_tools::shard_3` (`multi_tool_prop.rs`), `a_section_is_the_splits_cap`, `the_sides_add_up_to_the_body`, `each_side_is_the_common_with_its_half_space::shard_6`, `a_side_is_an_operand_of_every_operation::shard_2` (`split_prop.rs`).
+- Seen: runs 40073513937 (10-24, `83b4152d`, seed `fe6225c1ad164429bd7e859f969988ee04d71f0f58f18274bb4ce4fb20077e53`), 40469593843 (10-27, seed `7491dd33aafb5e7c3e75d9fbd1a0f704030f9370d9ab33dbf4ff3dccf59101af`), 41184510611 (10-31, seed `95d17cab42b9c0ff1c9a10c44cef534e01e57635ffe1d795124538a8ba8575d5`), 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=fe6225c1ad164429bd7e859f969988ee04d71f0f58f18274bb4ce4fb20077e53 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test split_prop` (shard 6 of the 8-way properties).
+- Evidence: four draws on three nights, each a different face; the backlog's lines on the plane touching a rim and on coincident quadrics under different frames name the same error for other inputs.
+- State: raw.
+- The fix is: shrink the three cases to `regression/` fixtures and find whether one arrangement defect (a node not reached) explains them.
+
+### split-sides-differ-from-the-body-by-1e-8
+
+- What: the two sides of a split do not add up to the body (or fused, return it) within the property's bound: volume `137.24890858034738` against `137.24890677390906` (1.3e-8 relative), `92.18650840929413` against `92.18650763835187` (8e-9), and an area `44.072387211050064` against `44.07238750630362` (7e-9).
+- Where: `the_sides_add_up_to_the_body::shard_1`, `the_sides_fused_are_the_body::shard_1`, `a_reversed_plane_turns_the_sheet::shard_1` (`crates/arris-ops/tests/split_prop.rs:236`).
+- Seen: runs 40469593843 (10-27, area), 40842304608 (10-29, fused volume), 41611704820 (11-03, both volumes), commits `83b4152d` and `bbcea937`; 11-03 seed `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81`, 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test split_prop -E 'test(/the_sides_/)'`.
+- Evidence: the three differences are of one size, 7e-9 to 1.3e-8, near the walked blends' measure error (`mass-properties-of-a-thick-torus-inertia` and the fit tolerance), not a missing face.
+- State: raw.
+- The fix is: shrink to a fixture and decide whether the bound or the measure of a NURBS face (the surface grid) is at fault.
+
+### slot-chain-and-elbow-outputs-fail-the-checker
+
+- What: a panic: `kernel bug: an operation's output fails the checker` (`crates/arris-ops/src/lib.rs:110`), `V3 v99: f42's surface at the pcurve end is 2.5e-3 away` for the slot chain through its kink; the elbow's vanishing end panics the same way on 11-01.
+- Where: `slot_chain_through_its_kink_is_pose_independent::shard_1` (11-01, 11-02, 11-03) and `an_elbows_vanishing_end_is_pose_independent::shard_0` (11-01), `crates/arris-ops/tests/blend_prop.rs`; both properties are new (plans/tolerant-tangency step 9, commit `5e4e7023`, 2026-10-30).
+- Seen: runs 41292271476 (11-01, `0514ac15`, seed `fc72dc4e5cf7e6f0cd4773a1e32cf26574d0a31f2ff33a98d7de0b643169db98`), 41421013263 (11-02, `bbcea937`, seed `bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc`), 41611704820 (11-03, seed `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81`), 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=fc72dc4e5cf7e6f0cd4773a1e32cf26574d0a31f2ff33a98d7de0b643169db98 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test blend_prop -E 'test(/slot_chain_through_its_kink_is_pose_independent|an_elbows_vanishing_end/)'`.
+- Evidence: the same vertices (v99, v100) at 2.5e-3 in all 8 panics of the 11-03 shard; the `blend` job was cancelled at 350 minutes on the same three nights, so the property's other shards are unread. 11-01's elbow panic is the same message.
+- State: raw.
+- The fix is: shrink to a `regression/` fixture, then find why the pcurve end is 2.5e-3 off its face. First seen the night after the properties were committed; the walked-seam-junction commits landed between (`2d084b01` to `5463bf4a`), so a bisect over `5e4e7023..bbcea937` comes first.
+
+### blend-properties-leave-s5-undecided
+
+- What: `nothing unchecked` fails on a blend: `S5?` plane against NURBS (`oblique_chains_meet_on_the_rulings_offset`, `blend_prop.rs:391`), torus against torus and cylinder against torus (`fillets_through_a_vertex_of_four_edges_match_their_closed_forms`, `:1776`/`:1786`).
+- Where: `blend_prop.rs`, shards 0 to 3 of 4.
+- Seen: runs 39741382716 (10-22), 40073513937 (10-24), 40842304608 (10-29), 41292271476 (11-01), 41421013263 (11-02), 41611704820 (11-03: plane against NURBS twice, torus against torus once), commits `52b039f5` to `bbcea937`; 11-03 seed `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81`, 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test blend_prop -E 'test(/oblique_chains_meet_on_the_rulings_offset|fillets_through_a_vertex_of_four_edges/)'`.
+- Evidence: the same S5 gaps the backlog lines on two faces of one torus and on a plane against a torus in a far pose describe; the oblique chains' shards ran 473 s to 15,793 s and were cancelled by the job limit on 11-01 to 11-03.
+- State: measured.
+- The fix is: S5 decides a NURBS blend face against its plane/torus neighbours (one of the backlog lines above); the properties then drop their exclusion.
+
+### extrema-surfaces-and-neighbours-fail-on-nurbs-grids
+
+- What: `arris-geom::extrema_surfaces` fails its NURBS shards and `random_pairs` on all 13 nightlies from 10-22 to 11-03: the grid's or the sample's extremum is not among the reported points (a degree-1 or degree-2 NURBS surface or a cone); also `extrema_surface::random_nurbs_pairs::n1`/`n3` (10-24, 10-28).
+- Where: `nurbs_feet::n0`..`n2`, `nurbs_heights::h0`..`h2`, `random_pairs::s0`..`s3` (`crates/arris-geom/tests/extrema_surfaces.rs`).
+- Seen: every night 10-22 to 11-03 (runs 39741382716 to 41611704820); earlier seeds `05c5e3bc…d965466` and `f39a418b…71da79d` (10-16 and 10-20, `cd10106`); latest `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81` (11-03, `bbcea937`, run 41611704820), 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test extrema_surfaces`.
+- Evidence: 11-03 `random_pairs::s3`: the sample's local minimum at [4.9131, 189.479] (39.2667) is not in `SurfaceExtrema`; 10-31 `random_pairs::s2`: [2.0153, -196.0547] (13.0301); 10-25: `isolated: []` for a minimum at 14.818. None panics; none shrunk. (The line this replaces recorded 10-16 and 10-20.)
+- State: raw.
+- The fix is: shrink one NURBS case to a `regression/` fixture; the grid seeds miss a minimum on a long NURBS domain.
+
+### two-skew-lines-twinned-are-coincident
+
+- What: the twinned NURBS of two skew lines through one point intersect as `Ok(Coincident)` where the lines meet in a point: the property's `hits_of` panics on it.
+- Where: `two_skew_lines_through_one_point_meet_there_as_their_twins_do`, `crates/arris-geom/tests/intersect_nurbs_curves.rs:55` (the test dates from 2026-10-19, plans/nurbs-nurbs-section step 8).
+- Seen: six nightlies, 10-23, 10-26, 10-29, 10-30, 11-01, 11-02 (runs 39918290175, 40287906018, 40842304608, 41027790791, 41292271476, 41421013263); 11-02 seed `bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc`, commit `bbcea937`, 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test intersect_nurbs_curves -E 'test(/two_skew_lines/)'` (about a second; the shrunk input is in the failure's message).
+- Evidence: the failing result is `Ok(Coincident)` where the property wants `Points`; the shrunk input is printed in the failure (not read further).
+- State: raw.
+- The fix is: shrink the pair to a `regression/` fixture (geom area) and make the coincidence test of two NURBS lines respect the crossing angle.
+
+### nurbs-trace-and-section-properties
+
+- What: three signatures in `workspace-rest`: `refused: the section of the torus surface and the cone surface is degenerate: turning points of the section that cannot be told apart` (`trace_torus` `random_torus_and_cone_pairs_trace` and `random_horn_and_spindle_sections_keep_their_band`, five nights 10-29 to 11-03; `trace_nurbs` `random_nurbs_and_torus_pairs_trace`, `random_nurbs_and_cone_pairs_trace`, six nights 10-23 to 11-01; `trace::random_cone_pairs_trace`, `random_cylinder_and_cone_pairs_trace` on 10-23); a traced point `0.0063` off the other surface (`trace_nurbs.rs:1208`, 10-31); and `fit: the fit still deviates` past 3704 to 4028 spans (`intersect_surfaces::every_other_pair_is_unsupported`, 10-22, 10-24, 10-27, which runs 10,907 s to 19,236 s).
+- Where: `crates/arris-geom/tests/{trace_torus,trace_nurbs,trace,intersect_surfaces}.rs`.
+- Seen: 12 of the 14 nightlies (`trace::` every night to 11-03); 11-02 `bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc` (`random_horn_and_spindle_sections_keep_their_band`, 40 s), 10-31 `95d17cab42b9c0ff1c9a10c44cef534e01e57635ffe1d795124538a8ba8575d5` (`random_nurbs_and_cone_pairs_trace`), 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test trace_torus --test trace_nurbs`.
+- Evidence: the backlog's lines on the tracer's turning points (ADR-0061 amendments), on the crease and `MAX_FIT_SPANS` (`every_other_pair_is_unsupported` exempts a creased operand) name the same refusals; here the property draws them anyway. Not shrunk.
+- State: raw.
+- The fix is: shrink each signature; the properties reject the named refusal, or the tracer decides the pair.
+
+### nurbs-twin-and-spline-equalities-fail
+
+- What: three properties fail on `assertion failed: (left == right)`: `the_twins_of_two_analytic_surfaces_meet_where_the_pair_does` (the section count: `3` against `2`, a NURBS curve of degree 5 in the report; 10-22 (shard 4), 10-23 (4, 5), 10-25 (7), 10-28 (0), 11-01 (0)), `two_nurbs_curves_are_the_same_spline_apart_or_over_other_knots` (`Ok(false)` against `Ok(true)`, `intersect_spline_curves.rs:458`; 10-22 and 10-26), and `a_random_nurbs_is_met_where_its_grid_is_pierced` (the point the line was drawn through is not among the hits, 10-23, 10-26, 10-27, 11-02).
+- Where: `crates/arris-geom/tests/{nurbs_nurbs_prop,intersect_spline_curves,line_nurbs}.rs`.
+- Seen: 10-22 to 11-02 (runs 39741382716, 39918290175, 40173291134, 40287906018, 40469593843, 40657209795, 41292271476, 41421013263); 11-01 seed `fc72dc4e5cf7e6f0cd4773a1e32cf26574d0a31f2ff33a98d7de0b643169db98` (the twins of a cone and a torus, `corpus` job), 10-26 `bf044a2c29d5517b948859ab76ed6188b3229b18cca50d6f512f47e34cefa2bc` (spline), 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=fc72dc4e5cf7e6f0cd4773a1e32cf26574d0a31f2ff33a98d7de0b643169db98 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test nurbs_nurbs_prop`.
+- Evidence: a backlog line gives the `CrowdedSingularity` family of the twins; the equality failures here are a different count, not a refusal. The shrunk input is printed in each failure. Not shrunk to a fixture.
+- State: raw.
+- The fix is: shrink each to a `regression/` fixture and fix the count (a missed or a doubled branch).
+
+### differential-multi-tool-disagreements
+
+- What: the multi-tool differential finds one disagreement with Open CASCADE almost every night: counts (Arris two vertices and two edges more: case 594 of 10-28, `38/57/23` against `36/55/23`; case 576 of 10-30, `42/63/25` against `40/61/25`; case 598 of 11-03, `118/177/65` against `117/176/65`), a volume (case 90 of 10-24: 1.0e-4 relative, `393.95399` against `393.91428`; case 872 of 10-26: 1.0e-5 relative), or Open CASCADE records no solid and Arris builds one (case 230 of 10-22, case 560 of 10-29).
+- Where: `arris_and_the_oracle_agree_on_multi_tool_booleans` (and `arris_and_the_oracle_agree_on_drawn_recipes` on 10-26), `crates/arris/tests/differential.rs:82`/`:19`.
+- Seen: seven nightlies, runs 39741382716, 40073513937, 40287906018, 40657209795, 40842304608, 41027790791, 41611704820 (10-22, 10-24, 10-26, 10-28, 10-29, 10-30, 11-03); 1000 cases; seeds `06e45b4d…` (10-22), `fe6225c1ad164429bd7e859f969988ee04d71f0f58f18274bb4ce4fb20077e53` (10-24), `bf044a2c29d5517b948859ab76ed6188b3229b18cca50d6f512f47e34cefa2bc` (10-26), `58beca76ab87ec9701346cceaabd6bd8c4a439e3743d30395910ba1de3631845` (10-28), `5ef2d8c8a905e88171c9291a4a8a70c6024e770c24466438bc20edeff4becc96` (10-29), `c9c37f3f041ea4694d0764b4b1dbf3d53551e7be57c4a4823ed2b6981db13c90` (10-30), `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81` (11-03).
+- Reproduce: `ARRIS_PROPTEST_SEED=c9c37f3f041ea4694d0764b4b1dbf3d53551e7be57c4a4823ed2b6981db13c90 ARRIS_DIFF_CASES=1000 cargo nextest run -p arris --test differential --no-capture` (an hour; the failure prints the shrunk recipe, case 576 shrinks to 14/21/9 against 12/19/9).
+- Evidence: three of the five counts failures are +2 vertices and +2 edges at equal faces and loops; `regression/revolve-cut-many-box-extrusion-counts-differ` is the +1 vertex form. Not committed as fixtures.
+- State: measured.
+- The fix is: commit the shrunk case 576 and case 598 as `regression/` fixtures; the extra vertices look like a point of the section Open CASCADE merges.
+
+### sweep-props-leave-faces-crossing-away-from-their-edges
+
+- What: `the_checker_is_green_or_the_sweep_is_a_named_refusal` and `a_swept_body_round_trips_through_step` report `S5 s0: fA and fB intersect away from their shared edges` for a random G1 sweep.
+- Where: `crates/arris-ops/tests/sweep_prop.rs`, shards 0, 1, 2, 3 of 4.
+- Seen: runs 39741382716 (10-22: shards 1 and 3), 39918290175 (10-23: shard 2), 41292271476 (11-01: shard 0, cancelled at the job limit after 14,775 s and 16,005 s); seeds `06e45b4dfbddf8fce396407ebb876b0307f800f43cb9104ccad6df07b3bcca0c`, `9a5028763b8b5525e18ac9a5a598a4d9994aa77acdcb1e81aac966d11bfa5a5c`, `fc72dc4e5cf7e6f0cd4773a1e32cf26574d0a31f2ff33a98d7de0b643169db98`, 5000 cases.
+- Reproduce: `ARRIS_PROPTEST_SEED=9a5028763b8b5525e18ac9a5a598a4d9994aa77acdcb1e81aac966d11bfa5a5c ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test sweep_prop` (a shard takes 4 hours).
+- Evidence: both properties draw the same case on a shard (the two report the same face pair); the shard runs 8,000 to 16,500 s, which is why `sweep-bodies` is cancelled at 350 minutes on most nights. Not shrunk.
+- State: raw.
+- The fix is: shrink the pair, then fix S5's verdict or the sweep; `sweep_prop`'s per-case cost has its own backlog line.
+
+### offset-and-inverse-no-exact-offset
+
+- What: `an_offset_and_its_inverse_return_the_body` draws an offset of every face by 0.0928919459890184 that is refused `degenerate result: the face's surface has no exact offset of its own kind (+e140)`.
+- Where: `offset_prop.rs`, shard 2 of 4 (`ops-rest`).
+- Seen: run 41027790791 (10-30, `83b4152d`), seed `c9c37f3f041ea4694d0764b4b1dbf3d53551e7be57c4a4823ed2b6981db13c90`, 5000 cases; once.
+- Reproduce: `ARRIS_PROPTEST_SEED=c9c37f3f041ea4694d0764b4b1dbf3d53551e7be57c4a4823ed2b6981db13c90 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test offset_prop -E 'test(/an_offset_and_its_inverse/)'` (about 70 s).
+- Evidence: the refusal names an edge, not a face.
+- State: raw.
+- The fix is: shrink; the property rejects that named refusal, or the offset of the face is built.
+
+### twin-ruling-edges-blend-no-closed-form-nurbs-pair
+
+- What: `ruling_edges_blend_as_their_twins` draws a half disc whose two NURBS twin faces the twin fillet refuses (`no closed form for +f10 (NURBS surface) against +f11 (NURBS surface)`).
+- Where: `twin_prop.rs`, shard 0 of 2 (`twin-rest`), after 12,579 s.
+- Seen: run 41027790791 (10-30, `83b4152d`), seed `c9c37f3f041ea4694d0764b4b1dbf3d53551e7be57c4a4823ed2b6981db13c90`, 5000 cases; once (the job ran to the end).
+- Reproduce: `ARRIS_PROPTEST_SEED=c9c37f3f041ea4694d0764b4b1dbf3d53551e7be57c4a4823ed2b6981db13c90 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test twin_prop -E 'test(/ruling_edges_blend_as_their_twins/)'`.
+- Evidence: `HalfDisc { radius: 1.0, height: 1.0, far: false }` at 0.34709188265045926 on faces 6 and 7.
+- State: raw.
+- The fix is: the property rejects the refusal by name, or the twinned ruling is blended (the backlog's line on a NURBS face against a coaxial cylinder is the nearest).
+
+### fuzz-intersect-curves-coincident-crash
+
+- What: a crash in the fuzz target: `panicked at src/lib.rs:552:9: coincident a on b at -1.06e-…: 3.16…` (a harness assertion on a coincident hit at a parameter of order 1e-310, a denormal).
+- Where: `fuzz/` target `intersect_curves`, the unit `crash-5f19ce12954e6ffc61179812b2d850b31e0b0df7`.
+- Seen: run 40469593843 (10-27, `83b4152d`), the Actions artifact `fuzz-intersect_curves` of that run (90 days); the other fuzz jobs ran to the limit without a crash.
+- Reproduce: download the artifact, then `cargo fuzz run -s none intersect_curves artifacts/intersect_curves/crash-5f19ce12954e6ffc61179812b2d850b31e0b0df7` in `fuzz/`; or `fuzz/show.rs`.
+- Evidence: the assertion message holds a denormal parameter, so it is a hit reported `Coincident` at a parameter indistinguishable from zero; the backlog line on `crossing_cylinders` and `plane_plane` is the same genus (axes a hair from parallel).
+- State: raw.
+- The fix is: tmin the input, commit it as `regression/` geometry fixture, fix the coincidence test for a hit at a denormal parameter.
+
+### nightly-fuzz-jobs-exceed-their-90-minutes
+
+- What: 56 of the 70 `fuzz` jobs of the 14 nights (2 to 5 of the five targets a night) are cancelled by `timeout-minutes: 90`: setup and `fuzz/examples/seed` take 33 to 49 minutes, the fuzzer 31, `cargo fuzz cmin` 13 to 27, so the corpus is cached on no night that hits the limit and the nights do not add up. The fuzzer itself finishes its 30 minutes first, so a crash is still reported.
+- Where: `.github/workflows/nightly.yml`, job `fuzz`.
+- Seen: runs 39741382716 to 41805224954, every night; 11-03 intersect_curve_surface: seed example 09:32 to 10:19, fuzz 10:21 to 10:53, cmin 10:53 to the shutdown at 11:06; 11-04 intersect_surfaces: build and seed 33 min, fuzz 09:43 to 10:14, cmin 10:14 to 10:41, cancelled in `actions/cache/save`.
+- Reproduce: `gh run view 41611704820 --log --job 125834937624`.
+- Evidence: only 10-27's `intersect_curves` ended in a failure (a crash); the rest have conclusion `cancelled`.
+- State: measured.
+- The fix is: raise the job's limit past the sum (150 minutes), or cut the seed step and the `cmin` (minimise on a weekly night).
+
+### nightly-property-jobs-reach-the-350-minute-limit
+
+- What: `workspace-rest` (8 nights), `sweep-bodies` (9), `blend` (3) and `twin-boolean` (5) are cancelled at `timeout-minutes: 350` (the 10-31 `io` job by a runner shutdown signal), so their later shards report nothing; the slowest tests run 3.4 to 5.3 hours (`every_other_pair_is_unsupported` 19,236 s, `sweep_prop` 16,500 s, `oblique_chains` 15,793 s).
+- Where: `.github/workflows/nightly.yml`, job `properties`.
+- Seen: every night 10-22 to 11-04; the `test` job of `ci.yml` got `--test-threads num-cpus` and a 4 h slow-timeout (commits `84873fef`, `d398a43b`); `nightly.yml:127` does not pass the flag, so its jobs still run the default profile's 16 threads on a 4-vCPU runner.
+- Reproduce: `gh run view 41611704820 --json jobs`.
+- Evidence: the default profile's `slow-timeout` of 30 min x 8 now applies to the nightly too, so a test past 4 h fails by name; the 11-04 run (41805224954) is the first to carry it and was still in progress at the close.
+- State: measured.
+- The fix is: add `--test-threads num-cpus` to the nightly's nextest call and read the 11-04 run; re-split `sweep-bodies` and `workspace-rest` if they still reach 350 minutes.
+
+### nightly-runner-disk-is-full
+
+- What: five `properties` jobs (`boolean-rest` 11-01, `loft` 11-03, `loft`, `boolean-quartic`, `io` 11-04) die after about three minutes with `No space left on device` while `cargo nextest run --workspace` compiles; the runner's `_diag` log cannot be written either.
+- Where: `.github/workflows/nightly.yml`, job `properties`, the step `cargo nextest run --workspace --no-fail-fast -E "$FILTER"`.
+- Seen: runs 41292271476 (11-01, `0514ac15`), 41611704820 (11-03, `bbcea937`), 41805224954 (11-04, `d398a43b`); none on 10-22 to 10-31.
+- Reproduce: `gh api repos/arris-labs/arris/check-runs/126490500116/annotations`.
+- Evidence: a debug build of the whole workspace per matrix job on a 14 GB runner disk; the jobs that fit run for hours, those that fail do so at compile. Not a kernel failure.
+- State: measured.
+- The fix is: free the runner's disk before the build (remove preinstalled toolchains) or build only the test binary a filter names.
+
 ### flush-walked-skins-at-a-square-seam-junction-are-undecided
 
 - What: two walked fillet skins meeting at a seam junction in the vertex's normal plane (the loop crossing the seam square, no slide) overlap as surfaces past their faces, so the NURBS march refuses them as `is_flush` (`Unsupported`) and S5 leaves the pair unchecked (`S5? … is not decided`); the slid junction's skins, cut at one ball, are decided since plans/walked-seam-junction step 3a.
@@ -313,7 +493,6 @@ above when it wants a fix; the block moves or is deleted then.
 - A multi-shell boolean reads its lump order from a scratch copy of the model (`Build::lump_order` clones `self.m`): `Build` holds `&'m Model` and hands out `&'m` borrows (`surface_of`), so a rolled-back `Model::transaction` needs `&mut` threaded through every `Build` method; the alternative is one assembly whose staged shells are reordered after `lumps`, taken if its dump is byte-identical (plans/builder-split step 7 finding)
 - `corpus/step/features.rs`: the doc comment of `edge_at` sits stacked above `face_at`'s and `edge_at` has none; `corpus/read_back.rs`'s `read_back` is still 160 lines (plans/long-functions review)
 - A fillet of STC-07 AP242 e3 #210 (the battery's sample once it leaves out the tangent edges, ADR-0070) builds and the result fails the checker at `Full`: S5 leaves four cylinder × cylinder pairs undecided (f344/f352, f346/f354, f348/f356, f350/f358), which `check_leaving_nurbs` does not leave since no NURBS face is among them; `regression/nist-stc-07-ap242-fillet-checker-undecided` (battery-honesty step 6)
-- Nightly 2026-10-31 (seed `95d17cab42b9c0ff1c9a10c44cef534e01e57635ffe1d795124538a8ba8575d5`, 5000 cases) left four failures after the shallow-section vertex fix: `split_prop::a_side_is_an_operand_of_every_operation` shard 2 fillets the negative side of a drilled rounded box (extent 9.98 x 6.45 x 19.90, corner 1.84, plane at the seed's `at`/`turn`) and the result is S5-undecided, `f117` (plane) against `f135` (NURBS), the S5 line above; shard 3 chamfers the positive side and the output has E8 `e129` self-intersecting at t = 2.66/3.62 and a run of near-equal parameters around 2.97, a chamfer defect; `multi_tool_prop::cut_many_is_the_chain_of_cuts` shards 1 and 2 disagree with the chain of cuts in counts ([1, 8, 30, 20] against [1, 8, 32, 22]) and by 2e-9 of volume (419.10710508 against 419.10710742). Each wants its shrunk case from `ARRIS_PROPTEST_SEED=… ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test split_prop --test multi_tool_prop` (about ten minutes a shard) as a `regression/` fixture; none was shrunk further
 
 ## Rejected
 

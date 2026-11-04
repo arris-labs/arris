@@ -126,7 +126,8 @@ radius is `R + d`; a torus keeps `R` and has `r + d`. It is `None` for an
 elliptic cylinder (an ellipse's parallel curve is no ellipse), a NURBS
 surface, a non-finite `d`, and a radius driven to or through zero (a
 cylinder or sphere with `R + d` not positive, a torus with `r + d` not
-positive or reaching `R`).
+positive; a torus offset may reach or pass `R`, a horn or a spindle being a
+surface too, ADR-0080).
 
 A NURBS surface's offset has no closed form and is fitted:
 `NurbsSurface::offset_fitted(d, over, tol)` (ADR-0062). The result is a
@@ -2220,6 +2221,28 @@ kept or modified, so the records composed with `then` name each blend
 face from the role its edge came from (`blend/second-fillet`: both blend
 faces from the extrude's `Rise`s, the side face both trimmed still from
 its `Side`).
+
+The ends a blend can have besides the arcs above record the same way. A
+cusp with one edge blended (ADR-0042, an overhang tip's included, ADR-0079)
+deletes the cusp vertex and `Generated`-from-`e` its two trim vertices and
+the cut between them; the next edge and the third edge, shortened, and the
+walls are `Modified`. A cusp of two blended edges `e` and `n` is their
+mutual trim (ADR-0084): each stripe's face, contacts and far end are
+`Generated` from its own edge; the section edge and the two trim vertices
+(`T*` on the shared face, `S` on the spine) are `Generated` from both `e`
+and `n`, after each edge's own records, so `generated_pair(e, n)` is exactly
+those three; `e`, `n` and the cusp vertex are `Deleted`, the spine (cut at
+`S`), the walls and the shared face `Modified`, and no face is added. A
+vanishing end that stops short of its vertex (ADR-0074) leaves the edge's
+remnant from the vertex to the stripe's last arc as a new edge on the same
+curve with the edge's tolerance, `Modified` from the edge, and the old
+vertex is kept. A concave end across a flush fan (ADR-0082) has its two trim vertices
+and its arc `Generated` from the edge, its two corner edges and the two
+pieces they lead to `Modified`, and the vertex and the middle pieces kept; the second corner edge's kept part from the
+vertex to its trim is a new edge, `Modified` from that corner edge. A walked
+junction that slides onto a seam (ADR-0083) leaves the chain vertex and
+its piece of the chain edge `Deleted`; the arc (chord) and its two
+vertices are `Generated` from both edges, and each seam and the two faces `Modified`.
 
 A split writes one record for both sides (ADR-0051), audited against the
 body as the input and `positive` and `negative` as the outputs

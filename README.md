@@ -155,7 +155,7 @@ body, _ = model.chamfer(body, [lip], 1.5)
 | **Modelling** | Primitives, rigid transforms and mirroring; extrude (in any direction) and revolve of profiles of lines, arcs and elliptic arcs; offset faces, shell to a wall, split by a plane; a profile as a one-face sheet body |
 | **Sweep and loft** | Sweep a profile along lines, arcs, helix arcs and B-spline curves, with rotation-minimising or fixed-binormal frames; loft through two or more profiles, ruled or smooth |
 | **Booleans** | Cut, fuse and common, one tool or many in one call, in any pose, over planes, cylinders, elliptic cylinders, cones, spheres, tori and NURBS faces — free-form against analytic and free-form against free-form; results with cavities, split pieces and disjoint shells |
-| **Fillet and chamfer** | Constant radius along chains of edges, with mitres, corners, steps and hole rims; on free-form faces and between two of them, the blend a NURBS surface within your tolerance of the exact one |
+| **Fillet and chamfer** | Constant radius along chains of edges, with miters, corners, steps, hole rims, seam crossings and tangent cusps; on free-form faces and between two of them, the blend a NURBS surface within your tolerance of the exact one |
 | **Queries** | Ray hits, minimum distance, interference with the shared volume, clash screening of an assembly, the planar section of a body; volume, area, centroid and inertia; face frames and plane projection. None of them changes the body |
 | **Meshing** | Tessellation to a chord tolerance, per face or whole, faces meshed at different times welded together; NumPy arrays from Python |
 | **STEP** | Every solid or surface model in a file read as a checked body or a typed refusal naming why; small gaps closed and reversed faces turned back, each repair named on the body; assemblies; AP214 export in the unit you choose |
@@ -166,6 +166,7 @@ body, _ = model.chamfer(body, [lip], 1.5)
 Each of these is a typed refusal today, never a wrong answer:
 
 - variable-radius fillets and chamfers;
+- fillets at the corners and tangent chains the blend's closed forms do not cover, and a ball too large for its face on an elliptic edge or a walked blend;
 - offset and shell of elliptic-cylinder and NURBS faces;
 - a NURBS face lying flush against another face over an area;
 - sewing the faces of a STEP file that share no edge;
