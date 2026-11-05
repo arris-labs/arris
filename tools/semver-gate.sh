@@ -34,23 +34,70 @@ self_test() {
         return 1
     fi
     echo "semver-gate --self-test: a coloured verdict reads"
+
+    # The baseline of a release pushed commit-then-tag: the next commit's CI
+    # starts before the tag exists and must still compare to the release.
+    local t c1 got
+    t="$(mktemp -d)"
+    (
+        cd "$t"
+        git init -q . && git config user.email t@t && git config user.name t
+        git commit -q --allow-empty -m 'chore(arris): release 0.9.1' && git tag v0.9.1
+        git commit -q --allow-empty -m 'work'
+        git commit -q --allow-empty -m 'chore(arris): release 0.10.0'
+    )
+    c1="$(git -C "$t" rev-parse HEAD)"
+    got="$(cd "$t" && last_release)"
+    [ "$got" = "v0.9.1" ] || { echo "semver-gate --self-test: untagged release commit itself: got $got, want v0.9.1" >&2; rm -rf "$t"; return 1; }
+    (cd "$t" && git commit -q --allow-empty -m 'chore(arris): open 0.11.0-dev')
+    got="$(cd "$t" && last_release)"
+    [ "$got" = "$c1" ] || { echo "semver-gate --self-test: next commit, tag not yet fetched: got $got, want $c1" >&2; rm -rf "$t"; return 1; }
+    (cd "$t" && git tag v0.10.0 "$c1")
+    got="$(cd "$t" && last_release)"
+    [ "$got" = "v0.10.0" ] || { echo "semver-gate --self-test: next commit, tag fetched: got $got, want v0.10.0" >&2; rm -rf "$t"; return 1; }
+    rm -rf "$t"
+    echo "semver-gate --self-test: the baseline follows a release whose tag is not yet fetched"
+}
+
+# The last release before HEAD: on the tagged release commit itself (the
+# tag's CI run) that is the tag before it, never HEAD against itself.
+#
+# A release is pushed as its commit, then its tag, and the push of `main`
+# starts CI before the tag exists: a checkout of the next commit ("open
+# 0.N+1.0-dev") then has the release commit in its history and not its tag,
+# and the nearest tag is the release before. Compared against that one the
+# gate reads the whole release as a break the changelog (already turned
+# into the version's section) no longer announces. So the release commit
+# itself, found by its message, is the baseline whenever it is newer than
+# the nearest tag.
+release_commit() {
+    git log --format=%H --grep='^chore(arris): release ' -n1 "${1:-HEAD}"
+}
+
+last_release() {
+    local tag from="HEAD" rel
+    tag="$(git describe --tags --match 'v[0-9]*' --abbrev=0)"
+    if [ "$(git rev-parse "$tag^{commit}")" = "$(git rev-parse HEAD)" ]; then
+        tag="$(git describe --tags --match 'v[0-9]*' --abbrev=0 HEAD^)"
+        from="HEAD^"
+    fi
+    # HEAD itself being an untagged release commit: the release before it.
+    rel="$(release_commit "$from")"
+    if [ "$from" = "HEAD" ] && [ "$rel" = "$(git rev-parse HEAD)" ]; then
+        rel="$(release_commit HEAD^)"
+    fi
+    if [ -n "$rel" ] && [ "$rel" != "$(git rev-parse "$tag^{commit}")" ] \
+        && git merge-base --is-ancestor "$tag^{commit}" "$rel"; then
+        echo "$rel"
+    else
+        echo "$tag"
+    fi
 }
 
 if [ "${1:-}" = "--self-test" ]; then
     self_test
     exit $?
 fi
-
-# The last release before HEAD: on the tagged release commit itself (the
-# tag's CI run) that is the tag before it, never HEAD against itself.
-last_release() {
-    local tag
-    tag="$(git describe --tags --match 'v[0-9]*' --abbrev=0)"
-    if [ "$(git rev-parse "$tag^{commit}")" = "$(git rev-parse HEAD)" ]; then
-        tag="$(git describe --tags --match 'v[0-9]*' --abbrev=0 HEAD^)"
-    fi
-    echo "$tag"
-}
 
 base="${1:-$(last_release)}"
 
