@@ -68,7 +68,10 @@ Deletion is the "done" signal; anything worth keeping moves first.
 8. Deferred work: one line each in `docs/BACKLOG.md`.
 9. `git rm docs/plans/<slug>.md`; commit all as `docs: retire plan <slug>`,
    the body listing the docs updated. `git grep -n <slug> -- ':!docs/plans'`
-   comes back empty first: the docs-refs test refuses a file citing it.
+   comes back empty first: the docs-refs test refuses a file citing it. An
+   idea's `absorbed by plans/<slug>` status and the backlog's mentions are
+   reworded to name the part done ("the rewrite seams part is done"), not
+   deleted.
 10. **Sweep the build cache** (`target/` grows past 100 GB otherwise; build
    output only, never `target/oracle-cache`), in the background under the
    verification's lock, so it waits out a verification in flight and none
