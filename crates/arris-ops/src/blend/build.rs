@@ -930,19 +930,16 @@ fn add_miters(
     } = draft;
     let mut miter_made: Vec<MiterMade> = Vec::with_capacity(miters.len());
     for mt in miters {
-        let q = rw.vertices.len();
-        rw.vertices.push(VertexSpec::New {
+        let q = rw.vertex(VertexSpec::New {
             point: mt.q,
             tolerance: mt.q_tolerance,
         });
-        let p3 = rw.vertices.len();
-        rw.vertices.push(VertexSpec::New {
+        let p3 = rw.vertex(VertexSpec::New {
             point: mt.p3,
             tolerance: mt.p3_tolerance,
         });
         let (first, second) = if mt.q_first { (q, p3) } else { (p3, q) };
-        let edge = rw.edges.len();
-        rw.edges.push((
+        let edge = rw.edge(
             EdgeSpec::New {
                 geometry: EdgeGeometry::Curve {
                     curve: m.add_curve(mt.curve.clone()),
@@ -953,21 +950,19 @@ fn add_miters(
                 tolerance: mt.tolerance,
             },
             None,
-        ));
+        );
         // A miter of unequal dihedrals: the trim arc from `m` on to the
         // third edge, which the narrower blend's far face takes at the
         // corner vertex (ADR-0044 §4).
         let trim_arc = match &mt.trim_arc {
             None => None,
             Some(arc) => {
-                let end = rw.vertices.len();
-                rw.vertices.push(VertexSpec::New {
+                let end = rw.vertex(VertexSpec::New {
                     point: arc.end,
                     tolerance: arc.end_tolerance,
                 });
                 let (first, second) = if arc.m_first { (p3, end) } else { (end, p3) };
-                let edge = rw.edges.len();
-                rw.edges.push((
+                let edge = rw.edge(
                     EdgeSpec::New {
                         geometry: EdgeGeometry::Curve {
                             curve: m.add_curve(arc.curve.clone()),
@@ -978,7 +973,7 @@ fn add_miters(
                         tolerance: arc.tolerance,
                     },
                     None,
-                ));
+                );
                 let pcurve = m.add_curve2(arc.on_face.clone());
                 edits.entry(arc.face).or_default().insert.insert(
                     arc.vertex,
@@ -1021,16 +1016,14 @@ fn add_corners(
     for c in corners {
         let mut vertices = [0usize; 3];
         for (slot, &point) in vertices.iter_mut().zip(&c.points) {
-            *slot = rw.vertices.len();
-            rw.vertices.push(VertexSpec::New {
+            *slot = rw.vertex(VertexSpec::New {
                 point,
                 tolerance: c.tolerance,
             });
         }
         let mut arcs = [0usize; 3];
         for (slot, arc) in arcs.iter_mut().zip(&c.arcs) {
-            *slot = rw.edges.len();
-            rw.edges.push((
+            *slot = rw.edge(
                 EdgeSpec::New {
                     geometry: EdgeGeometry::Curve {
                         curve: m.add_curve(arc.curve.clone()),
@@ -1041,11 +1034,11 @@ fn add_corners(
                     tolerance: c.tolerance,
                 },
                 None,
-            ));
+            );
         }
         let pole = c.pole.as_ref().map(|pole| {
             let at = VertexKey::New(vertices[pole.point]);
-            rw.edges.push((
+            rw.edge(
                 EdgeSpec::New {
                     geometry: EdgeGeometry::Degenerate { range: pole.range },
                     start: at,
@@ -1053,8 +1046,7 @@ fn add_corners(
                     tolerance: c.tolerance,
                 },
                 None,
-            ));
-            rw.edges.len() - 1
+            )
         });
         corner_made.push(CornerMade {
             vertices,
@@ -1097,16 +1089,14 @@ fn add_stripes(
             match end {
                 EndKind::Face(face_end) => {
                     for (k, slot) in vertices[end_index].iter_mut().enumerate() {
-                        *slot = rw.vertices.len();
-                        rw.vertices.push(VertexSpec::New {
+                        *slot = rw.vertex(VertexSpec::New {
                             point: face_end.points[k],
                             tolerance: vertex_tolerance_of(&blend.ends, k),
                         });
                     }
                 }
                 EndKind::Pole(pole) => {
-                    let at = rw.vertices.len();
-                    rw.vertices.push(match pole.remnant {
+                    let at = rw.vertex(match pole.remnant {
                         None => VertexSpec::Keep(pole.vertex),
                         Some(r) => VertexSpec::New {
                             point: r.point,
@@ -1154,8 +1144,7 @@ fn add_stripes(
                     *tolerance = tolerance.max(contact.tolerance);
                 }
             }
-            contact_edges[k] = rw.edges.len();
-            rw.edges.push((
+            contact_edges[k] = rw.edge(
                 EdgeSpec::New {
                     geometry: EdgeGeometry::Curve {
                         curve: m.add_curve(contact.line.clone()),
@@ -1166,7 +1155,7 @@ fn add_stripes(
                     tolerance: contact.tolerance,
                 },
                 None,
-            ));
+            );
         }
         let mut arcs: [Vec<usize>; 2] = Default::default();
         for (end_index, end) in blend.ends.iter().enumerate() {
@@ -1176,8 +1165,7 @@ fn add_stripes(
                     // The collapsed row, across from one contact to the
                     // other at the kept vertex.
                     let at = VertexKey::New(vertices[end_index][0]);
-                    arcs[end_index].push(rw.edges.len());
-                    rw.edges.push((
+                    arcs[end_index].push(rw.edge(
                         EdgeSpec::New {
                             geometry: EdgeGeometry::Degenerate {
                                 range: Interval::UNIT,
@@ -1204,8 +1192,7 @@ fn add_stripes(
             // extra edge (ADR-0043 §5).
             let mut along = vec![vertices[end_index][0]];
             for crossing in &face_end.crossings {
-                let v = rw.vertices.len();
-                rw.vertices.push(VertexSpec::New {
+                let v = rw.vertex(VertexSpec::New {
                     point: crossing.point,
                     tolerance: crossing.tolerance,
                 });
@@ -1247,9 +1234,7 @@ fn add_stripes(
                 } else {
                     (to, from)
                 };
-                let arc = rw.edges.len();
-                arcs[end_index].push(arc);
-                rw.edges.push((
+                let arc = rw.edge(
                     EdgeSpec::New {
                         geometry: EdgeGeometry::Curve {
                             curve: m.add_curve(piece.arc.curve.clone()),
@@ -1260,7 +1245,8 @@ fn add_stripes(
                         tolerance: piece.arc.tolerance,
                     },
                     None,
-                ));
+                );
+                arcs[end_index].push(arc);
                 // The edge cut at the arc's start: the first corner edge,
                 // or the extra edge before this piece.
                 let edge_at_lo = match i.checked_sub(1) {
@@ -1358,8 +1344,7 @@ fn flush_tail(
     } else {
         (VertexKey::New(p2), VertexKey::Kept(end.vertex))
     };
-    let key = EdgeKey::New(rw.edges.len());
-    rw.edges.push((
+    let key = EdgeKey::New(rw.edge(
         EdgeSpec::New {
             geometry: EdgeGeometry::Curve { curve, range: kept },
             start,
@@ -1442,8 +1427,7 @@ fn remnant_edges(
             )
         };
         let range = Interval::new(lo, hi).map_err(|_| invariant("a remnant inside its edge"))?;
-        out[end_index] = Some(rw.edges.len());
-        rw.edges.push((
+        out[end_index] = Some(rw.edge(
             EdgeSpec::New {
                 geometry: EdgeGeometry::Curve { curve, range },
                 start,
@@ -1482,8 +1466,7 @@ fn add_rings(
         match &r.ends {
             RingEnds::Seam(seam) => {
                 for (slot, contact) in vertices[0].iter_mut().zip(&r.contacts) {
-                    *slot = rw.vertices.len();
-                    rw.vertices.push(VertexSpec::New {
+                    *slot = rw.vertex(VertexSpec::New {
                         point: contact.points[0],
                         tolerance: seam.vertex_tolerance,
                     });
@@ -1495,8 +1478,7 @@ fn add_rings(
                     match end {
                         RingEnd::Face(end) => {
                             for (c, contact) in r.contacts.iter().enumerate() {
-                                vertices[j][c] = rw.vertices.len();
-                                rw.vertices.push(VertexSpec::New {
+                                vertices[j][c] = rw.vertex(VertexSpec::New {
                                     point: contact.points[j],
                                     tolerance: end.vertex_tolerance[c],
                                 });
@@ -1534,8 +1516,7 @@ fn add_rings(
             contact_edges = [rolled.contacts[0][0], rolled.contacts[1][0]];
         } else {
             for (c, contact) in r.contacts.iter().enumerate() {
-                contact_edges[c] = rw.edges.len();
-                rw.edges.push((
+                contact_edges[c] = rw.edge(
                     EdgeSpec::New {
                         geometry: EdgeGeometry::Curve {
                             curve: m.add_curve(contact.curve.clone()),
@@ -1546,7 +1527,7 @@ fn add_rings(
                         tolerance: r.tolerance,
                     },
                     None,
-                ));
+                );
                 let pcurve = m.add_curve2(contact.on_face.clone());
                 edits
                     .entry(contact.face)
@@ -1559,8 +1540,7 @@ fn add_rings(
         match &r.ends {
             RingEnds::Seam(seam) => {
                 if rolled_made.is_none() {
-                    arcs = [rw.edges.len(); 2];
-                    rw.edges.push((
+                    arcs = [rw.edge(
                         EdgeSpec::New {
                             geometry: EdgeGeometry::Curve {
                                 curve: m.add_curve(seam.curve.clone()),
@@ -1571,7 +1551,7 @@ fn add_rings(
                             tolerance: r.tolerance,
                         },
                         None,
-                    ));
+                    ); 2];
                 }
                 for (trim, by) in &seam.cuts {
                     cut_once(cuts, trim, vertices[0][*by])?;
@@ -1587,8 +1567,7 @@ fn add_rings(
                         }
                     };
                     let (first, second) = if end.lo_first { (0, 1) } else { (1, 0) };
-                    arcs[j] = rw.edges.len();
-                    rw.edges.push((
+                    arcs[j] = rw.edge(
                         EdgeSpec::New {
                             geometry: EdgeGeometry::Curve {
                                 curve: m.add_curve(end.curve.clone()),
@@ -1599,7 +1578,7 @@ fn add_rings(
                             tolerance: end.tolerance,
                         },
                         None,
-                    ));
+                    );
                     for (c, trim) in end.trims.iter().enumerate() {
                         cut_once(cuts, trim, vertices[j][c])?;
                     }
@@ -1716,8 +1695,7 @@ fn shorten_edges(
                 rederived.insert((edge, u.pcurve), id);
             }
         }
-        shortened.insert(edge, EdgeKey::New(rw.edges.len()));
-        rw.edges.push((
+        let key = rw.edge(
             EdgeSpec::New {
                 geometry: EdgeGeometry::Curve { curve, range },
                 start: cut
@@ -1729,7 +1707,8 @@ fn shorten_edges(
                 tolerance: entity.tolerance(),
             },
             Some(edge),
-        ));
+        );
+        shortened.insert(edge, EdgeKey::New(key));
     }
     Ok((shortened, rederived))
 }
@@ -2217,8 +2196,7 @@ fn add_blend_faces(
             orientation: Orientation::Reversed,
             pcurve: m.add_curve2(lo.on_blend.clone()),
         });
-        made.added = rw.added.len();
-        rw.added.push(AddedFace {
+        made.added = rw.face(AddedFace {
             shell,
             surface,
             orientation: if blend.stripe.convex
@@ -2270,8 +2248,7 @@ fn add_corner_faces(
                 });
             }
         }
-        made.added = rw.added.len();
-        rw.added.push(AddedFace {
+        made.added = rw.face(AddedFace {
             shell: view.shell_of[&c.faces[0]],
             surface,
             orientation: c.orientation,
@@ -2338,8 +2315,7 @@ fn add_ring_faces(
                     pcurve: m.add_curve2(lower.on_blend.clone()),
                 },
             ];
-            made.added = rw.added.len();
-            rw.added.push(AddedFace {
+            made.added = rw.face(AddedFace {
                 shell: view.shell_of[&lower.face],
                 surface,
                 orientation: r.orientation,
@@ -2399,8 +2375,7 @@ fn add_ring_faces(
                 pcurve: m.add_curve2(near.1),
             },
         ];
-        made.added = rw.added.len();
-        rw.added.push(AddedFace {
+        made.added = rw.face(AddedFace {
             shell: view.shell_of[&lower.face],
             surface,
             orientation: r.orientation,

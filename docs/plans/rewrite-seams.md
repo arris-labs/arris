@@ -70,7 +70,7 @@ bound has to be established here.
 - [x] Step 2 **[1]** — Add `Rewrite::vertex`, `edge` and `face`, each with
   a unit test in `rebuild.rs` that the index returned addresses the
   element. Move `offset/faces.rs` and `blend/rolled.rs` onto them.
-- [ ] Step 3 **[1]** — Move `blend/build.rs`'s remaining `len()` + `push`
+- [x] Step 3 **[1]** — Move `blend/build.rs`'s remaining `len()` + `push`
   pairs onto the methods. After it,
   `grep -rE 'rw\.(vertices|edges|added)\.len\(\)' crates/arris-ops/src` is
   empty outside `rebuild.rs`, except where a length is read without a

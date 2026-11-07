@@ -177,9 +177,8 @@ pub(super) fn add_ring_rolled_faces(
     }
     loop_uses.extend(back);
     loop_uses.push(arc(m, start, false));
-    made.added = rw.added.len();
     let surface = m.add_surface(r.surface.clone());
-    rw.added.push(AddedFace {
+    made.added = rw.face(AddedFace {
         shell,
         surface,
         orientation: r.orientation,
