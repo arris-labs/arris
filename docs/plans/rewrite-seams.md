@@ -64,7 +64,7 @@ mechanical; **[2]** careful — a geometric or numeric case to get right
 within a given design; **[3]** unproven — an algorithm whose robustness or
 bound has to be established here.
 
-- [ ] Step 1 **[1]** — `_rust.py`'s depth-aware `;`. Run the four
+- [x] Step 1 **[1]** — `_rust.py`'s depth-aware `;`. Run the four
   scripts. The commit body records the counts before and after
   (functions, past 100 and past 150 lines) and the new duplicate rows.
 - [ ] Step 2 **[1]** — Add `Rewrite::vertex`, `edge` and `face`, each with

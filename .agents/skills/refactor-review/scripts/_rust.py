@@ -65,12 +65,28 @@ def library_files(root="crates", skip=()):
             yield p, blank(src)
 
 
+def declaration_ends(src, start, brace):
+    """True when a `;` ends the signature at bracket depth 0, before `brace`.
+
+    The `;` of an array type (`[T; N]`) sits inside brackets and does not
+    count, so a fn returning or taking one keeps its body.
+    """
+    depth = 0
+    for c in src[start:brace]:
+        if c in "([":
+            depth += 1
+        elif c in ")]":
+            depth -= 1
+        elif c == ";" and depth == 0:
+            return True
+    return False
+
+
 def functions(src):
     """(name, first line, last line, body text) of every fn with a body."""
     for m in FN.finditer(src):
         brace = src.find("{", m.end())
-        semi = src.find(";", m.end())
-        if brace < 0 or 0 <= semi < brace:
+        if brace < 0 or declaration_ends(src, m.end(), brace):
             continue
         depth, k = 0, brace
         while k < len(src):
