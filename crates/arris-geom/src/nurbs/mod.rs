@@ -38,3 +38,4 @@ pub(crate) use project::Patch;
 pub use skin::{fit_skin, interpolate_skin};
 pub(crate) use spline::BezierSpan;
 pub use surface::NurbsSurface;
+pub(crate) use surface::near_by_closures;

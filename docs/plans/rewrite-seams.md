@@ -83,7 +83,7 @@ bound has to be established here.
   its `along` closures onto them. A literal whose pcurve is an existing
   `Curve2Id`, and not a new curve, stays a literal; the commit says how
   many.
-- [ ] Step 6 **[1]** — Replace `near_closure` and `near` with one function
+- [x] Step 6 **[1]** — Replace `near_closure` and `near` with one function
   in `arris-geom`. The trace, march and torus-walk tests pass unchanged.
 
 ## Acceptance

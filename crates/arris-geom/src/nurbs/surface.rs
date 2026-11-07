@@ -641,6 +641,23 @@ impl NurbsSurface {
     }
 }
 
+/// `at` moved by whole closures to be nearest `to`, in each of the four
+/// parameters a pair of surfaces' walk carries; a parameter with no
+/// closure (`None`) is left as it is. Shared by the trace's loop closing
+/// and the march's seed placement, so both reach the same point.
+pub(crate) fn near_by_closures(
+    mut at: [f64; 4],
+    to: [f64; 4],
+    closure: &[Option<f64>; 4],
+) -> [f64; 4] {
+    for k in 0..4 {
+        if let Some(c) = closure[k] {
+            at[k] += c * ((to[k] - at[k]) / c).round();
+        }
+    }
+    at
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

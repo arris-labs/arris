@@ -46,6 +46,7 @@ use arris_math::{
 use arris_math::nalgebra::{Matrix4, Vector4};
 
 use crate::FrameFault;
+use crate::nurbs::near_by_closures;
 use crate::torus_walk::TorusWalk;
 use crate::{Curve, GeomError, GeomKind, NurbsSurface, Surface};
 
@@ -744,7 +745,7 @@ impl MarchedWalk {
                 surfaces[1].closure()[0],
                 surfaces[1].closure()[1],
             ];
-            let closing = near_closure(points[0], last, &closure);
+            let closing = near_by_closures(points[0], last, &closure);
             points.push(closing);
         }
         let mut cumulative = Vec::with_capacity(points.len());
@@ -876,15 +877,6 @@ impl MarchedWalk {
             Point2::new(x[2], x[3])
         }
     }
-}
-
-fn near_closure(mut at: [f64; 4], to: [f64; 4], closure: &[Option<f64>; 4]) -> [f64; 4] {
-    for k in 0..4 {
-        if let Some(c) = closure[k] {
-            at[k] += c * ((to[k] - at[k]) / c).round();
-        }
-    }
-    at
 }
 
 /// One branch of a section: a smooth curve lying on the walked surface to

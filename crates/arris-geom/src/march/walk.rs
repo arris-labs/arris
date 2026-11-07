@@ -68,7 +68,7 @@ use crate::bernstein::Binomials;
 use crate::bernstein_n::{Halving, PolyN, Wrap, Zero, common_zeros, merge};
 use crate::halt::Halt;
 use crate::implicit::BERNSTEIN_ROUNDING;
-use crate::nurbs::Patch;
+use crate::nurbs::{Patch, near_by_closures};
 use crate::spline_nurbs::{DAMPING, DAMPING_GROWTH, DAMPINGS, spline_nurbs};
 use crate::{
     BranchEnd, Curve, CurveSurfaceIntersection, GeomError, GeomKind, NurbsSurface,
@@ -617,7 +617,7 @@ pub(crate) fn march(
         let (mut at, end) = marcher.walk(i, sign, &seeds, &singular, &mut visited, meter)?;
         let start = match seeds[i].departure {
             Some(k) => {
-                at.insert(0, near(singular[k].at, at[0], &marcher.closure));
+                at.insert(0, near_by_closures(singular[k].at, at[0], &marcher.closure));
                 Some(BranchEnd::Singular(k))
             }
             None if seeds[i].ends() => Some(BranchEnd::Clipped),
@@ -629,7 +629,7 @@ pub(crate) fn march(
                 let last = match seeds[j].departure {
                     Some(k) => {
                         let tail = at.last().copied().unwrap_or(seeds[j].at);
-                        at.push(near(singular[k].at, tail, &marcher.closure));
+                        at.push(near_by_closures(singular[k].at, tail, &marcher.closure));
                         BranchEnd::Singular(k)
                     }
                     None => BranchEnd::Clipped,
@@ -681,16 +681,6 @@ fn add(seeds: &mut Vec<Seed>, seed: Seed, tol: Tolerance) {
         }
         None => seeds.push(seed),
     }
-}
-
-/// `at` moved by whole closures to be nearest `to`.
-fn near(mut at: [f64; 4], to: [f64; 4], closure: &[Option<f64>; 4]) -> [f64; 4] {
-    for k in 0..4 {
-        if let Some(c) = closure[k] {
-            at[k] += c * ((to[k] - at[k]) / c).round();
-        }
-    }
-    at
 }
 
 /// The section's tangent at a point of both surfaces, carried into the
@@ -1279,7 +1269,7 @@ impl<'a> Marcher<'a> {
                 if j == i {
                     return Ok((points, End::Closed));
                 }
-                let at = near(seeds[j].at, next, &self.closure);
+                let at = near_by_closures(seeds[j].at, next, &self.closure);
                 if seeds[j].ends() {
                     visited[j] = true;
                     points.push(at);
@@ -1395,7 +1385,7 @@ impl<'a> Marcher<'a> {
             if along <= reach || along > length + reach || (offset - unit * along).norm() > reach {
                 continue;
             }
-            let at = near(seed.at, next, &self.closure);
+            let at = near_by_closures(seed.at, next, &self.closure);
             // A turning point is past the chord's range in the parameter
             // it turns in, by the sag: the box is grown by the step's
             // largest move. It only tells sheets of one point apart.
