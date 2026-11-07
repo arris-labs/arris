@@ -79,7 +79,7 @@ bound has to be established here.
   with unit tests. Move `rebuild.rs`, `shell/rim.rs`, `offset/faces.rs`,
   `blend/rolled.rs` (its two copies of `along` and `add` go) and
   `blend/ring_rolled.rs` (`flipped`) onto them.
-- [ ] Step 5 **[1]** — Move `blend/build.rs`'s 18 `StoredUse` literals and
+- [x] Step 5 **[1]** — Move `blend/build.rs`'s 18 `StoredUse` literals and
   its `along` closures onto them. A literal whose pcurve is an existing
   `Curve2Id`, and not a new curve, stays a literal; the commit says how
   many.

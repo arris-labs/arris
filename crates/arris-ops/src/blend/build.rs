@@ -31,7 +31,7 @@ use super::{Blend, Kind, degenerate, invariant};
 use crate::body_view::BodyView;
 use crate::error::{BlendReason, OpError, Reason, fault_of};
 use crate::rebuild;
-use crate::rebuild::{AddedFace, Rewrite, StoredUse, forward};
+use crate::rebuild::{AddedFace, Rewrite, StoredUse, along, forward};
 
 /// The arc inserted into the face across a corner, at the junction the
 /// consumed vertex stood at.
@@ -1791,11 +1791,7 @@ fn rewrite_faces(
                     // The arc runs from the end of the corner edge just
                     // walked to the start of the next.
                     let arrived_at_lo = id == ins.edge_at_lo;
-                    let orientation = if ins.lo_first == arrived_at_lo {
-                        Orientation::Forward
-                    } else {
-                        Orientation::Reversed
-                    };
+                    let orientation = along(ins.lo_first == arrived_at_lo);
                     let arc = StoredUse {
                         edge: ins.arc,
                         orientation,
@@ -1809,11 +1805,7 @@ fn rewrite_faces(
                         Some(tail) => {
                             let kept = StoredUse {
                                 edge: tail.edge,
-                                orientation: if arrived_at_lo == tail.to_vertex {
-                                    Orientation::Forward
-                                } else {
-                                    Orientation::Reversed
-                                },
+                                orientation: along(arrived_at_lo == tail.to_vertex),
                                 pcurve: tail.pcurve,
                             };
                             if arrived_at_lo {
@@ -1869,11 +1861,7 @@ fn rewrite_faces(
                 let arrived_at_lo = l.coedges()[arrives].edge() == ins.edge_at_lo;
                 stretch.push(StoredUse {
                     edge: ins.arc,
-                    orientation: if ins.lo_first == arrived_at_lo {
-                        Orientation::Forward
-                    } else {
-                        Orientation::Reversed
-                    },
+                    orientation: along(ins.lo_first == arrived_at_lo),
                     pcurve: ins.pcurve,
                 });
                 uses = rest;
@@ -2152,16 +2140,12 @@ fn add_blend_faces(
             // end's back, a fan's pieces in reverse.
             let uses = &mut end_uses[end_index];
             for (&(lo_first, pcurve), &edge) in arcs.iter().zip(&made.arcs[end_index]) {
-                let along = lo_first == (end_index == 0);
-                uses.push(StoredUse {
-                    edge: EdgeKey::New(edge),
-                    orientation: if along {
-                        Orientation::Forward
-                    } else {
-                        Orientation::Reversed
-                    },
-                    pcurve: m.add_curve2(pcurve.clone()),
-                });
+                uses.push(StoredUse::new(
+                    m,
+                    EdgeKey::New(edge),
+                    lo_first == (end_index == 0),
+                    pcurve,
+                ));
             }
             if end_index == 1 {
                 uses.reverse();
@@ -2185,27 +2169,26 @@ fn add_blend_faces(
         }
         let surface = m.add_surface(blend.stripe.surface.clone());
         let mut loop_uses = start_arcs;
-        loop_uses.push(StoredUse {
-            edge: EdgeKey::New(contact_edges[1]),
-            orientation: Orientation::Forward,
-            pcurve: m.add_curve2(hi.on_blend.clone()),
-        });
+        loop_uses.push(StoredUse::new(
+            m,
+            EdgeKey::New(contact_edges[1]),
+            true,
+            &hi.on_blend,
+        ));
         loop_uses.extend(end_arcs);
-        loop_uses.push(StoredUse {
-            edge: EdgeKey::New(contact_edges[0]),
-            orientation: Orientation::Reversed,
-            pcurve: m.add_curve2(lo.on_blend.clone()),
-        });
+        loop_uses.push(StoredUse::new(
+            m,
+            EdgeKey::New(contact_edges[0]),
+            false,
+            &lo.on_blend,
+        ));
         made.added = rw.face(AddedFace {
             shell,
             surface,
-            orientation: if blend.stripe.convex
-                != matches!(blend.stripe.section, Section::Walked { flipped: true, .. })
-            {
-                Orientation::Forward
-            } else {
-                Orientation::Reversed
-            },
+            orientation: along(
+                blend.stripe.convex
+                    != matches!(blend.stripe.section, Section::Walked { flipped: true, .. }),
+            ),
             loops: vec![loop_uses],
             tolerance: blend.stripe.tolerance,
         });
@@ -2229,23 +2212,16 @@ fn add_corner_faces(
         let mut loop_uses: Vec<StoredUse> = Vec::with_capacity(4);
         for (w, &side) in c.walk.iter().enumerate() {
             let arc = &c.arcs[side];
-            loop_uses.push(StoredUse {
-                edge: EdgeKey::New(made.arcs[side]),
-                orientation: if arc.along {
-                    Orientation::Forward
-                } else {
-                    Orientation::Reversed
-                },
-                pcurve: m.add_curve2(arc.on_corner.clone()),
-            });
+            loop_uses.push(StoredUse::new(
+                m,
+                EdgeKey::New(made.arcs[side]),
+                arc.along,
+                &arc.on_corner,
+            ));
             if let (Some(pole), Some(edge)) = (&c.pole, made.pole)
                 && pole.after == w
             {
-                loop_uses.push(StoredUse {
-                    edge: EdgeKey::New(edge),
-                    orientation: Orientation::Reversed,
-                    pcurve: m.add_curve2(pole.pcurve.clone()),
-                });
+                loop_uses.push(StoredUse::new(m, EdgeKey::New(edge), false, &pole.pcurve));
             }
         }
         made.added = rw.face(AddedFace {
@@ -2279,13 +2255,6 @@ fn add_ring_faces(
             continue;
         }
         let surface = m.add_surface(r.surface.clone());
-        let along = |yes: bool| {
-            if yes {
-                Orientation::Forward
-            } else {
-                Orientation::Reversed
-            }
-        };
         if r.across {
             // A walked ring: `u` across, `v` along the edge, the seam at
             // `v`'s two ends — the loop of an open stripe whose two ends
@@ -2294,26 +2263,10 @@ fn add_ring_faces(
                 return Err(invariant("a walked ring's seam"));
             };
             let loop_uses = vec![
-                StoredUse {
-                    edge: EdgeKey::New(made.arcs[0]),
-                    orientation: Orientation::Forward,
-                    pcurve: m.add_curve2(seam.on_blend[0].clone()),
-                },
-                StoredUse {
-                    edge: EdgeKey::New(made.contacts[1]),
-                    orientation: Orientation::Forward,
-                    pcurve: m.add_curve2(upper.on_blend.clone()),
-                },
-                StoredUse {
-                    edge: EdgeKey::New(made.arcs[0]),
-                    orientation: Orientation::Reversed,
-                    pcurve: m.add_curve2(seam.on_blend[1].clone()),
-                },
-                StoredUse {
-                    edge: EdgeKey::New(made.contacts[0]),
-                    orientation: Orientation::Reversed,
-                    pcurve: m.add_curve2(lower.on_blend.clone()),
-                },
+                StoredUse::new(m, EdgeKey::New(made.arcs[0]), true, &seam.on_blend[0]),
+                StoredUse::new(m, EdgeKey::New(made.contacts[1]), true, &upper.on_blend),
+                StoredUse::new(m, EdgeKey::New(made.arcs[0]), false, &seam.on_blend[1]),
+                StoredUse::new(m, EdgeKey::New(made.contacts[0]), false, &lower.on_blend),
             ];
             made.added = rw.face(AddedFace {
                 shell: view.shell_of[&lower.face],
@@ -2354,26 +2307,20 @@ fn add_ring_faces(
             }
         };
         let loop_uses = vec![
-            StoredUse {
-                edge: EdgeKey::New(made.contacts[0]),
-                orientation: along(lower.along_u),
-                pcurve: m.add_curve2(lower.on_blend.clone()),
-            },
-            StoredUse {
-                edge: EdgeKey::New(far.0),
-                orientation: along(far.2),
-                pcurve: m.add_curve2(far.1),
-            },
-            StoredUse {
-                edge: EdgeKey::New(made.contacts[1]),
-                orientation: along(!upper.along_u),
-                pcurve: m.add_curve2(upper.on_blend.clone()),
-            },
-            StoredUse {
-                edge: EdgeKey::New(near.0),
-                orientation: along(!near.2),
-                pcurve: m.add_curve2(near.1),
-            },
+            StoredUse::new(
+                m,
+                EdgeKey::New(made.contacts[0]),
+                lower.along_u,
+                &lower.on_blend,
+            ),
+            StoredUse::new(m, EdgeKey::New(far.0), far.2, &far.1),
+            StoredUse::new(
+                m,
+                EdgeKey::New(made.contacts[1]),
+                !upper.along_u,
+                &upper.on_blend,
+            ),
+            StoredUse::new(m, EdgeKey::New(near.0), !near.2, &near.1),
         ];
         made.added = rw.face(AddedFace {
             shell: view.shell_of[&lower.face],
