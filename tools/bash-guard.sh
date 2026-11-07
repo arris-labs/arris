@@ -43,7 +43,7 @@ w="(^|[;&|({'\"[:space:]])"
 if [ "$bg" != true ]; then
   if grep -qE "${w}(while|until)[[:space:]].*[[:space:]]sleep[[:space:]]" <<<"$code" ||
     grep -qE "${w}tail[[:space:]]+([^|;&]*[[:space:]])?(--pid|-[a-zA-Z]*f[a-zA-Z]*([[:space:]]|\$)|--follow)" <<<"$code"; then
-    refuse "a foreground wait loop (.agents/rules/git.md, no foreground waits). Run the command you are waiting on in the foreground with \`timeout\` if you need its result now, or with run_in_background and wait for its completion notification. A commit's test half is not a step's to wait for (tools/verify.sh --status reads it, waiting on a run in flight)."
+    refuse "a foreground wait loop (.agents/rules/git.md, no foreground waits). Run the command you are waiting on with run_in_background (or in the foreground under \`timeout\` if it ends within 3 minutes: the harness backgrounds anything longer) and end your turn; its completion notification resumes you. A commit's test half is not a step's to wait for (tools/verify.sh --status reads it, waiting on a run in flight)."
   fi
 fi
 # `list` and `show` only read; every other form (bare, push, pop, apply, drop) moves work.

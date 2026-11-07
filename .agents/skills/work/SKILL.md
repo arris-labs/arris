@@ -25,8 +25,10 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    asked for before writing it, not after.
 2. Implement the step with its test, fixture or oracle comparison, the docs
    it changes and rustdoc on every new public item.
-3. Run only the step's own tests (`cargo nextest run -p <crate> --test
-   <file>` or `-E 'test(/^<area>_/)'`) and `cargo fmt --all`. The hook runs
+3. Run only the step's own tests (`ARRIS_PROPTEST_CASES=16 cargo nextest
+   run --profile fast -p <crate> --test <file>` or `-E 'test(/^<area>_/)'`;
+   a slow-set test the step changes by name, without the profile) and
+   `cargo fmt --all`. The hook runs
    fmt and clippy at the commit; the doctests and the `fast` slice run after
    it, verified on the commit's own tree (ADR-0078, `tools/verify.sh
    --status`). `/retire-plan` the full gate — a step needing it sooner says
@@ -36,8 +38,10 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    stops a test at 8 min. A run expected past a minute goes with
    `run_in_background`, and the step goes on with what does not depend on
    it (`.agents/rules/git.md`, no foreground waits) — a subagent of
-   *Conduct* runs it in the foreground under `timeout` instead, since its
-   turn ending is its hand-back. For a geometric change,
+   *Conduct* does the same and ends its turn only when the commit is in
+   `git log`: the harness moves any foreground command to the background
+   after 180 s whatever its `timeout`, and its completion notification
+   resumes the subagent. For a geometric change,
    look at the result (`inspect` skill) before trusting a green test.
 4. Read your own `git diff --cached` against `.agents/review.md` and
    `.agents/rules/kernel.md` before committing: an `unwrap` on geometry, a
@@ -91,14 +95,17 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    hand-back: the harness delivers it, never a poll of its output. Its prompt: "Work step N of `docs/plans/<slug>.md` in this
    checkout by *Do* in `.agents/skills/work/SKILL.md`, that one step only,
    and commit it. A run whose result you need goes in the foreground
-   under `timeout`, never backgrounded and polled; the commit's test half
-   is not yours to wait for. You answer to the conductor, never the human:
+   under `timeout` if it ends within 3 minutes, else with
+   `run_in_background`, and you end your turn only when the commit is in
+   `git log -1`, never while a run or the commit's hook is pending; the
+   commit's test half is not yours to wait for. You answer to the conductor, never the human:
    hand back the commit id and anything surprising, or the question that
    stopped you." The conductor writes no code itself; it alone talks to
    the human.
    A notice that the subagent "is waiting on its own background work" is
-   interim, not a hand-back: `SendMessage` it to finish in the foreground
-   and hand back. Every wait on a subagent or the gate also sets a
+   interim, not a hand-back: send nothing, its own job's notification
+   resumes it (steps 3–6 of rewrite-seams did, after four nudges for
+   nothing). Every wait on a subagent or the gate also sets a
    `ScheduleWakeup` of 20 minutes or more, so a lost notification costs one
    interval, not the session: about 60 on the full gate, its prompt one
    line ("conductor fallback for `<slug>`: check the hand-back or gate; if
