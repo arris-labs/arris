@@ -7,8 +7,9 @@ Finds the transcripts of the checkout it lives in (under every
 ~/.claude*/projects, or $CLAUDE_CONFIG_DIR/projects), picks the sessions
 that mention SLUG (a plan slug), the N most recent, or the given ids, and
 prints for each: when and how long, the models, the human's own messages,
-the skills and tools used, the tool calls that failed, and the longest
-stalls between entries. The transcripts are read only.
+the skills and tools used, the tool calls that failed (the subagents'
+too), and the longest stalls between entries; a message the human sent
+while the agent was working is marked "(sent mid-turn)". The transcripts are read only.
 """
 
 import argparse
@@ -66,6 +67,29 @@ def human(t):
     return t
 
 
+def subagent_failures(path, width):
+    """Failed tool calls of the subagents a session started (<id>/subagents/)."""
+    out = []
+    for f in sorted(glob.glob(os.path.join(path[: -len(".jsonl")], "subagents", "*.jsonl"))):
+        pending = {}
+        for line in open(f, encoding="utf-8", errors="replace"):
+            try:
+                o = json.loads(line)
+            except ValueError:
+                continue
+            content = (o.get("message") or {}).get("content")
+            if not isinstance(content, list):
+                continue
+            for c in content:
+                if c.get("type") == "tool_use":
+                    pending[c["id"]] = (c["name"], json.dumps(c["input"])[:width])
+                elif c.get("type") == "tool_result" and c.get("is_error"):
+                    name, inp = pending.get(c.get("tool_use_id"), ("?", ""))
+                    res = text_of(c["content"]) if isinstance(c.get("content"), list) else str(c.get("content"))
+                    out.append(f"[{os.path.basename(f)[6:14]}] {name} {inp} -> {res.strip()[:width]}")
+    return out
+
+
 def digest(path, width):
     tools, skills, failures, said, models = {}, {}, [], [], {}
     pending, stamps = {}, []
@@ -74,6 +98,9 @@ def digest(path, width):
             o = json.loads(line)
         except ValueError:
             continue
+        att = o.get("attachment") or {}
+        if att.get("type") == "queued_command" and (att.get("origin") or {}).get("kind") == "human":
+            said.append("(sent mid-turn) " + str(att.get("prompt", "")).replace("\n", " / ")[: width * 2])
         if o.get("isSidechain"):
             continue
         if o.get("timestamp"):
@@ -115,6 +142,10 @@ def digest(path, width):
         print("  >", t)
     print(f"failed tool calls ({len(failures)}):")
     for f in failures[:15]:
+        print("  !", f)
+    sub = subagent_failures(path, width)
+    print(f"failed tool calls of subagents ({len(sub)}):")
+    for f in sub[:15]:
         print("  !", f)
     print()
 
