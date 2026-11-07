@@ -25,9 +25,13 @@ Deletion is the "done" signal; anything worth keeping moves first.
    about an hour; its last lines name every red test), then
    `ARRIS_ORACLE_CACHE=off` for the oracle comparisons the plan touched,
    `cargo nextest run -p <crate> --features parallel` for each of
-   `arris-mesh`, `arris-ops`, `arris` whose source changed, and
-   `tools/py-test.sh` when the plan touched `crates/arris-py`. Steps 2–4
-   run while they do, the review's fixes committed as they come. The
+   `arris-mesh`, `arris-ops`, `arris`, only when the plan's diff touches a
+   file `git grep -l 'feature = "parallel"' crates` lists (CI's `parallel`
+   job covers the rest; the three runs cost 60 minutes on rewrite-seams for
+   a plan that touched none), and
+   `tools/py-test.sh` when the plan touched `crates/arris-py`. The reply
+   names each run's expected finish (the gate: 55 minutes) when it starts.
+   Steps 2–4 run while they do, the review's fixes committed as they come. The
    retirement commit waits for the gate green and HEAD verified `pass`;
    anything red: stop and report (a conductor fixes it by `/work`'s
    *Conduct* step 4). A plan whose diff (`git diff --name-only`
