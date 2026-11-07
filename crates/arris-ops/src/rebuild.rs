@@ -493,6 +493,29 @@ pub(crate) struct Rewrite {
     pub added: Vec<AddedFace>,
 }
 
+impl Rewrite {
+    /// Appends a new vertex and returns its index: the `VertexKey::New`
+    /// that addresses it in [`Rewrite::vertices`].
+    pub(crate) fn vertex(&mut self, spec: VertexSpec) -> usize {
+        self.vertices.push(spec);
+        self.vertices.len() - 1
+    }
+
+    /// Appends a new edge, a piece of `parent` where it is one, and
+    /// returns its index: the `EdgeKey::New` that addresses it in
+    /// [`Rewrite::edges`].
+    pub(crate) fn edge(&mut self, spec: EdgeSpec, parent: Option<EdgeId>) -> usize {
+        self.edges.push((spec, parent));
+        self.edges.len() - 1
+    }
+
+    /// Appends an added face and returns its index in [`Rewrite::added`].
+    pub(crate) fn face(&mut self, face: AddedFace) -> usize {
+        self.added.push(face);
+        self.added.len() - 1
+    }
+}
+
 /// `loops`, written in the stored sense, as the effective walks a face
 /// used with `orientation` hands the builder.
 pub(crate) fn stored_to_spec(
@@ -767,4 +790,55 @@ pub(crate) fn rewrite_unverified(
         added,
         provenance: p,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use arris_geom::Surface;
+    use arris_math::{Frame, Interval, Point3, Precision};
+    use arris_topo::entity::EdgeGeometry;
+
+    use super::*;
+
+    #[test]
+    fn rewrite_indices_address_the_elements_they_return() {
+        let mut m = Model::new(Precision::DEFAULT).unwrap();
+        let mut rw = Rewrite::default();
+        let spec = |x: f64| VertexSpec::New {
+            point: Point3::new(x, 0.0, 0.0),
+            tolerance: Precision::DEFAULT.tolerance().linear,
+        };
+        let (a, b) = (rw.vertex(spec(0.0)), rw.vertex(spec(1.0)));
+        assert_eq!((a, b), (0, 1));
+        assert_eq!(rw.vertices[b], spec(1.0));
+
+        let edge = EdgeSpec::New {
+            geometry: EdgeGeometry::Degenerate {
+                range: Interval::new(0.0, 1.0).unwrap(),
+            },
+            start: VertexKey::New(a),
+            end: VertexKey::New(b),
+            tolerance: Precision::DEFAULT.tolerance().linear,
+        };
+        let i = rw.edge(edge, None);
+        assert_eq!(i, 0);
+        assert_eq!(rw.edges[i], (edge, None));
+        let j = rw.edge(edge, None);
+        assert_eq!(j, 1);
+        assert_eq!(rw.edges[j], (edge, None));
+
+        let surface = m.add_surface(Surface::Plane {
+            frame: Frame::world(),
+        });
+        let face = AddedFace {
+            shell: 0,
+            surface,
+            orientation: Orientation::Forward,
+            loops: Vec::new(),
+            tolerance: Precision::DEFAULT.tolerance().linear,
+        };
+        let k = rw.face(face.clone());
+        assert_eq!(k, 0);
+        assert_eq!(rw.added[k], face);
+    }
 }

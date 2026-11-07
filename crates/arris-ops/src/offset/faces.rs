@@ -34,16 +34,15 @@ pub(super) fn rewrite_of(
     let mut vkey: BTreeMap<VertexId, VertexKey> = BTreeMap::new();
     for (&v, &point) in points {
         let tolerance = m.vertex(v)?.tolerance();
-        vkey.insert(v, VertexKey::New(rw.vertices.len()));
-        rw.vertex_parents.insert(rw.vertices.len(), v);
-        rw.vertices.push(VertexSpec::New { point, tolerance });
+        let i = rw.vertex(VertexSpec::New { point, tolerance });
+        vkey.insert(v, VertexKey::New(i));
+        rw.vertex_parents.insert(i, v);
     }
     let key = |v: VertexId| vkey.get(&v).copied().unwrap_or(VertexKey::Kept(v));
     let mut ekey: BTreeMap<EdgeId, EdgeKey> = BTreeMap::new();
     for (&e, new) in edges {
         let edge = m.edge(e)?;
-        ekey.insert(e, EdgeKey::New(rw.edges.len()));
-        rw.edges.push((
+        let i = rw.edge(
             EdgeSpec::New {
                 geometry: match new.curve {
                     Some(curve) => EdgeGeometry::Curve {
@@ -57,7 +56,8 @@ pub(super) fn rewrite_of(
                 tolerance: edge.tolerance(),
             },
             Some(e),
-        ));
+        );
+        ekey.insert(e, EdgeKey::New(i));
     }
     let surface_ids: BTreeMap<FaceId, SurfaceId> = moves
         .surfaces

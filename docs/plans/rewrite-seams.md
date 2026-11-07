@@ -67,7 +67,7 @@ bound has to be established here.
 - [x] Step 1 **[1]** — `_rust.py`'s depth-aware `;`. Run the four
   scripts. The commit body records the counts before and after
   (functions, past 100 and past 150 lines) and the new duplicate rows.
-- [ ] Step 2 **[1]** — Add `Rewrite::vertex`, `edge` and `face`, each with
+- [x] Step 2 **[1]** — Add `Rewrite::vertex`, `edge` and `face`, each with
   a unit test in `rebuild.rs` that the index returned addresses the
   element. Move `offset/faces.rs` and `blend/rolled.rs` onto them.
 - [ ] Step 3 **[1]** — Move `blend/build.rs`'s remaining `len()` + `push`

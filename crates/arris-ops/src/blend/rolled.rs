@@ -385,13 +385,11 @@ pub(super) fn add_run_over(
     let (e_curve, _) = edge.curve().ok_or(invariant("the crossed edge's curve"))?;
     let mut vertices = [[0usize; 2]; 2];
     for (i, c) in run.crossings.iter().enumerate() {
-        vertices[i][on_f] = rw.vertices.len();
-        rw.vertices.push(VertexSpec::New {
+        vertices[i][on_f] = rw.vertex(VertexSpec::New {
             point: c.point,
             tolerance: rolled.tolerance.max(edge.tolerance()),
         });
-        vertices[i][on_h] = rw.vertices.len();
-        rw.vertices.push(VertexSpec::New {
+        vertices[i][on_h] = rw.vertex(VertexSpec::New {
             point: rolled.contacts[on_h].point(c.t),
             tolerance: rolled.tolerance,
         });
@@ -622,7 +620,7 @@ fn push_edge(
     tolerance: f64,
     parent: Option<EdgeId>,
 ) -> usize {
-    rw.edges.push((
+    rw.edge(
         EdgeSpec::New {
             geometry: EdgeGeometry::Curve { curve, range },
             start,
@@ -630,8 +628,7 @@ fn push_edge(
             tolerance,
         },
         parent,
-    ));
-    rw.edges.len() - 1
+    )
 }
 
 /// The stripe's two faces either side of the run-over, and the rolled
@@ -686,11 +683,9 @@ pub(super) fn add_rolled_faces(
     after.push(add(m, made.contacts[1][1], true, &hi.on_blend));
     after.extend(end);
     after.push(add(m, made.contacts[0][1], false, &lo.on_blend));
-    *first = rw.added.len();
-    rw.added.push(face(before, stripe_surface));
-    made.added[0] = rw.added.len();
+    *first = rw.face(face(before, stripe_surface));
     let surface = m.add_surface(blend.stripe.surface.clone());
-    rw.added.push(face(after, surface));
+    made.added[0] = rw.face(face(after, surface));
     push_rolled_face(m, rw, shell, rolled, made)?;
     Ok(())
 }
@@ -730,9 +725,8 @@ pub(super) fn push_rolled_face(
     }
     around.push(add(m, made.arcs[1], !h_first, &rolled.arcs[1].on_rolled));
     around.push(add(m, made.foot, false, &Curve2::along_v(0.0)));
-    made.added[1] = rw.added.len();
     let surface = m.add_surface(rolled.surface.clone());
-    rw.added.push(AddedFace {
+    made.added[1] = rw.face(AddedFace {
         shell,
         surface,
         orientation: rolled.orientation,
