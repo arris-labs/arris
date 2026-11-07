@@ -63,9 +63,13 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
      a rescope inside the plan — and records its pick and the reason. The
      human decides only a change to a cycle's scope on the roadmap, to the
      project's positioning, or what publishes or costs money.
-6. Count the lines (`wc -l`); past ~150, move step detail into the deltas
+6. **Run each acceptance grep now.** An acceptance line of the form "X
+   appears nowhere outside Y" is run while planning, and every hit lies in
+   a step's files: rewrite-seams' `Forward`/`Reversed` line covered three
+   blend files no step named, and the retirement review found them.
+7. Count the lines (`wc -l`); past ~150, move step detail into the deltas
    or split as in 3.
-7. Reply with the step list and the open questions, then **stop**. The
+8. Reply with the step list and the open questions, then **stop**. The
    human edits the plan before `/work` starts it. The plan links the idea's
    decision (and its ADR) as settled; code and branches wait for `/work`.
 
