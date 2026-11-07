@@ -23,10 +23,7 @@
   (`tools/full-gate.sh` holds the verify lock). A gate an earlier session left running is
   waited on with `flock .git/arris-gate.lock true` in the background; any
   other run it left is rerun, never waited on (no notification comes).
-  Monitor is deferred (`ToolSearch select:Monitor` first), and its loop
-  carries a deadline (`timeout 1800 sh -c 'until …'`) so it cannot
-  outlive its session. Never
-  use a `pgrep -f` loop, which matches its own shell and never ends. A
+  Never use a `pgrep -f` loop, which matches its own shell and never ends. A
   stuck one is stopped with `tools/stop-gate.sh`, never a bare `pkill -f`.
   `ARRIS_VERIFY=inline` keeps the blocking hook.
 - **The gate's scope.** The hook and `tools/full-gate.sh` run themselves
