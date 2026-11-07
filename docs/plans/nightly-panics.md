@@ -85,7 +85,7 @@ bound has to be established here. **[CI]** after the grade: the step's
 only test is a CI run, which needs a push, so the plan runs on
 `plan/nightly-panics`.
 
-- [ ] Step 1 **[1]** — Record the triage: `docs/BACKLOG.md`'s Findings take the nights 11-05 to 11-07 with their seeds, this plan's corrections to the slot-chain, fuzz and skew-line blocks, and new blocks for `cusp_corner_*`, `every_quadric_pair…` and the 4 h timeouts. The crash input (run 40469593843's artifact, expiring 2027-01-25) is committed under `fuzz/`, past its `.gitignore`.
+- [x] Step 1 **[1]** — Record the triage: `docs/BACKLOG.md`'s Findings take the nights 11-05 to 11-07 with their seeds, this plan's corrections to the slot-chain, fuzz and skew-line blocks, and new blocks for `cusp_corner_*`, `every_quadric_pair…` and the 4 h timeouts. The crash input (run 40469593843's artifact, expiring 2027-01-25) is committed under `fuzz/`, past its `.gitignore`.
 - [ ] Step 2 **[2]** — Fixture `regression/slot-chain-posed-pcurve-end`: FTC-11's slot chain at the shrunk radius and pose, `#[ignore]`d, failing V3 in seconds. Its oracle is Open CASCADE's answer for the fillet; none means ask for the second oracle here.
 - [ ] Step 3 **[3]** — Find why v99 and v100's pcurve ends sit 2.5e-3 off f42 and fix it. The fixture moves to `blend/` with its blessed dump; `slot_chain…` holds on the 11-03 seed at 5000 cases, both shards.
 - [ ] Step 4 **[2]** — Replay the elbow on seeds `fc72dc4e…` (11-01), `cd3af2c6…`, `5f5f0065…`, and shrink each signature into `regression/` (`#[ignore]`d). One fixture if one pose carries both the V3 and the fit failure.
