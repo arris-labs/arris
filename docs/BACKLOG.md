@@ -195,6 +195,8 @@ reproduces it.
 - A JS binding over the facade for browser and Node callers, its ADR first checking wasm-bindgen under `forbid(unsafe_code)` as ADR-0034 checked pyo3; ranked after the MCP server (ideas/developer-first-positioning, Q10)
 - The `parallel` shard of `hash:3/4` takes 113 minutes against 63–70 for the others (ci-reuse-gate step 5): a few long tests land together under the name hash. Find which and split or speed them (`sweep_sweep_thread_chamfer` alone is 22 minutes locally) before adding shards, which would not shorten a run while `test`'s shards are longer (plans/ci-reuse-gate step 5 finding)
 - The reuse gate's `gh api` parse (`total_count` of successful `push` runs for a sha) is exercised only in CI, never by `--self-test`; a recorded response replayed through the lookup function would hold it (plans/ci-reuse-gate review)
+- A public `Orientation` constructor from a direction flag in `arris-topo`, so the hand-written `if … { Forward } else { Reversed }` left in `sweep/`, `boolean/pieces.rs`, `arris-io`'s STEP assembly and `arris-debug` (outside `rebuild::along`'s crate-private reach) can go; with it, `offset/faces.rs` stops converting an `Orientation` to a flag and back (the review of the rewrite seams).
+- Three copies of `cross` (7 lines each) in `arris-debug/src/render.rs`, `arris-io/src/stl.rs` and `arris-mesh/src/trimesh.rs` (three crates, so a shared one has a layer to find), which `duplicates.py` now lists since its parser counts functions with an array in the signature.
 
 ## Findings
 

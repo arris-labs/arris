@@ -1,6 +1,6 @@
 # Idea: refactor-after-c11
 
-- Status: Accepted (B); `rewrite-seams` absorbed by plans/rewrite-seams; the rest (`blend-phases`, then `census-and-tests`) waits for it
+- Status: Accepted (B); the rewrite seams plan is done and retired; the rest (`blend-phases`, then `census-and-tests`) is still to plan, in that order
 - Raised: 2026-11-04
 - Prompt (verbatim from the human): "/refactor-review" (handed over by C11's close)
 
@@ -54,9 +54,6 @@ compared in the source) or **measured** (a count or a hash).
   `STEP_HALVINGS`, `FLUSH_SAMPLES`, and the line/spline descent's six):
   *no longer apply*. `small-seams` read the descents and found two
   different algorithms. Each constant is its own budget.
-
-### For a `rewrite-seams` plan
-Absorbed by `plans/rewrite-seams`.
 
 ### For a `blend-phases` plan (read structure, measured sizes)
 - **`blend/build.rs` is 2557 lines (1701 at the base)** and holds five
@@ -150,11 +147,11 @@ Absorbed by `plans/rewrite-seams`.
 
 ### A — All three before C12's first plan
 About 18 steps. C12 waits three plans for structure it needs only in
-part (`rewrite-seams`).
+part (the rewrite seams).
 
 ### B — Interleaved in the side slot
 1. The nightly's two panics.
-2. `rewrite-seams` (about 5 steps), before C12's first code step, so
+2. The rewrite seams (about 5 steps; done), before C12's first code step, so
    draft and thicken write through `Rewrite::edge` and `StoredUse::new`
    from their first commit.
 3. `blend-phases` (about 7 steps).
@@ -179,7 +176,7 @@ functions with array parameters.
   does not touch. C12 is draft, thicken and `region2`: offset, shell and
   the rewrite, not the blend.
 - **C** is what produced this review.
-- **`rewrite-seams` comes first** because it is the one plan C12 stands
+- **The rewrite seams come first** because it is the one plan C12 stands
   on, and it is small.
 - **`blend-phases` comes after the panics** so their fix lands on the
   code as the bisect reads it.
@@ -191,9 +188,9 @@ functions with array parameters.
 Round 1:
 
 ❓ **Q1 — Order**: A (all before C12), B (interleaved in the side slot), or C (when touched)?
-➡️ B. The panics first, then `rewrite-seams` before C12's first code step, then `blend-phases`, then `census-and-tests`.
+➡️ B. The panics first, then the rewrite seams before C12's first code step, then `blend-phases`, then `census-and-tests`.
 
-❓ **Q2 — The script fix**: fix `_rust.py`'s parser as `rewrite-seams` step 1 (yes), or in this review's commit?
+❓ **Q2 — The script fix**: fix `_rust.py`'s parser as the rewrite seams' step 1 (yes), or in this review's commit?
 ➡️ Yes, step 1. The review commit stays prose, and the fix is verified like any tool change.
 
 ❓ **Q3 — `blend_prop` as a module tree**: split the 5339-line test file into `tests/blend_prop/` as one binary (yes), or leave it whole?
@@ -206,9 +203,9 @@ No ADR: each plan is structure under existing ADRs. *Later*: the
 
 2026-11-04, round 1: the human answered "yes" to every recommendation.
 - **Q1: B**, interleaved in the side slot, in this order: the nightly's
-  two panics, `rewrite-seams` before C12's first code step,
+  two panics, the rewrite seams before C12's first code step,
   `blend-phases`, `census-and-tests`.
-- **Q2: yes.** `_rust.py`'s parser fix is `rewrite-seams` step 1.
+- **Q2: yes.** `_rust.py`'s parser fix is the rewrite seams' step 1.
 - **Q3: yes.** `blend_prop` becomes `tests/blend_prop/`, still one binary.
 
 No ADR.

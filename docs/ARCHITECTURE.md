@@ -804,7 +804,11 @@ or a face's new loops no longer reach them, the blend faces added after
 each shell's own, and the same generic provenance — kept unrecorded, a
 piece or a replacement `Modified`, the rest of what is gone `Deleted`,
 each shell and the body `Modified` — over which the blend adds its
-`Generated` records.
+`Generated` records. A `Rewrite` is filled through its index-returning
+methods (`vertex`, `edge`, `face`), and an edge use is built by
+`StoredUse::new` (a new pcurve) or `StoredUse::of` (an operand's use
+carried over), with `rebuild::along` turning a direction flag into an
+`Orientation`.
 
 A body is read for such an edit through `body_view::BodyView` (crate-private
 in `arris-ops`, the seam shell and offset share with the blend): each face's
