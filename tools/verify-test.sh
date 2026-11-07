@@ -54,4 +54,19 @@ wait "$p3" "$p4"
 equals "tree moved on" "$(git -C "$dir/tree" rev-parse HEAD)" "$c4"
 [ ! -e "$dir/$c3.pid" ] || { echo "FAIL pid left" >&2; fail=1; }
 
+# a status read racing a run's end never reports its verdict as a death
+# (a narrow window: this loop catches a regression only now and then):
+# the runner writes the verdict, then removes its pid file
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  "$verify" "$c1" & pv=$!
+  seen=
+  while kill -0 "$pv" 2>/dev/null; do seen="$seen $("$verify" --status "$c1")"; done
+  wait "$pv"
+  case "$seen" in *fail*) echo "FAIL race: a status read fail during a passing run:$seen" >&2; fail=1 ;; esac
+done
+# a runner that died without a verdict is still a fail
+echo running >"$dir/$c1"; echo 999999 >"$dir/$c1.pid"
+equals "dead runner" "$("$verify" --status "$c1")" fail
+rm -f "$dir/$c1.pid"
+
 [ "$fail" = 0 ] && echo "verify-test: ok" || exit 1

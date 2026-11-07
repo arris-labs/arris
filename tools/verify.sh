@@ -42,7 +42,11 @@ if [ "${1:-}" = --status ]; then
       queued | running)
         pid=$(cat "$dir/$sha.pid" 2>/dev/null || true)
         if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then sleep 0.2; continue; fi
-        state=fail # the runner died without a verdict
+        # The runner writes its verdict and then removes its pid file: a
+        # state read before the verdict and a pid read after it is not a
+        # death. Read the state again.
+        state=$(cat "$dir/$sha" 2>/dev/null || echo none)
+        case "$state" in queued | running) state=fail ;; esac # died without a verdict
         ;;
     esac
     break
