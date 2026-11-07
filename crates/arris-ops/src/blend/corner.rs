@@ -15,7 +15,7 @@ use super::miter::cross_lines;
 use super::stripe::{Section, Stripe, chord, line_origin, placed};
 use super::{degenerate, invariant};
 use crate::error::{BlendReason, OpError, Reason, fault_of};
-use crate::rebuild::forward;
+use crate::rebuild::{along, forward};
 
 /// One side of a corner: where one of its three blends meets the corner
 /// face — a great circle of the sphere, or a side of the triangle —
@@ -494,11 +494,7 @@ fn corner_sphere(
         },
         after: 1,
     };
-    let orientation = if stripes[0].convex {
-        Orientation::Forward
-    } else {
-        Orientation::Reversed
-    };
+    let orientation = along(stripes[0].convex);
     Ok((sphere, orientation, sides, Some(pole)))
 }
 

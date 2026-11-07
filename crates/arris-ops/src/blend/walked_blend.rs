@@ -23,7 +23,7 @@ use arris_geom::{
 };
 use arris_math::{Aabb, Frame, Interval, Meter, Point2, Point3, Tolerance};
 use arris_topo::entity::{Edge, Vertex};
-use arris_topo::{EdgeId, FaceId, Orientation};
+use arris_topo::{EdgeId, FaceId};
 
 use super::Kind;
 use super::build::Env;
@@ -36,7 +36,7 @@ use super::walked_chamfer::{Chord, Chording};
 use super::{degenerate, invariant};
 use crate::body_view::{UseAt, faces_tolerance, tangent_normals};
 use crate::error::{BlendReason, OpError, Reason, fault_of};
-use crate::rebuild::forward;
+use crate::rebuild::{along, forward};
 
 /// An edge read for a walked blend: its faces, the ball's spine on them
 /// and what the assembly needs of the edge.
@@ -773,11 +773,7 @@ pub(super) fn walked_ring(
             chord.edge_point(range.lo()),
         )?,
     };
-    let orientation = if outward == convex {
-        Orientation::Forward
-    } else {
-        Orientation::Reversed
-    };
+    let orientation = along(outward == convex);
     let line_tol = Tolerance::new(tolerance, tol.angular);
     let mut contacts: Vec<RingContact> = Vec::with_capacity(2);
     for (k, row) in rows.into_iter().enumerate() {

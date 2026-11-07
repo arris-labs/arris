@@ -23,7 +23,7 @@ use super::{mixed, traced};
 use crate::body_view::tangent_normals;
 use crate::body_view::{UseAt, faces_tolerance};
 use crate::error::{BlendReason, OpError, Reason, fault_of};
-use crate::rebuild::forward;
+use crate::rebuild::{along, forward};
 
 /// A face of the meridian row (ADR-0036 §1): `Some(None)` for a plane,
 /// `Some(Some(frame))` for a cylinder, a cone, a sphere or a torus, whose
@@ -509,11 +509,7 @@ pub(super) fn ring(
         .normal(0.0, (v0 + v1) / 2.0)
         .ok_or(invariant("a regular blend surface"))?;
     let outward = |mer: &Meridian| mer.normal.x * x + mer.normal.y * z;
-    let orientation = if normal.dot(&(outward(&mer_a) + outward(&mer_b))) > 0.0 {
-        Orientation::Forward
-    } else {
-        Orientation::Reversed
-    };
+    let orientation = along(normal.dot(&(outward(&mer_a) + outward(&mer_b))) > 0.0);
     Ok(Ring {
         edge,
         range: rd.range,
