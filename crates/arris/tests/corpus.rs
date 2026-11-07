@@ -1928,6 +1928,12 @@ corpus_tests! {
     /// built.
     #[ignore = "kernel bug: the blend's output fails the checker at L2, two loops' pcurves jump 3.1e-7 and 2.4e-6 in (u, v) (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
     regression_nist_ftc_08_fillet_pcurve_jump_checker_fault => run "regression/nist-ftc-08-fillet-pcurve-jump-checker-fault";
+    /// FTC-11's slot chain (`blend/nist-ftc-11-ap242-bspline-circle-fillet`)
+    /// in the pose the nightly's property shrank to, at the battery's radius
+    /// (docs/BACKLOG.md): the blend's output fails the checker at V3, the
+    /// pcurve ends of v99 and v100 2.5e-3 off their face f42.
+    #[ignore = "kernel bug: the slot chain's blend output fails the checker at V3, v99 and v100 2.5e-3 off f42 in a turned pose (docs/BACKLOG.md, slot-chain-and-elbow-outputs-fail-the-checker)"]
+    regression_slot_chain_posed_pcurve_end => run "regression/slot-chain-posed-pcurve-end";
     /// A rounded bar turned 45° about y and moved to z = 100, split by an
     /// oblique plane through its centre, the cut face pressed out by 0.05: the
     /// section is a traced curve on each fillet cylinder and `offset_faces`
