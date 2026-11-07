@@ -79,12 +79,13 @@ Deletion is the "done" signal; anything worth keeping moves first.
      cargo sweep --stamp
      cargo nextest run --workspace --no-run && cargo clippy --workspace --all-targets
      cargo sweep --file
-     rm -rf target/debug/incremental
-     CARGO_TARGET_DIR=target/verify cargo sweep --time 7'
+     rm -rf target/debug/incremental target/verify/debug/incremental
+     CARGO_TARGET_DIR=target/verify cargo sweep --time 2'
    ```
 
    `target/verify` is the verification's build output (ADR-0078); its last
-   line drops what no verification has used in a week, and the next one
+   line drops what no verification has used in two days (a week left it at
+   175 GB beside `target/debug`'s 93 GB on 2026-11-07), and the next one
    rebuilds the rest.
 
    Report how much it freed.
