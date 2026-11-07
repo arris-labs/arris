@@ -1,6 +1,6 @@
 {
   "occt": "8.0.1.0.0",
-  "recipe_sha256": "d13fa284c9171441082f7d191cc6ae6eb89f9232b440b631da5062e7dd5df262",
+  "recipe_sha256": "35caa9ee709b814395b4ad49a139697c1e0eb7101fd587a8888add96d949e7be",
   "results": {
     "default": {
       "area": 5473.566468760185,

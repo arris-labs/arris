@@ -1,0 +1,66 @@
+{
+  "description": "NIST's FTC-11 AP242 e2 solid #1299 (the part of blend/nist-ftc-11-ap242-bspline-circle-fillet) turned and moved by the pose the nightly's slot-chain property shrank to (rotation about (-0.6726563463311865, -0.312194281374221, 0.6708712025550156) by 157.83007892511384 degrees, then moved by (-95.06916248407532, 0, 0)), the property's slot edge filleted at the battery's radius 0.0105; the pose is the property's shrunk one rounded to an axis and angle that failed the same way. The read part's healed tolerances (2.5e-3, 3.125e-3, 3.75e-3 on the plane f0's rim vertices) are the gaps they cover plus the rounding at the file's coordinates, about 23 from the origin; the motion carries the part to about 97, where evaluating the moved plane at a pcurve's end rounds by more, and the moved part failed V3 by up to 3e-15 before any blend ran (plans/nightly-panics step 3). A transform grows every vertex's and edge's tolerance above the default by the rounding of the moved coordinates, and the blend is then clean at Full. Arris builds it as unposed (80/123/47, the same volume to 1e-11), and as Open CASCADE does within the measure tolerances blend/nist-ftc-11-ap242-bspline-circle-fillet sets for this part's open wire on f0 (volume 1.7e-7, centroid 4.0e-6, inertia 1.6e-7 of the tensor, area 1.5e-10). The radius 0.004 the property shrank to is not used because Open CASCADE's fillet there is not a closed surface",
+  "steps": [
+    {
+      "op": "step",
+      "name": "file",
+      "file": "../nist-ftc-11-ap242-bspline-circle-fillet/nist_ftc_11_asme1_ap242-e2-1299.stp",
+      "sha256": "e4ed6568a8c397811140527681031c947c5c5a1f2491e6de58b78f085a5f5443",
+      "id": 1299
+    },
+    {
+      "op": "transform",
+      "name": "part",
+      "of": "file",
+      "rotate": {
+        "axis": [
+          -0.6726563463311865,
+          -0.312194281374221,
+          0.6708712025550156
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 157.83007892511384
+      },
+      "translate": [
+        -95.06916248407532,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -94.85144930934294,
+          -12.337033759611582,
+          20.274312683153312
+        ]
+      ],
+      "radius": 0.0105
+    }
+  ],
+  "result": "result",
+  "tolerances": {
+    "volume_rel": 2e-07,
+    "area_rel": 5e-06,
+    "centroid_abs": 5e-06,
+    "inertia_rel": 3e-07
+  },
+  "analytic": {
+    "counts": {
+      "vertices": 80,
+      "edges": 123,
+      "faces": 47,
+      "loops": 51,
+      "shells": 1
+    },
+    "counts_differ": "Open CASCADE keeps both consumed corner vertices on the corner edges it lengthens, 0.0105 from Arris's ends, two edges of one line between the same two faces at each; Arris lengthens each one edge to the trim (ADR-0038)",
+    "genus": 1
+  }
+}

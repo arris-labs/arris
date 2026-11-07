@@ -1267,8 +1267,9 @@ fn worst_gap(ts: &[f64], floor: f64, gap: impl Fn(f64) -> f64) -> f64 {
 const PEAK_STEPS: usize = 40;
 
 /// A distance between `a` and `b`, raised by the rounding at their own
-/// scale: what keeps an entity within its tolerance when the body is
-/// moved, which rounds every point it compares.
+/// scale: what keeps an entity within its tolerance when the checker
+/// evaluates the same geometry again. A motion to coordinates farther out
+/// rounds by more, and grows the tolerance by its own (`transform`).
 fn distance(a: Point3, b: Point3) -> f64 {
     (a - b).norm() + RELATIVE_ROUNDING * a.coords.norm().max(b.coords.norm())
 }

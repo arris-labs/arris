@@ -82,7 +82,10 @@ impl GeometryRemap for Reflect<'_> {
 /// new through [`Builder::assemble`] in the body's own iteration order,
 /// each recorded `Modified` one-to-one from the entity it mirrors — no
 /// entity is shared with the input, even with the plane through the body:
-/// a mirror copies, it does not cut. The body's kind is kept.
+/// a mirror copies, it does not cut. The body's kind is kept, and every
+/// vertex's and edge's tolerance above the model's default is grown by the
+/// rounding of the copy's
+/// coordinates, as [`transform`](crate::transform)'s is.
 ///
 /// Built over the seam [`transform`](crate::transform) is, so it reaches as
 /// far as that does: a body of shells of faces that share nothing; one

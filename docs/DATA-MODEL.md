@@ -1883,8 +1883,14 @@ may carry different tolerances.
   were found in (`docs/ARCHITECTURE.md` §Operations) — and a section
   edge whose pcurve is moved to end on such a vertex's own (u, v) on a
   face, where its members lie further apart than the face's tolerance
-  and no exact curve meets them all, by the move. The record of
-  why lives in the operation's tests, not in the entity. A fitted section
+  and no exact curve meets them all, by the move; and a copy — a
+  `transform` or a `mirror` — every vertex and edge above
+  `default_tolerance` by `RELATIVE_ROUNDING` of the larger of the body's
+  coordinates before and after it, since
+  evaluating the moved geometry again rounds every gap at the new scale,
+  and a tolerance measured to its gap, as a read one is, would fall short
+  of it by a few ulps once the body is moved away from the origin. The
+  record of why lives in the operation's tests, not in the entity. A fitted section
   curve is *not* such a reason (ADR-0018, ADR-0022): it lies within
   `SECTION_FIT_FRACTION` of the faces' tolerance of the exact section at
   its own parameter — and so of both surfaces, and of any other fit of

@@ -329,6 +329,7 @@ blend/rounded-pocket-oblique-floor-fillet: 717444
 blend/rounded-slab-tilted-split-cap-rim-fillet: 127340
 blend/s-bend-oblique-top-fillet: 190333
 blend/second-fillet: 6
+blend/slot-chain-posed-pcurve-end: 65913
 blend/sphere-cylinder-fillet: 2924842
 blend/sphere-cylinder-oblique-seam-chamfer: 96107
 blend/sphere-cylinder-oblique-seam-fillet: 257940
