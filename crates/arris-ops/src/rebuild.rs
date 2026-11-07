@@ -8,11 +8,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use arris_geom::Curve2;
 use arris_math::Point2;
 use arris_topo::builder::{
     Assembly, Builder, EdgeKey, EdgeSpec, FaceSpec, UseSpec, VertexKey, VertexSpec, effective_uses,
 };
-use arris_topo::entity::{BodyKind, EdgeGeometry};
+use arris_topo::entity::{BodyKind, Coedge, EdgeGeometry};
 use arris_topo::{
     Body, Curve2Id, CurveId, EdgeId, EntityId, Face as FaceHandle, FaceId, Model, Orientation,
     Provenance, Shape, ShellId, SurfaceId, VertexId,
@@ -447,6 +448,38 @@ pub(crate) struct StoredUse {
     pub pcurve: Curve2Id,
 }
 
+impl StoredUse {
+    /// A use of `edge`, along its parameter when `forward`, its pcurve
+    /// added to `m` as a new curve.
+    pub(crate) fn new(m: &mut Model, edge: EdgeKey, forward: bool, pcurve: &Curve2) -> Self {
+        StoredUse {
+            edge,
+            orientation: along(forward),
+            pcurve: m.add_curve2(pcurve.clone()),
+        }
+    }
+
+    /// The use `c` of an operand, carried over to `edge` (kept or new)
+    /// with its orientation and its pcurve.
+    pub(crate) fn of(edge: EdgeKey, c: &Coedge) -> Self {
+        StoredUse {
+            edge,
+            orientation: c.orientation(),
+            pcurve: c.pcurve(),
+        }
+    }
+}
+
+/// `Forward` when `forward`, `Reversed` otherwise: a stored use's
+/// orientation from a flag.
+pub(crate) fn along(forward: bool) -> Orientation {
+    if forward {
+        Orientation::Forward
+    } else {
+        Orientation::Reversed
+    }
+}
+
 /// A face a rewrite adds beside the operand's own.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct AddedFace {
@@ -799,6 +832,49 @@ mod tests {
     use arris_topo::entity::EdgeGeometry;
 
     use super::*;
+
+    #[test]
+    fn along_is_forward_for_true_and_reversed_for_false() {
+        assert_eq!(along(true), Orientation::Forward);
+        assert_eq!(along(false), Orientation::Reversed);
+    }
+
+    #[test]
+    fn stored_use_new_adds_its_pcurve_and_keeps_the_flag() {
+        let mut m = Model::new(Precision::DEFAULT).unwrap();
+        let pcurve = Curve2::along_v(0.5);
+        let u = StoredUse::new(&mut m, EdgeKey::New(3), false, &pcurve);
+        assert_eq!(u.edge, EdgeKey::New(3));
+        assert_eq!(u.orientation, Orientation::Reversed);
+        assert_eq!(m.curve2(u.pcurve).unwrap(), &pcurve);
+        let v = StoredUse::new(&mut m, EdgeKey::New(4), true, &pcurve);
+        assert_eq!(v.orientation, Orientation::Forward);
+        assert_ne!(u.pcurve, v.pcurve);
+    }
+
+    #[test]
+    fn stored_use_of_carries_a_coedge_over() {
+        let mut m = Model::default();
+        let (body, _) = crate::primitive::primitive_box(
+            &mut m,
+            arris_math::Point3::origin(),
+            arris_math::Point3::new(1.0, 2.0, 3.0),
+            &arris_math::Control::NONE,
+        )
+        .unwrap();
+        let edge = m.edges(body).unwrap()[0].id;
+        let pcurve = m.add_curve2(Curve2::along_u(0.25));
+        let c = Coedge::new(edge, Orientation::Reversed, pcurve);
+        let u = StoredUse::of(EdgeKey::Kept(edge), &c);
+        assert_eq!(
+            u,
+            StoredUse {
+                edge: EdgeKey::Kept(edge),
+                orientation: Orientation::Reversed,
+                pcurve,
+            }
+        );
+    }
 
     #[test]
     fn rewrite_indices_address_the_elements_they_return() {

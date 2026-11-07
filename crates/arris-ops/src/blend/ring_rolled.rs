@@ -9,7 +9,7 @@ use core::f64::consts::TAU;
 
 use arris_geom::{Curve, Curve2, Surface, pcurve_on};
 use arris_math::{Frame, Interval, Meter, Point2, Tolerance, Vec2, real};
-use arris_topo::{EdgeId, Orientation};
+use arris_topo::EdgeId;
 
 use super::build::{Env, Made};
 use super::ring::{Ring, RingContact, placed_uv};
@@ -137,43 +137,30 @@ pub(super) fn add_ring_rolled_faces(
         };
         parts
             .into_iter()
-            .map(|(edge, wrapped)| StoredUse {
-                edge: EdgeKey::New(edge),
-                orientation: if along {
-                    Orientation::Forward
-                } else {
-                    Orientation::Reversed
-                },
-                pcurve: m.add_curve2(if wrapped {
+            .map(|(edge, wrapped)| {
+                let pcurve = if wrapped {
                     on.translated(turn)
                 } else {
                     on.clone()
-                }),
+                };
+                StoredUse::new(m, EdgeKey::New(edge), along, &pcurve)
             })
             .collect()
     };
-    let arc = |m: &mut Model, i: usize, up: bool| StoredUse {
-        edge: EdgeKey::New(rolled_made.arcs[i]),
-        orientation: if up {
-            Orientation::Forward
-        } else {
-            Orientation::Reversed
-        },
-        pcurve: m.add_curve2(if i == end {
+    let arc = |m: &mut Model, i: usize, up: bool| {
+        let pcurve = if i == end {
             rolled.arcs[i].on_stripe.translated(turn)
         } else {
             rolled.arcs[i].on_stripe.clone()
-        }),
+        };
+        StoredUse::new(m, EdgeKey::New(rolled_made.arcs[i]), up, &pcurve)
     };
     let mut loop_uses = chain(m, 0);
     loop_uses.push(arc(m, end, true));
     let mut back = chain(m, 1);
     back.reverse();
     for u in &mut back {
-        u.orientation = match u.orientation {
-            Orientation::Forward => Orientation::Reversed,
-            Orientation::Reversed => Orientation::Forward,
-        };
+        u.orientation = u.orientation.flipped();
     }
     loop_uses.extend(back);
     loop_uses.push(arc(m, start, false));

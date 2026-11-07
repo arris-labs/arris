@@ -19,7 +19,7 @@ use arris_topo::{CurveId, EdgeId, FaceId, Model, Orientation, VertexId};
 use super::ShellSide;
 use crate::body_view::BodyView;
 use crate::error::{Fault, OffsetReason, OpError, Reason};
-use crate::rebuild::{Rewrite, StoredUse, forward};
+use crate::rebuild::{Rewrite, StoredUse, along, forward};
 
 /// A piece of an edge two openings share, left at one end once the
 /// body's edge and the skin's copy cancel: an edge of the result between
@@ -179,10 +179,11 @@ impl Pair {
         let missing = || invariant("a rim piece made");
         Ok(match item {
             Item::Forth(j) => self.forth[j],
-            Item::Back(j) => StoredUse {
-                orientation: self.back[j].orientation.flipped(),
-                ..self.back[j]
-            },
+            Item::Back(j) => {
+                let mut u = self.back[j];
+                u.orientation = u.orientation.flipped();
+                u
+            }
             Item::First(j) => self.first[j].ok_or_else(missing)?,
             Item::Second(j) => self.second[j].ok_or_else(missing)?,
         })
@@ -252,11 +253,7 @@ pub(super) fn faces(
         let old: Vec<StoredUse> = l
             .coedges()
             .iter()
-            .map(|c| StoredUse {
-                edge: EdgeKey::Kept(c.edge()),
-                orientation: c.orientation(),
-                pcurve: c.pcurve(),
-            })
+            .map(|c| StoredUse::of(EdgeKey::Kept(c.edge()), c))
             .collect();
         let new = match new_loops {
             Some(loops) => loops
@@ -422,11 +419,7 @@ fn cancel(
         };
         *slot = Some(StoredUse {
             edge: EdgeKey::New(pieces.base + index),
-            orientation: if from.t < to.t {
-                Orientation::Forward
-            } else {
-                Orientation::Reversed
-            },
+            orientation: along(from.t < to.t),
             pcurve: if on_parent {
                 old_use.pcurve
             } else {
@@ -508,9 +501,10 @@ fn group(
 fn walked_back(uses: &[StoredUse]) -> Vec<StoredUse> {
     uses.iter()
         .rev()
-        .map(|u| StoredUse {
-            orientation: u.orientation.flipped(),
-            ..*u
+        .map(|u| {
+            let mut flipped = *u;
+            flipped.orientation = u.orientation.flipped();
+            flipped
         })
         .collect()
 }

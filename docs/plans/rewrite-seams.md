@@ -75,7 +75,7 @@ bound has to be established here.
   `grep -rE 'rw\.(vertices|edges|added)\.len\(\)' crates/arris-ops/src` is
   empty outside `rebuild.rs`, except where a length is read without a
   push.
-- [ ] Step 4 **[1]** — Add `StoredUse::new`, `StoredUse::of` and `along`,
+- [x] Step 4 **[1]** — Add `StoredUse::new`, `StoredUse::of` and `along`,
   with unit tests. Move `rebuild.rs`, `shell/rim.rs`, `offset/faces.rs`,
   `blend/rolled.rs` (its two copies of `along` and `add` go) and
   `blend/ring_rolled.rs` (`flipped`) onto them.

@@ -24,7 +24,7 @@ use super::walked::{Ball, Refusal, SURFACE_DEGREE, Walked, arc, contacts as cont
 use super::{Blend, invariant};
 use crate::body_view::BodyView;
 use crate::error::{OpError, fault_of};
-use crate::rebuild::{AddedFace, Rewrite, StoredUse};
+use crate::rebuild::{AddedFace, Rewrite, StoredUse, along};
 
 /// How far past each crossing the rolled face's surface runs, as a share
 /// of the stretch between them: the arc it shares with the stripe at each
@@ -260,11 +260,7 @@ pub(super) fn rolled_of(
         .ok_or(invariant("a regular rolled face"))?;
     let centre = run.section(v_mid).ok_or_else(refuse)?.centre;
     let away = normal.dot(&(mid - centre)) > 0.0;
-    let orientation = if away == s.convex {
-        Orientation::Forward
-    } else {
-        Orientation::Reversed
-    };
+    let orientation = along(away == s.convex);
     let [foot, _] = contact_rows(&skin).map_err(named)?;
     let foot = Curve::Nurbs(foot);
     let surface = Surface::Nurbs(skin);
@@ -651,38 +647,52 @@ pub(super) fn add_rolled_faces(
     end: Vec<StoredUse>,
 ) -> Result<(), OpError> {
     let [lo, hi] = &blend.contacts;
-    let along = |yes: bool| {
-        if yes {
-            Orientation::Forward
-        } else {
-            Orientation::Reversed
-        }
-    };
-    let add = |m: &mut Model, edge: usize, forward: bool, pcurve: &Curve2| StoredUse {
-        edge: EdgeKey::New(edge),
-        orientation: along(forward),
-        pcurve: m.add_curve2(pcurve.clone()),
-    };
     let stripe_surface = m.add_surface(blend.stripe.surface.clone());
     let face = |loop_uses: Vec<StoredUse>, surface| AddedFace {
         shell,
         surface,
-        orientation: if blend.stripe.convex {
-            Orientation::Forward
-        } else {
-            Orientation::Reversed
-        },
+        orientation: along(blend.stripe.convex),
         loops: vec![loop_uses],
         tolerance: blend.stripe.tolerance,
     };
     let mut before = start;
-    before.push(add(m, made.contacts[1][0], true, &hi.on_blend));
-    before.push(add(m, made.arcs[0], false, &rolled.arcs[0].on_stripe));
-    before.push(add(m, made.contacts[0][0], false, &lo.on_blend));
-    let mut after = vec![add(m, made.arcs[1], true, &rolled.arcs[1].on_stripe)];
-    after.push(add(m, made.contacts[1][1], true, &hi.on_blend));
+    before.push(StoredUse::new(
+        m,
+        EdgeKey::New(made.contacts[1][0]),
+        true,
+        &hi.on_blend,
+    ));
+    before.push(StoredUse::new(
+        m,
+        EdgeKey::New(made.arcs[0]),
+        false,
+        &rolled.arcs[0].on_stripe,
+    ));
+    before.push(StoredUse::new(
+        m,
+        EdgeKey::New(made.contacts[0][0]),
+        false,
+        &lo.on_blend,
+    ));
+    let mut after = vec![StoredUse::new(
+        m,
+        EdgeKey::New(made.arcs[1]),
+        true,
+        &rolled.arcs[1].on_stripe,
+    )];
+    after.push(StoredUse::new(
+        m,
+        EdgeKey::New(made.contacts[1][1]),
+        true,
+        &hi.on_blend,
+    ));
     after.extend(end);
-    after.push(add(m, made.contacts[0][1], false, &lo.on_blend));
+    after.push(StoredUse::new(
+        m,
+        EdgeKey::New(made.contacts[0][1]),
+        false,
+        &lo.on_blend,
+    ));
     *first = rw.face(face(before, stripe_surface));
     let surface = m.add_surface(blend.stripe.surface.clone());
     made.added[0] = rw.face(face(after, surface));
@@ -701,30 +711,38 @@ pub(super) fn push_rolled_face(
     rolled: &Rolled,
     made: &mut RolledMade,
 ) -> Result<(), OpError> {
-    let along = |yes: bool| {
-        if yes {
-            Orientation::Forward
-        } else {
-            Orientation::Reversed
-        }
-    };
-    let add = |m: &mut Model, edge: usize, forward: bool, pcurve: &Curve2| StoredUse {
-        edge: EdgeKey::New(edge),
-        orientation: along(forward),
-        pcurve: m.add_curve2(pcurve.clone()),
-    };
     // The arcs run from the contact at `u = 0` to the one at `β`: from `H`
     // to `E` where the contact on `H` is the first.
     let h_first = rolled.on_f == 1;
-    let mut around = vec![add(m, made.arcs[0], h_first, &rolled.arcs[0].on_rolled)];
+    let mut around = vec![StoredUse::new(
+        m,
+        EdgeKey::New(made.arcs[0]),
+        h_first,
+        &rolled.arcs[0].on_rolled,
+    )];
     for &(i, forward) in &rolled.rolled_on {
         let pcurve = (rolled.pieces[i].on_rolled.as_ref()).ok_or(invariant(
             "a pcurve on the rolled face of a piece it rolls on",
         ))?;
-        around.push(add(m, made.pieces[i], forward, pcurve));
+        around.push(StoredUse::new(
+            m,
+            EdgeKey::New(made.pieces[i]),
+            forward,
+            pcurve,
+        ));
     }
-    around.push(add(m, made.arcs[1], !h_first, &rolled.arcs[1].on_rolled));
-    around.push(add(m, made.foot, false, &Curve2::along_v(0.0)));
+    around.push(StoredUse::new(
+        m,
+        EdgeKey::New(made.arcs[1]),
+        !h_first,
+        &rolled.arcs[1].on_rolled,
+    ));
+    around.push(StoredUse::new(
+        m,
+        EdgeKey::New(made.foot),
+        false,
+        &Curve2::along_v(0.0),
+    ));
     let surface = m.add_surface(rolled.surface.clone());
     made.added[1] = rw.face(AddedFace {
         shell,

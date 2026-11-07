@@ -103,11 +103,7 @@ pub(super) fn rewrite_of(
                 let use_ = match edges.get(&c.edge()) {
                     // A degenerate edge stays at its pole, its pcurve the
                     // same line across it.
-                    Some(new) if new.curve.is_none() => StoredUse {
-                        edge: ekey[&c.edge()],
-                        orientation: c.orientation(),
-                        pcurve: c.pcurve(),
-                    },
+                    Some(new) if new.curve.is_none() => StoredUse::of(ekey[&c.edge()], c),
                     Some(new) => {
                         let curve_id = new.curve.ok_or(OpError::Internal(Fault::Invariant {
                             what: "a curve on a recomputed edge",
@@ -135,17 +131,14 @@ pub(super) fn rewrite_of(
                         } else {
                             c.orientation()
                         };
-                        StoredUse {
-                            edge: ekey[&c.edge()],
-                            orientation,
-                            pcurve: m.add_curve2(pcurve),
-                        }
+                        StoredUse::new(
+                            m,
+                            ekey[&c.edge()],
+                            orientation == Orientation::Forward,
+                            &pcurve,
+                        )
                     }
-                    None => StoredUse {
-                        edge: EdgeKey::Kept(c.edge()),
-                        orientation: c.orientation(),
-                        pcurve: c.pcurve(),
-                    },
+                    None => StoredUse::of(EdgeKey::Kept(c.edge()), c),
                 };
                 uses.push(use_);
             }
