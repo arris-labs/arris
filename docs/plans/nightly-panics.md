@@ -92,7 +92,7 @@ only test is a CI run, which needs a push, so the plan runs on
 - [x] Step 5 **[3]** — Fix the elbow's fixtures: the fit converges within `MAX_FIT_SPANS`, or the blend is refused by name per the delta. If the V3 is step 3's cause, this step only proves it. `an_elbows_vanishing_end…` holds on the three seeds.
 - [x] Step 6 **[2]** — The crash as a `crates/arris-geom` test: a curve with spans that narrow is never `Coincident` with a line it leaves. Fix per the delta; `cargo +nightly fuzz run -s none intersect_curves <input>` exits clean.
 - [x] Step 7 **[2]** — Read the skew-line property's unshrunk draw on seed `bb2adb02…`. Near-parallel within the tolerance: the generator keeps `turn` off 0 and π, by a named constant. Otherwise a kernel defect: a `regression/` fixture and a fix.
-- [ ] Step 8 **[1]** — `nightly.yml` per the delta. Checked by `actionlint` if present and by every filter still naming its tests: `cargo nextest list -E` on each new filter, the two `-rest` jobs still taking the remainder.
+- [x] Step 8 **[1]** — `nightly.yml` per the delta. Checked by `actionlint` if present and by every filter still naming its tests: `cargo nextest list -E` on each new filter, the two `-rest` jobs still taking the remainder.
 - [ ] Step 9 **[1, CI]** — The human pushes `plan/nightly-panics`; `gh workflow run nightly.yml --ref plan/nightly-panics`; the run is read per *Acceptance*. A job that still ends at its limit goes back to step 8 with its timings.
 
 ## Acceptance

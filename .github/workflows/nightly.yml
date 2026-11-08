@@ -78,9 +78,18 @@ jobs:
           # 35,900.
           - name: twin-rest
             filter: "binary_id(arris-ops::twin_prop) and not test(/^((quadric|crossing)_twins|meridian_rows)/)"
-          # 33,700.
-          - name: blend
-            filter: "(binary_id(arris-ops::twin_prop) and test(/^meridian_rows/)) or binary_id(arris-ops::blend_prop)"
+          # The three named blend properties, split out of `blend` so they
+          # start at once in a job of their own (plans/nightly-panics step 8).
+          # Measured at 5000 cases: the slot chain about 1,530 CPU-s a shard
+          # (2 shards), the elbow about 5,340 a shard (2 shards), the oblique
+          # chains 473 to 15,793 a shard (4 shards, 11-01 to 11-03).
+          - name: blend-named
+            filter: "binary_id(arris-ops::blend_prop) and test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent)/)"
+          # The rest of `blend`: its `meridian_rows` twin and the other blend
+          # properties. Not measured since the split; the whole old `blend`
+          # job was 33,700 by the 256-case scaling, the three above taken out.
+          - name: blend-rest
+            filter: "(binary_id(arris-ops::twin_prop) and test(/^meridian_rows/)) or (binary_id(arris-ops::blend_prop) and not test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent)/))"
           # 36,600.
           - name: multi-tool-operands
             filter: "binary_id(arris-ops::multi_tool_prop) and test(/^(a_multi_tool_result|the_geometry_is_independent)/)"
@@ -115,6 +124,10 @@ jobs:
       ARRIS_PROPTEST_SEED: ${{ needs.seed.outputs.seed }}
       ARRIS_PROPTEST_CASES: "5000"
     steps:
+      # The runner's disk is about 14 GB and each job builds a debug
+      # workspace (the nightly's jobs ran out of it at compile, 2026-11):
+      # the preinstalled toolchains this job does not use go first.
+      - run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -124,7 +137,9 @@ jobs:
           enable-cache: true
       - run: uv sync --project tools/oracle
       - run: echo "ARRIS_PROPTEST_SEED=$ARRIS_PROPTEST_SEED ARRIS_PROPTEST_CASES=$ARRIS_PROPTEST_CASES"
-      - run: cargo nextest run --workspace --no-fail-fast -E "$FILTER"
+      # `--test-threads num-cpus`, as `ci.yml` has: the default profile's
+      # 16 threads on a 4-vCPU runner ran about 16 heavy properties at once.
+      - run: cargo nextest run --workspace --no-fail-fast --test-threads num-cpus -E "$FILTER"
         env:
           FILTER: ${{ matrix.filter }}
 
@@ -239,7 +254,7 @@ jobs:
   # tier's does.
   fuzz:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
