@@ -252,9 +252,16 @@ jobs:
   # job, and its input is uploaded for `fuzz/show.rs` and `cargo fuzz
   # tmin`. Its depth comes from the nights adding up, as the property
   # tier's does.
+  #
+  # The limit is 240 minutes, under GitHub's 360. Run 42448712105 took
+  # 155 min on `body_read` and `intersect_surfaces`, which were cancelled
+  # during `cargo fuzz cmin`: the seed example 53-54 min, `cargo fuzz
+  # build` 1.5 min, `cargo fuzz run` (1800 s, -fork=4) 62-69 min wall
+  # because of slow inputs, cmin over 30 min. `step_read` finished in
+  # 108 min.
   fuzz:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       matrix:
