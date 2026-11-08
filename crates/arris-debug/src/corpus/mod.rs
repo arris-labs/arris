@@ -534,6 +534,7 @@ pub fn build(name: &str, recipe: &Recipe) -> Result<Chain, CorpusError> {
             results: BTreeMap::new(),
         },
         second_oracle: None,
+        pose_of: None,
     };
     chain_of(&fixture, "default")
 }

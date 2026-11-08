@@ -400,6 +400,7 @@ impl QueryFixture {
                 results: BTreeMap::new(),
             },
             second_oracle: None,
+            pose_of: None,
         }
     }
 }

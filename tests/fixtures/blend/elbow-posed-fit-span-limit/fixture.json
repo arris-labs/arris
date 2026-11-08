@@ -1,0 +1,64 @@
+{
+  "description": "NIST's CTC-05 AP203 solid #249 (the part of blend/nist-ctc-05-ap203-nurbs-torus-fillet) turned half a turn about y and moved by (-96.86770669238109, 96.51404372113453, -80.55850630095851), the pose the nightly's elbow property shrank to on 11-07's seed (a turn of 156.9 degrees about y with another shift on 11-05's failed the same way), its e256 filleted at the battery's radius 0.889. Toward the vanishing end at v84 the faces meet about 3.6e-4 rad off tangent, where a ball's centre with a residual g lies up to g / sin θ across the valley from the root; the snap stopped once the residual was within rounding of the coordinates, about 310 from the origin here, so the balls stood up to 5.7e-8 off their root, the sections were noise at the fit's 1.25e-8, and the walked surface's fit ran past its span cap ('the fit still deviates by 2.8e-8 with 3240 spans', an OpError::Internal; plans/nightly-panics steps 4 and 5). A snap now polishes a negligible residual with one more full step where it shortens it, and the fit converges in 754 spans. Arris builds the body it builds unposed: 255/387/159, genus 10, clean at Full but for the sliver's pairs the checker leaves undecided, and its change in volume and area is the unposed fixture's second-oracle record of changes, which a motion does not change (analytic.pose_of). Open CASCADE builds an invalid body here as unposed (negative volume and area); its measures stay as the record",
+  "steps": [
+    {
+      "op": "step",
+      "name": "file",
+      "file": "../../real/nist-ctc-05-ap203-torus-elbow-s5/nist_ctc_05_asme1_ap203-249.stp",
+      "sha256": "a604bd2407c71a7a11f7decafd7277cf22fe07743a824c8147b666efe4d53060",
+      "id": 249
+    },
+    {
+      "op": "transform",
+      "name": "part",
+      "of": "file",
+      "rotate": {
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "angle_deg": 180
+      },
+      "translate": [
+        -96.86770669238109,
+        96.51404372113453,
+        -80.55850630095851
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fillet",
+      "of": "part",
+      "edges": [
+        [
+          -247.85166901120502,
+          127.7747237336054,
+          -137.10327016616134
+        ]
+      ],
+      "radius": 0.8889999999999987
+    }
+  ],
+  "result": "result",
+  "analytic": {
+    "checker_undecided": "e256's blend narrows toward v84, its vanishing end, to a sliver under 4.2e-4 wide, which lies within the fixture's 1e-7 of the torus f111, its tangent neighbour, over a whole patch, where the intersector has no form for the pair (ADR-0074); its pairs with the torus and the two NURBS faces beside it stay undecided",
+    "counts": {
+      "vertices": 255,
+      "edges": 387,
+      "faces": 159,
+      "loops": 204,
+      "shells": 1
+    },
+    "genus": 10,
+    "counts_differ": "Open CASCADE's body is invalid and carries a 160th face; Arris's 159 are the second oracle's, the original 156 and one blend face per edge of the three-edge chain",
+    "measure_differs": "Open CASCADE builds a body of negative volume and area (−2.4e8 and −2.2e8 on a part of 1.3e7 and 8.6e5) here as for the unposed elbow, where the second oracle's solid of the unposed recipe is valid and removes 0.238 of volume and 0.119 of area from the part; a rigid motion changes neither, so that record of changes holds this fixture (analytic.pose_of, ADR-0073 as amended)",
+    "pose_of": "blend/nist-ctc-05-ap203-nurbs-torus-fillet",
+    "step_differs": "Open CASCADE's result is the invalid body BRepCheck_Analyzer refuses, as for the unposed elbow, whose own STEP reads back as another invalid body (blend/nist-ctc-05-ap203-nurbs-torus-fillet): reading it measures the reader on a body that is no solid, not the operation. Arris's STEP of the same result is still read back by Open CASCADE and held to the counts above (the corpus's compare stage)"
+  }
+}

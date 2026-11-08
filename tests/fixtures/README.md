@@ -336,6 +336,13 @@ of the step that made the fixture pass, and a later change to it is a
   change, `L·t` over the generated faces' boundary and `area_rel` of the
   whole, the volume ten times looser in share; the centroid and inertia
   are held to nothing, and `compare.py` holds no measure.
+  `pose_of: "<area>/<slug>"` says the recipe is that fixture's under a
+  rigid motion, a `transform` of its part before the operation, and
+  borrows its record of changes, which the motion does not change: the
+  posed result is Arris's own moved, where no kernel was run on the pose
+  (`blend/elbow-posed-fit-span-limit`). It needs `measure_differs`, a
+  `transform` step, no `second_oracle.json` of its own, and a record of
+  changes in the fixture it names, its hash that fixture's recipe's.
   `checker_undecided: "why"` says the checker cannot decide Arris's own
   result's pairs of a walked blend against its neighbours: toward a
   vanishing end the blend narrows to a sliver within the tolerance of

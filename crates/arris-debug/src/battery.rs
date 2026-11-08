@@ -599,6 +599,7 @@ pub fn judge(
                 .unwrap_or_default(),
         },
         second_oracle: None,
+        pose_of: None,
     };
     // The operand as the part runner read it, where it did: the same
     // model a fresh read of the file gives, without reading it again.

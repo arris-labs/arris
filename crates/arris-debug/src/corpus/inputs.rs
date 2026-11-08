@@ -177,6 +177,7 @@ pub fn inputs_for_step(name: &str, recipe: &Recipe, step: &str) -> Result<Inputs
                 results: BTreeMap::new(),
             },
             second_oracle: None,
+            pose_of: None,
         },
         "default",
     )

@@ -1553,6 +1553,14 @@ corpus_tests! {
     /// balls stand apart; Open CASCADE builds an invalid body (ADR-0062,
     /// steps 9b and 10a).
     blend_nist_ctc_05_ap203_nurbs_torus_fillet => run "blend/nist-ctc-05-ap203-nurbs-torus-fillet";
+    /// The same elbow turned half a turn about y and moved, the pose the
+    /// nightly's elbow property shrank to: toward the vanishing end the
+    /// faces meet 3.6e-4 rad off tangent, and a ball's centre is polished
+    /// past a residual within rounding of its coordinates, or its section
+    /// stands off the root by more than the fit's share and the walked
+    /// surface's fit runs out of spans. Held to the unposed fixture's
+    /// record of changes (`analytic.pose_of`).
+    blend_elbow_posed_fit_span_limit => run "blend/elbow-posed-fit-span-limit";
     /// The same edge in CTC-05's AP242 edition 1, solid #1205, its B-spline
     /// face one rational Bézier patch and its vertices' tolerance wider
     /// than the edge's: the stripe stops short at v80 inside the vertex's
@@ -1934,12 +1942,6 @@ corpus_tests! {
     /// built.
     #[ignore = "kernel bug: the blend's output fails the checker at L2, two loops' pcurves jump 3.1e-7 and 2.4e-6 in (u, v) (docs/BACKLOG.md, a blend's output at a loosely written corner)"]
     regression_nist_ftc_08_fillet_pcurve_jump_checker_fault => run "regression/nist-ftc-08-fillet-pcurve-jump-checker-fault";
-    /// CTC-05 AP203's elbow (`blend/nist-ctc-05-ap203-nurbs-torus-fillet`)
-    /// turned half a turn about y and moved, the pose the nightly's elbow
-    /// property shrank to (docs/BACKLOG.md): the walked blend's surface fit
-    /// does not converge within its span cap.
-    #[ignore = "kernel bug: a geometry query failed: fit: the fit still deviates by 2.8e-8 with 3240 spans, the most it may use, in a turned pose (docs/BACKLOG.md, slot-chain-and-elbow-outputs-fail-the-checker)"]
-    regression_elbow_posed_fit_span_limit => run "regression/elbow-posed-fit-span-limit";
     /// A rounded bar turned 45° about y and moved to z = 100, split by an
     /// oblique plane through its centre, the cut face pressed out by 0.05: the
     /// section is a traced curve on each fillet cylinder and `offset_faces`

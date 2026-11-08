@@ -49,7 +49,13 @@ def compare_step(directory: Path, step_file: Path, variant: str = "default") -> 
         result = {**result, "counts": {"shells": 1, "solids": 1, **analytic["counts"]}}
         if "genus" in analytic:
             result["genus"] = analytic["genus"]
-    second = held_result(directory, recipe_hash(fixture), variant) if analytic.get("measure_differs") else None
+    # A posed recipe is held to the record of the fixture it poses
+    # (`analytic.pose_of`): a motion changes no volume or area.
+    held_by, held_fixture = directory, fixture
+    if analytic.get("pose_of"):
+        held_by = directory.parent.parent / analytic["pose_of"]
+        held_fixture = load_fixture(held_by)
+    second = held_result(held_by, recipe_hash(held_fixture), variant) if analytic.get("measure_differs") else None
     if second is not None and "operand" in second:
         # A record of changes (ADR-0073 as amended): a change is held by
         # each kernel on its own exact bodies, and a file is neither, so

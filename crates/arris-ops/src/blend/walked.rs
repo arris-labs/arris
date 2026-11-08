@@ -242,35 +242,51 @@ impl Faces {
         let (mut feet, mut f) = self.residual(c, seeds, plane)?;
         for _ in 0..NEWTON_STEPS {
             let scale = STEP_ROUNDING * (c.coords.norm() + self.radius);
-            if is_negligible(f.norm(), scale) {
-                break;
-            }
+            // A residual within rounding of the coordinates is not yet a
+            // settled centre: where the faces meet at an angle `θ`, the
+            // root lies up to `|g| / sin θ` across the valley from a point
+            // of residual `g`, and near a vanishing end that is the
+            // surface's tolerance (a fit then chases the sections' noise,
+            // the farther from the origin the more). So the step decides:
+            // once the residual is negligible, one full step polishes the
+            // centre where it shortens the residual, and the snap ends
+            // where it does not.
+            let settled = is_negligible(f.norm(), scale);
             let [a, b] = feet.map(|f| f.toward);
             let step = match plane {
                 Some((_, t)) => {
                     let j = Matrix3::from_rows(&[a.transpose(), b.transpose(), t.transpose()]);
-                    j.lu().solve(&-f).ok_or(Walked::Refused(Refusal::NoSpine {
-                        why: "the normal plane and the faces' normals are dependent",
-                    }))?
+                    j.lu().solve(&-f)
                 }
                 None => {
                     // The least-norm step: `−Jᵀ (J Jᵀ)⁻¹ g`.
                     let jj = Matrix2::new(a.dot(&a), a.dot(&b), a.dot(&b), b.dot(&b));
-                    let w = jj
-                        .lu()
+                    jj.lu()
                         .solve(&Vector2::new(-f.x, -f.y))
-                        .ok_or(Walked::Refused(Refusal::NoSpine {
-                            why: "the faces' normals are parallel at a ball",
-                        }))?;
-                    a * w.x + b * w.y
+                        .map(|w| a * w.x + b * w.y)
+                }
+            };
+            let step = match step {
+                Some(step) => step,
+                None if settled => break,
+                None if plane.is_some() => {
+                    return Err(Walked::Refused(Refusal::NoSpine {
+                        why: "the normal plane and the faces' normals are dependent",
+                    }));
+                }
+                None => {
+                    return Err(Walked::Refused(Refusal::NoSpine {
+                        why: "the faces' normals are parallel at a ball",
+                    }));
                 }
             };
             if is_negligible(step.norm(), scale) {
                 break;
             }
+            let halvings = if settled { 1 } else { NEWTON_STEPS };
             let mut alpha = 1.0;
             let mut moved = None;
-            for _ in 0..NEWTON_STEPS {
+            for _ in 0..halvings {
                 let next = c + alpha * step;
                 let (feet, g) = self.residual(next, feet.map(|f| Some(f.uv)), plane)?;
                 if g.norm() < f.norm() {

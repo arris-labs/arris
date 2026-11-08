@@ -1140,6 +1140,17 @@ pub struct Analytic {
     /// them undecided, as for an operand read from a file of B-splines.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub checker_undecided: Option<String>,
+    /// The fixture, `<area>/<slug>`, this recipe poses: its operation on
+    /// the same part under a rigid motion (a `transform` step), which
+    /// changes neither the result's volume and area nor the operand's.
+    /// Under `measure_differs` that fixture's second-oracle record of
+    /// changes then holds this one, the change being the motion's
+    /// invariant (ADR-0073 as amended): where no kernel builds the posed
+    /// result valid but the posed body is Arris's own result moved
+    /// (`blend/nist-ctc-05-ap203-nurbs-torus-fillet` half a turn about
+    /// y). The directory has no `second_oracle.json` of its own.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pose_of: Option<String>,
     /// Genus.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genus: Option<i64>,
@@ -1407,8 +1418,22 @@ pub struct Fixture {
     /// The oracle's answer.
     pub expected: Expected,
     /// A second oracle's record ([`SECOND_ORACLE`]), where the directory
-    /// has one.
+    /// has one, or the record of the fixture `analytic.pose_of` names.
     pub second_oracle: Option<SecondOracle>,
+    /// The fixture `analytic.pose_of` names, where the record is its.
+    pub pose_of: Option<PoseOf>,
+}
+
+/// The fixture a posed recipe's record is borrowed from
+/// (`analytic.pose_of`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PoseOf {
+    /// `<area>/<slug>`.
+    pub name: String,
+    /// Its recipe's hash, which its record is stamped with.
+    pub recipe_sha256: String,
+    /// Whether the directory has a `second_oracle.json` of its own too.
+    pub own_record: bool,
 }
 
 /// Why a fixture could not be loaded.
@@ -1544,7 +1569,7 @@ pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
     })?;
     let expected: Expected = read_json(&dir.join("expected.json"))?;
     let second = dir.join(SECOND_ORACLE);
-    let second_oracle = if second.is_file() {
+    let mut second_oracle = if second.is_file() {
         Some(read_json(&second)?)
     } else {
         None
@@ -1553,6 +1578,31 @@ pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
         path: dir.join("fixture.json"),
         kind,
     })?;
+    // A posed recipe borrows the record of the fixture it poses: two
+    // levels up is the corpus root, as `name_of` reads a directory.
+    let pose_of = match &recipe.analytic.pose_of {
+        Some(name) => {
+            let root = dir.parent().and_then(Path::parent).unwrap_or(dir);
+            let posed = root.join(name);
+            let raw: serde_json::Value = read_json(&posed.join("fixture.json"))?;
+            let own_record = second_oracle.is_some();
+            let borrowed = posed.join(SECOND_ORACLE);
+            second_oracle = if borrowed.is_file() {
+                Some(read_json(&borrowed)?)
+            } else {
+                None
+            };
+            Some(PoseOf {
+                name: name.clone(),
+                recipe_sha256: recipe_hash(&raw).map_err(|kind| FixtureError::UnknownKind {
+                    path: posed.join("fixture.json"),
+                    kind,
+                })?,
+                own_record,
+            })
+        }
+        None => None,
+    };
     Ok(Fixture {
         dir: dir.to_path_buf(),
         name: name_of(dir),
@@ -1560,6 +1610,7 @@ pub fn load(dir: &Path) -> Result<Fixture, FixtureError> {
         recipe,
         expected,
         second_oracle,
+        pose_of,
     })
 }
 
@@ -1718,7 +1769,9 @@ pub const ANALYTIC_REL: f64 = 1e-6;
 /// (counts, degeneracy and probe expectations exactly) — except the
 /// counts under `counts_differ`, which must differ, and the volume, area,
 /// centroid and inertia under `measure_differs`, which must all be stated
-/// and of which at least one must differ (ADR-0015); and a solid in
+/// and of which at least one must differ (ADR-0015), or held to a
+/// second oracle's record, its own or under `pose_of` the record of
+/// changes of the fixture it poses; and a solid in
 /// one of [`DUMPED_AREAS`] that the runner compares — the oracle built a
 /// solid and the recipe expects no refusal — has its dump committed for
 /// every variant (`corpus::dump_path`), which a fixture only has once it
@@ -1750,7 +1803,37 @@ pub fn lint(dir: &Path) -> Vec<String> {
             x.recipe_sha256, fixture.recipe_sha256
         ));
     }
-    if let Some(second) = &fixture.second_oracle {
+    if let Some(posed) = &fixture.pose_of {
+        if posed.own_record {
+            problem(format!(
+                "analytic.pose_of borrows {}'s {SECOND_ORACLE}, so this directory's own would be a second source",
+                posed.name
+            ));
+        }
+        if r.analytic.measure_differs.is_none() {
+            problem("analytic.pose_of needs analytic.measure_differs: it names the record that holds the measures".into());
+        }
+        if !r.steps.iter().any(|s| matches!(s, Step::Transform { .. })) {
+            problem("analytic.pose_of needs a transform step, the pose".into());
+        }
+        match &fixture.second_oracle {
+            None => problem(format!(
+                "analytic.pose_of names {}, which has no {SECOND_ORACLE}",
+                posed.name
+            )),
+            Some(second) => {
+                if second.recipe_sha256 != posed.recipe_sha256 {
+                    problem(format!("{}'s {SECOND_ORACLE} is stale", posed.name));
+                }
+                if second.results.values().any(|m| m.operand.is_none()) {
+                    problem(format!(
+                        "analytic.pose_of needs {}'s {SECOND_ORACLE} to be a record of changes: a motion moves a centroid and an inertia",
+                        posed.name
+                    ));
+                }
+            }
+        }
+    } else if let Some(second) = &fixture.second_oracle {
         if second.recipe_sha256 != fixture.recipe_sha256 {
             problem(format!(
                 "{SECOND_ORACLE} is stale: recipe hash {} but the recipe hashes to {} — rerun the second oracle and tools/oracle/second_oracle.py",
@@ -1831,7 +1914,7 @@ pub fn lint(dir: &Path) -> Vec<String> {
             if a.degenerate || a.expect_error.is_some() {
                 problem("analytic.measure_differs needs a result Arris builds".into());
             }
-        } else if a.measure_differs.is_some() {
+        } else if a.measure_differs.is_some() && fixture.pose_of.is_none() {
             let missing: Vec<&str> = [
                 ("volume", a.volume.is_none()),
                 ("area", a.area.is_none()),
@@ -2044,7 +2127,9 @@ pub fn lint(dir: &Path) -> Vec<String> {
             for d in differs {
                 problem(format!("[{variant}] {d}"));
             }
-        } else if differs.is_empty() && (second.is_some() || fixture.second_oracle.is_none()) {
+        } else if differs.is_empty()
+            && (second.is_some() || (fixture.second_oracle.is_none() && fixture.pose_of.is_none()))
+        {
             // A variant the record lacks is a problem already.
             let held = if second.is_some() {
                 "the second oracle's record is"

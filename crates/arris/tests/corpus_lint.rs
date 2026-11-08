@@ -294,6 +294,79 @@ fn a_second_oracle_record_stands_in_for_the_closed_forms() {
     );
 }
 
+/// `pose_of` borrows the record of changes of the fixture a recipe poses,
+/// and only that: a scratch corpus of the posed elbow beside the unposed
+/// one is clean, and a borrow without `measure_differs`, beside a record
+/// of the directory's own, from a fixture with no record, or from a
+/// record that is no record of changes is each a problem.
+#[test]
+fn a_posed_recipe_borrows_the_record_of_changes_it_poses() {
+    const POSED: &str = "blend/elbow-posed-fit-span-limit";
+    const BASE: &str = "blend/nist-ctc-05-ap203-nurbs-torus-fillet";
+    let edit =
+        |tag: &str, f: &dyn Fn(&mut serde_json::Value, &mut serde_json::Value, &Path, &Path)| {
+            let root = tempdir(tag);
+            let (posed, base) = (root.join(POSED), root.join(BASE));
+            for (name, dir) in [(POSED, &posed), (BASE, &base)] {
+                std::fs::create_dir_all(dir).unwrap();
+                copy_fixture(name, dir);
+                let from = arris_debug::fixtures::corpus_root().join(name);
+                for file in ["dump.txt", "second_oracle.json"] {
+                    if from.join(file).is_file() {
+                        std::fs::copy(from.join(file), dir.join(file)).unwrap();
+                    }
+                }
+            }
+            let read = |path: &Path| -> serde_json::Value {
+                serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+            };
+            let (mut recipe, mut record) = (
+                read(&posed.join("fixture.json")),
+                read(&base.join("second_oracle.json")),
+            );
+            f(&mut recipe["analytic"], &mut record, &posed, &base);
+            std::fs::write(posed.join("fixture.json"), recipe.to_string()).unwrap();
+            if base.join("second_oracle.json").is_file() {
+                std::fs::write(base.join("second_oracle.json"), record.to_string()).unwrap();
+            }
+            lint(&posed)
+        };
+    let only = |problems: Vec<String>, text: &str| {
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(problems[0].contains(text), "{problems:?}");
+    };
+
+    let problems = edit("posed", &|_, _, _, _| {});
+    assert!(problems.is_empty(), "{problems:?}");
+    only(
+        edit("posed-unclaimed", &|a, _, _, _| {
+            a.as_object_mut().unwrap().remove("measure_differs");
+        }),
+        "analytic.pose_of needs analytic.measure_differs",
+    );
+    only(
+        edit("posed-own-record", &|_, r, posed, _| {
+            std::fs::write(posed.join("second_oracle.json"), r.to_string()).unwrap();
+        }),
+        "so this directory's own would be a second source",
+    );
+    only(
+        edit("posed-no-record", &|_, _, _, base| {
+            std::fs::remove_file(base.join("second_oracle.json")).unwrap();
+        }),
+        "which has no second_oracle.json",
+    );
+    only(
+        edit("posed-no-change", &|_, r, _, _| {
+            r["results"]["default"]
+                .as_object_mut()
+                .unwrap()
+                .remove("operand");
+        }),
+        "to be a record of changes",
+    );
+}
+
 /// `step_differs` (ADR-0023) excuses only a result Arris builds, whose
 /// STEP the corpus reads back: on a recipe that expects a refusal, there
 /// is no such STEP, so the claim is a lint problem.

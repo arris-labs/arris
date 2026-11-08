@@ -320,6 +320,19 @@ pub fn compare_dir(
     if second.is_some() {
         inputs.push(second.as_deref());
     }
+    // A posed recipe's record is the one of the fixture it poses
+    // (`analytic.pose_of`), two levels up from this directory.
+    let posed = spec
+        .as_deref()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(bytes).ok())
+        .and_then(|raw| raw["analytic"]["pose_of"].as_str().map(str::to_owned))
+        .and_then(|name| {
+            let root = dir.parent()?.parent()?;
+            std::fs::read(root.join(name).join(crate::fixtures::SECOND_ORACLE)).ok()
+        });
+    if posed.is_some() {
+        inputs.push(posed.as_deref());
+    }
     let slot = cache::slot("compare.py", &inputs, Some(variant.unwrap_or("default")));
     if let Some(bytes) = slot.as_ref().and_then(|(d, k)| cache::load(d, k)) {
         return Ok(String::from_utf8_lossy(&bytes).into_owned());
