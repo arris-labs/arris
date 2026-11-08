@@ -384,6 +384,12 @@ version commit takes its parent's state. The next code commit and any push
 wait on it.
 _Avoid_: checked (the checker's word), green (a CI run's)
 
+**Covered**:
+A commit whose own verification was replaced by a later commit's, run
+over a range that includes it: it takes that run's verdict, and a red
+names the range, not the commit.
+_Avoid_: skipped (a commit with no verification at all)
+
 ## Consumers and process
 
 **Consumer**:
