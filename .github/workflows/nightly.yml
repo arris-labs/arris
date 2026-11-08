@@ -79,7 +79,7 @@ jobs:
           - name: twin-rest
             filter: "binary_id(arris-ops::twin_prop) and not test(/^((quadric|crossing)_twins|meridian_rows)/)"
           # The slot and oblique chains, split out of `blend` so they start
-          # at once in a job of their own (plans/nightly-panics step 8).
+          # at once in a job of their own.
           # Measured at 5000 cases: the slot chain 2,300-2,400 s a shard
           # (2 shards) in run 42448712105 and about 4,000 s in 42480923231,
           # the oblique chains (4 shards) about 6,200 s and 8,900 s. The
@@ -110,7 +110,7 @@ jobs:
           - name: blend-standoff
             filter: "binary_id(arris-ops::blend_prop) and test(/^standoff_roots_roll_on_the_plates_edge/)"
           # The rest of `blend`: its `meridian_rows` twin and the other blend
-          # properties (133 tests; the heavy ones in run 42480923231 were
+          # properties (129 tests; the heavy ones in run 42480923231 were
           # slab_lips about 6,200 s a shard, the cusp-corner complement
           # about 712 s and the four-edge vertex about 502 s, the rest
           # minutes), the named three, the walked-seam property and the

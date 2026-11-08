@@ -163,6 +163,14 @@ which kernel is right.
     tolerance (`within_own_tolerance`). `L·t` over CTC-05's whole
     boundary is far above the change, so any stripe, or none, would pass.
 
+- **A pose of a fixture (2026-11-09, plans/nightly-panics step 5).** A
+  record may be borrowed: `analytic.pose_of` names the fixture whose recipe
+  this one is under a rigid motion, and the borrowed record of changes
+  stands for it, since a motion changes neither a volume nor an area. The
+  posed result is held to the named fixture's change and to the counts,
+  genus and dump of its result; no kernel is run on the pose. The lint
+  holds the named fixture's record present and its recipe's hash.
+
 **Extension (plans/cusp-corner-patch step 6).** A record's `source` may name
 a construction by the decided law from an independent kernel's exact pieces
 rather than a run of a second kernel on the recipe (the mutual trim of Open

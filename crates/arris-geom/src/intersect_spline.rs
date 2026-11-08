@@ -38,9 +38,10 @@ use crate::{Curve, CurveSurfaceIntersection, GeomError, GeomKind, NurbsCurve, Su
 /// on every span, every candidate for a sign change of `g′`
 /// ([`sign_change_candidates`], against [`BERNSTEIN_ROUNDING`] of the
 /// span's magnitude): between two consecutive ones `g` is monotone, and
-/// so is the distance, whose sign it carries. Every other knot of the
-/// domain is looked at too, the ends of spans narrower than the Bézier
-/// extraction resolves among them. The verdict on them is
+/// so is the distance, whose sign it carries, on every span the Bézier
+/// extraction resolves. Every other knot of the domain is looked at too,
+/// the ends of spans narrower than the extraction resolves among them;
+/// inside such a span nothing is claimed beyond its two ends. The verdict on them is
 /// [`hits_by_distance`]'s, shared with the conic arms.
 pub(crate) fn spline_surface(
     curve: &Curve,

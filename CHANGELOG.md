@@ -12,6 +12,11 @@ into its version (ADR-0027).
   say) is no longer reported `Coincident` with a line or another analytic
   curve it leaves across those spans: the verdict now looks at every knot
   of the domain, not only at the spans wide enough to extract.
+- `transform` and `mirror` of a body read from a file grow its vertices' and
+  edges' tolerances by the rounding of the moved coordinates, so a part
+  moved far from where its file put it no longer fails the checker.
+- A fillet or chamfer along a long, nearly tangent run far from the origin
+  that ended in an internal error (a surface fit out of spans) now builds.
 
 ## 0.10.0 — 2026-11-04
 
