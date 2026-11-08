@@ -344,6 +344,14 @@ The divisor `c` of a property whose single case costs minutes: it runs the
 tier's case count over `c` (`prop_shards!`'s `/ c`), so one count holds
 every tier to its wall clock.
 
+**Budget** (of a property shard):
+The wall clock a property shard spends at the nightly tier: it runs chunks
+of cases, each seeded from the base seed, the shard and the chunk's index,
+until the next chunk would pass the budget, the tier's case count a
+ceiling. How many cases ran depends on the runner; which case failed does
+not.
+_Avoid_: timeout (nextest's cap, which ends a test unreported)
+
 **Twin property**:
 The property that geometry given as its exact NURBS twin gives a result
 agreeing with the analytic one.
@@ -352,6 +360,14 @@ agreeing with the analytic one.
 A defect a nightly, fuzz target or the differential measured, written in
 `docs/BACKLOG.md` §Findings with what replays it.
 _Avoid_: bug report, issue
+
+**Signature** (of a failure):
+A failure's (source, operation, class, key): the source a property, fuzz
+target or the differential, the key an error variant's path, a checker
+row or a panic's site, never a number, an id or a message's free text. A
+*known* signature names an open finding and goes when the finding does; a
+new one is what turns a nightly red.
+_Avoid_: fingerprint
 
 **Gate**:
 The checks a change passes, in three halves: the **static half** (layer

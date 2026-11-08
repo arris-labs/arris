@@ -97,14 +97,14 @@ only test is a CI run, which needs a push, so the plan runs on
   Settled (rework): run 42448712105 cancelled `properties (blend-rest)` at 350 min: `a_walked_blend_does_not_depend_on_where_the_seam_lies` has 8 shards of 13,300-14,050 s each, run 4 at a time; it is now `blend-seam-low` (shards 0-3) and `blend-seam-high` (4-7), about 230 min each, `blend-rest` the remainder (133 + 8 tests = the old 141, disjoint).
   Settled (rework): run 42480923231 killed both shards of `an_elbows_vanishing_end_is_pose_independent` at nextest's 4 h cap (14,400 s; 12,000 s each in the first run, beside 6 other shards); it is now `blend-elbow` (2 shards, a runner of its own) with a 5.5 h cap in `.config/nextest.toml` (`fast` restated, unchanged), `blend-named` the slot and oblique chains, the 8 tests' union unchanged.
   Settled (rework): run 42480923231 cancelled `properties (blend-rest)` at 350 min with 114 of 133 tests done: `standoff_roots_roll_on_the_plates_edge` (4 shards) was still running past 10,800 s each after `slab_lips` (about 6,200 s a shard) and held all four threads; it is now `blend-standoff` with a 5.5 h cap in `.config/nextest.toml` (`fast` restated), `blend-rest` the remainder.
-- [ ] Step 9 **[1, CI]** — The human pushes `plan/nightly-panics`; `gh workflow run nightly.yml --ref plan/nightly-panics`; the run is read per *Acceptance*. A job that still ends at its limit goes back to step 8 with its timings.
+- [ ] Step 9 **[1, CI]** — The human pushes `plan/nightly-panics`; `gh workflow run nightly.yml --ref plan/nightly-panics`; the run is read per *Acceptance*. A job that still ends at its limit does not go back to step 8: its timings go to `docs/ideas/nightly-time-budget.md`, whose plan replaces the hand split (that idea's Q4, 2026-11-09).
 
 ## Acceptance
 
 - The fixtures of steps 2 and 4 pass in their areas, their `regression_*` tests no longer `#[ignore]`d; the step 6 test passes.
 - At 5000 cases: `slot_chain_through_its_kink_is_pose_independent` on seed `5078719e…`, `an_elbows_vanishing_end_is_pose_independent` on `fc72dc4e…`, `cd3af2c6…`, `5f5f0065…`, `two_skew_lines…` on `bb2adb02…`, each green or, for the elbow, passing through its named refusal.
 - The crash input passes under `cargo +nightly fuzz run -s none intersect_curves`.
-- The dispatched nightly on the branch: `properties (blend)` concludes without cancellation, and no job's log carries a `panicked at` outside `crates/arris-debug/src/prop.rs` or the text `kernel bug`, beyond the arrangement finding the *Non-goals* leave. A red job naming a non-goal's test does not fail this.
+- The dispatched nightly on the branch: no job's log carries a `panicked at` outside `crates/arris-debug/src/prop.rs` or the text `kernel bug`, beyond the arrangement finding the *Non-goals* leave. A red job naming a non-goal's test does not fail this.
 - `tools/full-gate.sh` is green on the tip.
 
 ## Docs to update on completion
