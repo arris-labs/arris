@@ -38,7 +38,9 @@ use crate::{Curve, CurveSurfaceIntersection, GeomError, GeomKind, NurbsCurve, Su
 /// on every span, every candidate for a sign change of `g′`
 /// ([`sign_change_candidates`], against [`BERNSTEIN_ROUNDING`] of the
 /// span's magnitude): between two consecutive ones `g` is monotone, and
-/// so is the distance, whose sign it carries. The verdict on them is
+/// so is the distance, whose sign it carries. Every other knot of the
+/// domain is looked at too, the ends of spans narrower than the Bézier
+/// extraction resolves among them. The verdict on them is
 /// [`hits_by_distance`]'s, shared with the conic arms.
 pub(crate) fn spline_surface(
     curve: &Curve,
@@ -68,6 +70,17 @@ pub(crate) fn spline_surface(
                 .map(|s| span.lo + width * s),
         );
     }
+    // Every knot of the domain is looked at, the ends of spans too
+    // narrow for `bezier_spans` to extract: a curve can travel far across
+    // them, and a `Coincident` verdict that never saw where it went would
+    // be a guess.
+    splits.extend(
+        spline
+            .knots()
+            .iter()
+            .copied()
+            .filter(|&k| domain.contains(k)),
+    );
     // A periodic curve's last knot is its first again.
     if let Some(period) = period {
         for t in &mut splits {

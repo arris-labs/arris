@@ -8,6 +8,11 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- A NURBS curve with knot spans too narrow to resolve (a domain of 1e-71,
+  say) is no longer reported `Coincident` with a line or another analytic
+  curve it leaves across those spans: the verdict now looks at every knot
+  of the domain, not only at the spans wide enough to extract.
+
 ## 0.10.0 — 2026-11-04
 
 - A fillet or chamfer of both edges at a cusp (a crescent's two top arcs,

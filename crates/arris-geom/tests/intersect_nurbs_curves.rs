@@ -232,3 +232,79 @@ fn a_circle_and_its_twin_beside_it_are_coincident_both_ways() {
         Ok(())
     });
 }
+
+/// A fuzz crash (`fuzz/crashes/intersect_curves/`): a degree-2 curve whose
+/// domain is about 1e-71 wide, its first spans from 1e-274 to 1e-168 wide
+/// and so below the resolution `bezier_spans` extracts, across which it
+/// travels 3e2 from the line. It was `Coincident` with the line, decided on
+/// the last span alone; the knots of the narrow spans are looked at too, so
+/// it is a point of the line at its far end and nothing else.
+#[test]
+fn a_curve_through_spans_too_narrow_to_extract_is_not_coincident_with_a_line_it_leaves() {
+    let curve = Curve::Nurbs(
+        NurbsCurve::new(
+            2,
+            vec![
+                -792.0,
+                -440.0,
+                -1.0641291246752412e-213,
+                -1.388253028666376e-235,
+                0.0,
+                8.075142282759219e-274,
+                9.653699974243035e-212,
+                1.9285913724732417e-168,
+                1.9639295305171301e-168,
+                1.0895165243265732e-71,
+                40.0,
+                376.0,
+            ],
+            vec![
+                Point3::new(
+                    -1.481083735425437e-213,
+                    1.898893952442176e-124,
+                    1.1161986402769749e-101,
+                ),
+                Point3::new(-214.71592139755376, -2.3227082873029094e-264, 328.0),
+                Point3::new(
+                    4.482028047256569e-305,
+                    -3.018283424843103e-182,
+                    2.746575544094824e-309,
+                ),
+                Point3::new(-64.0, -7.584950765891977e-180, -2.3046743733444784e-185),
+                Point3::new(-1.3283834148018051e-220, 7.031109225814759e-306, 0.0),
+                Point3::new(8.774986012890368e-215, 216.0, -1.6808498517258876e-87),
+                Point3::new(
+                    3.4782629920244e-310,
+                    1.2387753456017573e-20,
+                    3.47129385248387e-310,
+                ),
+                Point3::new(1.2387753456017573e-20, 3.47129385248387e-310, 0.0),
+                Point3::new(0.0, 0.0, 1.7765824089018436e-307),
+            ],
+            vec![
+                999.999,
+                842.8024713794528,
+                999.999,
+                667.9212392065713,
+                999.999,
+                999.999,
+                999.999,
+                999.999,
+                999.999,
+            ],
+        )
+        .unwrap(),
+    );
+    let line = Curve::Line {
+        origin: Point3::new(0.0, 0.0, 2.070238e-317),
+        direction: UnitVec3::new_unchecked(Vec3::new(
+            1.463879e-317,
+            -0.7071067811865475,
+            -0.7071067811865475,
+        )),
+    };
+    for (a, b) in [(&curve, &line), (&line, &curve)] {
+        let found = intersect_curves(a, b, tol(), &mut Meter::default()).unwrap();
+        assert!(matches!(found, CurveIntersection::Points(_)), "{found:?}");
+    }
+}
