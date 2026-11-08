@@ -100,11 +100,23 @@ jobs:
             filter: "binary_id(arris-ops::blend_prop) and test(/^a_walked_blend_does_not_depend_on_where_the_seam_lies::shard_[0-3]$/)"
           - name: blend-seam-high
             filter: "binary_id(arris-ops::blend_prop) and test(/^a_walked_blend_does_not_depend_on_where_the_seam_lies::shard_[4-7]$/)"
+          # The standoff-roots property alone, 4 shards on a 4-thread runner:
+          # in run 42480923231 (in blend-rest) it started after
+          # `slab_lips_roll_on_a_cross_holes_rim` (about 6,200 s a shard) and
+          # was still running on all four shards at the 350-minute cut, past
+          # 10,800 s each (probably about 14,000 s), holding every thread so
+          # 15 tests never started. `.config/nextest.toml` raises its cap to
+          # 5.5 h.
+          - name: blend-standoff
+            filter: "binary_id(arris-ops::blend_prop) and test(/^standoff_roots_roll_on_the_plates_edge/)"
           # The rest of `blend`: its `meridian_rows` twin and the other blend
-          # properties (129 tests, finished in minutes in run 42448712105),
-          # the named three and the walked-seam property taken out.
+          # properties (133 tests; the heavy ones in run 42480923231 were
+          # slab_lips about 6,200 s a shard, the cusp-corner complement
+          # about 712 s and the four-edge vertex about 502 s, the rest
+          # minutes), the named three, the walked-seam property and the
+          # standoff-roots property taken out.
           - name: blend-rest
-            filter: "(binary_id(arris-ops::twin_prop) and test(/^meridian_rows/)) or (binary_id(arris-ops::blend_prop) and not test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent|a_walked_blend_does_not_depend_on_where_the_seam_lies)/))"
+            filter: "(binary_id(arris-ops::twin_prop) and test(/^meridian_rows/)) or (binary_id(arris-ops::blend_prop) and not test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent|a_walked_blend_does_not_depend_on_where_the_seam_lies|standoff_roots_roll_on_the_plates_edge)/))"
           # 36,600.
           - name: multi-tool-operands
             filter: "binary_id(arris-ops::multi_tool_prop) and test(/^(a_multi_tool_result|the_geometry_is_independent)/)"

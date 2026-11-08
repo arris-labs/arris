@@ -109,3 +109,17 @@ slow-timeout = { period = "30m", terminate-after = 11 }
 [[profile.fast.overrides]]
 filter = "test(/^an_elbows_vanishing_end_is_pose_independent/)"
 slow-timeout = { period = "60s", terminate-after = 8 }
+
+# The standoff-roots property at the nightly's 5000 cases was still running on
+# all four shards at the 350-minute cut of run 42480923231, past 10,800 s each
+# (it started after `slab_lips_roll_on_a_cross_holes_rim`, about 6,200 s a
+# shard; probably about 14,000 s), so its need is near or over 4 h. Its own
+# nightly job (`blend-standoff`, timeout-minutes 350) gets a cap of 5.5 h,
+# inside the job's limit; `fast` restates its cap, as for the elbow.
+[[profile.default.overrides]]
+filter = "test(/^standoff_roots_roll_on_the_plates_edge/)"
+slow-timeout = { period = "30m", terminate-after = 11 }
+
+[[profile.fast.overrides]]
+filter = "test(/^standoff_roots_roll_on_the_plates_edge/)"
+slow-timeout = { period = "60s", terminate-after = 8 }
