@@ -94,6 +94,7 @@ only test is a CI run, which needs a push, so the plan runs on
 - [x] Step 7 **[2]** — Read the skew-line property's unshrunk draw on seed `bb2adb02…`. Near-parallel within the tolerance: the generator keeps `turn` off 0 and π, by a named constant. Otherwise a kernel defect: a `regression/` fixture and a fix.
 - [x] Step 8 **[1]** — `nightly.yml` per the delta. Checked by `actionlint` if present and by every filter still naming its tests: `cargo nextest list -E` on each new filter, the two `-rest` jobs still taking the remainder.
   Settled: the fuzz job's limit is 240 min, not 150: run 42448712105 cancelled `body_read` and `intersect_surfaces` at 155 min during `cargo fuzz cmin`, with `cargo fuzz run` at 62-69 min wall.
+  Settled (rework): run 42448712105 cancelled `properties (blend-rest)` at 350 min: `a_walked_blend_does_not_depend_on_where_the_seam_lies` has 8 shards of 13,300-14,050 s each, run 4 at a time; it is now `blend-seam-low` (shards 0-3) and `blend-seam-high` (4-7), about 230 min each, `blend-rest` the remainder (133 + 8 tests = the old 141, disjoint).
 - [ ] Step 9 **[1, CI]** — The human pushes `plan/nightly-panics`; `gh workflow run nightly.yml --ref plan/nightly-panics`; the run is read per *Acceptance*. A job that still ends at its limit goes back to step 8 with its timings.
 
 ## Acceptance

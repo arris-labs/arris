@@ -80,16 +80,25 @@ jobs:
             filter: "binary_id(arris-ops::twin_prop) and not test(/^((quadric|crossing)_twins|meridian_rows)/)"
           # The three named blend properties, split out of `blend` so they
           # start at once in a job of their own (plans/nightly-panics step 8).
-          # Measured at 5000 cases: the slot chain about 1,530 CPU-s a shard
-          # (2 shards), the elbow about 5,340 a shard (2 shards), the oblique
-          # chains 473 to 15,793 a shard (4 shards, 11-01 to 11-03).
+          # Measured at 5000 cases (dispatched run 42448712105): the slot
+          # chain about 2,300-2,400 s a shard (2 shards), the elbow about
+          # 12,000 s a shard (2 shards), the oblique chains about 6,200 s a
+          # shard (4 shards).
           - name: blend-named
             filter: "binary_id(arris-ops::blend_prop) and test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent)/)"
+          # The walked-seam property, 8 shards of 13,300 to 14,050 s each at
+          # 5000 cases (about 3.8 h): on a 4-thread runner in one job shards
+          # 4-7 started only after 0-3 finished and hit the 350-minute limit.
+          # Two jobs of four shards each, about 230 minutes apiece.
+          - name: blend-seam-low
+            filter: "binary_id(arris-ops::blend_prop) and test(/^a_walked_blend_does_not_depend_on_where_the_seam_lies::shard_[0-3]$/)"
+          - name: blend-seam-high
+            filter: "binary_id(arris-ops::blend_prop) and test(/^a_walked_blend_does_not_depend_on_where_the_seam_lies::shard_[4-7]$/)"
           # The rest of `blend`: its `meridian_rows` twin and the other blend
-          # properties. Not measured since the split; the whole old `blend`
-          # job was 33,700 by the 256-case scaling, the three above taken out.
+          # properties (129 tests, finished in minutes in run 42448712105),
+          # the named three and the walked-seam property taken out.
           - name: blend-rest
-            filter: "(binary_id(arris-ops::twin_prop) and test(/^meridian_rows/)) or (binary_id(arris-ops::blend_prop) and not test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent)/))"
+            filter: "(binary_id(arris-ops::twin_prop) and test(/^meridian_rows/)) or (binary_id(arris-ops::blend_prop) and not test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent|a_walked_blend_does_not_depend_on_where_the_seam_lies)/))"
           # 36,600.
           - name: multi-tool-operands
             filter: "binary_id(arris-ops::multi_tool_prop) and test(/^(a_multi_tool_result|the_geometry_is_independent)/)"
