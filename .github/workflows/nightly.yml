@@ -78,14 +78,20 @@ jobs:
           # 35,900.
           - name: twin-rest
             filter: "binary_id(arris-ops::twin_prop) and not test(/^((quadric|crossing)_twins|meridian_rows)/)"
-          # The three named blend properties, split out of `blend` so they
-          # start at once in a job of their own (plans/nightly-panics step 8).
-          # Measured at 5000 cases (dispatched run 42448712105): the slot
-          # chain about 2,300-2,400 s a shard (2 shards), the elbow about
-          # 12,000 s a shard (2 shards), the oblique chains about 6,200 s a
-          # shard (4 shards).
+          # The slot and oblique chains, split out of `blend` so they start
+          # at once in a job of their own (plans/nightly-panics step 8).
+          # Measured at 5000 cases: the slot chain 2,300-2,400 s a shard
+          # (2 shards) in run 42448712105 and about 4,000 s in 42480923231,
+          # the oblique chains (4 shards) about 6,200 s and 8,900 s. The
+          # elbow, which shared this job, is `blend-elbow` below.
           - name: blend-named
-            filter: "binary_id(arris-ops::blend_prop) and test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent)/)"
+            filter: "binary_id(arris-ops::blend_prop) and test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset)/)"
+          # The elbow property alone, 2 shards on a runner of its own: about
+          # 12,000 s a shard in run 42448712105 (beside 6 other shards), then
+          # killed at nextest's 14,400 s cap in 42480923231, so it needs
+          # near or over 4 h. `.config/nextest.toml` raises its cap to 5.5 h.
+          - name: blend-elbow
+            filter: "binary_id(arris-ops::blend_prop) and test(/^an_elbows_vanishing_end_is_pose_independent/)"
           # The walked-seam property, 8 shards of 13,300 to 14,050 s each at
           # 5000 cases (about 3.8 h): on a 4-thread runner in one job shards
           # 4-7 started only after 0-3 finished and hit the 350-minute limit.

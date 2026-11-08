@@ -95,3 +95,17 @@ oracle-cache = { max-threads = 1 }
 [[profile.default.overrides]]
 filter = "binary(oracle_cache)"
 test-group = "oracle-cache"
+
+# The elbow's pose-independence property at the nightly's 5000 cases needs
+# about 12,000 s a shard when run beside other shards (run 42448712105) and
+# was killed at the default's 14,400 s (4 h) in run 42480923231, so its real
+# need is near or over 4 h. Its own nightly job (`blend-elbow`, timeout-minutes
+# 350) gets a cap of 5.5 h, inside the job's limit. A profile's own overrides
+# are checked before `default`'s, so `fast` restates its cap to stay as it was.
+[[profile.default.overrides]]
+filter = "test(/^an_elbows_vanishing_end_is_pose_independent/)"
+slow-timeout = { period = "30m", terminate-after = 11 }
+
+[[profile.fast.overrides]]
+filter = "test(/^an_elbows_vanishing_end_is_pose_independent/)"
+slow-timeout = { period = "60s", terminate-after = 8 }
