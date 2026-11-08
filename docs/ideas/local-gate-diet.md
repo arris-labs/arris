@@ -1,6 +1,6 @@
 # Idea: local-gate-diet
 
-- Status: Open — A, B, C accepted (round 1); D waits on Q5
+- Status: Accepted (A, B, C, D1, D2); to be planned as plans/local-gate-diet
 - Raised: 2026-11-09
 - Prompt (verbatim from the human): "what about tests that slows down development and waste compute on this PC? Can we cut them down somehow too (pre/post-commit hooks, full gate runs on retirement and closing cycle, etc.)?" — then, on the five proposals: "yes, /idea 1-4" (the fifth, the retirement's full gate moved to CI, left out).
 
@@ -101,16 +101,46 @@ run. Trade-offs: a red that covers several commits names no single one,
 so the fix's attribution needs a bisect, rare at today's red rate. A red
 `HEAD` is met at the next commit's hook as now.
 
-### D — Narrow `arris-ops` and `arris-geom` source to the binaries they reach
-A module map like the corpus-area map `gate.sh` already keeps, to test
-binaries instead of `rdeps(...)` plus `corpus=all`: e.g. `src/blend/*` →
-`blend_prop`, `fillet`, `chamfer`, `walked_fillet`, the blend corpus area.
-⚠ OPEN: the per-test timings of the `fast` profile decide its worth (being
-measured). If a few long tests set the 10-minute wall, moving them to the
-slow set beats a map. Risk: a dependency the map misses lets a regression
-through to the full gate or CI. That is the cost ADR-0032's "never less"
-was written against, so D needs a rule for what the map may leave out.
-Cost: 3–4 steps.
+### D — What a whole run spends, and two cuts
+Timed 2026-11-09 at `56a1d585`: the `fast` profile at 16 cases on 16
+threads, 2910 tests in **677 s**, 9,236 s of test time (a 577 s floor at
+16 threads, so the wall is throughput, not one long test):
+
+| Share | Test time |
+|---|---|
+| `arris::corpus`, 507 tests | **5,983 s (65%)**: blend area 2,841 s, boolean 1,496, loft 433, sweep 301, offset 269, the rest under 250 each |
+| every property binary together | about 2,400 s; `twin_prop`'s `meridian_rows` 8 shards 826 s |
+| 37 single tests (not shards) at 30 s or more | 2,752 s (30%); the slowest `blend_nist_ctc_02_ap242_ellipse_chain_fillet` 368 s, `horn_census` 213 s |
+
+So a module map over test binaries (the first reading of D) buys little.
+The corpus is the cost, and it runs whole for every `src/blend/*` or
+`src/sweep/*` change (`corpus=all`). Two cuts:
+
+- **D1 — Refresh the slow set by its own rule.** ADR-0066: a single test at
+  30 s or more at the hook's counts leaves `fast` for the full gate, CI
+  and the nightly. The set was last refreshed on 10-20 (`5878341d`). C11
+  has since added the 37 tests above, which the rule already puts out. No
+  new decision: `tools/test-timings.sh --slow-set` and its edit, 1 step.
+  The times above were taken under 16-thread contention, as the rule's
+  own run is, so its run decides the names.
+- **D2 — A blend change reaches the fixtures whose recipe blends.** No
+  module of `arris-ops` outside `src/blend/` calls into it (only `lib.rs`
+  re-exports), so a blend change can alter only a recipe that runs
+  `fillet` or `chamfer`. That is 215 of the 576 fixtures (181 in blend,
+  34 across 10 other areas), read from each `fixture.json`'s `steps`, so
+  a new fixture is placed with no list to edit. `src/blend/*` then stops
+  setting `corpus=all`, and the boolean, loft, sweep and other areas'
+  non-blending fixtures (about 3,000 s) leave a blend commit. The same
+  rule does not help `sweep/`: `extrude` is in nearly every recipe.
+  Cost: 2 steps (the recipe reader in `gate.sh`'s corpus filter, a
+  `gate-test.sh` case, and the rule that a module called from outside its
+  directory keeps `corpus=all`).
+
+Together they roughly halve a blend commit's verification; D1 alone cuts
+every whole run by about a quarter. Risk: D1's tests run only at the
+full gate and CI, which is the slow set's existing trade. D2 misses a
+regression only if blend code gains a caller outside `src/blend/`, and
+the rule is to check for that.
 
 ### Do nothing
 About 1.1 h a day of whole-workspace verification on half the machine, a
@@ -119,11 +149,12 @@ full gates at each cycle boundary.
 
 ## Recommendation
 
-**A, B and C now, one plan of about 6 steps; D after the timings.** A and
-B lose no coverage at all: every run they drop tests code its last run
-already tested. C loses only the attribution of a red to one commit inside
-a coalesced range. D is the largest saving and the only one that can miss a
-regression, so it waits for the numbers.
+**A, B, C, D1 and D2, one plan of about 9 steps.** A and B lose no
+coverage at all: every run they drop tests code its last run already
+tested. C loses only the attribution of a red to one commit inside a
+coalesced range. D1 applies ADR-0066's existing rule. D2 is the only one
+that can miss a regression, and only if blend code gains a caller outside
+`src/blend/`, which its rule checks for.
 
 ## Decision for the human
 
@@ -155,8 +186,21 @@ ADR: one new ADR amending ADR-0032 (the placed paths) and ADR-0078 §7
 (the wait), written by the plan; B's reuse rides on ADR-0069's reasoning
 and goes in the same ADR.
 
-*Later*: **Q5 — D**, once the `fast` profile's per-test timings are in:
-a module map, the slow set widened, or neither.
+Round 2 (the timings, D above):
+
+❓ **Q5 — D1, refresh the slow set**: rerun ADR-0066's
+`--slow-set` rule and move what it prints out of `fast`, as one step of
+this plan.
+➡️ Yes — the rule already says so; it was last applied before C11's tests existed.
+
+❓ **Q6 — D2, a blend change reaches the blending fixtures**: (a)
+`src/blend/*` reaches the fixtures whose `steps` run `fillet` or
+`chamfer` (215 of 576), read from the recipes, with `corpus=all` kept
+for any module called from outside its directory; (b) keep `corpus=all`
+for `src/blend/*`.
+➡️ a — about 3,000 s off every blend commit, and the reach is read from the recipes, not hand-listed.
+
+*Later*: none.
 
 ## Decision
 
@@ -171,4 +215,9 @@ a module map, the slow set widened, or neither.
   `since <last verified>`, replacing a queued one.
 - Q4: *Covered* added to `GLOSSARY.md`.
 - ADR: one new ADR amending ADR-0032 and ADR-0078 §7, written by the plan.
-- Q5 (D) waits on the `fast` profile's per-test timings.
+2026-11-09, the human: "yes" to round 2.
+
+- Q5: D1 — the slow set refreshed by ADR-0066's rule, one step of the plan.
+- Q6: a — `src/blend/*` reaches the fixtures whose `steps` run `fillet`
+  or `chamfer`, read from the recipes; `corpus=all` kept for any module
+  called from outside its directory.
