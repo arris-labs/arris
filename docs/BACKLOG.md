@@ -300,8 +300,8 @@ above when it wants a fix; the block moves or is deleted then.
 - Seen: six nightlies, 10-23, 10-26, 10-29, 10-30, 11-01, 11-02 (runs 39918290175, 40287906018, 40842304608, 41027790791, 41292271476, 41421013263); 11-02 seed `bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc`, commit `bbcea937`, 5000 cases.
 - Reproduce: `ARRIS_PROPTEST_SEED=bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test intersect_nurbs_curves -E 'test(/two_skew_lines/)'` (about a second; the shrunk input is in the failure's message).
 - Evidence: the failing result is `Ok(Coincident)` where the property wants `Points`; the shrunk input is printed in the failure (not read further).
-- State: measured; the shrunk draw is not a defect, the unshrunk one on seed `bb2adb02…` is read by step 7.
-- The fix is: if the unshrunk draw is near-parallel within the tolerance, the generator keeps `turn` off 0 and π by a named constant; otherwise a `regression/` fixture and a fix.
+- State: fixed in the test (plans/nightly-panics step 7): the unshrunk draw is `turn = π − 2.3e-4`, not `Coincident` but a hit 6.4e-9 from the closed form's against `CROSSING` 1e-9, rounding over the angle; no kernel defect. The generator keeps the lines `MIN_SKEW` off parallel.
+- The fix is: done; the block goes at `/retire-plan`.
 
 ### nurbs-trace-and-section-properties
 

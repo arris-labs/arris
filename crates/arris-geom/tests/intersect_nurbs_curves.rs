@@ -6,7 +6,7 @@
 
 use arris_debug::testing::tol;
 use arris_math::real;
-use core::f64::consts::TAU;
+use core::f64::consts::{PI, TAU};
 
 use arris_debug::prop::{check, frame, radius};
 use arris_geom::{
@@ -170,23 +170,42 @@ fn a_line_through_an_ellipse_crosses_it_as_the_twins_do() {
     );
 }
 
+/// How far from parallel (either way) two lines are drawn, in radians.
+/// Where two lines cross at an angle `a` the crossing is placed only to
+/// the rounding of the poses (about 1e-12 at `DEFAULT_SCALE`) over `a`:
+/// the distance between them changes by `a` per unit along either, so a
+/// hit 6e-9 from the closed form's is within rounding at `a = 2e-4`
+/// (nightly seed `bb2adb02…`) and `CROSSING` no longer holds. At 0.05 the
+/// rounding's share is some 3e-11.
+const MIN_SKEW: f64 = 0.05;
+
 #[test]
 fn two_skew_lines_through_one_point_meet_there_as_their_twins_do() {
-    check((frame(), 0.1..=1.0f64, 0.0..TAU), |(f, tilt, turn)| {
-        let at = f.origin();
-        let u = f.x().into_inner();
-        let v = real::cos(tilt) * f.y().into_inner() + real::sin(tilt) * f.z().into_inner();
-        let w = real::cos(turn) * u + real::sin(turn) * v;
-        let a = Curve::Line {
-            origin: at - 2.0 * u,
-            direction: UnitVec3::new_normalize(u),
-        };
-        let b = Curve::Line {
-            origin: at - 2.0 * w,
-            direction: UnitVec3::new_normalize(w),
-        };
-        twins_meet_as_the_conics_do(&a, &b, 5.0)
-    });
+    // `turn` is `skew` or `skew + π`, so the lines are never parallel.
+    check(
+        (
+            frame(),
+            0.1..=1.0f64,
+            MIN_SKEW..=PI - MIN_SKEW,
+            any::<bool>(),
+        ),
+        |(f, tilt, skew, flip)| {
+            let turn = if flip { skew + PI } else { skew };
+            let at = f.origin();
+            let u = f.x().into_inner();
+            let v = real::cos(tilt) * f.y().into_inner() + real::sin(tilt) * f.z().into_inner();
+            let w = real::cos(turn) * u + real::sin(turn) * v;
+            let a = Curve::Line {
+                origin: at - 2.0 * u,
+                direction: UnitVec3::new_normalize(u),
+            };
+            let b = Curve::Line {
+                origin: at - 2.0 * w,
+                direction: UnitVec3::new_normalize(w),
+            };
+            twins_meet_as_the_conics_do(&a, &b, 5.0)
+        },
+    );
 }
 
 #[test]
