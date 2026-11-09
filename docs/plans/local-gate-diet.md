@@ -117,7 +117,7 @@ says what to write; **[2]** careful, a case to get right within a given design;
 - [x] Step 8 **[1]** — `/close-cycle` and `/release` step 1 run `gate-reuse.sh`
       first, name the sha they reuse, and run the gate at once when it prints
       none; `/retire-plan` step 1 cites `--reaches-code` for its list.
-- [ ] Step 9 **[1]** — D1: `--slow-set` in the background, then the two lists.
+- [x] Step 9 **[1]** — D1: `--slow-set` in the background, then the two lists.
       The body gives the whole `fast` run's seconds before and after, a record
       and not a gate (ADR-0024 §4).
 
