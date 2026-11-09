@@ -111,7 +111,7 @@ says what to write; **[2]** careful, a case to get right within a given design;
       `oracle-test.sh`; `gate-test.sh` asserts `arris-ops::boolean` for
       `regression/ball-beside-pole-slice-cut`, `arris-io::step` and no
       `twin_prop` for an oracle file; `regression` leaves `whole_dirs`.
-- [ ] Step 7 **[2]** — `gate-reuse.sh` and its test (a docs commit reuses, a
+- [x] Step 7 **[2]** — `gate-reuse.sh` and its test (a docs commit reuses, a
       code commit does not, a dirty code path refuses `--record`, a red gate
       records nothing); the call in `full-gate.sh`.
 - [ ] Step 8 **[1]** — `/close-cycle` and `/release` step 1 run `gate-reuse.sh`

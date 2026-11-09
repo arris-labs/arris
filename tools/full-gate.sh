@@ -76,6 +76,11 @@ stage doc env RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
 
 printf '%s\n' "${verdicts[@]}" | tee -a "$log"
 grep -E '^\s+(FAIL|SIGSEGV|SIGABRT|TIMEOUT) ' "$log" | sort -u
-! printf '%s\n' "${verdicts[@]}" | grep -q '^FAIL'
-exit
+if printf '%s\n' "${verdicts[@]}" | grep -q '^FAIL'; then
+  exit 1
+fi
+# Green: record the verdict so a close-cycle or release on the same code
+# reuses it (ADR-0085 §3).
+tools/gate-reuse.sh --record || echo "full-gate: not recorded (a code path is dirty)"
+exit 0
 }
