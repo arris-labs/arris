@@ -34,7 +34,11 @@ doubts is reverted, not argued.
 
 1. **Check it is finished.** Every line of the section done or moved to
    `docs/BACKLOG.md`; `docs/plans/` holds only `TEMPLATE.md`; the full gate
-   (`.agents/rules/git.md`) green — run it now, don't wait for CI; and the
+   (`.agents/rules/git.md`) green on this code: run `tools/gate-reuse.sh`
+   first. It prints the sha of the nearest full gate already green on code
+   this one has not changed (ADR-0085 §3): name that sha in the reply and
+   reuse it. It prints none: run the full gate now, in the background, never
+   waiting on CI. And
    last *finished* CI run on `main` green in every job (`gh run list
    --branch main`, `gh run view <id>`), since `oracle`, `wasm`, `parallel`
    and `python` run only there. A run still going is never watched: it is

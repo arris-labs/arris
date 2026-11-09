@@ -35,10 +35,10 @@ Deletion is the "done" signal; anything worth keeping moves first.
    retirement commit waits for the gate green and HEAD verified `pass`;
    anything red: stop and report (a conductor fixes it by `/work`'s
    *Conduct* step 4). A plan whose diff (`git diff --name-only`
-   over its commits) reaches none of `crates/`, `tests/`, `fuzz/`,
-   `Cargo.*`, `clippy.toml`, `rust-toolchain.toml`, `.config/`,
-   `.githooks/` or `tools/*gate*` runs no full gate: its commits' hooks
-   were its gate, and the reply says so.
+   over its commits) reaches no code path (`tools/gate-reuse.sh
+   --reaches-code <the plan's first commit's parent> HEAD` exits 1, the
+   one list ADR-0085 §3 names) runs no full gate: its commits' hooks were
+   its gate, and the reply says so.
 2. **Review the commits against the plan**, in a subagent on tier 3
    (`.agents/tiers.md`) so it reads with fresh eyes, started while the gate
    runs. Give it the plan file, `.agents/review.md` (its brief and

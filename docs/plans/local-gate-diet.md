@@ -114,7 +114,7 @@ says what to write; **[2]** careful, a case to get right within a given design;
 - [x] Step 7 **[2]** — `gate-reuse.sh` and its test (a docs commit reuses, a
       code commit does not, a dirty code path refuses `--record`, a red gate
       records nothing); the call in `full-gate.sh`.
-- [ ] Step 8 **[1]** — `/close-cycle` and `/release` step 1 run `gate-reuse.sh`
+- [x] Step 8 **[1]** — `/close-cycle` and `/release` step 1 run `gate-reuse.sh`
       first, name the sha they reuse, and run the gate at once when it prints
       none; `/retire-plan` step 1 cites `--reaches-code` for its list.
 - [ ] Step 9 **[1]** — D1: `--slow-set` in the background, then the two lists.

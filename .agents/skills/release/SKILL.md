@@ -16,8 +16,11 @@ prepares the commit the tag points at. The scheme is
 
 ## Do
 
-1. **Check the tree.** On `main`, clean, the full gate green
-   (`.agents/rules/git.md`), and the last CI run on `main` green in every
+1. **Check the tree.** On `main`, clean, the full gate green on this code
+   (`.agents/rules/git.md`): `tools/gate-reuse.sh` first. A sha it prints is
+   a full gate already green on the same code (ADR-0085 §3): name that sha in
+   the reply and reuse it. It prints none: run the full gate at once, in the
+   background. And the last CI run on `main` green in every
    job, `python` included. Name any open plan in the reply — it does not
    block a patch release, but the human should know what is half-landed.
 2. **Pick the version from `## Unreleased`**: closing a cycle → minor;
