@@ -116,6 +116,7 @@ tool_tests=()   # tools/<name>-test.sh of the changed tools/<name>.sh
 blend=no        # a file of arris-ops/src/blend/ changed
 oracle=no       # a file of tools/oracle/ changed
 slugs=()        # regression/<slug> directories with a changed file
+keep=()         # terms that reach into the corpus binary and survive `not $CORPUS`
 
 add_term() {
   local t
@@ -131,6 +132,11 @@ add_tool_test() {
   local t
   for t in ${tool_tests[@]+"${tool_tests[@]}"}; do [ "$t" = "$1" ] && return 0; done
   tool_tests+=("$1")
+}
+add_keep() {
+  local t
+  for t in ${keep[@]+"${keep[@]}"}; do [ "$t" = "$1" ] && return 0; done
+  keep+=("$1")
 }
 need_corpus() { [ "$corpus" = all ] || corpus=$1; }
 
@@ -202,7 +208,7 @@ while IFS= read -r p; do
           # Placed for ADR-0085 §1: its rows are ignored, so the lint and
           # the readers below stand for it.
           add_term "binary_id(arris::corpus_lint)"
-          add_term "(binary_id(arris::corpus) & test(=every_fixture_directory_has_a_corpus_test))"
+          add_keep "(binary_id(arris::corpus) & test(=every_fixture_directory_has_a_corpus_test))"
           s=${p#tests/fixtures/regression/}; s=${s%%/*}
           for x in ${slugs[@]+"${slugs[@]}"} ""; do [ "$x" = "$s" ] && break; done
           [ "$x" = "$s" ] || slugs+=("$s") ;;
@@ -228,10 +234,14 @@ done <<<"$paths"
 # re-export that is not exactly the two ops, and the corpus is whole again.
 names=()
 if [ "$blend" = yes ] && [ "$corpus" != all ]; then
-  if grep -rnE 'blend::|crate::(fillet|chamfer)' crates/arris-ops/src --include='*.rs' |
-    grep -vE '^crates/arris-ops/src/blend/' |
-    grep -vE '^crates/arris-ops/src/lib\.rs:[0-9]+:pub use blend::\{chamfer, fillet\};$' |
-    grep -q .; then
+  # A grouped import (`use crate::{boolean, fillet};`, possibly over lines) is
+  # a way in too; -z lets the group span lines.
+  if { grep -rnE 'blend::|crate::(fillet|chamfer)' crates/arris-ops/src --include='*.rs' |
+      grep -vE '^crates/arris-ops/src/blend/' |
+      grep -vE '^crates/arris-ops/src/lib\.rs:[0-9]+:pub use blend::\{chamfer, fillet\};$' || true
+    grep -rlzP 'crate::\{[^}]*\b(fillet|chamfer)\b' crates/arris-ops/src --include='*.rs' |
+      tr '\0' '\n' | grep -vE '^crates/arris-ops/src/blend/' || true
+    } | grep -q .; then
     corpus=all
   else
     dirs=$(grep -lE '"op"[[:space:]]*:[[:space:]]*"(fillet|chamfer)"' -r tests/fixtures --include=fixture.json 2>/dev/null |
@@ -271,7 +281,7 @@ done
 # The oracle's callers: `arris` (the corpus) and `arris-debug` whole, and the
 # test binaries elsewhere with a non-comment line that calls it (ADR-0085 §1).
 if [ "$oracle" = yes ]; then
-  add_term "package(arris)"
+  add_keep "package(arris)"
   add_term "package(arris-debug)"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
@@ -310,7 +320,7 @@ elif [ "$whole" = yes ]; then
   filter='all()'
   cases=16
   full=no
-elif [ ${#terms[@]} -eq 0 ] && [ "$prose" = no ]; then
+elif [ ${#terms[@]} -eq 0 ] && [ ${#keep[@]} -eq 0 ] && [ "$prose" = no ]; then
   filter='none()'
   cases=16
   full=no
@@ -318,9 +328,18 @@ else
   cases=16
   full=no
   parts=()
-  if [ ${#terms[@]} -gt 0 ]; then
-    u=$(join ' | ' "${terms[@]}")
-    [ ${#terms[@]} -gt 1 ] && u="($u)"
+  # The kept terms name part of the corpus themselves: beside `not $CORPUS`
+  # they stay; under `all` and `none` they join the ordinary terms.
+  if [ "$corpus" != part ]; then
+    for x in ${keep[@]+"${keep[@]}"}; do terms+=("$x"); done
+    keep=()
+  fi
+  if [ ${#terms[@]} -gt 0 ] || [ ${#keep[@]} -gt 0 ]; then
+    u=""
+    if [ ${#terms[@]} -gt 0 ]; then
+      u=$(join ' | ' "${terms[@]}")
+      [ ${#terms[@]} -gt 1 ] && u="($u)"
+    fi
     case "$corpus" in
       all) parts+=("$u | $CORPUS") ;;
       part)
@@ -329,7 +348,10 @@ else
         if [ ${#names[@]} -gt 0 ]; then
           by_name=" | ($CORPUS & test(/^($(join '|' "${names[@]}"))\$/))"
         fi
-        parts+=("($u & not $CORPUS) | ($CORPUS & test(/^(${pre}|${BASE})_/))$by_name") ;;
+        k=""
+        for x in ${keep[@]+"${keep[@]}"}; do k="$k | $x"; done
+        if [ -n "$u" ]; then t="($u & not $CORPUS) | "; else t=""; fi
+        parts+=("$t($CORPUS & test(/^(${pre}|${BASE})_/))$by_name$k") ;;
       none) parts+=("$u") ;;
     esac
   fi

@@ -146,6 +146,16 @@ lacks "regression whole" "$f" "all()"
 lacks "regression corpus" "$f" "binary_id(arris::corpus))"
 equals "regression tool tests" "$(key tool_tests "$out")" ""
 
+# Mixed with a code path that reaches the corpus by area, the corpus terms the
+# fixture or the oracle add survive (they are not subtracted with the rest).
+out=$(plan tests/fixtures/regression/ball-beside-pole-slice-cut/fixture.json crates/arris-ops/src/blend/mod.rs); f=$(key filter "$out")
+has "mixed regression dirs" "$f" "test(=every_fixture_directory_has_a_corpus_test)"
+has "mixed regression lint" "$f" "binary_id(arris::corpus_lint)"
+out=$(plan tools/oracle/compare.py tests/fixtures/boolean/x/fixture.json); f=$(key filter "$out")
+has "mixed oracle arris" "$f" "package(arris)"
+has "mixed oracle boolean" "$f" "test(/^(boolean|"
+lacks "mixed oracle whole" "$f" "all()"
+
 # The oracle's files: the packages that run it, the binaries that call it, and
 # its own selftest; not a binary that does not.
 out=$(plan tools/oracle/expected.py)
@@ -280,6 +290,11 @@ RS
   rm crates/arris-ops/src/sweep/caller.rs
   printf 'pub fn g() { blend::stripe(); }\n' >crates/arris-ops/src/sweep/caller.rs
   has "scratch blend:: caller" "$(p crates/arris-ops/src/blend/mod.rs)" "rdeps(arris-ops) | binary_id(arris::corpus)"
+  rm crates/arris-ops/src/sweep/caller.rs
+  printf 'use crate::{\n    boolean,\n    fillet,\n};\n' >crates/arris-ops/src/sweep/caller.rs
+  has "scratch grouped import" "$(p crates/arris-ops/src/blend/mod.rs)" "rdeps(arris-ops) | binary_id(arris::corpus)"
+  printf 'use crate::{boolean, chamfer};\n' >crates/arris-ops/src/sweep/caller.rs
+  has "scratch grouped one-line" "$(p crates/arris-ops/src/blend/mod.rs)" "rdeps(arris-ops) | binary_id(arris::corpus)"
   rm crates/arris-ops/src/sweep/caller.rs
   # A re-export that is more than the two ops.
   printf 'mod blend;\npub use blend::{chamfer, fillet, stripe};\n' >crates/arris-ops/src/lib.rs
