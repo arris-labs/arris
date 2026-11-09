@@ -12,12 +12,13 @@
 #   `version` set to the workspace's new version): `cargo check`, which
 #   fails on a pin the bump missed;
 # - anything else (ADR-0078): the static half here (layers, new tolerance
-#   literals, fmt, clippy), then HEAD's verification state. `pass`: the test
-#   half is deferred to the post-commit hook, which runs it in the background
-#   on the commit's own tree (`tools/verify.sh`). Otherwise (a red, or none)
-#   the test half runs here over everything since the last verified commit.
-#   A verification still running is waited for. `ARRIS_VERIFY=inline` never
-#   defers. The test half, `tools/test-half.sh`, is sized by `tools/gate.sh`
+#   literals, fmt, clippy), then HEAD's verification state. `pass`, or still
+#   running: the test half is deferred to the post-commit hook, which queues
+#   it in the background on the commit's own tree (`tools/verify.sh`); a run
+#   still waiting is covered by it (ADR-0085), so nothing is waited for.
+#   Otherwise (a red, or none) the test half runs here over everything since
+#   the last verified commit (`tools/verify.sh --base`). `ARRIS_VERIFY=inline`
+#   never defers and waits for a running HEAD. The test half, `tools/test-half.sh`, is sized by `tools/gate.sh`
 #   (ADR-0032): the doctests always; the
 #   `fast` nextest profile (`.config/nextest.toml`: no `real_*`, no slow
 #   singles) at 16 cases over
@@ -155,27 +156,25 @@ if [ "${ARRIS_GATE:-}" = full ]; then
   exit 0
 fi
 
-empty=$(git hash-object -t tree /dev/null)
 head=$(git rev-parse --verify -q HEAD || true)
 head_state=none
-[ -z "$head" ] || head_state=$(tools/verify.sh --status "$head") # waits on a running one
-if [ "$head_state" = pass ]; then
-  base=$head
-else
-  # The last verified commit on this line; the whole profile when none is
-  # within reach.
-  base=$empty
-  if [ -n "$head" ]; then
-    for c in $(git rev-list --first-parent --max-count=200 "$head"); do
-      if [ "$(cat "$state_dir/$c" 2>/dev/null)" = pass ]; then base=$c; break; fi
-    done
-  fi
+inline=
+[ "${ARRIS_VERIFY:-}" != inline ] || inline=1
+# HEAD still being verified is no reason to wait (ADR-0085): this commit's own
+# verification is queued over it and covers it. Only `ARRIS_VERIFY=inline`
+# waits, since it needs the verdict.
+if [ -n "$head" ] && [ -z "$inline" ] && tools/verify.sh --in-flight "$head"; then
+  head_state=inflight
+elif [ -n "$head" ]; then
+  head_state=$(tools/verify.sh --status "$head") # waits on a running one under inline
 fi
 
-if [ "$head_state" = pass ] && [ "${ARRIS_VERIFY:-}" != inline ]; then
+if [ -z "$inline" ] && { [ "$head_state" = pass ] || [ "$head_state" = inflight ]; }; then
   echo "pre-commit: test half deferred to the verification of this commit"
   echo deferred >"$state_dir/next"
 else
+  base=$(git hash-object -t tree /dev/null)
+  [ -z "$head" ] || base=$(tools/verify.sh --base "$head")
   [ "$head_state" = pass ] || echo "pre-commit: ${head:-no commit} is not verified ($head_state): test half over everything since ${base:0:8}"
   if [ -n "${ARRIS_TEST_HALF_CMD:-}" ]; then $ARRIS_TEST_HALF_CMD "$base"; else tools/test-half.sh "$base"; fi
   echo pass >"$state_dir/next"

@@ -7,6 +7,8 @@
 #                                       while a run of <sha> is queued or running
 #   tools/verify.sh --in-flight [<sha>] exit 0 while a run of <sha> is queued
 #                                       or running with a live runner; no wait
+#   tools/verify.sh --base [<sha>]      print the base a commit on top of <sha>
+#                                       would be tested over (the hook's)
 #
 # The state is a file per sha in `arris-verify/` of the common git dir:
 # `<sha>` holds `queued`, `running`, `pass`, `fail` or `covered <newer-sha>`,
@@ -64,7 +66,23 @@ resolve() {
   echo "$c fail"
 }
 
+# The nearest `pass` on the first-parent walk from the given commit (itself
+# included), at most 200 commits; the empty tree when none is within reach.
+base_from() {
+  local c s
+  for c in $(git rev-list --first-parent --max-count=200 "$1"); do
+    read -r _ s <<<"$(resolve "$c")"
+    if [ "$s" = pass ]; then echo "$c"; return; fi
+  done
+  git hash-object -t tree /dev/null
+}
+
 case "${1:-}" in
+  --base)
+    sha=$(git rev-parse --verify -q "${2:-HEAD}^{commit}") || { echo "verify: no such commit ${2:-HEAD}" >&2; exit 2; }
+    base_from "$sha"
+    exit 0
+    ;;
   --status)
     sha=$(git rev-parse --verify -q "${2:-HEAD}^{commit}") || { echo "verify: no such commit ${2:-HEAD}" >&2; exit 2; }
     while :; do
@@ -106,7 +124,7 @@ case "${1:-}" in
     ;;
 esac
 
-[ $# -eq 1 ] || { echo "usage: tools/verify.sh <sha> | --status [<sha>] | --in-flight [<sha>]" >&2; exit 2; }
+[ $# -eq 1 ] || { echo "usage: tools/verify.sh <sha> | --status [<sha>] | --in-flight [<sha>] | --base [<sha>]" >&2; exit 2; }
 sha=$(git rev-parse --verify -q "$1^{commit}") || { echo "verify: no such commit $1" >&2; exit 2; }
 log=$dir/$sha.log
 
@@ -146,12 +164,10 @@ exec 9>&-
 
 # The base: the nearest verified commit on this line, so a run after a red
 # or over covered commits tests everything since the last `pass`.
-base=$(git hash-object -t tree /dev/null)
 if parent=$(git rev-parse --verify -q "$sha^"); then
-  for c in $(git rev-list --first-parent --max-count=200 "$parent"); do
-    read -r _ s <<<"$(resolve "$c")"
-    if [ "$s" = pass ]; then base=$c; break; fi
-  done
+  base=$(base_from "$parent")
+else
+  base=$(git hash-object -t tree /dev/null)
 fi
 echo "verify: test half over ${base:0:8}..${sha:0:8}" >>"$log"
 

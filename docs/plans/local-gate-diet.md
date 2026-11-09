@@ -96,7 +96,7 @@ says what to write; **[2]** careful, a case to get right within a given design;
       `--in-flight`. `verify-test.sh`: three runs leave the middle `covered`,
       reading the last's verdict; a covered red reads `fail`; another line's
       queued commit is not covered; the stub sees the wider base after a red.
-- [ ] Step 3 **[2]** — `pre-commit` does not wait. `hook-flow-test.sh`: a commit
+- [x] Step 3 **[2]** — `pre-commit` does not wait. `hook-flow-test.sh`: a commit
       over a running HEAD returns first; a prose commit between them; inline
       still waits; `pre-push` passes a covered commit whose run passed.
       `git.md`; `GLOSSARY.md` *Covered*, *Verified*, *Gate*.

@@ -104,4 +104,40 @@ ARRIS_VERIFY=inline commit fine2 code.rs
 equals "inline mode ran the test half" "$(wc -l <"$calls" | tr -d ' ')" 1
 equals "inline mode verified" "$(settle HEAD)" pass
 
+# 9. a code commit over a running HEAD does not wait for it; a prose commit
+# between them inherits; the newest run covers the waiting ones
+: >"$calls"; : >"$calls.base"
+good=$(sha HEAD)
+commit slow code.rs # deferred, runs 2 s
+running=$(sha HEAD)
+start=$(date +%s.%N)
+commit slow2 code.rs
+took=$(awk -v a="$start" -v b="$(date +%s.%N)" 'BEGIN { print (b - a < 1.5) ? "fast" : "slow" }')
+equals "commit over a running HEAD returns first" "$took" fast
+second=$(sha HEAD)
+commit prose3 notes.md
+equals "prose between them waits on its parent" "$(settle HEAD)" pass
+equals "running one passed" "$(cat "$dir/$running")" pass
+equals "second passed" "$(cat "$dir/$second")" pass
+equals "stub did not run inline" "$(grep -c '^1 ' "$calls" || true)" 0
+
+# 10. inline still waits for a running HEAD
+commit slow3 code.rs
+: >"$calls"
+ARRIS_VERIFY=inline commit slow4 code.rs
+equals "inline waited and ran" "$(cat "$calls" | tail -1)" "1 slow4"
+equals "inline verified" "$(settle HEAD)" pass
+
+# 11. pre-push passes a covered commit whose run passed
+commit slow5 code.rs
+c1=$(sha HEAD)
+commit slow6 code.rs
+c2=$(sha HEAD)
+commit ok7 code.rs
+equals "tip verified" "$(settle HEAD)" pass
+push "$c1" && rc=0 || rc=$?
+equals "covered commit pushed" "$rc" 0
+push "$c2" && rc=0 || rc=$?
+equals "second covered commit pushed" "$rc" 0
+
 [ "$fail" = 0 ] && echo "hook-flow-test: ok" || exit 1

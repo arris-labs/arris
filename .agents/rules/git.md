@@ -9,13 +9,16 @@
   corpus areas the paths reach, plus `cargo doc` when a doc comment changed)
   runs after the commit, in the background, on the commit's own tree
   (`tools/verify.sh`). A commit whose test half passed is **verified**
-  (`GLOSSARY.md`). A red one is met at the next code commit, whose hook runs
-  the test half inline over everything since the last verified commit; the
+  (`GLOSSARY.md`). A code commit never waits for an earlier commit's
+  verification: its own is queued, and one still waiting is **covered** by it
+  (ADR-0085), tested over the range since the last verified commit. A red one
+  is met at the next code commit, whose hook runs the test half inline over
+  everything since the last verified commit (`tools/verify.sh --base`); the
   fix of it carries the red step's suffix. A prose or version commit takes
   its parent's state. `pre-push` refuses a tip that is not verified, so
   `main` at every pushed tip is as green as before. The state is read with
-  `tools/verify.sh --status [<sha>]`, which waits on a run in flight; a
-  waiter is a background job or the hook's own wait, never a poll loop. A
+  `tools/verify.sh --status [<sha>]`, which waits on a run in flight
+  (`--in-flight` does not); a waiter is a background job or `pre-push`, never a poll loop. A
   commit or gate runs
   with `run_in_background`; wait for its completion notification, never
   `sleep` or a watch on its output for a string. One gate runs at a time:
