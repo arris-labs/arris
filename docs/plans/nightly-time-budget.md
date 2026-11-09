@@ -100,7 +100,7 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
   per-test times, each with its figure in a comment. `cargo nextest list` over
   the 12 filters holds each test in exactly one (commit body). A job past
   300 min lowers the budget by the rule, and the commit says so.
-- [ ] Step 5 **[2]** — `tools/nightly-triage.sh` and its `-test.sh`, against a
+- [x] Step 5 **[2]** — `tools/nightly-triage.sh` and its `-test.sh`, against a
   small JUnit holding 11-08's twelve message shapes, a differential failure, a
   timeout, a harness panic, a kernel panic and a pass: each signature, new /
   known / quiet, the exit code, red on a missing file.
