@@ -104,7 +104,7 @@ says what to write; **[2]** careful, a case to get right within a given design;
       scratch tree: a blending fixture outside `blend/` is reached, a
       non-blending one is not, a variant fixture reaches every row, a caller
       outside `blend/` gives `corpus=all`, `sweep/mod.rs` keeps it.
-- [ ] Step 5 **[1]** — `.github/*` and `.config/nextest.toml` placed;
+- [x] Step 5 **[1]** — `.github/*` and `.config/nextest.toml` placed;
       `workflows-test.sh`; `gate-test.sh`'s `unplaced` list loses both and
       asserts `none()` with the right `tool_tests`.
 - [ ] Step 6 **[2]** — `regression/` and `tools/oracle/*` placed;

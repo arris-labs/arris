@@ -22,8 +22,9 @@
 #               or removes a `///` or `//!` line, or a `.md` under `crates/`
 #               (they are `include_str!`-ed) changed
 #   full        yes under `ARRIS_GATE=full`: the old gate, every test at 256
-#   tool_tests  the `tools/*-test.sh` scripts the changed tools have, space
-#               separated; `none()` with no prose means nothing else runs
+#   tool_tests  the `tools/*-test.sh` scripts the changed tools have, and the
+#               ones a placed config or workflow names, space separated;
+#               `none()` with no prose means nothing else runs
 #
 # Classification, from the path:
 #   crates/<c>/src (and Cargo.toml)   <c> and everything that depends on it
@@ -57,6 +58,11 @@
 #                                     hook's `ARRIS_READ_BACK`, read by
 #                                     `arris-io/tests/step_read.rs`)
 #   prose (`*.md`, docs/, .agents/, .claude/)   the docs tests, nothing else
+#   .github/*                         no nextest: the workflows run in CI, and
+#                                     `tools/workflows-test.sh` (actionlint)
+#                                     is their local check (ADR-0085 §1)
+#   .config/nextest.toml              no nextest: `tools/profile-test.sh` holds
+#                                     the `fast` filter to its slow set
 #   tools/<name>.sh (top level)       no nextest and no doctests: no Rust test
 #                                     runs a top-level script; its own
 #                                     `tools/<name>-test.sh` when there is one
@@ -109,6 +115,11 @@ add_area() {
   local a
   for a in ${areas[@]+"${areas[@]}"}; do [ "$a" = "$1" ] && return 0; done
   areas+=("$1")
+}
+add_tool_test() {
+  local t
+  for t in ${tool_tests[@]+"${tool_tests[@]}"}; do [ "$t" = "$1" ] && return 0; done
+  tool_tests+=("$1")
 }
 need_corpus() { [ "$corpus" = all ] || corpus=$1; }
 
@@ -179,13 +190,13 @@ while IFS= read -r p; do
         *) whole=yes ;;
       esac ;;
     *.md|.agents/*|docs/*|.claude/*) prose=yes ;;
+    # Placed for ADR-0085 §1: no nextest, the shell test each names.
+    .github/*) add_tool_test tools/workflows-test.sh ;;
+    .config/nextest.toml) add_tool_test tools/profile-test.sh ;;
     tools/*/*) whole=yes ;;
     tools/*.sh)
       t=${p#tools/}; t=${t%.sh}; t=${t%-test}
-      if [ -f "tools/$t-test.sh" ]; then
-        for x in ${tool_tests[@]+"${tool_tests[@]}"} ""; do [ "$x" = "tools/$t-test.sh" ] && break; done
-        [ "$x" = "tools/$t-test.sh" ] || tool_tests+=("tools/$t-test.sh")
-      fi ;;
+      if [ -f "tools/$t-test.sh" ]; then add_tool_test "tools/$t-test.sh"; fi ;;
     *) whole=yes ;;
   esac
 done <<<"$paths"

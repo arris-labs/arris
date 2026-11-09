@@ -116,11 +116,24 @@ lacks "read-back real" "$(key filter "$(plan tests/fixtures/real/c/fixture.json)
 equals "read-back none" "$(key read_back "$(plan crates/arris-io/src/lib.rs)")" ""
 
 # Anything the table cannot place: the whole profile.
-for p in .config/nextest.toml Cargo.toml Cargo.lock fuzz/a.rs tools/real-parts.waits \
-  tools/oracle/expected.py .githooks/pre-commit .github/workflows/ci.yml \
+for p in Cargo.toml Cargo.lock fuzz/a.rs tools/real-parts.waits \
+  tools/oracle/expected.py .githooks/pre-commit \
   no/such/place.txt crates/stray.txt; do
   equals "unplaced $p" "$(key filter "$(plan "$p")")" "all()"
 done
+
+# Placed (ADR-0085 §1): no nextest, and the shell test each names.
+for p in .github/workflows/ci.yml .github/workflows/nightly.yml .config/nextest.toml; do
+  equals "placed $p" "$(key filter "$(plan "$p")")" "none()"
+done
+equals "workflows tool test" "$(key tool_tests "$(plan .github/workflows/ci.yml)")" "tools/workflows-test.sh"
+equals "workflows once" "$(key tool_tests "$(plan .github/workflows/ci.yml .github/workflows/nightly.yml)")" \
+  "tools/workflows-test.sh"
+equals "nextest tool test" "$(key tool_tests "$(plan .config/nextest.toml)")" "tools/profile-test.sh"
+equals "workflows beside a tool" "$(key tool_tests "$(plan .github/workflows/ci.yml tools/gate.sh)")" \
+  "tools/workflows-test.sh tools/gate-test.sh"
+equals "workflows beside code" "$(key filter "$(plan .github/workflows/ci.yml crates/arris-geom/src/curve.rs)")" \
+  "$(key filter "$(plan crates/arris-geom/src/curve.rs)")"
 
 # A top-level tool script: no Rust test runs it, so no nextest; its own
 # shell test when it has one, named by the script or by the test.
