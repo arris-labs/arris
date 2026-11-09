@@ -63,12 +63,21 @@
 #                                     is their local check (ADR-0085 §1)
 #   .config/nextest.toml              no nextest: `tools/profile-test.sh` holds
 #                                     the `fast` filter to its slow set
+#   tests/fixtures/regression/<slug>/ the corpus lint, the test that every
+#                                     directory has a corpus test, and each
+#                                     file naming `regression/<slug>` (a
+#                                     tests/<f>.rs its binary, else its
+#                                     package; corpus.rs's ignored rows are
+#                                     the lint's business) (ADR-0085 §1)
+#   tools/oracle/*                    `arris` and `arris-debug` whole, the
+#                                     test binaries that call the oracle, and
+#                                     `tools/oracle-test.sh` (ADR-0085 §1)
 #   tools/<name>.sh (top level)       no nextest and no doctests: no Rust test
 #                                     runs a top-level script; its own
 #                                     `tools/<name>-test.sh` when there is one
-#                                     (`tool_tests=`). tools/oracle/ and the
-#                                     other files under tools/ are read by
-#                                     tests and stay `anything else`
+#                                     (`tool_tests=`). The other files under
+#                                     tools/ are read by tests and stay
+#                                     `anything else`
 #   anything else                     every test of the `fast` profile
 #
 # A path the table cannot place costs the whole profile, never less; nothing
@@ -105,6 +114,8 @@ doc=no
 read_back=()    # staged fixtures whose area has a STEP round trip
 tool_tests=()   # tools/<name>-test.sh of the changed tools/<name>.sh
 blend=no        # a file of arris-ops/src/blend/ changed
+oracle=no       # a file of tools/oracle/ changed
+slugs=()        # regression/<slug> directories with a changed file
 
 add_term() {
   local t
@@ -187,12 +198,21 @@ while IFS= read -r p; do
                   [ "$x" = "$n" ] || read_back+=("$n") ;;
               esac ;;
           esac ;;
+        regression)
+          # Placed for ADR-0085 §1: its rows are ignored, so the lint and
+          # the readers below stand for it.
+          add_term "binary_id(arris::corpus_lint)"
+          add_term "(binary_id(arris::corpus) & test(=every_fixture_directory_has_a_corpus_test))"
+          s=${p#tests/fixtures/regression/}; s=${s%%/*}
+          for x in ${slugs[@]+"${slugs[@]}"} ""; do [ "$x" = "$s" ] && break; done
+          [ "$x" = "$s" ] || slugs+=("$s") ;;
         *) whole=yes ;;
       esac ;;
     *.md|.agents/*|docs/*|.claude/*) prose=yes ;;
     # Placed for ADR-0085 §1: no nextest, the shell test each names.
     .github/*) add_tool_test tools/workflows-test.sh ;;
     .config/nextest.toml) add_tool_test tools/profile-test.sh ;;
+    tools/oracle/*) oracle=yes; add_tool_test tools/oracle-test.sh ;;
     tools/*/*) whole=yes ;;
     tools/*.sh)
       t=${p#tools/}; t=${t%.sh}; t=${t%-test}
@@ -225,6 +245,45 @@ if [ "$blend" = yes ] && [ "$corpus" != all ]; then
         awk 'NR==FNR { want[$0]=1; next } ($1 in want) { print $2 }' <(printf '%s\n' "$dirs") - | sort -u)
     fi
   fi
+fi
+
+# The readers of a regression fixture, by name: each file under `crates/` that
+# names `regression/<slug>`. A test file gives its binary, anything else its
+# package. `corpus.rs` and `corpus_lint.rs` name every slug: the rows are
+# ignored and the lint is already a term.
+for s in ${slugs[@]+"${slugs[@]}"}; do
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    c=${f#crates/}; c=${c%%/*}
+    case "$f" in
+      crates/arris/tests/corpus.rs|crates/arris/tests/corpus_lint.rs) ;;
+      crates/*/tests/*.rs)
+        b=${f#crates/$c/tests/}
+        case "$b" in
+          */*) add_term "package($c)" ;;
+          *) add_term "binary_id($c::${b%.rs})" ;;
+        esac ;;
+      *) add_term "package($c)" ;;
+    esac
+  done < <(git grep -lE "regression/$s([^a-z0-9-]|\$)" -- crates 2>/dev/null || true)
+done
+
+# The oracle's callers: `arris` (the corpus) and `arris-debug` whole, and the
+# test binaries elsewhere with a non-comment line that calls it (ADR-0085 §1).
+if [ "$oracle" = yes ]; then
+  add_term "package(arris)"
+  add_term "package(arris-debug)"
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    c=${f#crates/}; c=${c%%/*}
+    case "$c" in arris|arris-debug) continue ;; esac
+    b=${f#crates/$c/tests/}
+    case "$b" in
+      */*) add_term "package($c)" ;;
+      *) add_term "binary_id($c::${b%.rs})" ;;
+    esac
+  done < <(git grep -nE 'oracle::|compare_stl|corpus::run|part::run|query::run' -- 'crates/*/tests/*.rs' |
+    grep -vE '^[^:]+:[0-9]+:[[:space:]]*//' | cut -d: -f1 | sort -u)
 fi
 
 # A doc comment added or removed in a changed Rust file (staged, or the range).

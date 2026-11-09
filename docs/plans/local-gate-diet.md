@@ -107,7 +107,7 @@ says what to write; **[2]** careful, a case to get right within a given design;
 - [x] Step 5 **[1]** — `.github/*` and `.config/nextest.toml` placed;
       `workflows-test.sh`; `gate-test.sh`'s `unplaced` list loses both and
       asserts `none()` with the right `tool_tests`.
-- [ ] Step 6 **[2]** — `regression/` and `tools/oracle/*` placed;
+- [x] Step 6 **[2]** — `regression/` and `tools/oracle/*` placed;
       `oracle-test.sh`; `gate-test.sh` asserts `arris-ops::boolean` for
       `regression/ball-beside-pole-slice-cut`, `arris-io::step` and no
       `twin_prop` for an oracle file; `regression` leaves `whole_dirs`.

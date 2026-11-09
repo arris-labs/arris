@@ -117,7 +117,7 @@ equals "read-back none" "$(key read_back "$(plan crates/arris-io/src/lib.rs)")" 
 
 # Anything the table cannot place: the whole profile.
 for p in Cargo.toml Cargo.lock fuzz/a.rs tools/real-parts.waits \
-  tools/oracle/expected.py .githooks/pre-commit \
+  .githooks/pre-commit \
   no/such/place.txt crates/stray.txt; do
   equals "unplaced $p" "$(key filter "$(plan "$p")")" "all()"
 done
@@ -134,6 +134,28 @@ equals "workflows beside a tool" "$(key tool_tests "$(plan .github/workflows/ci.
   "tools/workflows-test.sh tools/gate-test.sh"
 equals "workflows beside code" "$(key filter "$(plan .github/workflows/ci.yml crates/arris-geom/src/curve.rs)")" \
   "$(key filter "$(plan crates/arris-geom/src/curve.rs)")"
+
+# A regression fixture (ADR-0085 §1): the lint, the directory check, and the
+# tests that name it, by binary; no whole profile, no corpus binary.
+out=$(plan tests/fixtures/regression/ball-beside-pole-slice-cut/fixture.json)
+f=$(key filter "$out")
+has "regression lint" "$f" "binary_id(arris::corpus_lint)"
+has "regression dirs" "$f" "test(=every_fixture_directory_has_a_corpus_test)"
+has "regression reader" "$f" "binary_id(arris-ops::boolean)"
+lacks "regression whole" "$f" "all()"
+lacks "regression corpus" "$f" "binary_id(arris::corpus))"
+equals "regression tool tests" "$(key tool_tests "$out")" ""
+
+# The oracle's files: the packages that run it, the binaries that call it, and
+# its own selftest; not a binary that does not.
+out=$(plan tools/oracle/expected.py)
+f=$(key filter "$out")
+has "oracle arris" "$f" "package(arris)"
+has "oracle debug" "$f" "package(arris-debug)"
+has "oracle reader" "$f" "binary_id(arris-io::step)"
+lacks "oracle unrelated" "$f" "twin_prop"
+lacks "oracle whole" "$f" "all()"
+equals "oracle tool test" "$(key tool_tests "$out")" "tools/oracle-test.sh"
 
 # A top-level tool script: no Rust test runs it, so no nextest; its own
 # shell test when it has one, named by the script or by the test.
@@ -193,7 +215,7 @@ while IFS= read -r pat; do
   [ "$found" = yes ] || { echo "FAIL drift: arm '$pat' matches no tracked file" >&2; fail=1; }
 done < <(sed -n '/^        arris-ops)/,/^        arris-py)/p' "$gate" |
   sed -n 's/^ *\(src\/[^)]*\)) .*/\1/p')
-whole_dirs="geom regression sheet"
+whole_dirs="geom sheet"
 for d in tests/fixtures/*/; do
   d=${d%/}; d=${d##*/}
   grep -qE "^ +[a-z|]*\b$d\b[a-z|]*\)" <(sed -n '/^    tests\/fixtures/,/whole=yes ;;/p' "$gate") ||
