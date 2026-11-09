@@ -3,7 +3,9 @@
 # halves (`ARRIS_VERIFY_CMD`): a pass, a fail, a status read while a run is in
 # flight, a second run waiting on the first, the base widened past a red, and
 # the queue (ADR-0085 §4): a queued run covered by the next, a covered red, a
-# queued commit of another line left alone, `--in-flight`. Runs no cargo.
+# queued commit of another line left alone, an old commit outside the newer
+# range left alone, a base widened over a covered commit, `--in-flight`.
+# Runs no cargo.
 #
 #   tools/verify-test.sh
 set -euo pipefail
@@ -108,6 +110,32 @@ wait "$pb" "$p6" "$ps"
 equals "other line not covered" "$("$verify" --status "$c6")" pass
 grep -q "stub .* $c6 at 6" "$dir/$c6.log" || { echo "FAIL other line's run: $(cat "$dir/$c6.log")" >&2; fail=1; }
 grep -q "stub $c4 $s1 at 9" "$dir/$s1.log" || { echo "FAIL side base: $(cat "$dir/$s1.log")" >&2; fail=1; }
+
+# an old commit asked for again is not covered by a range that starts after
+# it: with the lock held, c2 (red) queues, then c5, whose base is c4 (a pass
+# later than c2^), leaves it queued; c2 runs itself and reads fail
+flock "$dir/lock" sleep 1.5 & ph=$!
+sleep 0.3
+"$verify" "$c2" & p2=$!
+sleep 0.3
+"$verify" "$c5" & p5=$!
+wait "$ph" "$p5"; wait "$p2" || true
+equals "old red not covered" "$(cat "$dir/$c2")" fail
+equals "old red reads its own" "$("$verify" --status "$c2")" fail
+grep -q "stub $c1 $c2 at 2" "$dir/$c2.log" || { echo "FAIL old red's own run: $(cat "$dir/$c2.log")" >&2; fail=1; }
+grep -q "stub $c4 $c5 at 5" "$dir/$c5.log" || { echo "FAIL newer run's base: $(cat "$dir/$c5.log")" >&2; fail=1; }
+
+# a commit between the covering and the covered one that passes after the
+# covering does not narrow the range: c3 runs, c2 queues, c4 (base c1 then)
+# covers it; c3 passes, and c4's run still reaches back to c1
+"$verify" "$c3" & pb=$!
+sleep 0.5
+"$verify" "$c2" & p2=$!
+sleep 0.3
+"$verify" "$c4" & p4=$!
+wait "$pb" "$p2" "$p4"
+equals "covered while between runs" "$(cat "$dir/$c2")" "covered $c4"
+grep -q "stub $c1 $c4 at 4" "$dir/$c4.log" || { echo "FAIL widened base: $(cat "$dir/$c4.log")" >&2; fail=1; }
 
 # a status read racing a run's end never reports its verdict as a death
 # (a narrow window: this loop catches a regression only now and then):

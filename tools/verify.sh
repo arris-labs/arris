@@ -18,13 +18,18 @@
 # hold for their runs too); a second waits its turn.
 #
 # The queue (ADR-0085 §4): `arris-verify/newest` names the commit queued
-# last. A new run whose predecessor there is still `queued` and is its
-# ancestor writes `covered <new-sha>` to it and takes its place; a commit of
-# another line is left alone. The covered run, given the lock, reads
-# `covered` and exits; the newer run's base reaches back over it, so its
-# verdict is the covered commit's too, and `--status` prints that verdict.
-# Covering and `queued` -> `running` happen under `arris-verify/queue.lock`,
-# a short lock, so a run is never covered once it has started.
+# last. A new run whose predecessor there is still `queued`, is its ancestor,
+# and lies inside its range (its base, read then, is an ancestor of or equal
+# to the parent of that commit and of every commit that one covers) writes
+# `covered <new-sha>` to it and takes its place. A commit of another line, or
+# one older than the last `pass` before the new commit (a red run asked for
+# again by `pre-push`), is left queued and runs itself. The covered run,
+# given the lock, reads `covered` and exits; the newer run's base reaches
+# back over it (widened at run time if a commit between them has passed
+# since), so its verdict is the covered commit's too, and `--status` prints
+# that verdict. Covering and `queued` -> `running` happen under
+# `arris-verify/queue.lock`, a short lock, so a run is never covered once it
+# has started.
 #
 # The base is read after the lock: the nearest `pass` on the first-parent
 # walk from `<sha>^`, at most 200 commits, else the empty tree. With a
@@ -51,6 +56,12 @@ common=$(realpath "$(git rev-parse --git-common-dir)")
 dir=$common/arris-verify
 mkdir -p "$dir"
 
+# Writes a commit's state whole (a temporary file renamed over it), so a
+# reader never sees the empty file a truncating write leaves for a moment.
+put() {
+  printf '%s\n' "$2" >"$dir/$1.new.$$" && mv -f "$dir/$1.new.$$" "$dir/$1"
+}
+
 # The state of a commit with `covered` followed to the run that holds its
 # verdict; `none` for one never verified. A chain is short (one hop per
 # queued commit); the bound only keeps a corrupt file from looping.
@@ -75,6 +86,32 @@ base_from() {
     if [ "$s" = pass ]; then echo "$c"; return; fi
   done
   git hash-object -t tree /dev/null
+}
+
+# The commits whose `covered` chain ends at the given one (itself excluded).
+held_by() {
+  local f c
+  for f in $(grep -lx "covered $1" "$dir"/* 2>/dev/null); do
+    c=${f##*/}
+    [[ "$c" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]] || continue
+    echo "$c"
+    held_by "$c"
+  done
+}
+
+# Whether a run over `<base>..` holds the given commit's change: the base is
+# the empty tree, or an ancestor of (or equal to) the commit's parent.
+reaches() {
+  local p
+  [ "$1" = "$(git hash-object -t tree /dev/null)" ] && return 0
+  p=$(git rev-parse --verify -q "$2^") || return 1
+  git merge-base --is-ancestor "$1" "$p" 2>/dev/null
+}
+
+# The base of a run of the given commit: the nearest `pass` from its parent.
+base_of() {
+  local p
+  if p=$(git rev-parse --verify -q "$1^"); then base_from "$p"; else git hash-object -t tree /dev/null; fi
 }
 
 case "${1:-}" in
@@ -128,18 +165,25 @@ esac
 sha=$(git rev-parse --verify -q "$1^{commit}") || { echo "verify: no such commit $1" >&2; exit 2; }
 log=$dir/$sha.log
 
-# Queue: cover the commit queued before this one when it is still waiting and
-# is this one's ancestor, then take its place.
+# Queue: cover the commit queued before this one when it is still waiting, is
+# this one's ancestor, and this run's range holds it and every commit it
+# covers; then take its place. Covering on ancestry alone would hand an old
+# red commit the verdict of a range that starts after it.
 exec 9>>"$dir/queue.lock"
 flock 9
 echo $$ >"$dir/$sha.pid"
-echo queued >"$dir/$sha"
+put "$sha" queued
 : >"$log"
 prev=$(cat "$dir/newest" 2>/dev/null || true)
 if [ -n "$prev" ] && [ "$prev" != "$sha" ] && [ "$(cat "$dir/$prev" 2>/dev/null)" = queued ] &&
   git merge-base --is-ancestor "$prev" "$sha" 2>/dev/null; then
-  echo "covered $sha" >"$dir/$prev"
-  echo "verify: covers ${prev:0:8}" >>"$log"
+  qbase=$(base_of "$sha")
+  holds=1
+  for c in "$prev" $(held_by "$prev"); do reaches "$qbase" "$c" || { holds=; break; }; done
+  if [ -n "$holds" ]; then
+    put "$prev" "covered $sha"
+    echo "verify: covers ${prev:0:8}" >>"$log"
+  fi
 fi
 echo "$sha" >"$dir/newest"
 flock -u 9
@@ -158,17 +202,23 @@ case "$state" in
     exit 0
     ;;
 esac
-echo running >"$dir/$sha"
+put "$sha" running
 flock -u 9
 exec 9>&-
 
 # The base: the nearest verified commit on this line, so a run after a red
-# or over covered commits tests everything since the last `pass`.
-if parent=$(git rev-parse --verify -q "$sha^"); then
-  base=$(base_from "$parent")
-else
-  base=$(git hash-object -t tree /dev/null)
-fi
+# or over covered commits tests everything since the last `pass`. A commit
+# between this one and a covered one may have passed since the covering (it
+# was running then); the base is widened back to hold every covered commit.
+base=$(base_of "$sha")
+for c in $(held_by "$sha"); do
+  reaches "$base" "$c" && continue
+  if p=$(git rev-parse --verify -q "$c^"); then
+    base=$(git merge-base "$base" "$p" 2>/dev/null) || base=$(git hash-object -t tree /dev/null)
+  else
+    base=$(git hash-object -t tree /dev/null)
+  fi
+done
 echo "verify: test half over ${base:0:8}..${sha:0:8}" >>"$log"
 
 verdict=fail
@@ -188,7 +238,7 @@ verdict=fail
   fi
 } >>"$log" 2>&1 && verdict=pass
 
-echo "$verdict" >"$dir/$sha"
+put "$sha" "$verdict"
 rm -f "$dir/$sha.pid"
 [ "$verdict" = pass ]
 exit

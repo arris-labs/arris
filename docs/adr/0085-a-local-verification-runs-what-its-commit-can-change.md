@@ -100,15 +100,21 @@ cites the same call, so the two rules cannot disagree.
 
 **4. A queued commit is covered (supersedes ADR-0078 §7's wait).** The hook
 does not wait for `HEAD`'s verification. A code commit's verification queues,
-and when the commit before it is still `queued` and is its ancestor, the newer
-run writes `covered <new-sha>` to that commit's state and takes its place.
-A commit of another line is left alone. `queued` → `running` happens under a
+and when the commit before it is still `queued`, is its ancestor, and lies
+inside the newer run's range (that run's base, the nearest `pass` below it, is
+an ancestor of or equal to the parent of that commit and of each commit it
+covers), the newer run writes `covered <new-sha>` to that commit's state and
+takes its place; a commit that passes between the two before the newer run
+starts does not narrow its range. A commit of another line is left alone, and
+so is an older one the range starts after (a red commit queued again by hand
+behind a run still going): it runs itself and keeps its own verdict. `queued` → `running` happens under a
 short `queue.lock`, so one verification still runs at a time (ADR-0078 §6's
 memory bound holds). `verify.sh --status` follows `covered` and still prints one
 word; `verify.sh --in-flight <sha>` exits 0 while `queued` or `running`, without
 waiting. A red covering several commits names the range, not one commit (the
-glossary's *Covered*); a red `HEAD` is still met at the next commit's hook, as
-ADR-0078 §3 has it.
+glossary's *Covered*); a red `HEAD` already known is still met at the next
+commit's hook, as ADR-0078 §3 has it, and one still in flight there is met in
+the next commit's verification, whose range holds it.
 
 `pre-push` still refuses a tip that is not `pass`, and a covered commit takes
 its run's verdict. `ARRIS_VERIFY=inline` still waits, and a prose or version

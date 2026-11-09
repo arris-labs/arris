@@ -12,9 +12,11 @@
   (`GLOSSARY.md`). A code commit never waits for an earlier commit's
   verification: its own is queued, and one still waiting is **covered** by it
   (ADR-0085), tested over the range since the last verified commit. A red one
-  is met at the next code commit, whose hook runs the test half inline over
-  everything since the last verified commit (`tools/verify.sh --base`); the
-  fix of it carries the red step's suffix. A prose or version commit takes
+  is met at the next code commit: in that commit's background verification,
+  whose range reaches back over it, when the red was still in flight at the
+  commit; inline in its hook, over everything since the last verified commit
+  (`tools/verify.sh --base`), when the red was already known. The fix of it
+  carries the red step's suffix. A prose or version commit takes
   its parent's state. `pre-push` refuses a tip that is not verified, so
   `main` at every pushed tip is as green as before. The state is read with
   `tools/verify.sh --status [<sha>]`, which waits on a run in flight
