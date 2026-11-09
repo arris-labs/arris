@@ -106,9 +106,7 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
   known / quiet, the exit code, red on a missing file.
 - [x] Step 6 **[1]** — `tools/nightly-known.txt` seeded from run 42522745189
   and step 4's; a failure with no §Findings block gets one first. The lint,
-  with a scratch-tree case that catches a dangling slug. A
-  `tools/real-parts.waits` line for `nist_ctc_02_asme1_ap242-e2` on
-  `regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder`, red every night.
+  with a scratch-tree case that catches a dangling slug.
 - [x] Step 7 **[1]** — The triage step in the property and differential jobs,
   nextest `|| true`, `--no-capture` dropped. `tools/workflows-test.sh`.
 - [ ] Step 8 **[1]** **[CI]** — Dispatch the whole workflow against the
@@ -148,6 +146,13 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
   number; 17 of 18 real failures carry no other key, and keying on the
   property alone would hide every other assertion in a listed test. The
   *Signature* entry in `GLOSSARY.md` now says so.
+- Settled (step 6): no `tools/real-parts.waits` line for CTC-02 AP242 e2's
+  drill along its first principal axis. `regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder`
+  is an ops fixture, not a part fixture, so `corpus_lint`'s part-exclusion
+  check (which counts only part kinds under `regression/`) cannot take a
+  wait on it, and a part fixture would need an oracle record for the drill
+  that cannot be written honestly (`docs/BACKLOG.md:109`, the drill line). So the part stays red in the nightly's `real-parts` job until that
+  line's condition is met; `real-parts` is a survey, not a triage job.
 - ⚠ OPEN: a known `Disagree(counts)` hides any new count disagreement in the
   differential, which has no finer key. Agent's pick, by step 6: list it under
   `differential-multi-tool-disagreements` only if step 4's run repeats it.
