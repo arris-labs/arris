@@ -123,7 +123,9 @@ jobs:
       - run: echo "ARRIS_PROPTEST_SEED=$ARRIS_PROPTEST_SEED ARRIS_PROPTEST_CASES=$ARRIS_PROPTEST_CASES"
       # `--test-threads num-cpus`, as `ci.yml` has: the default profile's
       # 16 threads on a 4-vCPU runner ran about 16 heavy properties at once.
-      - run: cargo nextest run --workspace --no-fail-fast --profile nightly --test-threads num-cpus -E "$FILTER"
+      # `|| true`: nextest's exit code is not the job's colour; the triage
+      # below reads its JUnit and decides (ADR-0086 §6).
+      - run: cargo nextest run --workspace --no-fail-fast --profile nightly --test-threads num-cpus -E "$FILTER" || true
         env:
           FILTER: ${{ matrix.filter }}
       # JUnit holds each shard's `prop-budget:` line (store-success-output in
@@ -135,6 +137,10 @@ jobs:
           path: target/nextest/nightly/junit.xml
           if-no-files-found: warn
           retention-days: 90
+      # Red on a new signature, or on no JUnit (the build failed before nextest
+      # ran); a known signature is listed in the job summary and stays green.
+      - if: always()
+        run: tools/nightly-triage.sh target/nextest/nightly/junit.xml tools/nightly-known.txt
 
   # The differential at CI's recipe count, on the night's seed rather than
   # the fixed one (ADR-0024 §2), and the corpus's ignored tests but the
@@ -156,7 +162,20 @@ jobs:
           enable-cache: true
       - run: uv sync --project tools/oracle
       - run: echo "ARRIS_PROPTEST_SEED=$ARRIS_PROPTEST_SEED ARRIS_DIFF_CASES=$ARRIS_DIFF_CASES"
-      - run: cargo nextest run -p arris --test differential --no-capture
+      # Under the nightly profile, which writes JUnit (store-success-output
+      # keeps each case's line, which `--no-capture` used to print); `|| true`
+      # as the properties' nextest, the triage below decides the colour.
+      - run: cargo nextest run -p arris --test differential --profile nightly || true
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-differential
+          path: target/nextest/nightly/junit.xml
+          if-no-files-found: warn
+          retention-days: 90
+      # A new signature stops the job here, as a failing differential did.
+      - if: always()
+        run: tools/nightly-triage.sh target/nextest/nightly/junit.xml tools/nightly-known.txt
       - run: cargo nextest run -p arris --test corpus --run-ignored only --no-tests pass -E 'not test(/^regression_/)'
 
   # The corpus benchmark (ADR-0024 §4) against the last night that saved a

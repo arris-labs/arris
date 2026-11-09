@@ -109,7 +109,7 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
   with a scratch-tree case that catches a dangling slug. A
   `tools/real-parts.waits` line for `nist_ctc_02_asme1_ap242-e2` on
   `regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder`, red every night.
-- [ ] Step 7 **[1]** — The triage step in the property and differential jobs,
+- [x] Step 7 **[1]** — The triage step in the property and differential jobs,
   nextest `|| true`, `--no-capture` dropped. `tools/workflows-test.sh`.
 - [ ] Step 8 **[1]** **[CI]** — Dispatch the whole workflow against the
   acceptance. A failure read as new gets its block and entry, or stands as a
