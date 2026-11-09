@@ -350,6 +350,12 @@ of cases, each seeded from the base seed, the shard and the chunk's index,
 until the next chunk would pass the budget, the tier's case count a
 ceiling. How many cases ran depends on the runner; which case failed does
 not.
+
+**Chunk** (of a budgeted property shard):
+The unit a budget is spent in and a failure replays by: `CHUNK_CASES` (8)
+cases, seeded by the sha256 of the shard seed and the chunk's index, so the
+index named by `ARRIS_PROPTEST_CHUNK` reruns alone. The last chunk of a
+shard is cut at the tier's ceiling.
 _Avoid_: timeout (nextest's cap, which ends a test unreported)
 
 **Twin property**:
@@ -362,11 +368,15 @@ A defect a nightly, fuzz target or the differential measured, written in
 _Avoid_: bug report, issue
 
 **Signature** (of a failure):
-A failure's (source, operation, class, key): the source a property, fuzz
-target or the differential, the key an error variant's path, a checker
-row or a panic's site, never a number, an id or a message's free text. A
-*known* signature names an open finding and goes when the finding does; a
-new one is what turns a nightly red.
+A failure's (source, operation, class, key): the source the property's
+`binary::property` (shard suffix dropped), a fuzz target or the
+differential; the class and key, first match wins: `timeout`, `abort`,
+`panic` at its `file:line`, `checker` at its row, `differential` at its
+`case N` class, `variant` at a typed token, `assert` at the message's stem
+(the text up to its first digit, trailing punctuation cut). Never a number,
+an id or the rest of a message's text: the stem is the test's format string,
+which no draw changes. A *known* signature names an open finding and goes
+when the finding does; a new one is what turns a nightly red.
 _Avoid_: fingerprint
 
 **Gate**:

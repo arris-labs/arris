@@ -270,3 +270,15 @@ the case's expense, not a judgement of the property's worth: the fix that
 makes a case cheap (here S5 on two long NURBS neighbours) lowers it. Depth
 still comes from seeds adding up, at a smaller step a night.
 
+## Amendment (2026-11-09, plan `nightly-time-budget` step 1)
+
+- §3's nightly row is a budget, not a count: a property shard runs chunks of
+  cases until the next would pass `ARRIS_PROPTEST_BUDGET`, the tier's count
+  its ceiling, and a failure replays by its chunk (ADR-0086 §1–2). The hook
+  and CI rows and the fixed seed are unchanged.
+- §6's red night is a new signature: a failure whose signature is listed in
+  `tools/nightly-known.txt` is printed by slug and leaves the job green; any
+  other, a missing JUnit file or a fuzz crash, turns the run red (ADR-0086
+  §3–5). A night green end to end still means nothing about the harness, and
+  a known signature is not acceptance.
+
