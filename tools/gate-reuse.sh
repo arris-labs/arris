@@ -33,7 +33,7 @@ reaches_code() {
   while IFS= read -r f; do
     [ -n "$f" ] || continue
     is_code "$f" && return 0
-  done < <(git diff --name-only "$1" "$2" --)
+  done < <(git diff --no-renames --name-only "$1" "$2" --)
   return 1
 }
 

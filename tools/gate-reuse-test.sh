@@ -39,6 +39,11 @@ for f in crates/a/lib.rs tools/y.py tools/oracle/z tools/check-q.sh tools/foo-ga
   "$reuse" --reaches-code "$base" HEAD && rc=0 || rc=$?
   equals "reaches-code ($f)" "$rc" 0
 done
+# a move out of a code path still reaches code (no rename following)
+git reset -q --hard "$base"
+git mv crates/a/lib.rs docs/lib.md; git commit -qm move
+"$reuse" --reaches-code "$base" HEAD && rc=0 || rc=$?
+equals "rename out of code reaches" "$rc" 0
 git reset -q --hard "$base"
 "$reuse" --reaches-code "$base" HEAD && rc=0 || rc=$?
 equals "empty diff reaches none" "$rc" 1
@@ -59,7 +64,7 @@ for f in gate-scope.sh check-layers.sh; do
   printf '#!/usr/bin/env bash\n[ "%s" = gate-scope.sh ] && exec "$@"\nexit 0\n' "$f" >"tools/$f"; chmod +x "tools/$f"
 done
 mkdir -p bin
-printf '#!/usr/bin/env bash\n[ -z "${STUB_RED:-}" ]\n' >bin/cargo; chmod +x bin/cargo
+printf '#!/usr/bin/env bash\n[ -n "${STUB_MOVE:-}" ] && git commit -q --allow-empty -m moved\n[ -z "${STUB_RED:-}" ]\n' >bin/cargo; chmod +x bin/cargo
 git add -A; git commit -qm gate-files
 export PATH="$PWD/bin:$PATH" ARRIS_GATE_SCOPED=1
 STUB_RED=1 tools/full-gate.sh "$tmp/red.log" >/dev/null && rc=0 || rc=$?
@@ -68,6 +73,12 @@ equals "red gate exits non-zero" "$rc" 1
 tools/full-gate.sh "$tmp/green.log" >/dev/null && rc=0 || rc=$?
 equals "green gate exits zero" "$rc" 0
 [ -e ".git/arris-verify/gated/$(git rev-parse HEAD)" ] || { echo "FAIL green gate recorded nothing" >&2; fail=1; }
+# HEAD moving during the run: nothing is recorded, and the run says so
+git reset -q --hard HEAD
+STUB_MOVE=1 tools/full-gate.sh "$tmp/move.log" >"$tmp/move.out" && rc=0 || rc=$?
+equals "moved gate exits zero" "$rc" 0
+grep -q "HEAD moved" "$tmp/move.out" || { echo "FAIL moved gate did not say so" >&2; fail=1; }
+[ ! -e ".git/arris-verify/gated/$(git rev-parse HEAD)" ] || { echo "FAIL moved gate recorded" >&2; fail=1; }
 
 [ "$fail" = 0 ] && echo "gate-reuse-test: ok"
 exit "$fail"

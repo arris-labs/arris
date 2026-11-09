@@ -55,6 +55,9 @@ export NEXTEST_TEST_THREADS=${NEXTEST_TEST_THREADS:-16}
 export RAYON_NUM_THREADS=${RAYON_NUM_THREADS:-16}
 unset ARRIS_PROPTEST_CASES ARRIS_DIFF_CASES
 
+# The commit this run tests: only it may be recorded.
+tested=$(git rev-parse HEAD)
+
 verdicts=()
 stage() {
   local name=$1 start=$SECONDS
@@ -81,6 +84,10 @@ if printf '%s\n' "${verdicts[@]}" | grep -q '^FAIL'; then
 fi
 # Green: record the verdict so a close-cycle or release on the same code
 # reuses it (ADR-0085 §3).
-tools/gate-reuse.sh --record || echo "full-gate: not recorded (a code path is dirty)"
+if [ "$(git rev-parse HEAD)" != "$tested" ]; then
+  echo "full-gate: not recorded (HEAD moved during the run)"
+else
+  tools/gate-reuse.sh --record || echo "full-gate: not recorded (a code path is dirty)"
+fi
 exit 0
 }
