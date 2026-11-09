@@ -40,17 +40,18 @@ jobs:
           echo "ARRIS_PROPTEST_SEED=\`$seed\`" >>"$GITHUB_STEP_SUMMARY"
           echo "seed=$seed" >>"$GITHUB_OUTPUT"
 
-  # The property tier at 5000 cases, five times CI's (ADR-0024 §3). The
-  # matrix splits it by nextest filterset into jobs of at most about
-  # 38,000 runner CPU-seconds, about 2 h 40 min on a 4-core runner, which
-  # leaves twice the margin under the job's 350 minutes for a slower host.
-  # The figures are runner CPU-seconds at 5000 cases (2026-10-21): the
-  # night of 10-20 where it ran a test, else this machine's 256-case run
-  # scaled by the night's ratio for that binary (29 for a property), the
-  # costs of ADR-0024's 2026-10-21 amendment applied. The two `-rest` jobs
-  # take whatever the others do not name, so a new test always runs.
-  # `boolean_prop` is the split's first measurement (plans/measuring-harness
-  # step 6's timings).
+  # The property tier at 5000 cases, five times CI's (ADR-0024 §3), on a
+  # budget (ADR-0086): each shard runs chunks until ARRIS_PROPTEST_BUDGET
+  # seconds are spent, and 5000 cases is the ceiling. The 22 per-binary
+  # filters of the budget run 42659620551 (2026-11-09) are packed into 12 jobs
+  # by first-fit-decreasing on estimated wall time: a test costs its time
+  # capped at the budget where it printed `prop-budget:`, its full time
+  # otherwise, and a job's figure is that sum over its four threads. The
+  # smallest capacity that yields 12 jobs is 245 min, so no job reaches the
+  # 300-minute mark that would lower the budget. The run measured blend-rest
+  # 258 min against 235 estimated, so a job runs about a tenth past its figure.
+  # The two `-rest` catch-alls (ops-rest, workspace-rest) take what their
+  # neighbours do not name, so a new test always runs.
   properties:
     name: properties (${{ matrix.name }})
     needs: seed
@@ -60,93 +61,46 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 19,000.
-          - name: boolean-quartic
-            filter: "binary(boolean_prop) and test(/^quartic_cylinders/)"
-          # 16,200.
-          - name: boolean-quadric
-            filter: "binary(boolean_prop) and test(/^quadric_operands/)"
-          # 15,300.
-          - name: boolean-crossing
-            filter: "binary(boolean_prop) and test(/^crossing_cylinders/)"
-          # 21,200.
-          - name: boolean-rest
-            filter: "binary(boolean_prop) and not test(/^(quartic_cylinders|quadric_operands|crossing_cylinders)/)"
-          # 37,700.
-          - name: twin-boolean
-            filter: "binary_id(arris-ops::twin_prop) and test(/^(quadric|crossing)_twins/)"
-          # 35,900.
-          - name: twin-rest
-            filter: "binary_id(arris-ops::twin_prop) and not test(/^((quadric|crossing)_twins|meridian_rows)/)"
-          # The slot and oblique chains, split out of `blend` so they start
-          # at once in a job of their own.
-          # Measured at 5000 cases: the slot chain 2,300-2,400 s a shard
-          # (2 shards) in run 42448712105 and about 4,000 s in 42480923231,
-          # the oblique chains (4 shards) about 6,200 s and 8,900 s. The
-          # elbow, which shared this job, is `blend-elbow` below.
-          - name: blend-named
-            filter: "binary_id(arris-ops::blend_prop) and test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset)/)"
-          # The elbow property alone, 2 shards on a runner of its own: about
-          # 12,000 s a shard in run 42448712105 (beside 6 other shards), then
-          # killed at nextest's 14,400 s cap in 42480923231, so it needs
-          # near or over 4 h. `.config/nextest.toml` raises its cap to 5.5 h.
-          - name: blend-elbow
-            filter: "binary_id(arris-ops::blend_prop) and test(/^an_elbows_vanishing_end_is_pose_independent/)"
-          # The walked-seam property, 8 shards of 13,300 to 14,050 s each at
-          # 5000 cases (about 3.8 h): on a 4-thread runner in one job shards
-          # 4-7 started only after 0-3 finished and hit the 350-minute limit.
-          # Two jobs of four shards each, about 230 minutes apiece.
-          - name: blend-seam-low
-            filter: "binary_id(arris-ops::blend_prop) and test(/^a_walked_blend_does_not_depend_on_where_the_seam_lies::shard_[0-3]$/)"
-          - name: blend-seam-high
-            filter: "binary_id(arris-ops::blend_prop) and test(/^a_walked_blend_does_not_depend_on_where_the_seam_lies::shard_[4-7]$/)"
-          # The standoff-roots property alone, 4 shards on a 4-thread runner:
-          # in run 42480923231 (in blend-rest) it started after
-          # `slab_lips_roll_on_a_cross_holes_rim` (about 6,200 s a shard) and
-          # was still running on all four shards at the 350-minute cut, past
-          # 10,800 s each (probably about 14,000 s), holding every thread so
-          # 15 tests never started. `.config/nextest.toml` raises its cap to
-          # 5.5 h.
-          - name: blend-standoff
-            filter: "binary_id(arris-ops::blend_prop) and test(/^standoff_roots_roll_on_the_plates_edge/)"
-          # The rest of `blend`: its `meridian_rows` twin and the other blend
-          # properties (129 tests; the heavy ones in run 42480923231 were
-          # slab_lips about 6,200 s a shard, the cusp-corner complement
-          # about 712 s and the four-edge vertex about 502 s, the rest
-          # minutes), the named three, the walked-seam property and the
-          # standoff-roots property taken out.
+          # 244.9 min estimated: boolean-rest 20,189 s, loft 38,576 s.
+          - name: boolean-rest+loft
+            filter: "(binary(boolean_prop) and not test(/^(quartic_cylinders|quadric_operands|crossing_cylinders)/)) or (binary_id(arris-ops::loft_prop) or binary_id(arris-ops::interference_prop))"
+          # 243.7 min estimated: blend-named 17,101 s, corpus 41,390 s.
+          - name: blend-named+corpus
+            filter: "(binary_id(arris-ops::blend_prop) and test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset)/)) or (binary_id(arris::corpus) or binary_id(arris-geom::nurbs_nurbs_prop))"
+          # 241.7 min estimated: boolean-quartic 31,210 s, multi-tool-operands 26,796 s.
+          - name: boolean-quartic+multi-tool-operands
+            filter: "(binary(boolean_prop) and test(/^quartic_cylinders/)) or (binary_id(arris-ops::multi_tool_prop) and test(/^(a_multi_tool_result|the_geometry_is_independent)/))"
+          # 240.9 min estimated: blend-standoff 13,617 s, sweep-bodies 44,210 s.
+          # Two shards hit nextest's 2 h cap in the run without a `prop-budget:`
+          # line (their cost counted at the observed 7,200 s each).
+          - name: blend-standoff+sweep-bodies
+            filter: "(binary_id(arris-ops::blend_prop) and test(/^standoff_roots_roll_on_the_plates_edge/)) or (binary_id(arris-ops::sweep_prop) and test(/^(a_swept_body|the_checker_is_green|an_exact_path)/))"
+          # 235.3 min estimated: blend-rest 56,469 s.
           - name: blend-rest
-            filter: "(binary_id(arris-ops::twin_prop) and test(/^meridian_rows/)) or (binary_id(arris-ops::blend_prop) and not test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent|a_walked_blend_does_not_depend_on_where_the_seam_lies|standoff_roots_roll_on_the_plates_edge)/))"
-          # 36,600.
-          - name: multi-tool-operands
-            filter: "binary_id(arris-ops::multi_tool_prop) and test(/^(a_multi_tool_result|the_geometry_is_independent)/)"
-          # 31,300.
-          - name: multi-tool-rest
-            filter: "binary_id(arris-ops::multi_tool_prop) and not test(/^(a_multi_tool_result|the_geometry_is_independent)/)"
-          # 34,000.
-          - name: sweep-bodies
-            filter: "binary_id(arris-ops::sweep_prop) and test(/^(a_swept_body|the_checker_is_green|an_exact_path)/)"
-          # 32,300.
-          - name: sweep-rest
-            filter: "(binary_id(arris-ops::sweep_prop) and not test(/^(a_swept_body|the_checker_is_green|an_exact_path)/)) or binary_id(arris-ops::cancel_prop)"
-          # 34,500.
-          - name: loft
-            filter: "binary_id(arris-ops::loft_prop) or binary_id(arris-ops::interference_prop)"
-          # 32,500.
-          - name: split
-            filter: "binary_id(arris-ops::split_prop) or binary_id(arris-ops::inertia)"
-          # 36,700.
-          - name: ops-rest
-            filter: "package(arris-ops) and not binary_id(/^arris-ops::(boolean_prop|twin_prop|blend_prop|multi_tool_prop|sweep_prop|cancel_prop|loft_prop|interference_prop|split_prop|inertia)$/)"
-          # 29,100.
-          - name: corpus
-            filter: "binary_id(arris::corpus) or binary_id(arris-geom::nurbs_nurbs_prop)"
-          # 34,900.
+            filter: "((binary_id(arris-ops::twin_prop) and test(/^meridian_rows/)) or (binary_id(arris-ops::blend_prop) and not test(/^(slot_chain_through_its_kink_is_pose_independent|oblique_chains_meet_on_the_rulings_offset|an_elbows_vanishing_end_is_pose_independent|a_walked_blend_does_not_depend_on_where_the_seam_lies|standoff_roots_roll_on_the_plates_edge)/)))"
+          # 234.8 min estimated: blend-seam-high 13,584 s, ops-rest 42,770 s.
+          - name: blend-seam-high+ops-rest
+            filter: "(binary_id(arris-ops::blend_prop) and test(/^a_walked_blend_does_not_depend_on_where_the_seam_lies::shard_[4-7]$/)) or (package(arris-ops) and not binary_id(/^arris-ops::(boolean_prop|twin_prop|blend_prop|multi_tool_prop|sweep_prop|cancel_prop|loft_prop|interference_prop|split_prop|inertia)$/))"
+          # 227.1 min estimated: multi-tool-rest 28,418 s, twin-rest 26,093 s.
+          - name: multi-tool-rest+twin-rest
+            filter: "(binary_id(arris-ops::multi_tool_prop) and not test(/^(a_multi_tool_result|the_geometry_is_independent)/)) or (binary_id(arris-ops::twin_prop) and not test(/^((quadric|crossing)_twins|meridian_rows)/))"
+          # 223.4 min estimated: blend-seam-low 13,475 s, sweep-rest 40,133 s.
+          - name: blend-seam-low+sweep-rest
+            filter: "(binary_id(arris-ops::blend_prop) and test(/^a_walked_blend_does_not_depend_on_where_the_seam_lies::shard_[0-3]$/)) or ((binary_id(arris-ops::sweep_prop) and not test(/^(a_swept_body|the_checker_is_green|an_exact_path)/)) or binary_id(arris-ops::cancel_prop))"
+          # 220.6 min estimated: boolean-crossing 13,241 s, workspace-rest 39,707 s.
+          # every_other_pair_is_unsupported failed after 5,681 s: its shrink runs
+          # past the budget, and its cost counts as observed.
+          - name: boolean-crossing+workspace-rest
+            filter: "(binary(boolean_prop) and test(/^crossing_cylinders/)) or (not package(arris-ops) and not package(arris-io) and not binary_id(/^(arris::corpus|arris-geom::nurbs_nurbs_prop|arris-debug::recipe)$/))"
+          # 204.0 min estimated: boolean-quadric 25,832 s, split 23,130 s.
+          - name: boolean-quadric+split
+            filter: "(binary(boolean_prop) and test(/^quadric_operands/)) or (binary_id(arris-ops::split_prop) or binary_id(arris-ops::inertia))"
+          # 190.2 min estimated: blend-elbow 6,359 s, twin-boolean 39,294 s.
+          - name: blend-elbow+twin-boolean
+            filter: "(binary_id(arris-ops::blend_prop) and test(/^an_elbows_vanishing_end_is_pose_independent/)) or (binary_id(arris-ops::twin_prop) and test(/^(quadric|crossing)_twins/))"
+          # 162.5 min estimated: io 38,993 s.
           - name: io
-            filter: "package(arris-io) or binary_id(arris-debug::recipe)"
-          # 30,200.
-          - name: workspace-rest
-            filter: "not package(arris-ops) and not package(arris-io) and not binary_id(/^(arris::corpus|arris-geom::nurbs_nurbs_prop|arris-debug::recipe)$/)"
+            filter: "(package(arris-io) or binary_id(arris-debug::recipe))"
     env:
       ARRIS_PROPTEST_SEED: ${{ needs.seed.outputs.seed }}
       ARRIS_PROPTEST_CASES: "5000"

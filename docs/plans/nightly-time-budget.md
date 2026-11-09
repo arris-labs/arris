@@ -96,7 +96,7 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
   with `ARRIS_PROPTEST_BUDGET: "3600"` and JUnit uploaded, 21 jobs as they
   are. `tools/profile-test.sh`, `tools/workflows-test.sh`; one property under
   the profile writes JUnit holding its `prop-budget` line.
-- [ ] Step 4 **[1]** **[CI]** — Dispatch step 3; pack the 12 jobs from its
+- [x] Step 4 **[1]** **[CI]** — Dispatch step 3; pack the 12 jobs from its
   per-test times, each with its figure in a comment. `cargo nextest list` over
   the 12 filters holds each test in exactly one (commit body). A job past
   300 min lowers the budget by the rule, and the commit says so.
