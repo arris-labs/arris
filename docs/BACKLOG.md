@@ -197,6 +197,9 @@ reproduces it.
 - The reuse gate's `gh api` parse (`total_count` of successful `push` runs for a sha) is exercised only in CI, never by `--self-test`; a recorded response replayed through the lookup function would hold it (plans/ci-reuse-gate review)
 - A public `Orientation` constructor from a direction flag in `arris-topo`, so the hand-written `if … { Forward } else { Reversed }` left in `sweep/`, `boolean/pieces.rs`, `arris-io`'s STEP assembly and `arris-debug` (outside `rebuild::along`'s crate-private reach) can go; with it, `offset/faces.rs` stops converting an `Orientation` to a flag and back (the review of the rewrite seams).
 - Three copies of `cross` (7 lines each) in `arris-debug/src/render.rs`, `arris-io/src/stl.rs` and `arris-mesh/src/trimesh.rs` (three crates, so a shared one has a layer to find), which `duplicates.py` now lists since its parser counts functions with an array in the signature.
+- `copy_body` (`transform`, `mirror`) adds the moved coordinates' rounding to each measured tolerance on every copy, so a part moved back and forth many times keeps widening them, by tiny amounts; a bound or a reset to the file's measure, with a mirror case far from the origin as its test (plans/nightly-panics review)
+- The near-parallel verdict of two NURBS lines has no property since `MIN_SKEW` keeps `two_skew_lines…` off parallel: one that only asserts not-`Coincident` within a tolerance of parallel (`crates/arris-geom/tests/intersect_nurbs_curves.rs`; plans/nightly-panics review)
+- `.config/nextest.toml`'s 5.5 h cap on the elbow and standoff properties leaves 20 minutes of the nightly job's 350 for the disk freeing, `uv sync` and the debug build: a test near the cap is cancelled by the job before nextest reports; the nightly time-budget plan's budget replaces the hand caps (plans/nightly-panics review)
 
 ## Findings
 
@@ -263,16 +266,6 @@ above when it wants a fix; the block moves or is deleted then.
 - State: raw.
 - The fix is: shrink to a fixture and decide whether the bound or the measure of a NURBS face (the surface grid) is at fault.
 
-### slot-chain-and-elbow-outputs-fail-the-checker
-
-- What: a panic: `kernel bug: an operation's output fails the checker` (`crates/arris-ops/src/lib.rs:110`), `V3 v99: f42's surface at the pcurve end is 2.5e-3 away` for the slot chain through its kink (v100 too); the elbow's vanishing end panics the same way on 11-01, and on 11-05 and 11-07 its `shard_1` ends in `kernel bug: a geometry query failed: fit: the fit still deviates by 2.7e-8 with 3796 spans` (`3018` on 11-07), a typed `Internal` error rather than a panic.
-- Where: `slot_chain_through_its_kink_is_pose_independent::shard_1` (11-01, 11-02, 11-03) and `an_elbows_vanishing_end_is_pose_independent::shard_0` (11-01), `crates/arris-ops/tests/blend_prop.rs`; both properties are new (plans/tolerant-tangency step 9, commit `5e4e7023`, 2026-10-30).
-- Seen: runs 41292271476 (11-01, `0514ac15`, seed `fc72dc4e5cf7e6f0cd4773a1e32cf26574d0a31f2ff33a98d7de0b643169db98`), 41421013263 (11-02, `bbcea937`, seed `bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc`), 41611704820 (11-03, seed `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81`), 5000 cases.; 11-05 (run 42002718510, seed `cd3af2c65bc838d00637730aa75aa2389d0873d6dc560ca2017ccd9da51f1bc4`, commit `1a7bc1e6`, the elbow's `shard_1` by the fit error) and 11-07 (run 42356866658, seed `5f5f00655a43300dd98229aff1e3274c8a8bf1f185b5647b95a5c01de04e29df`, the same shard at 3018 spans). On 11-06 (run 42194578709, seed `7c4060bc63013af77e926b9724be6b65abd9c3d3d9b8f627fe93ecabbc6d81d7`) the elbow's shards 0 and 1 reach the four-hour limit instead, and the slot chain shows no failure on 11-04 to 11-07 only because its job is cancelled with the test still running.
-- Reproduce: `ARRIS_PROPTEST_SEED=fc72dc4e5cf7e6f0cd4773a1e32cf26574d0a31f2ff33a98d7de0b643169db98 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test blend_prop -E 'test(/slot_chain_through_its_kink_is_pose_independent|an_elbows_vanishing_end/)'`.
-- Evidence: the same vertices (v99, v100) at 2.5e-3 in all 8 panics of the 11-03 shard; the `blend` job was cancelled at 350 minutes on the same three nights, so the property's other shards are unread. 11-01's elbow panic is the same message. The replay on the 11-03 seed panics in 363 s on `shard_1`, shrunk to radius `0.004`, rotation `[0.6601067078114292, 0.3063697241533592, -0.6583548691682864, -0.1922643822109537]`, translation `[-95.06916248407532, 0, 0]`; the bisect the block asked for is not needed.
-- State: measured; open, deferred: the human accepted closing C11 with it open (2026-11-04). The shrunk pose is the fixture's input (`plans/nightly-panics` step 2). The slot chain's cause, found by step 3: not the blend. The 2.5e-3 is the healed tolerance of the plane's rim vertices itself, the measured gap plus the rounding at the file's coordinates (about 23 from the origin); the pose moves the part to about 97, the moved part's gaps round by more, and it failed V3 by up to 3e-15 out of `transform`, before the fillet ran. `transform` and `mirror` now grow every vertex's and edge's tolerance above the default by the moved coordinates' rounding; `blend/slot-chain-posed-pcurve-end` holds it. The elbow's 11-01 V3 was the same cause (its seed passes since). The elbow's fit, found by step 5: near the vanishing end v84 the faces meet 3.6e-4 rad off tangent, and the walked snap stopped once its residual was within rounding of the coordinates, which leaves a centre up to residual / sin θ across the valley; at about 310 from the origin that is 5.7e-8, above the fit's 1.25e-8, so the sections were noise and the fit ran out of spans. The snap now polishes a negligible residual with one more full step where it shortens it; `blend/elbow-posed-fit-span-limit` holds it, built as unposed.
-- The fix is: bring the pcurve end onto its face or refuse the blend by name; V3's tolerances do not move, so a loosened V3 is not the fix. The elbow's fit: converge within the span limit or refuse by name (`plans/nightly-panics` steps 4 and 5).
-
 ### blend-properties-leave-s5-undecided
 
 - What: `nothing unchecked` fails on a blend: `S5?` plane against NURBS (`oblique_chains_meet_on_the_rulings_offset`, `blend_prop.rs:391`), torus against torus and cylinder against torus (`fillets_through_a_vertex_of_four_edges_match_their_closed_forms`, `:1776`/`:1786`).
@@ -292,16 +285,6 @@ above when it wants a fix; the block moves or is deleted then.
 - Evidence: 11-03 `random_pairs::s3`: the sample's local minimum at [4.9131, 189.479] (39.2667) is not in `SurfaceExtrema`; 10-31 `random_pairs::s2`: [2.0153, -196.0547] (13.0301); 10-25: `isolated: []` for a minimum at 14.818. None panics; none shrunk. (The line this replaces recorded 10-16 and 10-20.)
 - State: raw.
 - The fix is: shrink one NURBS case to a `regression/` fixture; the grid seeds miss a minimum on a long NURBS domain.
-
-### two-skew-lines-twinned-are-coincident
-
-- What: the property's `hits_of` panics on `Ok(Coincident)` for the twinned NURBS of two skew lines through one point. The shrunk draw has `turn = 0.0`, where the two lines are one line, so `Coincident` is the right answer there; the unshrunk draw is not read yet (`plans/nightly-panics` step 7).
-- Where: `two_skew_lines_through_one_point_meet_there_as_their_twins_do`, `crates/arris-geom/tests/intersect_nurbs_curves.rs:55` (the test dates from 2026-10-19, plans/nurbs-nurbs-section step 8).
-- Seen: six nightlies, 10-23, 10-26, 10-29, 10-30, 11-01, 11-02 (runs 39918290175, 40287906018, 40842304608, 41027790791, 41292271476, 41421013263); 11-02 seed `bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc`, commit `bbcea937`, 5000 cases.
-- Reproduce: `ARRIS_PROPTEST_SEED=bb2adb029f2f2ba0f9f8f5bb45346089ce64fde4c649e8b2309a7b96ed72c9cc ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test intersect_nurbs_curves -E 'test(/two_skew_lines/)'` (about a second; the shrunk input is in the failure's message).
-- Evidence: the failing result is `Ok(Coincident)` where the property wants `Points`; the shrunk input is printed in the failure (not read further).
-- State: fixed in the test (plans/nightly-panics step 7): the unshrunk draw is `turn = π − 2.3e-4`, not `Coincident` but a hit 6.4e-9 from the closed form's against `CROSSING` 1e-9, rounding over the angle; no kernel defect. The generator keeps the lines `MIN_SKEW` off parallel.
-- The fix is: done; the block goes at `/retire-plan`.
 
 ### nurbs-trace-and-section-properties
 
@@ -362,16 +345,6 @@ above when it wants a fix; the block moves or is deleted then.
 - Evidence: `HalfDisc { radius: 1.0, height: 1.0, far: false }` at 0.34709188265045926 on faces 6 and 7.
 - State: raw.
 - The fix is: the property rejects the refusal by name, or the twinned ruling is blended (the backlog's line on a NURBS face against a coaxial cylinder is the nearest).
-
-### fuzz-intersect-curves-coincident-crash
-
-- What: a crash in the fuzz target: `panicked at src/lib.rs:552:9: coincident a on b at -1.06e-…: 3.16…`, a harness assertion on a coincident hit. The message's truncated exponent reads as a parameter of order 1e-310, but the input is a degree-2 NURBS whose whole domain is about 1e-71 wide, its spans from 1e-274 to 1e-71, against a line: `Ok(Coincident)` with the curve's start about 3.16e2 off. A denormal parameter is not the cause as first read.
-- Where: `fuzz/` target `intersect_curves`, the unit `crash-5f19ce12954e6ffc61179812b2d850b31e0b0df7`.
-- Seen: run 40469593843 (10-27, `83b4152d`), the Actions artifact `fuzz-intersect_curves` of that run (90 days); the other fuzz jobs ran to the limit without a crash.
-- Reproduce: the input is committed at `fuzz/crashes/intersect_curves/crash-5f19ce12954e6ffc61179812b2d850b31e0b0df7` (the artifact `fuzz-intersect_curves` of run 40469593843, which expires 2027-01-25); from `fuzz/`, `cargo +nightly fuzz run -s none intersect_curves crashes/intersect_curves/crash-5f19ce12954e6ffc61179812b2d850b31e0b0df7`, or `fuzz/show.rs`.
-- Evidence: the triage of 2026-11-07 (`96696781`) reproduced the crash on the committed input; the message's 3.16e2 offset is the measure, and `plans/nightly-panics` step 6 confirms it.
-- State: measured; open, deferred: the human accepted closing C11 with it open (2026-11-04). It panics; the input is now committed under `fuzz/crashes/`, so this copy is the record past the artifact's expiry.
-- The fix is: a `regression/` geometry fixture, and an `arris-geom` test that a curve with spans that narrow is never `Coincident` with a line it leaves (`plans/nightly-panics` step 6). The harness's assertion is right; the coincidence decision is what is wrong.
 
 ### nightly-fuzz-jobs-exceed-their-90-minutes
 
@@ -499,8 +472,8 @@ above when it wants a fix; the block moves or is deleted then.
 - Seen: runs 42002718510 (11-05, 9 timeouts in `blend`), 42194578709 (11-06, 10), 42356866658 (11-07, 9 in `blend` and the workspace-rest one), commit `1a7bc1e6`, 5000 cases.
 - Reproduce: `gh api repos/arris-labs/arris/actions/jobs/127161743944/logs | grep TIMEOUT` (the 11-05 `blend` job).
 - Evidence: the `TIMEOUT` lines of the three nights, 9 to 10 per `blend` job; the 11-07 `blend` job ends `cancelled` at the job limit.
-- State: measured.
-- The fix is: split the shards by measured time (the `prop_shards!` cost divisor, per the run-over block) or cut the cases of the slowest tests; `plans/nightly-panics` step 8 splits `blend` so its slot chain and elbow start at once, and the job-level limit is `nightly-property-jobs-reach-the-350-minute-limit`'s.
+- State: measured; run 42522745189 (11-08, the branch's dispatch, `82d7eceb`) after the hand split: the walked-seam property times out at 4 h in all 8 shards (`blend-seam-low` and `-high`), `sweep_prop`'s step round trip in one, and `sweep-bodies`, `twin-boolean` and `blend-rest` are cancelled at the job limit; the slot chain (both shards) and `blend-elbow` pass, no job carries `kernel bug`, and the panics are the harness's own. The hand split ends here: `docs/ideas/nightly-time-budget.md`'s plan replaces it.
+- The fix is: split the shards by measured time (the `prop_shards!` cost divisor, per the run-over block) or cut the cases of the slowest tests; step 8 of the nightly-panics plan split `blend` by hand (five jobs), and the job-level limit is `nightly-property-jobs-reach-the-350-minute-limit`'s.
 
 - S5 of a cone against a cylinder in a fuse result: the differential's case
   found a twice-fused elliptic cylinder, revolved cone and extrusion whose

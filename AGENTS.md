@@ -43,8 +43,9 @@ CASCADE cannot; closed with five nightly findings open, two of them panics
 (`docs/BACKLOG.md` §Findings). **C12, the plugin CAD's remaining asks**
 (opened 2026-11-04): draft and thicken, then `region2`; every kernel row of
 the histogram is 0, so ADR-0020's consumer amendment picked it.
-**Next:** C12's first `/idea` or `/plan`, with
-the nightly's two panics and `docs/ideas/refactor-after-c11.md`'s plans in
+The nightly's two panics (the posed slot chain and elbow, a NURBS curve
+called `Coincident`) are fixed. **Next:** C12's first `/idea` or `/plan`, with
+the nightly time budget and `docs/ideas/refactor-after-c11.md`'s plans in
 the side slot.
 
 ## Rules that are not derivable from the code

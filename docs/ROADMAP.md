@@ -951,8 +951,8 @@ sewing, which no part of the corpus needs (ADR-0058 §6).*
 - `region2` as public API over `Curve2` with exact predicates (A5),
   weighed against the backlog's narrowing of `pub` internals; the exact
   polygon–polygon overlap S5's coincident arm waits on rides on it.
-- Beside the cycle, in the second plan slot: the nightly's open findings,
-  the two panics first, and the refactor review's milestone plans.
+- Beside the cycle, in the second plan slot: the nightly's open findings
+  (the two panics are fixed) and the refactor review's milestone plans.
 
 **Out:** free-edge sewing (a backlog line until a part asks it); faceted
 solids and the reader's other refused subsets; variable-radius blends and

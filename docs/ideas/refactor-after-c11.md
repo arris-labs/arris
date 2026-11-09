@@ -1,6 +1,6 @@
 # Idea: refactor-after-c11
 
-- Status: Accepted (B); the rewrite seams plan is done and retired; the rest (`blend-phases`, then `census-and-tests`) is still to plan, in that order
+- Status: Accepted (B); the nightly's panics and the rewrite seams plans are done and retired; the rest (`blend-phases`, then `census-and-tests`) is still to plan, in that order
 - Raised: 2026-11-04
 - Prompt (verbatim from the human): "/refactor-review" (handed over by C11's close)
 
@@ -140,8 +140,8 @@ compared in the source) or **measured** (a count or a hash).
   kink and vanishing-end code, the code `blend-phases` moves. Its bisect
   range (`5e4e7023..bbcea937`) and fix should land on the code as it is.
 - **At most two active plans** (ADR-0020's closure before breadth). C12
-  takes the cycle's slot. The side slot holds the nightly's two panics,
-  then these plans.
+  takes the cycle's slot. The side slot held the nightly's two panics
+  (done), then these plans.
 
 ## Options
 
@@ -150,7 +150,7 @@ About 18 steps. C12 waits three plans for structure it needs only in
 part (the rewrite seams).
 
 ### B — Interleaved in the side slot
-1. The nightly's two panics.
+1. The nightly's two panics (done).
 2. The rewrite seams (about 5 steps; done), before C12's first code step, so
    draft and thicken write through `Rewrite::edge` and `StoredUse::new`
    from their first commit.
