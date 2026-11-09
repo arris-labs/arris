@@ -92,7 +92,7 @@ says what to write; **[2]** careful, a case to get right within a given design;
 
 - [x] Step 1 **[1]** — ADR-0085 and its README row, from the deltas and the
       idea's measurements.
-- [ ] Step 2 **[2, tier 3]** — `verify.sh`: the base under the lock, `covered`,
+- [x] Step 2 **[2, tier 3]** — `verify.sh`: the base under the lock, `covered`,
       `--in-flight`. `verify-test.sh`: three runs leave the middle `covered`,
       reading the last's verdict; a covered red reads `fail`; another line's
       queued commit is not covered; the stub sees the wider base after a red.
