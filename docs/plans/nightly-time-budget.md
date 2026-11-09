@@ -87,7 +87,7 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
 
 - [x] Step 1 **[1]** — ADR-0086, its amendment line in ADR-0024, *Signature*
   sharpened. Docs tests.
-- [ ] Step 2 **[2]** — The chunk loop in both entry points, its two variables,
+- [x] Step 2 **[2]** — The chunk loop in both entry points, its two variables,
   the `prop-budget` line, rustdoc with an example. Tests with a fake clock:
   stops before the overrun, runs chunk 0 past any budget, stops at the
   ceiling; a seeded failure names a chunk whose replay fails alone; unset, a

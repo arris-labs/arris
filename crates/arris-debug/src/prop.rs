@@ -19,6 +19,16 @@
 //! *cost* `c`: it runs [`cases`] over `c`, so one count can hold the whole
 //! suite to a tier's wall clock (ADR-0024's 2026-10-21 amendment).
 //!
+//! The nightly runs a shard against a time *budget*, not a count
+//! (ADR-0086): with `ARRIS_PROPTEST_BUDGET=<seconds>` set, [`check`] and
+//! [`check_shard_at`] run **chunks** of [`CHUNK_CASES`] cases, chunk `i` from
+//! [`chunk_seed`] of the shard's seed, until the next chunk would pass the
+//! budget or the tier's case count (the ceiling) is reached; a shard prints
+//! one `prop-budget:` line saying which. A failure names its chunk and
+//! prints the `ARRIS_PROPTEST_SEED=… ARRIS_PROPTEST_CHUNK=<i>` pair that
+//! reruns that chunk alone. With neither variable set, the path and the
+//! random streams are the ones above, unchanged.
+//!
 //! Regressions are not persisted by proptest: a failure becomes a fixture
 //! under `tests/fixtures/` with the seed in its commit body
 //! (`tests/fixtures/README.md` §Property-test failures).
@@ -56,6 +66,7 @@ pub mod twin;
 use arris_math::real;
 use core::fmt::Debug;
 use core::ops::RangeInclusive;
+use core::time::Duration;
 
 use arris_math::nalgebra::{Quaternion, UnitQuaternion};
 use arris_math::{Frame, Isometry, Point3, UnitVec3, Vec3};
@@ -68,6 +79,14 @@ pub const CASES_VAR: &str = "ARRIS_PROPTEST_CASES";
 /// The environment variable that sets the seed: 64 hex digits, as printed
 /// by a failure.
 pub const SEED_VAR: &str = "ARRIS_PROPTEST_SEED";
+/// The environment variable that sets a shard's time budget in seconds
+/// (ADR-0086); unset, a shard runs its whole case count.
+pub const BUDGET_VAR: &str = "ARRIS_PROPTEST_BUDGET";
+/// The environment variable that reruns one chunk of a shard alone, as a
+/// failure prints it beside [`SEED_VAR`] and [`CASES_VAR`].
+pub const CHUNK_VAR: &str = "ARRIS_PROPTEST_CHUNK";
+/// Cases per chunk: the unit a budgeted shard stops on and a failure replays.
+pub const CHUNK_CASES: u32 = 8;
 /// Cases per property when [`CASES_VAR`] is unset.
 pub const DEFAULT_CASES: u32 = 256;
 /// The seed when [`SEED_VAR`] is unset. Arbitrary and fixed.
@@ -149,15 +168,24 @@ fn runner_of(seed: &[u8; 32], cases: u32) -> TestRunner {
 /// Runs `test` over [`cases`] values of `strategy` from [`seed`]. On
 /// failure, panics with the shrunk input and the `ARRIS_PROPTEST_SEED=…`
 /// that reproduces the run.
+///
+/// With [`BUDGET_VAR`] or [`CHUNK_VAR`] set it is shard 0 of 1 of
+/// [`check_shard_at`], chunked; unset, it draws from [`seed`] itself, as
+/// [`try_check`] does.
 pub fn check<S, F>(strategy: S, test: F)
 where
     S: Strategy,
     S::Value: Debug,
     F: Fn(S::Value) -> Result<(), TestCaseError>,
 {
-    let seed = seed();
-    if let Err(message) = try_check(&seed, strategy, test) {
-        panic!("{message}");
+    let base = seed();
+    match Chunking::from_env() {
+        None => {
+            if let Err(message) = try_check(&base, strategy, test) {
+                panic!("{message}");
+            }
+        }
+        Some(plan) => run_chunked_from_env(&base, 0, 1, cases(), plan, strategy, test),
     }
 }
 
@@ -260,6 +288,10 @@ where
 
 /// [`check_shard`] for a property of cost `cost`: [`cases_per_shard_at`]
 /// values instead of [`cases_per_shard`].
+///
+/// With [`BUDGET_VAR`] set it runs chunks until the budget would be passed
+/// and prints a `prop-budget:` line; with [`CHUNK_VAR`] set it reruns that
+/// one chunk (see [`try_check_shard_chunked`]).
 pub fn check_shard_at<S, F>(shard: u32, shards: u32, cost: u32, strategy: S, test: F)
 where
     S: Strategy,
@@ -267,8 +299,21 @@ where
     F: Fn(S::Value) -> Result<(), TestCaseError>,
 {
     let base = seed();
-    if let Err(message) = try_check_shard_at(&base, shard, shards, cost, strategy, test) {
-        panic!("{message}");
+    match Chunking::from_env() {
+        None => {
+            if let Err(message) = try_check_shard_at(&base, shard, shards, cost, strategy, test) {
+                panic!("{message}");
+            }
+        }
+        Some(plan) => run_chunked_from_env(
+            &base,
+            shard,
+            shards,
+            cases_per_shard_at(shards, cost),
+            plan,
+            strategy,
+            test,
+        ),
     }
 }
 
@@ -318,6 +363,248 @@ where
         Err(TestError::Abort(reason)) => Err(format!(
             "property aborted in shard {shard} of {shards}: {reason}"
         )),
+    }
+}
+
+/// How a shard is chunked: its time budget, or the one chunk to replay.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Chunking {
+    /// Stop before a chunk whose predicted time would pass this; `None` is
+    /// no limit but the ceiling.
+    pub budget: Option<Duration>,
+    /// Run only this chunk, on its own.
+    pub replay: Option<u32>,
+}
+
+impl Chunking {
+    /// Reads [`BUDGET_VAR`] and [`CHUNK_VAR`]; `None` when neither is set,
+    /// which is the unchunked path. A value that does not parse is an
+    /// error, not a silent fallback.
+    pub fn from_env() -> Option<Chunking> {
+        Chunking::parse(
+            std::env::var(BUDGET_VAR).ok().as_deref(),
+            std::env::var(CHUNK_VAR).ok().as_deref(),
+        )
+    }
+
+    fn parse(budget: Option<&str>, chunk: Option<&str>) -> Option<Chunking> {
+        if budget.is_none() && chunk.is_none() {
+            return None;
+        }
+        let budget = budget.map(|v| {
+            v.trim()
+                .parse::<f64>()
+                .ok()
+                .filter(|s| s.is_finite() && *s >= 0.0)
+                .map(Duration::from_secs_f64)
+                .unwrap_or_else(|| panic!("{BUDGET_VAR}={v:?} is not a number of seconds"))
+        });
+        let replay = chunk.map(|v| {
+            v.trim()
+                .parse::<u32>()
+                .unwrap_or_else(|_| panic!("{CHUNK_VAR}={v:?} is not a chunk index"))
+        });
+        Some(Chunking { budget, replay })
+    }
+}
+
+/// Why a chunked shard stopped.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Stop {
+    /// The next chunk's predicted time would pass the budget.
+    Budget,
+    /// The shard ran its whole case count.
+    Ceiling,
+    /// One chunk was replayed on request.
+    Replay,
+}
+
+/// What a chunked shard spent: the `prop-budget:` line's figures.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Spent {
+    /// Cases run.
+    pub ran: u32,
+    /// The ceiling: the cases the shard would run unbudgeted.
+    pub ceiling: u32,
+    /// Time on the clock when it stopped.
+    pub elapsed: Duration,
+    /// Why it stopped.
+    pub stop: Stop,
+}
+
+impl core::fmt::Display for Spent {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let stop = match self.stop {
+            Stop::Budget => "budget",
+            Stop::Ceiling => "ceiling",
+            Stop::Replay => "replay",
+        };
+        write!(
+            f,
+            "prop-budget: ran {} of {} cases in {:.1} s (stop: {stop})",
+            self.ran,
+            self.ceiling,
+            self.elapsed.as_secs_f64()
+        )
+    }
+}
+
+/// The seed chunk `chunk` of a shard draws its cases from: `sha256(shard_seed
+/// ‖ chunk.to_le_bytes())`, so one chunk replays without the ones before it.
+///
+/// ```
+/// use arris_debug::prop::{DEFAULT_SEED, chunk_seed, shard_seed};
+///
+/// let shard = shard_seed(&DEFAULT_SEED, 3);
+/// assert_ne!(chunk_seed(&shard, 0), chunk_seed(&shard, 1));
+/// assert_ne!(chunk_seed(&shard, 0), shard);
+/// ```
+pub fn chunk_seed(shard_seed: &[u8; 32], chunk: u32) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(shard_seed);
+    hasher.update(chunk.to_le_bytes());
+    hasher.finalize().into()
+}
+
+/// The chunked run of shard `shard` of `shards`, a ceiling of `ceiling`
+/// cases, over an explicit `clock` (time elapsed since the shard began), so
+/// the stopping rule is tested without waiting.
+///
+/// Guarantees: chunk `i` runs [`CHUNK_CASES`] cases (fewer when the ceiling
+/// cuts the last) from [`chunk_seed`] of [`shard_seed`]. Chunk 0 always runs,
+/// whatever the budget. After it, a chunk starts only if the clock plus the
+/// slowest chunk so far stays within the budget, and never past the ceiling.
+/// With `replay` set, only that chunk runs. A failure names its chunk and
+/// the `ARRIS_PROPTEST_SEED=… ARRIS_PROPTEST_CHUNK=<i> ARRIS_PROPTEST_CASES=…`
+/// that reruns it alone on the same shard; the cases are [`cases`], the total
+/// the ceiling is derived from.
+///
+/// ```
+/// use arris_debug::prop::{self, Chunking, DEFAULT_SEED, Stop};
+/// use core::time::Duration;
+/// use proptest::prelude::*;
+/// use std::cell::Cell;
+///
+/// // A fake clock: every case costs one second.
+/// let now = Cell::new(0u64);
+/// let spent = prop::try_check_shard_chunked(
+///     &DEFAULT_SEED, 0, 1, 100,
+///     Chunking { budget: Some(Duration::from_secs(20)), replay: None },
+///     &mut || Duration::from_secs(now.get()),
+///     prop::finite_f64(0.0..=1.0),
+///     |v| { now.set(now.get() + 1); prop_assert!(v <= 1.0); Ok(()) },
+/// ).unwrap();
+/// assert_eq!((spent.ran, spent.stop), (16, Stop::Budget));
+/// ```
+#[allow(clippy::too_many_arguments)]
+pub fn try_check_shard_chunked<S, F>(
+    base: &[u8; 32],
+    shard: u32,
+    shards: u32,
+    ceiling: u32,
+    plan: Chunking,
+    clock: &mut dyn FnMut() -> Duration,
+    strategy: S,
+    test: F,
+) -> Result<Spent, String>
+where
+    S: Strategy,
+    S::Value: Debug,
+    F: Fn(S::Value) -> Result<(), TestCaseError>,
+{
+    assert!(
+        shard < shards,
+        "shard {shard} is not one of {shards} shards"
+    );
+    let shard_seed = shard_seed(base, shard);
+    let chunks = ceiling.div_ceil(CHUNK_CASES);
+    let run_chunk = |chunk: u32| -> Result<u32, String> {
+        let n = CHUNK_CASES.min(ceiling - chunk * CHUNK_CASES);
+        let mut runner = runner_of(&chunk_seed(&shard_seed, chunk), n);
+        let replay = format!(
+            "{SEED_VAR}={} {CHUNK_VAR}={chunk} {CASES_VAR}={}",
+            seed_hex(base),
+            cases()
+        );
+        match runner.run(&strategy, &test) {
+            Ok(()) => Ok(n),
+            Err(TestError::Fail(reason, value)) => Err(format!(
+                "property failed in shard {shard} of {shards}, chunk {chunk}: {reason}\nminimal failing input: {value:#?}\nreplay the chunk alone with {replay}"
+            )),
+            Err(TestError::Abort(reason)) => Err(format!(
+                "property aborted in shard {shard} of {shards}, chunk {chunk}: {reason}"
+            )),
+        }
+    };
+    if let Some(chunk) = plan.replay {
+        if chunk >= chunks {
+            return Err(format!(
+                "chunk {chunk} is past the shard's {chunks} chunks of {ceiling} cases"
+            ));
+        }
+        let ran = run_chunk(chunk)?;
+        return Ok(Spent {
+            ran,
+            ceiling,
+            elapsed: clock(),
+            stop: Stop::Replay,
+        });
+    }
+    let (mut ran, mut slowest) = (0u32, Duration::ZERO);
+    for chunk in 0..chunks {
+        let started = clock();
+        if chunk > 0
+            && plan
+                .budget
+                .is_some_and(|budget| started.saturating_add(slowest) > budget)
+        {
+            return Ok(Spent {
+                ran,
+                ceiling,
+                elapsed: started,
+                stop: Stop::Budget,
+            });
+        }
+        ran += run_chunk(chunk)?;
+        slowest = slowest.max(clock().saturating_sub(started));
+    }
+    Ok(Spent {
+        ran,
+        ceiling,
+        elapsed: clock(),
+        stop: Stop::Ceiling,
+    })
+}
+
+/// [`try_check_shard_chunked`] on the wall clock: prints the `prop-budget:`
+/// line (not for a replay) and panics with a failure's message.
+fn run_chunked_from_env<S, F>(
+    base: &[u8; 32],
+    shard: u32,
+    shards: u32,
+    ceiling: u32,
+    plan: Chunking,
+    strategy: S,
+    test: F,
+) where
+    S: Strategy,
+    S::Value: Debug,
+    F: Fn(S::Value) -> Result<(), TestCaseError>,
+{
+    let began = std::time::Instant::now();
+    match try_check_shard_chunked(
+        base,
+        shard,
+        shards,
+        ceiling,
+        plan,
+        &mut || began.elapsed(),
+        strategy,
+        test,
+    ) {
+        Ok(spent) if spent.stop != Stop::Replay => eprintln!("{spent}"),
+        Ok(_) => {}
+        Err(message) => panic!("{message}"),
     }
 }
 
@@ -621,6 +908,163 @@ mod tests {
                 assert!(shards * per >= cases().div_ceil(cost));
             }
         }
+    }
+
+    /// A fake clock over a counter the test body advances by `tick` per case.
+    fn ticking(
+        base: &[u8; 32],
+        ceiling: u32,
+        budget: Option<u64>,
+        tick: u64,
+    ) -> Result<Spent, String> {
+        let now = std::cell::Cell::new(0u64);
+        try_check_shard_chunked(
+            base,
+            0,
+            1,
+            ceiling,
+            Chunking {
+                budget: budget.map(Duration::from_secs),
+                replay: None,
+            },
+            &mut || Duration::from_secs(now.get()),
+            finite_f64(0.0..=1.0),
+            |_| {
+                now.set(now.get() + tick);
+                Ok(())
+            },
+        )
+    }
+
+    #[test]
+    fn budget_stops_before_the_chunk_that_would_overrun() {
+        // A chunk is 8 s: 8 + 8 <= 20 runs the second, 16 + 8 > 20 does not.
+        let spent = ticking(&DEFAULT_SEED, 1000, Some(20), 1).unwrap();
+        assert_eq!((spent.ran, spent.stop), (16, Stop::Budget));
+        assert_eq!(spent.elapsed, Duration::from_secs(16));
+        assert!(spent.to_string().ends_with("(stop: budget)"), "{spent}");
+    }
+
+    #[test]
+    fn chunk_zero_runs_past_any_budget() {
+        let spent = ticking(&DEFAULT_SEED, 1000, Some(0), 100).unwrap();
+        assert_eq!((spent.ran, spent.stop), (8, Stop::Budget));
+    }
+
+    #[test]
+    fn the_ceiling_cuts_the_last_chunk_and_stops_the_shard() {
+        let spent = ticking(&DEFAULT_SEED, 20, Some(1_000_000), 1).unwrap();
+        assert_eq!((spent.ran, spent.stop), (20, Stop::Ceiling));
+        let spent = ticking(&DEFAULT_SEED, 5, None, 1).unwrap();
+        assert_eq!((spent.ran, spent.stop), (5, Stop::Ceiling));
+        assert_eq!(
+            spent.to_string(),
+            "prop-budget: ran 5 of 5 cases in 5.0 s (stop: ceiling)"
+        );
+    }
+
+    #[test]
+    fn a_chunked_failure_names_its_chunk_and_the_replay_fails_alone() {
+        let failing = |v: f64| {
+            prop_assert!(v < 0.97, "too large");
+            Ok(())
+        };
+        let run = |plan: Chunking| {
+            try_check_shard_chunked(
+                &DEFAULT_SEED,
+                2,
+                4,
+                400,
+                plan,
+                &mut || Duration::ZERO,
+                finite_f64(0.0..=1.0),
+                failing,
+            )
+        };
+        let message = run(Chunking {
+            budget: None,
+            replay: None,
+        })
+        .unwrap_err();
+        assert!(message.contains("shard 2 of 4, chunk "), "{message}");
+        let word = |key: &str| {
+            message
+                .lines()
+                .find_map(|l| l.split_once(&format!("{key}=")))
+                .and_then(|(_, rest)| rest.split_whitespace().next())
+                .unwrap_or_else(|| panic!("the message names {key}: {message}"))
+                .to_owned()
+        };
+        assert_eq!(parse_seed(&word(SEED_VAR)), Some(DEFAULT_SEED));
+        let chunk: u32 = word(CHUNK_VAR).parse().unwrap();
+        assert!(chunk > 0, "the seeded failure is past chunk 0: {message}");
+        let alone = run(Chunking {
+            budget: None,
+            replay: Some(chunk),
+        })
+        .unwrap_err();
+        assert_eq!(message, alone, "the chunk alone fails the same way");
+        // The chunks before it pass on their own.
+        for earlier in 0..chunk {
+            assert!(
+                run(Chunking {
+                    budget: None,
+                    replay: Some(earlier),
+                })
+                .is_ok(),
+                "chunk {earlier}"
+            );
+        }
+        let past = run(Chunking {
+            budget: None,
+            replay: Some(50),
+        })
+        .unwrap_err();
+        assert!(past.contains("past the shard's 50 chunks"), "{past}");
+    }
+
+    #[test]
+    fn chunk_seeds_differ_from_each_other_and_from_their_shard() {
+        let shard = shard_seed(&DEFAULT_SEED, 1);
+        let seeds: std::collections::BTreeSet<_> = (0..32).map(|i| chunk_seed(&shard, i)).collect();
+        assert_eq!(seeds.len(), 32);
+        assert!(!seeds.contains(&shard));
+    }
+
+    #[test]
+    fn unset_the_stream_is_the_shards_own() {
+        assert_eq!(Chunking::parse(None, None), None);
+        assert_eq!(
+            Chunking::parse(Some(" 3600 "), None),
+            Some(Chunking {
+                budget: Some(Duration::from_secs(3600)),
+                replay: None
+            })
+        );
+        assert_eq!(
+            Chunking::parse(None, Some("4")),
+            Some(Chunking {
+                budget: None,
+                replay: Some(4)
+            })
+        );
+        // The unchunked path draws from the shard seed through one runner.
+        let mut runner = runner_of(&shard_seed(&DEFAULT_SEED, 1), cases_per_shard(3));
+        let direct = std::cell::RefCell::new(Vec::new());
+        runner
+            .run(&finite_f64(0.0..=1.0), |v| {
+                direct.borrow_mut().push(v);
+                Ok(())
+            })
+            .unwrap();
+        let direct = direct.into_inner();
+        assert_eq!(drawn(&DEFAULT_SEED, 1, 3), direct);
+    }
+
+    #[test]
+    fn a_budget_that_is_not_seconds_is_an_error() {
+        let bad = std::panic::catch_unwind(|| Chunking::parse(Some("soon"), None));
+        assert!(bad.is_err());
     }
 
     #[test]
