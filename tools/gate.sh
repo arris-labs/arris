@@ -38,7 +38,12 @@
 #                                     only sweeps along a path)
 #   arris-ops/src/{offset,shell,transform,mirror}   that area's corpus tests
 #                                     (offset/ reaches shell/ too: shell is built over it)
-#   arris-ops/src/{sweep,blend} otherwise   the whole corpus, on purpose
+#   arris-ops/src/blend/              the `blend` area and the rows of every
+#                                     fixture outside blend/, real/ and
+#                                     regression/ that has a fillet or chamfer
+#                                     op (named by test); the whole corpus when
+#                                     anything outside blend/ names it (ADR-0085)
+#   arris-ops/src/sweep otherwise     the whole corpus, on purpose
 #   any other crate source (mesh, debug, the rest of ops)   the whole corpus
 #   crates/arris-py/ (anything)       its own tests and its rdeps (none), no
 #                                     corpus: the binding adds no geometry, and
@@ -93,6 +98,7 @@ prose=no
 doc=no
 read_back=()    # staged fixtures whose area has a STEP round trip
 tool_tests=()   # tools/<name>-test.sh of the changed tools/<name>.sh
+blend=no        # a file of arris-ops/src/blend/ changed
 
 add_term() {
   local t
@@ -130,10 +136,13 @@ while IFS= read -r p; do
             src/boolean/*) need_corpus part; add_area boolean; add_area provenance; add_area split ;;
             src/sweep/loft.rs|src/sweep/loft_exact.rs) need_corpus part; add_area loft ;;
             src/sweep/along.rs) need_corpus part; add_area sweep ;;
-            # The rest of sweep/ (extrude, revolve, exact, refuse, mod) and all
-            # of blend/ feed nearly every recipe: the blend op is in seven
-            # areas' fixtures and extrude in almost all, so the whole corpus.
-            src/sweep/*|src/blend/*) corpus=all ;;
+            # The rest of sweep/ (extrude, revolve, exact, refuse, mod) feeds
+            # nearly every recipe: extrude is in almost all, so the whole corpus.
+            src/sweep/*) corpus=all ;;
+            # blend/ is reached through `fillet` and `chamfer` alone: the
+            # `blend` area and the rows of every fixture that calls one
+            # (ADR-0085), unless the guard below finds another caller.
+            src/blend/*) need_corpus part; add_area blend; blend=yes ;;
             src/offset/*) need_corpus part; add_area offset; add_area shell ;;
             src/shell/*) need_corpus part; add_area shell ;;
             src/transform.rs|src/mirror.rs) need_corpus part; add_area transform ;;
@@ -181,6 +190,32 @@ while IFS= read -r p; do
   esac
 done <<<"$paths"
 
+# blend/ reaches the corpus through `fillet` and `chamfer` alone (ADR-0085).
+# The rows of the fixtures that call one, outside the `blend` area (its prefix
+# is a term of its own), `real` (out of `fast`) and `regression` (ignored),
+# are named by test. The guard: another way into blend/, or a `lib.rs`
+# re-export that is not exactly the two ops, and the corpus is whole again.
+names=()
+if [ "$blend" = yes ] && [ "$corpus" != all ]; then
+  if grep -rnE 'blend::|crate::(fillet|chamfer)' crates/arris-ops/src --include='*.rs' |
+    grep -vE '^crates/arris-ops/src/blend/' |
+    grep -vE '^crates/arris-ops/src/lib\.rs:[0-9]+:pub use blend::\{chamfer, fillet\};$' |
+    grep -q .; then
+    corpus=all
+  else
+    dirs=$(grep -lE '"op"[[:space:]]*:[[:space:]]*"(fillet|chamfer)"' -r tests/fixtures --include=fixture.json 2>/dev/null |
+      grep -vE '^tests/fixtures/(blend|real|regression)/' | sed 's#^tests/fixtures/##; s#/fixture\.json$##' || true)
+    if [ -n "$dirs" ]; then
+      # A row's name, by its "area/dir" string (several rows can share one).
+      while IFS= read -r n; do
+        [ -n "$n" ] && names+=("$n")
+      done < <(grep -oE '^[[:space:]]*[a-z0-9_]+ => (run|part|query|variant) "[^"]+"' crates/arris/tests/corpus.rs |
+        sed -E 's/^[[:space:]]*([a-z0-9_]+) => [a-z]+ "([^"]+)"/\2 \1/' |
+        awk 'NR==FNR { want[$0]=1; next } ($1 in want) { print $2 }' <(printf '%s\n' "$dirs") - | sort -u)
+    fi
+  fi
+fi
+
 # A doc comment added or removed in a changed Rust file (staged, or the range).
 if [ "$doc" = no ] && git diff "${diffargs[@]}" -U0 -- 'crates/*.rs' 2>/dev/null |
   grep -qE '^[+-][[:space:]]*//[/!]'; then
@@ -220,7 +255,11 @@ else
       all) parts+=("$u | $CORPUS") ;;
       part)
         pre=$(join '|' "${areas[@]}")
-        parts+=("($u & not $CORPUS) | ($CORPUS & test(/^(${pre}|${BASE})_/))") ;;
+        by_name=""
+        if [ ${#names[@]} -gt 0 ]; then
+          by_name=" | ($CORPUS & test(/^($(join '|' "${names[@]}"))\$/))"
+        fi
+        parts+=("($u & not $CORPUS) | ($CORPUS & test(/^(${pre}|${BASE})_/))$by_name") ;;
       none) parts+=("$u") ;;
     esac
   fi

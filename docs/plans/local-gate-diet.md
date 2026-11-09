@@ -100,7 +100,7 @@ says what to write; **[2]** careful, a case to get right within a given design;
       over a running HEAD returns first; a prose commit between them; inline
       still waits; `pre-push` passes a covered commit whose run passed.
       `git.md`; `GLOSSARY.md` *Covered*, *Verified*, *Gate*.
-- [ ] Step 4 **[2]** — D2's reader, row lookup and guard. `gate-test.sh`, in a
+- [x] Step 4 **[2]** — D2's reader, row lookup and guard. `gate-test.sh`, in a
       scratch tree: a blending fixture outside `blend/` is reached, a
       non-blending one is not, a variant fixture reaches every row, a caller
       outside `blend/` gives `corpus=all`, `sweep/mod.rs` keeps it.

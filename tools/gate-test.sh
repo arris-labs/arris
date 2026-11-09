@@ -60,9 +60,9 @@ done
 f=$(key filter "$(plan crates/arris-ops/src/sweep/along.rs)")
 has "along" "$f" "^(sweep|"
 lacks "along" "$f" "loft"
-# The rest of sweep/ and blend/ is the whole corpus, deliberately.
+# The rest of sweep/ is the whole corpus, deliberately.
 for p in crates/arris-ops/src/sweep/extrude.rs crates/arris-ops/src/sweep/exact.rs \
-  crates/arris-ops/src/sweep/mod.rs crates/arris-ops/src/blend/stripe.rs; do
+  crates/arris-ops/src/sweep/mod.rs; do
   has "whole $p" "$(key filter "$(plan "$p")")" "rdeps(arris-ops) | binary_id(arris::corpus)"
 done
 
@@ -187,6 +187,73 @@ for d in tests/fixtures/*/; do
     [[ " $whole_dirs " == *" $d "* ]] ||
     { echo "FAIL drift: tests/fixtures/$d is neither an area nor deliberately whole" >&2; fail=1; }
 done
+
+# blend/ (ADR-0085): the `blend` area, the rows of the fixtures outside it that
+# fillet or chamfer, and no other row. Read from the real tree first: a
+# fixture that blends is reached, one that does not is not.
+f=$(key filter "$(plan crates/arris-ops/src/blend/stripe.rs)")
+has "blend" "$f" "rdeps(arris-ops)"
+has "blend" "$f" "^(blend|"
+lacks "blend" "$f" "binary_id(arris::corpus)\" | "
+has "blend by name" "$f" "transform_mirror_filleted_box"
+lacks "blend by name" "$f" "primitive_box"
+
+# The same in a scratch tree, where the fixtures are ours.
+blend_scratch=$(mktemp -d)
+(
+  cd "$blend_scratch"
+  git init -q . && git config user.email t@t && git config user.name t
+  mkdir -p tools crates/arris-ops/src/blend crates/arris-ops/src/sweep crates/arris/tests
+  mkdir -p tests/fixtures/transform/blends tests/fixtures/transform/plain \
+    tests/fixtures/provenance/multi tests/fixtures/blend/own tests/fixtures/regression/r
+  cp "$gate" tools/gate.sh
+  printf 'mod blend;\npub use blend::{chamfer, fillet};\n' >crates/arris-ops/src/lib.rs
+  printf 'pub fn fillet() {}\n' >crates/arris-ops/src/blend/mod.rs
+  printf 'pub fn extrude() {}\n' >crates/arris-ops/src/sweep/mod.rs
+  printf '{"steps":[{"op":"fillet"}]}\n' >tests/fixtures/transform/blends/fixture.json
+  printf '{"steps":[{"op":"extrude"}]}\n' >tests/fixtures/transform/plain/fixture.json
+  # a blend only under `variants`, in a directory that has two rows
+  printf '{"variants":{"a":{"steps":[{"op": "chamfer"}]}}}\n' >tests/fixtures/provenance/multi/fixture.json
+  printf '{"steps":[{"op":"fillet"}]}\n' >tests/fixtures/blend/own/fixture.json
+  printf '{"steps":[{"op":"fillet"}]}\n' >tests/fixtures/regression/r/fixture.json
+  cat >crates/arris/tests/corpus.rs <<'RS'
+corpus_tests! {
+    transform_blends => run "transform/blends";
+    transform_plain => run "transform/plain";
+    /// Two rows, one directory.
+    provenance_multi_one => variant "provenance/multi", "a";
+    provenance_multi_two => variant "provenance/multi", "b";
+    blend_own => run "blend/own";
+    regression_r => run "regression/r";
+}
+RS
+  git add . && git commit -q -m base
+  has() { [[ "$2" == *"$3"* ]] || { echo "FAIL $1: expected '$3' in: $2" >&2; exit 1; }; }
+  lacks() { [[ "$2" != *"$3"* ]] || { echo "FAIL $1: did not expect '$3' in: $2" >&2; exit 1; }; }
+  p() { tools/gate.sh plan "$@" | sed -n 's/^filter=//p'; }
+  f=$(p crates/arris-ops/src/blend/mod.rs)
+  has "scratch blend" "$f" "^(blend|a|an|build|primitive)_/"
+  has "scratch blending row" "$f" "transform_blends"
+  lacks "scratch plain row" "$f" "transform_plain"
+  has "scratch variant rows" "$f" "provenance_multi_one|provenance_multi_two"
+  lacks "scratch blend dir by name" "$f" "blend_own"
+  lacks "scratch regression" "$f" "regression_r"
+  lacks "scratch whole" "$f" "all()"
+  # A caller outside blend/: the whole corpus.
+  printf 'use crate::fillet;\n' >crates/arris-ops/src/sweep/caller.rs
+  has "scratch caller" "$(p crates/arris-ops/src/blend/mod.rs)" "rdeps(arris-ops) | binary_id(arris::corpus)"
+  rm crates/arris-ops/src/sweep/caller.rs
+  printf 'pub fn g() { blend::stripe(); }\n' >crates/arris-ops/src/sweep/caller.rs
+  has "scratch blend:: caller" "$(p crates/arris-ops/src/blend/mod.rs)" "rdeps(arris-ops) | binary_id(arris::corpus)"
+  rm crates/arris-ops/src/sweep/caller.rs
+  # A re-export that is more than the two ops.
+  printf 'mod blend;\npub use blend::{chamfer, fillet, stripe};\n' >crates/arris-ops/src/lib.rs
+  has "scratch re-export" "$(p crates/arris-ops/src/blend/mod.rs)" "rdeps(arris-ops) | binary_id(arris::corpus)"
+  git checkout -q crates/arris-ops/src/lib.rs
+  # sweep/mod.rs keeps the whole corpus.
+  has "scratch sweep" "$(p crates/arris-ops/src/sweep/mod.rs)" "rdeps(arris-ops) | binary_id(arris::corpus)"
+) || fail=1
+rm -rf "$blend_scratch"
 
 # Doc comments: read from the staged diff, in a scratch repo.
 scratch=$(mktemp -d)
