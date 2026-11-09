@@ -131,30 +131,18 @@ oracle-cache = { max-threads = 1 }
 filter = "binary(oracle_cache)"
 test-group = "oracle-cache"
 
-# The elbow's pose-independence property at the nightly's 5000 cases needs
-# about 12,000 s a shard when run beside other shards (run 42448712105) and
-# was killed at the default's 14,400 s (4 h) in run 42480923231, so its real
-# need is near or over 4 h. Its own nightly job (`blend-elbow`, timeout-minutes
-# 350) gets a cap of 5.5 h, inside the job's limit. A profile's own overrides
-# are checked before `default`'s, so `fast` restates its cap to stay as it was.
-[[profile.default.overrides]]
-filter = "test(/^an_elbows_vanishing_end_is_pose_independent/)"
-slow-timeout = { period = "30m", terminate-after = 11 }
+# `nightly` is the property jobs' profile (ADR-0086). A test is stopped at
+# 2 h (30m x 4), not the default's 4 h: the property shards stop themselves
+# at their time budget (`ARRIS_PROPTEST_BUDGET`), so a cap is only the
+# backstop for one chunk that overruns. The elbow and standoff caps of 5.5 h
+# that stood here are gone with the nightly's 5000-case count. The global
+# cap, 315 min under the job's 350, makes nextest write JUnit before the job
+# is cut; a cancelled job writes none.
+[profile.nightly]
+test-threads = "num-cpus"
+slow-timeout = { period = "30m", terminate-after = 4 }
+global-timeout = "315m"
 
-[[profile.fast.overrides]]
-filter = "test(/^an_elbows_vanishing_end_is_pose_independent/)"
-slow-timeout = { period = "60s", terminate-after = 8 }
-
-# The standoff-roots property at the nightly's 5000 cases was still running on
-# all four shards at the 350-minute cut of run 42480923231, past 10,800 s each
-# (it started after `slab_lips_roll_on_a_cross_holes_rim`, about 6,200 s a
-# shard; probably about 14,000 s), so its need is near or over 4 h. Its own
-# nightly job (`blend-standoff`, timeout-minutes 350) gets a cap of 5.5 h,
-# inside the job's limit; `fast` restates its cap, as for the elbow.
-[[profile.default.overrides]]
-filter = "test(/^standoff_roots_roll_on_the_plates_edge/)"
-slow-timeout = { period = "30m", terminate-after = 11 }
-
-[[profile.fast.overrides]]
-filter = "test(/^standoff_roots_roll_on_the_plates_edge/)"
-slow-timeout = { period = "60s", terminate-after = 8 }
+[profile.nightly.junit]
+path = "junit.xml"
+store-success-output = true

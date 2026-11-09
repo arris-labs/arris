@@ -150,6 +150,9 @@ jobs:
     env:
       ARRIS_PROPTEST_SEED: ${{ needs.seed.outputs.seed }}
       ARRIS_PROPTEST_CASES: "5000"
+      # Each shard runs chunks of cases until this many seconds are spent
+      # (ADR-0086): the case count above is the ceiling, not the cost.
+      ARRIS_PROPTEST_BUDGET: "3600"
     steps:
       # The runner's disk is about 14 GB and each job builds a debug
       # workspace (the nightly's jobs ran out of it at compile, 2026-11):
@@ -166,9 +169,18 @@ jobs:
       - run: echo "ARRIS_PROPTEST_SEED=$ARRIS_PROPTEST_SEED ARRIS_PROPTEST_CASES=$ARRIS_PROPTEST_CASES"
       # `--test-threads num-cpus`, as `ci.yml` has: the default profile's
       # 16 threads on a 4-vCPU runner ran about 16 heavy properties at once.
-      - run: cargo nextest run --workspace --no-fail-fast --test-threads num-cpus -E "$FILTER"
+      - run: cargo nextest run --workspace --no-fail-fast --profile nightly --test-threads num-cpus -E "$FILTER"
         env:
           FILTER: ${{ matrix.filter }}
+      # JUnit holds each shard's `prop-budget:` line (store-success-output in
+      # `.config/nextest.toml`'s nightly profile); written even at the limit.
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-${{ matrix.name }}
+          path: target/nextest/nightly/junit.xml
+          if-no-files-found: warn
+          retention-days: 90
 
   # The differential at CI's recipe count, on the night's seed rather than
   # the fixed one (ADR-0024 §2), and the corpus's ignored tests but the

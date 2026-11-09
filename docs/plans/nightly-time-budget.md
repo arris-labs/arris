@@ -92,7 +92,7 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
   stops before the overrun, runs chunk 0 past any budget, stops at the
   ceiling; a seeded failure names a chunk whose replay fails alone; unset, a
   stream equals today's.
-- [ ] Step 3 **[1]** — The profile, the overrides removed, `nightly.yml` on it
+- [x] Step 3 **[1]** — The profile, the overrides removed, `nightly.yml` on it
   with `ARRIS_PROPTEST_BUDGET: "3600"` and JUnit uploaded, 21 jobs as they
   are. `tools/profile-test.sh`, `tools/workflows-test.sh`; one property under
   the profile writes JUnit holding its `prop-budget` line.
