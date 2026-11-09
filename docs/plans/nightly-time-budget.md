@@ -104,7 +104,7 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
   small JUnit holding 11-08's twelve message shapes, a differential failure, a
   timeout, a harness panic, a kernel panic and a pass: each signature, new /
   known / quiet, the exit code, red on a missing file.
-- [ ] Step 6 **[1]** — `tools/nightly-known.txt` seeded from run 42522745189
+- [x] Step 6 **[1]** — `tools/nightly-known.txt` seeded from run 42522745189
   and step 4's; a failure with no §Findings block gets one first. The lint,
   with a scratch-tree case that catches a dangling slug. A
   `tools/real-parts.waits` line for `nist_ctc_02_asme1_ap242-e2` on

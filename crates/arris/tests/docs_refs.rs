@@ -126,6 +126,44 @@ fn stale_plan_refs(root: &Path) -> Vec<String> {
     problems
 }
 
+/// Every slug `tools/nightly-known.txt` lists names a heading of
+/// `docs/BACKLOG.md` §Findings (ADR-0086 §6): a known failure is accounted
+/// for by its open finding, so an entry whose finding is gone or was never
+/// written is a problem.
+fn known_signature_problems(root: &Path) -> Vec<String> {
+    let known = root.join("tools/nightly-known.txt");
+    let Ok(text) = std::fs::read_to_string(&known) else {
+        return vec![format!("{} is missing", known.display())];
+    };
+    let backlog = std::fs::read_to_string(root.join("docs/BACKLOG.md")).unwrap_or_default();
+    let findings = backlog
+        .split_once("\n## Findings\n")
+        .map_or("", |(_, rest)| {
+            rest.split_once("\n## ").map_or(rest, |(s, _)| s)
+        });
+    let headings: Vec<&str> = findings
+        .lines()
+        .filter_map(|l| l.strip_prefix("### "))
+        .map(str::trim)
+        .collect();
+    let mut problems = Vec::new();
+    for line in text.lines().map(str::trim) {
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let Some(slug) = line.split_whitespace().next() else {
+            continue;
+        };
+        if !headings.contains(&slug) {
+            problems.push(format!(
+                "{}: '{slug}' names no heading in docs/BACKLOG.md §Findings",
+                known.display()
+            ));
+        }
+    }
+    problems
+}
+
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -141,6 +179,44 @@ fn the_repo_cites_only_plans_that_still_exist() {
         "stale plan citations:\n{}",
         problems.join("\n")
     );
+}
+
+#[test]
+fn known_signatures_name_open_findings() {
+    let problems = known_signature_problems(&repo_root());
+    assert!(
+        problems.is_empty(),
+        "dangling nightly-known entries:\n{}",
+        problems.join("\n")
+    );
+}
+
+/// A scratch tree whose known list names an open finding, a finding that is
+/// not written, and a heading under `## Rejected` (not a finding): the lint
+/// names the last two and passes the first.
+#[test]
+fn a_known_signature_naming_no_finding_is_caught() {
+    let dir = std::env::temp_dir().join(format!("arris-known-lint-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("docs")).unwrap();
+    std::fs::create_dir_all(dir.join("tools")).unwrap();
+    std::fs::write(
+        dir.join("docs/BACKLOG.md"),
+        "# Backlog\n\n## Findings\n\n### open-finding\n- What: x\n\n## Rejected\n\n### not-a-finding\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("tools/nightly-known.txt"),
+        "# a comment\nopen-finding arris-ops::p::t assert x\n\
+         gone-finding arris-ops::p::t assert y\nnot-a-finding arris-ops::p::t assert z\n",
+    )
+    .unwrap();
+
+    let problems = known_signature_problems(&dir);
+    assert_eq!(problems.len(), 2, "{problems:?}");
+    assert!(problems.iter().any(|p| p.contains("'gone-finding'")));
+    assert!(problems.iter().any(|p| p.contains("'not-a-finding'")));
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 /// A scratch tree with a citation of a plan that was never written, next to

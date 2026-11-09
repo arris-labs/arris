@@ -1,0 +1,43 @@
+# The nightly's known failures (ADR-0086 §6, read by tools/nightly-triage.sh):
+# a failure whose `<source> <class> <key>` is listed here is accounted for by
+# the open finding `<slug>` (a heading in docs/BACKLOG.md §Findings) and leaves
+# its job green; any other signature is new and red. `<source>` is the nextest
+# classname and the test's name with its shard suffix dropped; `<key>` is the
+# class's key as the script prints it, `-` for a timeout or an abort. Seeded
+# from run 42659620551 (2026-11-09). `known_signatures_name_open_findings`
+# (crates/arris/tests/docs_refs.rs) holds each slug to a §Findings heading.
+
+# A fillet of a blend's oblique chains meets an unchecked S5 pair.
+blend-properties-leave-s5-undecided arris-ops::blend_prop::oblique_chains_meet_on_the_rulings_offset assert nothing unchecked S
+# A cusp corner whose two faces are tori: no closed form for the fillet.
+cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::cusp_corner_complement_fillet_cancel_and_refusal_roll_back assert Fillet: no closed form for +e
+cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::cusp_corner_complement_fillets_are_the_mutual_trim assert Fillet of both edges of the cusp: no closed form for +e
+# The twins of two analytic surfaces: the section count differs.
+nurbs-twin-and-spline-equalities-fail arris-geom::nurbs_nurbs_prop::the_twins_of_two_analytic_surfaces_meet_where_the_pair_does assert assertion failed: `(left == right)` left
+# A NURBS grid's point the line was drawn through is not among the hits.
+nurbs-twin-and-spline-equalities-fail arris-geom::line_nurbs::a_random_nurbs_is_met_where_its_grid_is_pierced assert the point the line was drawn through is not among [CurveSurfaceHit { t
+# Volume of cut_many differs from the chain of cuts in the reverse order.
+cut-many-differs-from-the-chain-of-cuts arris-ops::multi_tool_prop::the_geometry_is_independent_of_the_order_of_the_tools assert cut_many in the reverse order: volume
+# A fillet or chamfer of a split's side is not clean at Full.
+split-side-of-a-body-is-not-an-operand-clean-at-full arris-ops::split_prop::a_side_is_an_operand_of_every_operation assert chamfer of the negative side: not clean at Full L
+split-side-of-a-body-is-not-an-operand-clean-at-full arris-ops::split_prop::a_side_is_an_operand_of_every_operation assert fillet of the negative side: not clean at Full S
+split-side-of-a-body-is-not-an-operand-clean-at-full arris-ops::split_prop::a_side_is_an_operand_of_every_operation assert fillet of the positive side: not clean at Full S
+# The two sides of a split differ from the body by about 1e-8 in volume.
+split-sides-differ-from-the-body-by-1e-8 arris-ops::split_prop::the_sides_add_up_to_the_body assert volumes
+# Single tests past the four-hour cap (TIMEOUT); their later shards report nothing.
+nightly-tests-time-out-at-four-hours arris-ops::sweep_prop::a_swept_body_round_trips_through_step timeout -
+nightly-tests-time-out-at-four-hours arris-ops::sweep_prop::the_checker_is_green_or_the_sweep_is_a_named_refusal timeout -
+# The grid's minimum of a NURBS surface, and a random pair's local minimum, are not reported.
+extrema-surfaces-and-neighbours-fail-on-nurbs-grids arris-geom::extrema_surfaces::nurbs_feet assert the grid's minimum at
+extrema-surfaces-and-neighbours-fail-on-nurbs-grids arris-geom::extrema_surfaces::random_pairs assert the sample's local minimum at
+# The fit of an intersection still deviates past its span cap.
+nurbs-trace-and-section-properties arris-geom::intersect_surfaces::every_other_pair_is_unsupported assert fit: the fit still deviates by
+# A torus against a torus, or a NURBS against a torus, section is refused as degenerate.
+nurbs-trace-and-section-properties arris-geom::trace_nurbs::random_nurbs_and_torus_pairs_trace assert refused: the section of the NURBS surface and the torus surface is degenerate: turning points of the section that cannot be told apart
+nurbs-trace-and-section-properties arris-geom::trace_torus::random_horn_and_spindle_sections_keep_their_band assert refused: the section of the torus surface and the torus surface is degenerate: turning points of the section that cannot be told apart
+# A traced point off the other surface. The key is `-` (the message opens with a
+# brace before its first digit): weak, it covers any other `-` assert of this test.
+nurbs-trace-and-section-properties arris-geom::trace::random_cone_pairs_trace assert -
+# The multi-tool differential's counts disagreement with Open CASCADE (read from
+# the job log of run 42659620551: the differential's JUnit is not uploaded yet).
+differential-multi-tool-disagreements arris::differential::arris_and_the_oracle_agree_on_multi_tool_booleans differential Disagree(counts)
