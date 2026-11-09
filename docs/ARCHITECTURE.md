@@ -2071,8 +2071,19 @@ B-Rep).
   case counts (16 at the hook, ADR-0066) and whether `cargo doc` is due,
   and `tools/gate-test.sh` asserts it, each `arris-ops` arm against the
   tree (a `loft` change selects the `loft` area, `along.rs` the `sweep`
-  area, the rest of `sweep/` and `blend/` the whole corpus); the pre-commit hook runs what it says, `/retire-plan` the
-  full profile at 256 cases, CI at 1000. `tools/stop-gate.sh` stops a
+  area, the rest of `sweep/` the whole corpus; a `blend/` change selects the
+  `blend` area and the rows of every fixture outside `blend/`, `real/` and
+  `regression/` whose `fixture.json` has a fillet or chamfer, and any caller
+  of `blend` outside it widens that to the whole corpus). Workflows, the
+  nextest config, regression fixtures and the oracle's files are placed
+  too: a workflow or the config runs no nextest, only its tool test; a
+  regression fixture runs the lint and the tests that read its slug; an
+  oracle file runs the packages and binaries that call it. The pre-commit
+  hook runs what it says and never waits on an earlier verification: a
+  queued run is covered by the next one over its range (ADR-0085).
+  `/retire-plan` runs the full profile at 256 cases and records the
+  verdict (`tools/gate-reuse.sh`), which `/close-cycle` and `/release`
+  reuse while no code path differs; CI runs 1000. `tools/stop-gate.sh` stops a
   stuck hook or test run in this checkout, and only in it.
 - **`tools/ci-reuse.sh`**: whether a push needs the suite again (ADR-0069).
   Finds the nearest green `main` commit, holds the diff to an allow-list of

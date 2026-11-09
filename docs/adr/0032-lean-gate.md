@@ -5,7 +5,7 @@
 - Amends: ADR-0024 §3, the hook row of "The property tiers" (256 cases) and
   the paragraph "The hook keeps 256". The rest of ADR-0024 stands, time
   never being a gate (§4) included.
-- Amended by: ADR-0078 (the hook's test half runs after the commit, on its own tree)
+- Amended by: ADR-0078 (the hook's test half runs after the commit, on its own tree); ADR-0085 (the unplaced default: workflows, the nextest config, regression fixtures and the oracle's files are placed)
 - Follows: `.agents/rules/git.md` (trunk-based, always green)
 
 ## Context

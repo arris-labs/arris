@@ -6,6 +6,8 @@
   at the commit, the test half moves after it), ADR-0066 ("the hook runs 16
   cases": the 16 cases now run at verification), `.agents/rules/git.md`
   (its first rule)
+- Amended by: ADR-0085 (§7: a code commit never waits on an earlier
+  verification; a queued run is covered by the next one)
 - Follows: ADR-0024 §4 (time is never a gate; a test is not weakened to be
   fast)
 - Reference trees read: none
