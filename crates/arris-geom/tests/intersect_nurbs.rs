@@ -399,7 +399,7 @@ fn a_section_across_a_walked_skins_arc_knot_is_no_turn_at_a_kink() {
 }
 
 /// `blend/rounded-block-oblique-top-fillet` reshaped to the block
-/// `blend_prop.rs`'s oblique property found at 1000 cases: `length` 3 and
+/// `blend_prop/run_over_edge.rs`'s oblique property found at 1000 cases: `length` 3 and
 /// `width` 1.5 for the recipe's 4 and 2, the tilt's axis across the middle,
 /// and the cut part turned 180° about `y` and dropped 89.66 before its
 /// fillet, as the property posed it, then moved by `at`.

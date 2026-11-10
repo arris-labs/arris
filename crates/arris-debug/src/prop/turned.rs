@@ -11,7 +11,7 @@
 //! beside any blended corner, and every corner turns the outline through
 //! at most about 60°, so a ball touches within its own radius of the edge.
 //! The part's closed forms are the property test's
-//! (`crates/arris-ops/tests/blend_prop.rs`).
+//! (`crates/arris-ops/tests/blend_prop/turned.rs`).
 
 use arris_geom::{Profile, ProfileLoop, ProfileSegment};
 use arris_math::real;

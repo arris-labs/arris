@@ -36,7 +36,7 @@ not (
   or test(=a_chain_into_a_twinned_arc_meets_on_the_balls_arc)
   or test(=a_cylinders_twinned_rim_chamfers_as_the_closed_forms_cone)
   or test(=a_cylinders_twinned_rim_fillets_as_the_closed_forms_torus)
-  or test(=an_elbows_cut_edge_holds_its_pcurve_gap_in_the_poses_that_found_it)
+  or test(=real_part_kinks::an_elbows_cut_edge_holds_its_pcurve_gap_in_the_poses_that_found_it)
   or test(=an_oracle_with_no_solid_holds_arris_to_additivity)
   or test(=arris_and_the_oracle_agree_on_multi_tool_booleans)
   or test(=blend_bicubic_top_box_edge_fillet)

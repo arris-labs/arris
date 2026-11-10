@@ -8,10 +8,10 @@
 # (crates/arris/tests/docs_refs.rs) holds each slug to a §Findings heading.
 
 # A fillet of a blend's oblique chains meets an unchecked S5 pair.
-blend-properties-leave-s5-undecided arris-ops::blend_prop::oblique_chains_meet_on_the_rulings_offset assert nothing unchecked S
+blend-properties-leave-s5-undecided arris-ops::blend_prop::run_over_edge::oblique_chains_meet_on_the_rulings_offset assert nothing unchecked S
 # A cusp corner whose two faces are tori: no closed form for the fillet.
-cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::cusp_corner_complement_fillet_cancel_and_refusal_roll_back assert Fillet: no closed form for +e
-cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::cusp_corner_complement_fillets_are_the_mutual_trim assert Fillet of both edges of the cusp: no closed form for +e
+cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::cusp_corner::cusp_corner_complement_fillet_cancel_and_refusal_roll_back assert Fillet: no closed form for +e
+cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::cusp_corner::cusp_corner_complement_fillets_are_the_mutual_trim assert Fillet of both edges of the cusp: no closed form for +e
 # The twins of two analytic surfaces: the section count differs.
 nurbs-twin-and-spline-equalities-fail arris-geom::nurbs_nurbs_prop::the_twins_of_two_analytic_surfaces_meet_where_the_pair_does assert assertion failed: `(left == right)` left
 # A NURBS grid's point the line was drawn through is not among the hits.
@@ -46,7 +46,7 @@ differential-multi-tool-booleans-fail-with-internal-lumps arris::differential::a
 # The fused sides' volume differs from the body's by 5e-9 relative.
 split-sides-differ-from-the-body-by-1e-8 arris-ops::split_prop::the_sides_fused_are_the_body assert fused volume
 # A torus against a cylinder at a posed end: no closed form for the fillet.
-cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::ends_fillet_as_their_sections assert Fillet of the posed scene: no closed form for +e
+cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::turned::ends_fillet_as_their_sections assert Fillet of the posed scene: no closed form for +e
 # The grid's maximum of a NURBS surface is not reported.
 extrema-surfaces-and-neighbours-fail-on-nurbs-grids arris-geom::extrema_surfaces::nurbs_heights assert the grid's maximum at
 # A PANIC at the test's own assert (kernel rule: no panics on geometry); prioritise.
