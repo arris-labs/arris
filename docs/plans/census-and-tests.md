@@ -104,7 +104,7 @@ Scale: **[1]** routine, **[2]** careful, **[3]** unproven
   and `--cusp-pairs-committed` (release, the oracle's cache) under
   `target/census-baseline/`. Test: all four outputs byte-identical, and
   `Some(Class::ArrisRefuses(_))` appears once in the census.
-- [ ] Step 4 **[1]** — `census.rs` → `census/` by family per the deltas,
+- [x] Step 4 **[1]** — `census.rs` → `census/` by family per the deltas,
   tests with their family. Test: step 3's four outputs byte-identical
   again, and the crate's census tests (`horn_census`,
   `parallel_cylinder_census`, the unit tests) list and pass the same.
