@@ -47,7 +47,9 @@ doubts is reverted, not argued.
 2. **Reconcile the findings** (`docs/BACKLOG.md` §Findings). Every failing
    job of the scheduled nightlies since the cycle opened (`gh run list
    --workflow=nightly.yml`) is accounted for by a block, a regression
-   fixture or a named exclusion — otherwise it is open work. Walk every
+   fixture or a named exclusion — otherwise it is open work. A failure the
+   triage lists as known (`tools/nightly-known.txt`) is accounted for by its
+   finding's block; a night red for a new signature is open work. Walk every
    block: `State` current (`raw` with numbers → `measured`; shrunk → names
    its `regression/<slug>`), `Reproduce` still replays, fixed blocks
    deleted with their fixture lifted, stale ones rewritten or deleted.

@@ -2197,15 +2197,28 @@ B-Rep).
   `workflow_dispatch`, with `ARRIS_ORACLE_CACHE=off` throughout. Its
   `seed` job draws one seed per run, `sha256` of the UTC date, printed as
   `ARRIS_PROPTEST_SEED=…`; a dispatch may replay a given one. On that
-  seed it runs every property at 5000 cases, five times CI's (a costly
-  property over its cost), in seventeen jobs split by nextest filterset
-  along the suite's per-test timings, two `-rest` jobs taking what the
-  others do not name. It also runs the differential at 1000 recipes with the
+  seed it runs every property on a budget (ADR-0086): a shard runs chunks of
+  8 cases until `ARRIS_PROPTEST_BUDGET` (3600 s) would be passed, with 5000
+  cases, five times CI's, as the ceiling, and a failure prints the
+  `ARRIS_PROPTEST_CHUNK` that replays its chunk alone. The properties run
+  in 12 jobs packed by nextest filterset first-fit-decreasing on their
+  measured times (each job's figure is in a comment of its matrix entry),
+  two `-rest` jobs taking what the others do not name, under the `nightly`
+  nextest profile (a 2 h cap per test, 4 h for the differential, a
+  `global-timeout` that still writes JUnit). Each property and differential
+  job's JUnit goes to `tools/nightly-triage.sh`, which prints every failure
+  by signature: one listed in `tools/nightly-known.txt` under its open
+  finding leaves the job green, a new one is red. It also runs the
+  differential at 1000 recipes with the
   corpus's ignored tests, the corpus benchmark against the last night's
   report, each fuzz target for 30 minutes from a corpus kept in the
   Actions cache, and `tools/real-parts.sh` with the NIST archives cached
   by the manifest's hash, its histogram and failure list uploaded. A
-  failure is a red run and nothing else.
+  failure is a red run and nothing else, and a red run means a new
+  signature or a fuzz crash. Two failures are red outside the triage: the
+  `real-parts` job, which the triage does not read, stays red on
+  `nist_ctc_02_asme1_ap242-e2`, and a corpus failure of the differential job
+  (its ignored tests) is not a property signature.
 - **The oracle** (`tools/oracle/`, Python 3.12, Open CASCADE through the
   `cadquery-ocp` wheels in a `uv` environment): `expected.py` builds each
   fixture's recipe in OCCT and writes `expected.json`; `compare.py` reads

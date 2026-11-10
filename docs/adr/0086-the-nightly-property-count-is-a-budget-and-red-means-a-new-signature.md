@@ -1,7 +1,7 @@
 # ADR-0086 — The nightly's property count is a budget, and red means a new signature
 
 - Status: accepted (2026-11-09)
-- Plan: `nightly-time-budget` step 1
+- Plan: the nightly time budget's step 1 (retired)
 - Amends: ADR-0024 §3 (the nightly's count is a budget, the tier's count its
   ceiling) and §6 (a red night is a new signature, not any failure)
 - Follows: ADR-0024's amendment of 2026-10-21 (a property carries a cost),
@@ -93,8 +93,9 @@ crash. Nothing else. A known signature never does.
 
 The property tests run in 12 jobs, packed first-fit-decreasing on
 `sum(min(t, budget))` from one measured run, beside the differential, the
-fuzz, real-parts and bench jobs. The pack and the budget figures are recorded
-in the plan's step 4, from its dispatch.
+fuzz, real-parts and bench jobs. The pack and the budget figures live in
+the comments of `.github/workflows/nightly.yml`'s matrix, each job with its
+estimated minutes.
 
 ## Consequences
 
@@ -114,7 +115,7 @@ in the plan's step 4, from its dispatch.
 
 - **Rotation** (a property runs on some nights and not others). A property not
   run tonight is not tested tonight, and the budget makes rotation
-  unnecessary. Dropped as option B of `docs/ideas/nightly-time-budget.md`.
+  unnecessary. Dropped as option B of the idea this ADR decided.
 - **A per-test cap alone.** It stops the job from being cancelled, but a
   timeout never reaches an assertion, so every capped test stays red each
   night with no way to tell a known timeout from a new one.
@@ -124,3 +125,18 @@ in the plan's step 4, from its dispatch.
   2026-09-25 amendment to ADR-0024).
 - **Opening an issue for each known signature.** Outward-facing, so it stays
   ADR-0024 §6's call, and the human's.
+
+## Amendments
+
+- 2026-11-10, §5: a night is also red in two places the triage does not
+  cover. The `real-parts` job stays red on `nist_ctc_02_asme1_ap242-e2`: a
+  CTC-02 drill line cannot exist in `tools/real-parts.waits` (an ops fixture
+  takes no part wait, and a part fixture needs an oracle record that cannot
+  be written honestly, `docs/BACKLOG.md`), and the triage does not read that
+  job. An unknown corpus failure of the differential job (its ignored corpus
+  tests) is red outside the triage too.
+- 2026-11-10, §3: a differential's `case N: <class>` lines are classified
+  first, one signature per line; `panic` and `checker` keys apply only when
+  no case lines are present. The differential catches panics without
+  silencing the panic hook, so its output carries a panic site that would
+  otherwise win as class 3 and hide the case's own class.

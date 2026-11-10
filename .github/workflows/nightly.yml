@@ -1,13 +1,19 @@
 name: Nightly
 
-# The nightly tier of ADR-0024 §3: the property tests above CI's count on a
-# seed that changes every night, the differential at CI's recipe count on
-# the same seed, and the corpus's ignored tests. Its depth comes from the
-# seeds adding up across nights, not from one night's count.
+# The nightly tier of ADR-0024 §3: the property tests on a seed that changes
+# every night, each shard on a time budget (ADR-0086) with CI's case count
+# times five as its ceiling, the differential at CI's recipe count on the
+# same seed, and the corpus's ignored tests. Its depth comes from the seeds
+# adding up across nights, not from one night's count.
 #
 # A red run is the only thing a failure does (ADR-0024 §6): nothing here
-# opens an issue or posts anywhere. Reproduce a night locally with the
-# `ARRIS_PROPTEST_SEED=…` the `seed` job prints and the job's case count.
+# opens an issue or posts anywhere. The property and differential jobs read
+# their JUnit through `tools/nightly-triage.sh`: a failure listed in
+# `tools/nightly-known.txt` is printed by slug and leaves its job green, a
+# new signature is red. Reproduce a night locally with the
+# `ARRIS_PROPTEST_SEED=…` the `seed` job prints, the job's case count and,
+# for a failure, the `ARRIS_PROPTEST_CHUNK=…` it prints, which reruns that
+# chunk of its shard alone.
 on:
   schedule:
     - cron: "17 2 * * *"

@@ -1027,10 +1027,11 @@ drawn, oracle cache off), 722 reach a comparison and agree, 229 both
 refuse, 3 are refused by Open CASCADE and 46 by Arris (all
 `Degenerate(Empty)`), and none fails or sits under an exclusion. That is
 2.5 s of wall clock per recipe cold. The hook runs 32 cases over what a commit reaches (ADR-0032), a plan's retirement 256 and CI 1000, all on the fixed seed;
-depth comes from `nightly.yml`, which runs every property at 5000 cases
-on a seed drawn from the date, split over seventeen jobs of at most
-about 38,000 runner CPU-seconds each, a costly property running its
-cases over its cost (ADR-0024's amendment of 2026-10-21), plus the differential at 1000 recipes on the same seed. The corpus
+depth comes from `nightly.yml`, which runs every property on a seed
+drawn from the date, each shard for a budget of 3600 s with 5000 cases as
+the ceiling (ADR-0086), packed into 12 jobs of about four hours at most,
+plus the differential at 1000 recipes on the same seed; a failure listed
+as a known finding leaves its job green. The corpus
 benchmark times 514 cases on the reference machine: build 8.40 s, mesh
 6.90 s and read 25.68 s, measured 2026-10-07 (docs/ARCHITECTURE.md §Formats and tools). Each night compares against the
 last, flagging a case past 3×. Three fuzz targets over the intersectors

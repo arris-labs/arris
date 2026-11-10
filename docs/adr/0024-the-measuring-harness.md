@@ -270,7 +270,7 @@ the case's expense, not a judgement of the property's worth: the fix that
 makes a case cheap (here S5 on two long NURBS neighbours) lowers it. Depth
 still comes from seeds adding up, at a smaller step a night.
 
-## Amendment (2026-11-09, plan `nightly-time-budget` step 1)
+## Amendment (2026-11-09, the nightly time budget's step 1)
 
 - §3's nightly row is a budget, not a count: a property shard runs chunks of
   cases until the next would pass `ARRIS_PROPTEST_BUDGET`, the tier's count

@@ -168,7 +168,10 @@ a rendering bug.
 **Property tests**: `arris_debug::prop::check` prints the shrunk case and
 `ARRIS_PROPTEST_SEED=…`; the seed goes in the fixture's commit body. A
 nightly prints its seed in the job summary — rerun locally at it and the
-job's `ARRIS_PROPTEST_CASES`.
+job's `ARRIS_PROPTEST_CASES`. A nightly failure also prints
+`ARRIS_PROPTEST_CHUNK=<i>`: with it the one chunk of 8 cases that failed
+reruns alone on its shard (ADR-0086), the commit body naming seed, cases,
+shard and chunk.
 
 **Differential** (`crates/arris/tests/differential.rs`): prints the case
 already shrunk as a `fixture.json`; commit it under `regression/<slug>/`

@@ -200,7 +200,9 @@ reproduces it.
 - Three copies of `cross` (7 lines each) in `arris-debug/src/render.rs`, `arris-io/src/stl.rs` and `arris-mesh/src/trimesh.rs` (three crates, so a shared one has a layer to find), which `duplicates.py` now lists since its parser counts functions with an array in the signature.
 - `copy_body` (`transform`, `mirror`) adds the moved coordinates' rounding to each measured tolerance on every copy, so a part moved back and forth many times keeps widening them, by tiny amounts; a bound or a reset to the file's measure, with a mirror case far from the origin as its test (plans/nightly-panics review)
 - The near-parallel verdict of two NURBS lines has no property since `MIN_SKEW` keeps `two_skew_lines…` off parallel: one that only asserts not-`Coincident` within a tolerance of parallel (`crates/arris-geom/tests/intersect_nurbs_curves.rs`; plans/nightly-panics review)
-- `.config/nextest.toml`'s 5.5 h cap on the elbow and standoff properties leaves 20 minutes of the nightly job's 350 for the disk freeing, `uv sync` and the debug build: a test near the cap is cancelled by the job before nextest reports; the nightly time-budget plan's budget replaces the hand caps (plans/nightly-panics review)
+- `tools/nightly-known.txt` keys that depend on drawn values or are shared can hide or re-read failures: `the point the line was drawn through is not among [CurveSurfaceHit { t` carries a drawn hit, the bare `(left == right)` stem covers any `assert_eq!` of its test, and `trace::random_cone_pairs_trace assert -` covers any assert whose message opens with a brace; a stronger key per signature (ADR-0086 §3)
+- Coverage tests on `prop::check`, such as `the_general_profile_sweeps_every_surface_kind` (`crates/arris-ops/tests/revolve.rs:717`), can fail falsely when the nightly budget stops a shard before it has drawn every kind, as the oblique floor did (fixed in `4853bec1`): count the cases run, or take the budget out of them
+- `crates/arris-ops/tests/revolve.rs:754` calls `prop::try_check` directly, so it ignores `ARRIS_PROPTEST_BUDGET` and runs 4 x 5000 cases at night: route it through the budgeted entry points
 
 ## Findings
 
@@ -347,36 +349,6 @@ above when it wants a fix; the block moves or is deleted then.
 - State: raw.
 - The fix is: the property rejects the refusal by name, or the twinned ruling is blended (the backlog's line on a NURBS face against a coaxial cylinder is the nearest).
 
-### nightly-fuzz-jobs-exceed-their-90-minutes
-
-- What: 56 of the 70 `fuzz` jobs of the 14 nights (2 to 5 of the five targets a night) are cancelled by `timeout-minutes: 90`: setup and `fuzz/examples/seed` take 33 to 49 minutes, the fuzzer 31, `cargo fuzz cmin` 13 to 27, so the corpus is cached on no night that hits the limit and the nights do not add up. The fuzzer itself finishes its 30 minutes first, so a crash is still reported.
-- Where: `.github/workflows/nightly.yml`, job `fuzz`.
-- Seen: runs 39741382716 to 41805224954, every night; 11-03 intersect_curve_surface: seed example 09:32 to 10:19, fuzz 10:21 to 10:53, cmin 10:53 to the shutdown at 11:06; 11-04 intersect_surfaces: build and seed 33 min, fuzz 09:43 to 10:14, cmin 10:14 to 10:41, cancelled in `actions/cache/save`.
-- Reproduce: `gh run view 41611704820 --log --job 125834937624`.
-- Evidence: only 10-27's `intersect_curves` ended in a failure (a crash); the rest have conclusion `cancelled`.
-- State: measured; open, deferred: the human accepted closing C11 with it open (2026-11-04); `nightly.yml` unchanged.
-- The fix is: raise the job's limit past the sum (150 minutes), or cut the seed step and the `cmin` (minimise on a weekly night).
-
-### nightly-property-jobs-reach-the-350-minute-limit
-
-- What: `workspace-rest` (8 nights), `sweep-bodies` (9), `blend` (3) and `twin-boolean` (5) are cancelled at `timeout-minutes: 350` (the 10-31 `io` job by a runner shutdown signal), so their later shards report nothing; the slowest tests run 3.4 to 5.3 hours (`every_other_pair_is_unsupported` 19,236 s, `sweep_prop` 16,500 s, `oblique_chains` 15,793 s).
-- Where: `.github/workflows/nightly.yml`, job `properties`.
-- Seen: every night 10-22 to 11-04; the `test` job of `ci.yml` got `--test-threads num-cpus` and a 4 h slow-timeout (commits `84873fef`, `d398a43b`); `nightly.yml:127` does not pass the flag, so its jobs still run the default profile's 16 threads on a 4-vCPU runner.
-- Reproduce: `gh run view 41611704820 --json jobs`.
-- Evidence: the default profile's `slow-timeout` of 30 min x 8 now applies to the nightly too, so a test past 4 h fails by name; the 11-04 run (41805224954) is the first to carry it and was still in progress at the close.
-- State: measured; open, deferred: the human accepted closing C11 with it open (2026-11-04); `nightly.yml` still runs nextest without `--test-threads num-cpus`.
-- The fix is: add `--test-threads num-cpus` to the nightly's nextest call and read the 11-04 run; re-split `sweep-bodies` and `workspace-rest` if they still reach 350 minutes.
-
-### nightly-runner-disk-is-full
-
-- What: five `properties` jobs (`boolean-rest` 11-01, `loft` 11-03, `loft`, `boolean-quartic`, `io` 11-04) die after about three minutes with `No space left on device` while `cargo nextest run --workspace` compiles; the runner's `_diag` log cannot be written either.
-- Where: `.github/workflows/nightly.yml`, job `properties`, the step `cargo nextest run --workspace --no-fail-fast -E "$FILTER"`.
-- Seen: runs 41292271476 (11-01, `0514ac15`), 41611704820 (11-03, `bbcea937`), 41805224954 (11-04, `d398a43b`); none on 10-22 to 10-31.
-- Reproduce: `gh api repos/arris-labs/arris/check-runs/126490500116/annotations`.
-- Evidence: a debug build of the whole workspace per matrix job on a 14 GB runner disk; the jobs that fit run for hours, those that fail do so at compile. Not a kernel failure.
-- State: measured; open, deferred: the human accepted closing C11 with it open (2026-11-04); `nightly.yml` unchanged.
-- The fix is: free the runner's disk before the build (remove preinstalled toolchains) or build only the test binary a filter names.
-
 ### flush-walked-skins-at-a-square-seam-junction-are-undecided
 
 - What: two walked fillet skins meeting at a seam junction in the vertex's normal plane (the loop crossing the seam square, no slide) overlap as surfaces past their faces, so the NURBS march refuses them as `is_flush` (`Unsupported`) and S5 leaves the pair unchecked (`S5? … is not decided`); the slid junction's skins, cut at one ball, are decided since plans/walked-seam-junction step 3a.
@@ -468,37 +440,13 @@ above when it wants a fix; the block moves or is deleted then.
 
 ### nightly-tests-time-out-at-four-hours
 
-- What: single tests run past nextest's 4 h slow-timeout in the nightly's property jobs and are reported `TIMEOUT [14400 s]`, so their remaining shards report nothing: all eight shards of `a_walked_blend_does_not_depend_on_where_the_seam_lies` and the elbow's shard 0 on 11-05 (nine `blend` timeouts that night), the elbow's shards 0 and 1 on 11-06; `every_other_pair_is_unsupported` (11-07, `arris-geom` workspace-rest) at 14,400 s; `sweep_prop`, `twin_prop` and `a_multi_tool_result…` in the earlier nights.
-- Where: `.github/workflows/nightly.yml`, jobs `properties (blend)` and `properties (workspace-rest)`.
-- Seen: runs 42002718510 (11-05, 9 timeouts in `blend`), 42194578709 (11-06, 10), 42356866658 (11-07, 9 in `blend` and the workspace-rest one), commit `1a7bc1e6`, 5000 cases.
-- Reproduce: `gh api repos/arris-labs/arris/actions/jobs/127161743944/logs | grep TIMEOUT` (the 11-05 `blend` job).
-- Evidence: the `TIMEOUT` lines of the three nights, 9 to 10 per `blend` job; the 11-07 `blend` job ends `cancelled` at the job limit.
-- State: measured; run 42522745189 (11-08, the branch's dispatch, `82d7eceb`) after the hand split: the walked-seam property times out at 4 h in all 8 shards (`blend-seam-low` and `-high`), `sweep_prop`'s step round trip in one, and `sweep-bodies`, `twin-boolean` and `blend-rest` are cancelled at the job limit; the slot chain (both shards) and `blend-elbow` pass, no job carries `kernel bug`, and the panics are the harness's own. The hand split ends here: `plans/nightly-time-budget` replaces it.
-- The fix is: split the shards by measured time (the `prop_shards!` cost divisor, per the run-over block) or cut the cases of the slowest tests; step 8 of the nightly-panics plan split `blend` by hand (five jobs), and the job-level limit is `nightly-property-jobs-reach-the-350-minute-limit`'s.
-
-- S5 of a cone against a cylinder in a fuse result: the differential's case
-  found a twice-fused elliptic cylinder, revolved cone and extrusion whose
-  result leaves two cone × cylinder pairs undecided at `Full`
-  (`regression/cone-cylinder-fuse-s5-undecided`, `#[ignore]`d); a revolve cut by an extrusion leaves one too (`regression/revolve-cut-extrusion-s5-undecided`, nightly 09-28's differential case 60); the differential excludes both as `s5-undecided` until S5 decides the pair.
-- A lean far past the end's reach (the step's face leaning over the low block at 3 to 4 times the rise) builds a blend whose face 16 has a loop that meets itself (L5), where the closed form or `BlendTooLarge` is wanted: the overhang tip of C6's residue; `a_lean_far_past_the_reach_builds_or_is_refused` in `blend_prop.rs` (`#[ignore]`d, found by plans/nightly-failures step 9 at seed `d226ff33…`, 1000 cases, both shards of `leans_past_the_reach_build_or_are_refused_by_name`, which rejects that checker row by name until this passes)
-- A twin boss's foot chamfered after a turn: the chamfer's cone against the second wall's cylinder (parallel axes, 0.3 apart) is refused `Unsupported`, no closed form, in some poses (20° and 45° about y) and builds at rest, 10° and 90° — the trace does not decide — `regression/twin-boss-foot-turned-chamfer-cone-cylinder`, found by the end families' property (blend-residue step 8; the property rejects that refusal by name until this passes)
-- A blend that meets a third face while its contacts stay inside their faces (a hole nearer the edge than `r`) is not detected by the operation, only by S5 (ADR-0007); the run-over census of four fetched parts holds none, so its `regression/` fixture is still owed (blend-run-over step 3 finding, ADR-0038)
-- A run-over (ADR-0071) whose crossed edge is an ellipse, or a walked stripe's or walked chamfer's run-over, stays `BlendTooLarge` naming the blended edge and the crossed one while Open CASCADE builds it (the ellipse is the ignored `regression/` fixture); no part or script asks, so it waits for one (blend-runs-onto step 6)
-- The run-over properties' slowest shard takes 489 s at 16 cases, so the full gate's 256 pay about two hours; `prop_shards!`'s cost divisor is the fix (blend-runs-onto review)
-- The census's cause *a corner edge shorter than the trim* names the refusing site, not the geometry: on four fetched parts all 178 are a trim past the corner's vertex, the mixed corner ADR-0038 builds; `run_over_cause` could tell the two apart by where the trim falls (blend-run-over step 3 finding)
-- Open CASCADE's per-edge verdict in the run-over census is asked of a stride sample (twelve per cause and every sampled edge), not all 515 + 471 edges, and it is `builds` where its builder is done and the result passes `BRepCheck_Analyzer`, not where it matches Arris's blend: the volume and area comparison belongs to each fixture of the plan's steps 4 and 5 (blend-run-over step 1 finding)
-- The checker's S5 leaves a plane against a torus undecided in a knife-edge of poses of a walked chain: a chamfered stadium (straight 2.578, radius 1, height 2.033, chamfer 0.1294) with its chamfer's foot filleted at 0.0426, turned and moved to (63.8, 47.0, −39.6), is clean at `Full` with the translation moved by `1e-14` or `1e-2` and not as drawn — `a_walked_chain_in_a_far_pose_is_decided` in `blend_prop.rs` (`#[ignore]`d; a fixture's axis and angle cannot carry the quaternion; found by blend-corners step 7, whose property excludes the pair by name until this passes)
-- `fit_curve2` splits a span whose function jumps (a sample's turn count that the unwrapping gets wrong) until the span has no width, and reports "the normal equations are singular" rather than `Diverged`: the midpoint of two adjacent `f64` breaks is one of them. Found by the 09-28 cone pcurve (nightly-failures step 2e), whose cause is fixed; the fit's own guard is not.
-- The checker's S5 leaves two faces of one torus undecided in some poses: a stadium's outline filleted through one edge gives two half tori of one torus, and once the body is turned (rotation about (0, 0.936, 0.350) by 242.6°) `Full` reports `torus against torus is not decided`, where the same body unturned is clean — `regression/turned-stadium-fillet-torus-pair`, found by the outline property (C6 blend-network step 8 finding; the property excludes an unchecked torus pair by name until this passes)
-- The checker's S5 leaves a walked blend against the table stripe's cylinder undecided at a convex tangent junction: the cylinder carried on past the ball's arc enters the blend beside the corner of the arc and the top contact, a branch within rounding of the contact edge that ADR-0061 refuses (a touch entering the domain; the concave junction's touch that does not enter is traced) — `walked_fillet.rs` `the_convex_junction_is_decided` (`#[ignore]`d; the chain test excludes the pair by name), found by nurbs-face-blend step 6
-- `intersect_curves`'s hits report a periodic curve's parameter with `wrap_angle` (`[0, 2π)`) whatever the curve's period or domain; a periodic NURBS whose knots start elsewhere would want `wrap_into(t, domain.lo, period)`, as the pave model already does (found while folding the wrap helpers into `arris-math`)
-- The regression fixture for a trimmed NURBS face's kept edge (a NURBS face whose box differs between two states, its kept edge meshed the same before and after) is not buildable: every operation that would trim a NURBS face refuses it by name. Per-face tessellation holds the NURBS rule by a property over `chord_steps_along` instead; build the fixture when the NURBS cycle's booleans accept one
-- `interference`'s overlap volume without assembling the common (a sectional integral over the pave model, idea option B), taken only when a measured clash loop finds the scratch common too slow: the 20-body screen is 2.6 s for 43 clashes (plans/interference step 7)
-- A verdict-only screen for `interference_many` that builds no common: telling touching from overlapping needs a transversality test on the section; taken when the measured screen asks for it (plans/interference step 7)
-- A smooth loft of unevenly spaced sections of very different size differs from Open CASCADE's by 8e-4 of the volume, where ADR-0065 §7's chord-length parameters are within 2e-5 on the duct: four circles of radius 18, 26, 14 and 20 at heights 0, 20, 50 and 80 give 95840.618 against 95917.973, and no parametrisation of the (z, r) generatrix tried (chord, uniform, centripetal, by height) lands on either. Which parameters Open CASCADE interpolates at is unread; the script-corpus vase is a ruled loft until it is settled (plans/script-corpus step 4 finding)
-- A multi-shell boolean reads its lump order from a scratch copy of the model (`Build::lump_order` clones `self.m`): `Build` holds `&'m Model` and hands out `&'m` borrows (`surface_of`), so a rolled-back `Model::transaction` needs `&mut` threaded through every `Build` method; the alternative is one assembly whose staged shells are reordered after `lumps`, taken if its dump is byte-identical (plans/builder-split step 7 finding)
-- `corpus/step/features.rs`: the doc comment of `edge_at` sits stacked above `face_at`'s and `edge_at` has none; `corpus/read_back.rs`'s `read_back` is still 160 lines (plans/long-functions review)
-- A fillet of STC-07 AP242 e3 #210 (the battery's sample once it leaves out the tangent edges, ADR-0070) builds and the result fails the checker at `Full`: S5 leaves four cylinder × cylinder pairs undecided (f344/f352, f346/f354, f348/f356, f350/f358), which `check_leaving_nurbs` does not leave since no NURBS face is among them; `regression/nist-stc-07-ap242-fillet-checker-undecided` (battery-honesty step 6)
+- What: two `arris-ops::sweep_prop` tests, `a_swept_body_round_trips_through_step` and `the_checker_is_green_or_the_sweep_is_a_named_refusal` (shard 3 of each), run past nextest's per-test cap (2 h in the nightly profile, 4 h under the default) inside their first chunk of 8 cases, which the budget cannot stop, and are reported `TIMEOUT`, so their remaining shards report nothing.
+- Where: `crates/arris-ops/tests/sweep_prop.rs`, job `properties (blend-standoff+sweep-bodies)` in `.github/workflows/nightly.yml`.
+- Seen: run 42724063416 (11-10, 2 h cap, `TIMEOUT 7200 s`) and run 42522745189 (11-08, one of them at 4 h); 5000 cases.
+- Reproduce: `gh api repos/arris-labs/arris/actions/jobs/<id>/logs | grep TIMEOUT` on that job; locally `cargo nextest run -p arris-ops --test sweep_prop -E 'test(/a_swept_body_round_trips_through_step::shard_3/)'` at the night's seed and cases.
+- Evidence: the `TIMEOUT` lines; both are listed in `tools/nightly-known.txt` under this finding, so the job is green; a chunk of 8 swept bodies costs more than the cap.
+- State: measured; open.
+- The fix is: find which pass of a random G1 sweep costs minutes a case and lower it (the backlog line on these two tests' cost), or give the two shards a smaller chunk; until then the listing keeps the job green.
 
 ### differential-multi-tool-booleans-fail-with-internal-lumps
 
@@ -512,7 +460,7 @@ above when it wants a fix; the block moves or is deleted then.
 
 ### torus-horn-and-spindle-section-test-panics
 
-- What: a PANIC, not a refusal: `random_horn_and_spindle_sections_keep_their_band` panics at `crates/arris-geom/tests/trace_torus.rs:563`, the test's own `assert!(d <= 2.0 * across, ...)` that a cell of the torus's band, where the section passes through it, lies within twice the cell's diagonals of the trace of the other surface. A panic on geometry breaks `.agents/rules/kernel.md` (typed errors, never a panic): **this is the one a human should prioritise**, apart from the known `refused:` signature of the same test (`nurbs-trace-and-section-properties`), which is a typed refusal.
+- What: `random_horn_and_spindle_sections_keep_their_band` fails at `crates/arris-geom/tests/trace_torus.rs:563`, the test's own geometric `assert!(d <= 2.0 * across, ...)`: a cell of the torus's band, where the section passes through it, lies farther than twice the cell's diagonals from the trace of the other surface. It is an assertion about the trace's coverage, not a kernel panic, and apart from the known `refused:` signature of the same test (`nurbs-trace-and-section-properties`), which is a typed refusal. The triage key is `file:line`, so an edit above line 563 reads this failure as new.
 - Where: `random_horn_and_spindle_sections_keep_their_band`, `crates/arris-geom/tests/trace_torus.rs:563`.
 - Seen: run 42771888324 (11-10), commit `148e0bfa`, seed `146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055`, 5000 cases, chunk 63 (job 129681411106).
 - Reproduce: `ARRIS_PROPTEST_SEED=146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055 ARRIS_PROPTEST_CHUNK=63 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test trace_torus -E 'test(/random_horn_and_spindle_sections_keep_their_band/)'`.

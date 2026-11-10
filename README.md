@@ -189,7 +189,8 @@ for each face kind.
   checker, which runs after every operation in debug builds.
 - **Properties over random operands.** Volume additivity, cut-then-fuse,
   commutativity, STEP round trips and more, over random operands in random
-  poses from a fixed seed; nightly at five times CI's case count.
+  poses from a fixed seed; nightly on a seed drawn from the date, up to
+  five times CI's case count within a time budget.
 - **Real parts.** A corpus of real STEP parts is read, checked, cut and
   blended, and a differential runs random recipes through Arris and Open
   CASCADE side by side.

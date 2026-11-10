@@ -350,13 +350,13 @@ of cases, each seeded from the base seed, the shard and the chunk's index,
 until the next chunk would pass the budget, the tier's case count a
 ceiling. How many cases ran depends on the runner; which case failed does
 not.
+_Avoid_: timeout (nextest's cap, which ends a test unreported)
 
 **Chunk** (of a budgeted property shard):
 The unit a budget is spent in and a failure replays by: `CHUNK_CASES` (8)
 cases, seeded by the sha256 of the shard seed and the chunk's index, so the
 index named by `ARRIS_PROPTEST_CHUNK` reruns alone. The last chunk of a
 shard is cut at the tier's ceiling.
-_Avoid_: timeout (nextest's cap, which ends a test unreported)
 
 **Twin property**:
 The property that geometry given as its exact NURBS twin gives a result

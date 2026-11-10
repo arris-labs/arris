@@ -1016,7 +1016,14 @@ Property tests run through `arris_debug::prop::check`: a seeded
 `proptest` runner, `ARRIS_PROPTEST_CASES` cases (default 256) from
 `ARRIS_PROPTEST_SEED` (default fixed, so CI is deterministic). A failure
 prints the shrunk input and the `ARRIS_PROPTEST_SEED=…` that reproduces
-it.
+it. At the nightly tier a shard runs on a time budget
+(`ARRIS_PROPTEST_BUDGET`, ADR-0086) in chunks of 8 cases, and a failure also
+prints the `ARRIS_PROPTEST_CHUNK=<i>` of its chunk: the seed, the case count
+and that index rerun the one chunk alone, without the rest of the shard.
+`tools/nightly-triage.sh` reads the nightly's JUnit and gives each failure a
+signature; one listed in `tools/nightly-known.txt` under an open finding of
+`docs/BACKLOG.md` §Findings leaves its job green, a new one is red, so a
+failure with no finding gets its block and its entry there.
 
 An expensive property is split across shards by `prop_shards!` and runs as
 `property::shard_3`. Its failure names the shard, but the seed it prints is
