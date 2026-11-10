@@ -430,7 +430,7 @@ image matching both surfaces at its samples; the boolean identities of M4
 (volume additivity, cut-then-fuse, commutativity) over a quadric operand
 against a box and a cylinder; every new `boolean/*` quadric fixture
 passing every corpus stage against Open CASCADE;
-`crates/arris-ops/tests/blend_prop.rs` with nothing unchecked in a pose;
+`crates/arris-ops/tests/blend_prop/` with nothing unchecked in a pose;
 `regression/seam-a-tolerance-from-crossing-fuse` moved into `boolean/`;
 `docs/DATA-MODEL.md` with no `⚠ OPEN` left.
 
@@ -952,7 +952,10 @@ sewing, which no part of the corpus needs (ADR-0058 §6).*
   weighed against the backlog's narrowing of `pub` internals; the exact
   polygon–polygon overlap S5's coincident arm waits on rides on it.
 - Beside the cycle, in the second plan slot: the nightly's open findings
-  (the two panics are fixed) and the refactor review's milestone plans.
+  (the two panics are fixed). The refactor-after-c11 sequence is done:
+  blend properties and census code are filed by family, fixture lint by
+  check, and loft properties and recipes share their section builder;
+  test selections, census tables and lint diagnostics are unchanged.
 
 **Out:** free-edge sewing (a backlog line until a part asks it); faceted
 solids and the reader's other refused subsets; variable-radius blends and
