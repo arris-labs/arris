@@ -24,25 +24,23 @@ the run (ADR-0024 §6 holds that half). arris-gym as the differential.
 count its ceiling) and §6 (red means a new signature).
 
 **Harness** (`arris_debug::prop`, unpublished). `ARRIS_PROPTEST_BUDGET=<s>`,
-read by `check` (as shard 0 of 1) and `check_shard_at`: the idea named only
-the second, but about 230 properties call `check`, among them
-`every_other_pair_is_unsupported`, at the 4 h cap on 11-07. `CHUNK_CASES = 8`;
+read by `check` (shard 0 of 1, about 230 properties) and `check_shard_at`.
+`CHUNK_CASES = 8`;
 `chunk_seed = sha256(shard_seed ‖ chunk)`; the last chunk is cut at the
 ceiling. Chunk 0 always runs; the loop stops before a chunk whose predicted
-time, the slowest so far, would pass the budget. The clock is a parameter of
+time (the slowest so far) would pass the budget. The clock is a parameter of
 the `try_` form. A shard prints `prop-budget: ran N of M cases in T s (stop:
-budget|ceiling)`. A failure names its chunk and prints its replay,
-`ARRIS_PROPTEST_SEED=… ARRIS_PROPTEST_CHUNK=<i>` on the one shard. Unset,
-today's path and streams are unchanged.
+budget|ceiling)`; a failure names its chunk and prints `ARRIS_PROPTEST_SEED=…
+ARRIS_PROPTEST_CHUNK=<i>`. Unset, today's path and streams are unchanged.
 
 **`.config/nextest.toml`**: `[profile.nightly]`: `test-threads = "num-cpus"`,
 a 2 h per-test cap (30m × 4), `global-timeout = "315m"` (JUnit is written even
 at the limit), JUnit with `store-success-output`. The four elbow and standoff
-overrides go. Step 7's repair adds one: `[[profile.nightly.overrides]]`
-`binary(differential)` at `slow-timeout = { period = "30m", terminate-after = 8 }`
-(4 h), restoring the cap the differential had under the default profile. Its
-two long tests hit the 2 h cap in run 42724063416 (TIMEOUT 7200 s), which
-the triage read as new `timeout -`; run 42659620551 finished in 229 min.
+overrides go. Step 7 adds `[[profile.nightly.overrides]]` `binary(differential)`
+at `slow-timeout = { period = "30m", terminate-after = 8 }` (4 h), the cap the
+differential had under the default profile: its two long tests hit the 2 h cap
+in run 42724063416 (TIMEOUT 7200 s), which the triage read as new `timeout -`;
+run 42659620551 finished in 229 min.
 
 **The budget is 3600 s.** Run 42522745189 (2983 tests, 966,000
 thread-seconds): 70 tests capped, sum 630,000, about 219 min a job over 12
@@ -91,38 +89,38 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
 
 - [x] Step 1 **[1]** — ADR-0086, its amendment line in ADR-0024, *Signature*
   sharpened. Docs tests.
-- [x] Step 2 **[2]** — The chunk loop in both entry points, its two variables,
-  the `prop-budget` line, rustdoc with an example. Tests with a fake clock:
-  stops before the overrun, runs chunk 0 past any budget, stops at the
-  ceiling; a seeded failure names a chunk whose replay fails alone; unset, a
-  stream equals today's.
-- [x] Step 3 **[1]** — The profile, the overrides removed, `nightly.yml` on it
-  with `ARRIS_PROPTEST_BUDGET: "3600"` and JUnit uploaded, 21 jobs as they
-  are. `tools/profile-test.sh`, `tools/workflows-test.sh`; one property under
-  the profile writes JUnit holding its `prop-budget` line.
+- [x] Step 2 **[2]** — The chunk loop in both entry points, its variables, the
+  `prop-budget` line, rustdoc with an example. Fake-clock tests: stops before
+  the overrun, runs chunk 0 past any budget, stops at the ceiling; a seeded
+  failure names a chunk whose replay fails alone; unset, a stream equals today's.
+- [x] Step 3 **[1]** — The profile, overrides removed, `nightly.yml` on it
+  with `ARRIS_PROPTEST_BUDGET: "3600"` and JUnit; 21 jobs. Profile and
+  workflow tests; JUnit holds a `prop-budget` line.
 - [x] Step 4 **[1]** **[CI]** — Dispatch step 3; pack the 12 jobs from its
   per-test times, each with its figure in a comment. `cargo nextest list` over
   the 12 filters holds each test in exactly one (commit body). A job past
   300 min lowers the budget by the rule, and the commit says so.
-- [x] Step 5 **[2]** — `tools/nightly-triage.sh` and its `-test.sh`, against a
-  small JUnit holding 11-08's twelve message shapes, a differential failure, a
-  timeout, a harness panic, a kernel panic and a pass: each signature, new /
-  known / quiet, the exit code, red on a missing file.
+- [x] Step 5 **[2]** — `tools/nightly-triage.sh` and its `-test.sh`, on a small
+  JUnit of 11-08's message shapes, a differential failure, a timeout, a harness
+  panic, a kernel panic and a pass: signature, new / known / quiet, exit code.
 - [x] Step 6 **[1]** — `tools/nightly-known.txt` seeded from run 42522745189
   and step 4's; a failure with no §Findings block gets one first. The lint,
   with a scratch-tree case that catches a dangling slug.
 - [x] Step 7 **[1]** — The triage step in the property and differential jobs,
   nextest `|| true`, `--no-capture` dropped. `tools/workflows-test.sh`.
 - [ ] Step 8 **[1]** **[CI]** — Dispatch the whole workflow against the
-  acceptance. A failure read as new gets its block and entry, or stands as a
-  real new one; the commit is those lines.
+  acceptance; a failure read as new gets its block and entry, or stands as a
+  real new one. Run 42724063416 was the first dispatch: every acceptance line
+  held, the listed `sweep_prop` timeouts admitted (Open questions); the
+  differential's cap was repaired by 5a284f7b. One more dispatch confirms it.
 
 ## Acceptance
 - `ARRIS_PROPTEST_CASES=16 cargo nextest run -p arris-debug -E
   'test(/budget|chunk/)'` and `tools/nightly-triage-test.sh` pass.
-- Step 8's dispatch: 21 jobs, none `cancelled`; no `TIMEOUT` line in any
-  property job's log (`gh api repos/arris-labs/arris/actions/jobs/<id>/logs`);
-  every property job under 350 min with its `prop-budget` totals in the summary.
+- Step 8's dispatch: 21 jobs, none `cancelled`; no `TIMEOUT` line for a test
+  not listed in `tools/nightly-known.txt` in any property job's log
+  (`gh api repos/arris-labs/arris/actions/jobs/<id>/logs`); every property job
+  under 350 min with its `prop-budget` totals in the summary.
 - Every failure is listed by slug or printed as new; the run is red only for a
   new signature or a fuzz crash. One listed failure replays alone by its
   printed `ARRIS_PROPTEST_CHUNK` line.
@@ -133,30 +131,30 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
 - `docs/ARCHITECTURE.md` §`nightly.yml`; `docs/ROADMAP.md`'s "5000 cases …
   seventeen jobs"; `README.md`'s "five times CI's case count"; the header
   comment of `nightly.yml`.
-- `tests/fixtures/README.md` §Property-test failures and `inspect`'s SKILL:
-  replay by chunk. `close-cycle`'s SKILL step 2: a known signature is
-  accounted for by its finding.
+- `tests/fixtures/README.md` §Property-test failures, `inspect`'s SKILL (replay
+  by chunk), `close-cycle`'s SKILL step 2 (a known signature is its finding).
 - `docs/BACKLOG.md`: delete the 5.5 h cap line and, once step 8 shows each
-  gone, `nightly-tests-time-out-at-four-hours`,
-  `nightly-property-jobs-reach-the-350-minute-limit`,
-  `nightly-runner-disk-is-full`, `nightly-fuzz-jobs-exceed-their-90-minutes`.
+  gone, `nightly-property-jobs-reach-the-350-minute-limit`, `nightly-runner-disk-is-full`,
+  `nightly-fuzz-jobs-exceed-their-90-minutes`. Keep `nightly-tests-time-out-at-four-hours`:
+  the budget cannot stop those two `sweep_prop` tests (Settled, 2026-11-10), so
+  the finding now means those two shards.
 - `AGENTS.md` current state: the budget leaves the side slot. `GLOSSARY.md`:
   *Signature* in step 1. `CHANGELOG.md`: nothing a consumer can see.
 
 ## Open questions
+- Settled (2026-11-10, human): the second Acceptance bullet reads "no `TIMEOUT`
+  line for a test not listed in `tools/nightly-known.txt`". In run 42724063416
+  two `arris-ops::sweep_prop` shard_3 tests (`a_swept_body_round_trips_through_step`,
+  `the_checker_is_green_or_the_sweep_is_a_named_refusal`) ran past the 2 h cap
+  inside their first chunk of 8 cases, which the budget cannot stop; triage
+  lists them under `nightly-tests-time-out-at-four-hours`, so the job is green.
 - Settled (step 1, ADR-0086 §3): the `assert` key is a stem, the text up to
-  the first digit. The approved *Signature* bans free text, but the ban's
-  reason (text that changes per draw) does not reach text before the first
-  number; 17 of 18 real failures carry no other key, and keying on the
-  property alone would hide every other assertion in a listed test. The
-  *Signature* entry in `GLOSSARY.md` now says so.
+  the first digit: 17 of 18 real failures carry no other key, and the property
+  alone would hide every other assertion in a listed test.
 - Settled (step 6): no `tools/real-parts.waits` line for CTC-02 AP242 e2's
-  drill along its first principal axis. `regression/nist-ctc-02-ap242-drill-x-nurbs-cylinder`
-  is an ops fixture, not a part fixture, so `corpus_lint`'s part-exclusion
-  check (which counts only part kinds under `regression/`) cannot take a
-  wait on it, and a part fixture would need an oracle record for the drill
-  that cannot be written honestly (`docs/BACKLOG.md:109`, the drill line). So the part stays red in the nightly's `real-parts` job until that
-  line's condition is met; `real-parts` is a survey, not a triage job.
-- ⚠ OPEN: a known `Disagree(counts)` hides any new count disagreement in the
-  differential, which has no finer key. Agent's pick, by step 6: list it under
-  `differential-multi-tool-disagreements` only if step 4's run repeats it.
+  drill: an ops fixture takes no part wait, and a part fixture needs an oracle
+  record that cannot be written honestly (`docs/BACKLOG.md:109`). The part
+  stays red in `real-parts` until that line's condition is met.
+- ⚠ OPEN: a known `Disagree(counts)` hides a new count disagreement in the
+  differential. Agent's pick: list it under `differential-multi-tool-disagreements`
+  only if step 4's run repeats it.
