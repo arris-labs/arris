@@ -38,7 +38,11 @@ today's path and streams are unchanged.
 **`.config/nextest.toml`**: `[profile.nightly]`: `test-threads = "num-cpus"`,
 a 2 h per-test cap (30m × 4), `global-timeout = "315m"` (JUnit is written even
 at the limit), JUnit with `store-success-output`. The four elbow and standoff
-overrides go.
+overrides go. Step 7's repair adds one: `[[profile.nightly.overrides]]`
+`binary(differential)` at `slow-timeout = { period = "30m", terminate-after = 8 }`
+(4 h), restoring the cap the differential had under the default profile. Its
+two long tests hit the 2 h cap in run 42724063416 (TIMEOUT 7200 s), which
+the triage read as new `timeout -`; run 42659620551 finished in 229 min.
 
 **The budget is 3600 s.** Run 42522745189 (2983 tests, 966,000
 thread-seconds): 70 tests capped, sum 630,000, about 219 min a job over 12

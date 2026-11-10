@@ -143,6 +143,15 @@ test-threads = "num-cpus"
 slow-timeout = { period = "30m", terminate-after = 4 }
 global-timeout = "315m"
 
+# The differential is not a property shard: its two long tests run past 2 h
+# and were stopped at the cap (TIMEOUT 7200 s) in run 42724063416, which the
+# triage read as new `timeout -` signatures. Before the nightly profile the
+# differential ran under the default's 4 h cap and finished (run 42659620551,
+# 229 min for the job), so the cap is restored here: 30m x 8 = 4 h.
+[[profile.nightly.overrides]]
+filter = "binary(differential)"
+slow-timeout = { period = "30m", terminate-after = 8 }
+
 [profile.nightly.junit]
 path = "junit.xml"
 store-success-output = true
