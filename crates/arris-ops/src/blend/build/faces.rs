@@ -6,16 +6,19 @@ use arris_check::domain::bands;
 use arris_geom::{Curve2, pcurve_ending_on};
 use arris_math::{Interval, Meter, Point2, RELATIVE_ROUNDING, Tolerance};
 use arris_topo::builder::{EdgeKey, EdgeSpec};
-use arris_topo::entity::EdgeGeometry;
+use arris_topo::entity::{EdgeGeometry, Loop};
 use arris_topo::{CurveId, EdgeId, FaceId, Model, Orientation, VertexId};
 
 use super::super::ends::EndKind;
+use super::super::miter::Miter;
 use super::super::ring::{Ring, RingEnd, RingEnds};
 use super::super::ring_rolled::add_ring_rolled_faces;
 use super::super::rolled::add_rolled_faces;
 use super::super::stripe::Section;
 use super::super::{Blend, invariant};
-use super::{BlendCtx, Draft, Drafted, Joins, Rederived, Shortened, SplitPiece};
+use super::{
+    BlendCtx, Draft, Drafted, FaceEdit, Insertion, Joins, Made, Rederived, Shortened, SplitPiece,
+};
 use crate::error::{OpError, fault_of};
 use crate::rebuild::{AddedFace, Rewrite, StoredUse, along};
 
@@ -44,153 +47,203 @@ pub(super) fn rewrite_faces(
         // A run-over's gaps, by loop and the place in it (ADR-0071 §2).
         let mut gaps: Vec<(EdgeId, usize, usize)> = Vec::new();
         for l in entity.loops() {
-            let mut uses: Vec<StoredUse> = Vec::with_capacity(l.coedges().len() + 1);
-            // Where each coedge's use sits in `uses`.
-            let mut at: Vec<usize> = Vec::with_capacity(l.coedges().len());
-            let mut gapped: Vec<(usize, EdgeId)> = Vec::new();
-            for c in l.coedges() {
-                let id = c.edge();
-                if let Some(pieces) = edit.and_then(|e| e.split.get(&id)) {
-                    // The pieces walked the way the coedge walks the edge.
-                    at.push(uses.len());
-                    let forward = c.orientation() == Orientation::Forward;
-                    let ordered: Vec<_> = if forward {
-                        pieces.iter().collect()
-                    } else {
-                        pieces.iter().rev().collect()
-                    };
-                    for piece in ordered {
-                        match *piece {
-                            SplitPiece::Use(edge, pcurve) => uses.push(StoredUse {
-                                edge,
-                                orientation: c.orientation(),
-                                pcurve,
-                            }),
-                            SplitPiece::Gap(by) => gapped.push((uses.len(), by)),
-                        }
-                    }
-                    continue;
-                }
-                let (edge, pcurve) = match edit.and_then(|e| e.replace.get(&id)) {
-                    Some(&(key, pcurve)) => (key, pcurve),
-                    None => (
-                        shortened.get(&id).copied().unwrap_or(EdgeKey::Kept(id)),
-                        (rederived.get(&(id, c.pcurve())).copied()).unwrap_or(c.pcurve()),
-                    ),
-                };
-                at.push(uses.len());
-                uses.push(StoredUse {
-                    edge,
-                    orientation: c.orientation(),
-                    pcurve,
-                });
-                let ce = m.edge(id)?;
-                let junction = if c.orientation() == Orientation::Forward {
-                    ce.end()
-                } else {
-                    ce.start()
-                };
-                if let Some(ins) = edit
-                    .and_then(|e| e.insert.get(&junction))
-                    .filter(|ins| ins.splits.is_none())
-                {
-                    // The arc runs from the end of the corner edge just
-                    // walked to the start of the next.
-                    let arrived_at_lo = id == ins.edge_at_lo;
-                    let orientation = along(ins.lo_first == arrived_at_lo);
-                    let arc = StoredUse {
-                        edge: ins.arc,
-                        orientation,
-                        pcurve: ins.pcurve,
-                    };
-                    // A flush fan's first piece goes on to the vertex by
-                    // the kept edge, before the arc where it arrives by an
-                    // extra (ADR-0082 §2).
-                    match ins.tail {
-                        None => uses.push(arc),
-                        Some(tail) => {
-                            let kept = StoredUse {
-                                edge: tail.edge,
-                                orientation: along(arrived_at_lo == tail.to_vertex),
-                                pcurve: tail.pcurve,
-                            };
-                            if arrived_at_lo {
-                                uses.extend([arc, kept]);
-                            } else {
-                                uses.extend([kept, arc]);
-                            }
-                        }
-                    }
-                }
-            }
-            // The face across met twice: the stretch of the loop from the
-            // corner edge leaving the surviving vertex to the one arriving
-            // at it, closed by the arc, is a loop of its own; the rest
-            // keeps the vertex with the edges that stay (ADR-0043 §4).
-            let mut inner: Option<Vec<StoredUse>> = None;
-            for (&vertex, ins) in edit.iter().flat_map(|e| &e.insert) {
-                let Some(corners) = ins.splits else { continue };
-                let ends = |i: usize| -> Result<(VertexId, VertexId), OpError> {
-                    let c = l.coedges()[i];
-                    let ce = m.edge(c.edge())?;
-                    Ok(if c.orientation() == Orientation::Forward {
-                        (ce.start(), ce.end())
-                    } else {
-                        (ce.end(), ce.start())
-                    })
-                };
-                let (mut leaves, mut arrives) = (None, None);
-                for i in 0..l.coedges().len() {
-                    let (from, to) = ends(i)?;
-                    if !corners.contains(&l.coedges()[i].edge()) {
-                        continue;
-                    }
-                    if from == vertex {
-                        leaves = Some(i);
-                    }
-                    if to == vertex {
-                        arrives = Some(i);
-                    }
-                }
-                let (Some(leaves), Some(arrives)) = (leaves, arrives) else {
-                    continue;
-                };
-                let (first, last) = (at[leaves], at[arrives]);
-                let (mut stretch, rest): (Vec<StoredUse>, Vec<StoredUse>) = if first <= last {
-                    let stretch = uses[first..=last].to_vec();
-                    let rest = [&uses[..first], &uses[last + 1..]].concat();
-                    (stretch, rest)
-                } else {
-                    let stretch = [&uses[first..], &uses[..=last]].concat();
-                    (stretch, uses[last + 1..first].to_vec())
-                };
-                let arrived_at_lo = l.coedges()[arrives].edge() == ins.edge_at_lo;
-                stretch.push(StoredUse {
-                    edge: ins.arc,
-                    orientation: along(ins.lo_first == arrived_at_lo),
-                    pcurve: ins.pcurve,
-                });
-                uses = rest;
-                inner = Some(stretch);
-            }
-            if !gapped.is_empty() {
-                if inner.is_some() || uses.is_empty() {
-                    return Err(invariant("a run-over's gap in a loop of its own"));
-                }
-                // Gaps with no use between them, round the loop too, are one.
-                for (g, by) in gapped {
-                    let gap = (by, loops.len(), g % uses.len());
-                    if !gaps.contains(&gap) {
-                        gaps.push(gap);
-                    }
-                }
-            }
-            loops.push(uses);
+            let mut walked = walk_loop(m, edit, shortened, rederived, l)?;
+            let inner = split_inner_loop(m, edit, l, &mut walked)?;
+            collect_gaps(&mut gaps, loops.len(), &walked, inner.is_some())?;
+            loops.push(walked.uses);
             loops.extend(inner);
         }
         join_at_gaps(&mut loops, &gaps)?;
         end_on_kept_pcurves(m, rw, face, &mut loops, tol, samples, meter)?;
         rw.faces.insert(face, loops);
+    }
+    Ok(())
+}
+
+/// One loop walked for its rewrite.
+struct WalkedLoop {
+    uses: Vec<StoredUse>,
+    /// Where each coedge's use sits in `uses`.
+    at: Vec<usize>,
+    /// A run-over's gaps: the place in `uses` and the blended edge.
+    gapped: Vec<(usize, EdgeId)>,
+}
+
+/// `l`'s coedges carried over: split edges as their pieces, replaced and
+/// shortened edges as their new uses, an arc after the coedge arriving at
+/// a consumed vertex.
+fn walk_loop(
+    m: &Model,
+    edit: Option<&FaceEdit>,
+    shortened: &Shortened,
+    rederived: &Rederived,
+    l: &Loop,
+) -> Result<WalkedLoop, OpError> {
+    let mut uses: Vec<StoredUse> = Vec::with_capacity(l.coedges().len() + 1);
+    let mut at: Vec<usize> = Vec::with_capacity(l.coedges().len());
+    let mut gapped: Vec<(usize, EdgeId)> = Vec::new();
+    for c in l.coedges() {
+        let id = c.edge();
+        if let Some(pieces) = edit.and_then(|e| e.split.get(&id)) {
+            // The pieces walked the way the coedge walks the edge.
+            at.push(uses.len());
+            let forward = c.orientation() == Orientation::Forward;
+            let ordered: Vec<_> = if forward {
+                pieces.iter().collect()
+            } else {
+                pieces.iter().rev().collect()
+            };
+            for piece in ordered {
+                match *piece {
+                    SplitPiece::Use(edge, pcurve) => uses.push(StoredUse {
+                        edge,
+                        orientation: c.orientation(),
+                        pcurve,
+                    }),
+                    SplitPiece::Gap(by) => gapped.push((uses.len(), by)),
+                }
+            }
+            continue;
+        }
+        let (edge, pcurve) = match edit.and_then(|e| e.replace.get(&id)) {
+            Some(&(key, pcurve)) => (key, pcurve),
+            None => (
+                shortened.get(&id).copied().unwrap_or(EdgeKey::Kept(id)),
+                (rederived.get(&(id, c.pcurve())).copied()).unwrap_or(c.pcurve()),
+            ),
+        };
+        at.push(uses.len());
+        uses.push(StoredUse {
+            edge,
+            orientation: c.orientation(),
+            pcurve,
+        });
+        let ce = m.edge(id)?;
+        let junction = if c.orientation() == Orientation::Forward {
+            ce.end()
+        } else {
+            ce.start()
+        };
+        if let Some(ins) = edit
+            .and_then(|e| e.insert.get(&junction))
+            .filter(|ins| ins.splits.is_none())
+        {
+            push_insertion(&mut uses, ins, id);
+        }
+    }
+    Ok(WalkedLoop { uses, at, gapped })
+}
+
+/// The arc of `ins` after the corner edge `arrived_by` just walked: from
+/// its end to the start of the next.
+fn push_insertion(uses: &mut Vec<StoredUse>, ins: &Insertion, arrived_by: EdgeId) {
+    let arrived_at_lo = arrived_by == ins.edge_at_lo;
+    let orientation = along(ins.lo_first == arrived_at_lo);
+    let arc = StoredUse {
+        edge: ins.arc,
+        orientation,
+        pcurve: ins.pcurve,
+    };
+    // A flush fan's first piece goes on to the vertex by the kept edge,
+    // before the arc where it arrives by an extra (ADR-0082 §2).
+    match ins.tail {
+        None => uses.push(arc),
+        Some(tail) => {
+            let kept = StoredUse {
+                edge: tail.edge,
+                orientation: along(arrived_at_lo == tail.to_vertex),
+                pcurve: tail.pcurve,
+            };
+            if arrived_at_lo {
+                uses.extend([arc, kept]);
+            } else {
+                uses.extend([kept, arc]);
+            }
+        }
+    }
+}
+
+/// The face across met twice: the stretch of the loop from the corner edge
+/// leaving the surviving vertex to the one arriving at it, closed by the
+/// arc, is a loop of its own; the rest keeps the vertex with the edges that
+/// stay (ADR-0043 §4). Returns that loop, `walked.uses` the rest.
+fn split_inner_loop(
+    m: &Model,
+    edit: Option<&FaceEdit>,
+    l: &Loop,
+    walked: &mut WalkedLoop,
+) -> Result<Option<Vec<StoredUse>>, OpError> {
+    let mut inner: Option<Vec<StoredUse>> = None;
+    for (&vertex, ins) in edit.iter().flat_map(|e| &e.insert) {
+        let Some(corners) = ins.splits else { continue };
+        let ends = |i: usize| -> Result<(VertexId, VertexId), OpError> {
+            let c = l.coedges()[i];
+            let ce = m.edge(c.edge())?;
+            Ok(if c.orientation() == Orientation::Forward {
+                (ce.start(), ce.end())
+            } else {
+                (ce.end(), ce.start())
+            })
+        };
+        let (mut leaves, mut arrives) = (None, None);
+        for i in 0..l.coedges().len() {
+            let (from, to) = ends(i)?;
+            if !corners.contains(&l.coedges()[i].edge()) {
+                continue;
+            }
+            if from == vertex {
+                leaves = Some(i);
+            }
+            if to == vertex {
+                arrives = Some(i);
+            }
+        }
+        let (Some(leaves), Some(arrives)) = (leaves, arrives) else {
+            continue;
+        };
+        let uses = &walked.uses;
+        let (first, last) = (walked.at[leaves], walked.at[arrives]);
+        let (mut stretch, rest): (Vec<StoredUse>, Vec<StoredUse>) = if first <= last {
+            let stretch = uses[first..=last].to_vec();
+            let rest = [&uses[..first], &uses[last + 1..]].concat();
+            (stretch, rest)
+        } else {
+            let stretch = [&uses[first..], &uses[..=last]].concat();
+            (stretch, uses[last + 1..first].to_vec())
+        };
+        let arrived_at_lo = l.coedges()[arrives].edge() == ins.edge_at_lo;
+        stretch.push(StoredUse {
+            edge: ins.arc,
+            orientation: along(ins.lo_first == arrived_at_lo),
+            pcurve: ins.pcurve,
+        });
+        walked.uses = rest;
+        inner = Some(stretch);
+    }
+    Ok(inner)
+}
+
+/// The run-over gaps of the loop about to become loop `index` of its face,
+/// added to `gaps` once each; a gap in a loop that split or is empty is an
+/// invariant breach.
+fn collect_gaps(
+    gaps: &mut Vec<(EdgeId, usize, usize)>,
+    index: usize,
+    walked: &WalkedLoop,
+    split: bool,
+) -> Result<(), OpError> {
+    if walked.gapped.is_empty() {
+        return Ok(());
+    }
+    if split || walked.uses.is_empty() {
+        return Err(invariant("a run-over's gap in a loop of its own"));
+    }
+    // Gaps with no use between them, round the loop too, are one.
+    for &(g, by) in &walked.gapped {
+        let gap = (by, index, g % walked.uses.len());
+        if !gaps.contains(&gap) {
+            gaps.push(gap);
+        }
     }
     Ok(())
 }
@@ -555,79 +608,21 @@ pub(super) fn add_ring_faces(
     } = joins;
     let ring_made = &mut made.rings;
     for (r, made) in rings.iter().zip(ring_made.iter_mut()) {
-        let [lower, upper] = &r.contacts;
+        let [lower, _] = &r.contacts;
         if let Some(rolled) = &r.rolled {
             add_ring_rolled_faces(m, rw, view.shell_of[&lower.face], r, rolled, made)?;
             continue;
         }
         let surface = m.add_surface(r.surface.clone());
-        if r.across {
-            // A walked ring: `u` across, `v` along the edge, the seam at
-            // `v`'s two ends — the loop of an open stripe whose two ends
-            // are one arc.
-            let RingEnds::Seam(seam) = &r.ends else {
-                return Err(invariant("a walked ring's seam"));
-            };
-            let loop_uses = vec![
-                StoredUse::new(m, EdgeKey::New(made.arcs[0]), true, &seam.on_blend[0]),
-                StoredUse::new(m, EdgeKey::New(made.contacts[1]), true, &upper.on_blend),
-                StoredUse::new(m, EdgeKey::New(made.arcs[0]), false, &seam.on_blend[1]),
-                StoredUse::new(m, EdgeKey::New(made.contacts[0]), false, &lower.on_blend),
-            ];
-            made.added = rw.face(AddedFace {
-                shell: view.shell_of[&lower.face],
-                surface,
-                orientation: r.orientation,
-                loops: vec![loop_uses],
-                tolerance: r.tolerance,
-            });
-            continue;
-        }
-        // Each end's edge, its pcurve, and whether it runs up from the
-        // lower contact: a seam's and a face end's do, a junction's when
-        // its `q` is on the lower contact.
-        let (far, near) = match &r.ends {
-            RingEnds::Seam(seam) => (
-                (made.arcs[0], seam.on_blend[1].clone(), true),
-                (made.arcs[0], seam.on_blend[0].clone(), true),
-            ),
-            RingEnds::Open(ends) => {
-                // The edge's end is at the far `u` when the contacts run
-                // with `u`, its start otherwise.
-                let (hi, lo) = if lower.along_u { (1, 0) } else { (0, 1) };
-                let end = |j: usize| match &ends[j] {
-                    RingEnd::Face(end) => (made.arcs[j], end.on_blend.clone(), end.lo_first),
-                    RingEnd::Junction(vertex) => {
-                        let junction = &miters[miter_at[vertex]];
-                        let side = usize::from(junction.edges[0] != r.edge);
-                        // Up from the lower contact when `range.lo()`
-                        // is on it: at `q` when `q` is.
-                        (
-                            made.arcs[j],
-                            junction.on_blend[side].clone(),
-                            junction.q_first == (junction.shared[side] == 0),
-                        )
-                    }
-                };
-                (end(hi), end(lo))
-            }
+        let uses = if r.across {
+            walked_ring_loop(r, made)?
+        } else {
+            closed_form_ring_loop(r, miters, miter_at, made)
         };
-        let loop_uses = vec![
-            StoredUse::new(
-                m,
-                EdgeKey::New(made.contacts[0]),
-                lower.along_u,
-                &lower.on_blend,
-            ),
-            StoredUse::new(m, EdgeKey::New(far.0), far.2, &far.1),
-            StoredUse::new(
-                m,
-                EdgeKey::New(made.contacts[1]),
-                !upper.along_u,
-                &upper.on_blend,
-            ),
-            StoredUse::new(m, EdgeKey::New(near.0), !near.2, &near.1),
-        ];
+        let loop_uses = uses
+            .into_iter()
+            .map(|(edge, forward, pcurve)| StoredUse::new(m, edge, forward, pcurve))
+            .collect();
         made.added = rw.face(AddedFace {
             shell: view.shell_of[&lower.face],
             surface,
@@ -637,4 +632,77 @@ pub(super) fn add_ring_faces(
         });
     }
     Ok(())
+}
+
+/// A ring loop's four uses: the edge, whether it runs along its parameter,
+/// and its pcurve on the ring's surface.
+type RingLoop<'a> = [(EdgeKey, bool, &'a Curve2); 4];
+
+/// A walked ring's loop: `u` across, `v` along the edge, the seam at `v`'s
+/// two ends — the loop of an open stripe whose two ends are one arc.
+fn walked_ring_loop<'a>(r: &'a Ring, made: &Made) -> Result<RingLoop<'a>, OpError> {
+    let [lower, upper] = &r.contacts;
+    let RingEnds::Seam(seam) = &r.ends else {
+        return Err(invariant("a walked ring's seam"));
+    };
+    Ok([
+        (EdgeKey::New(made.arcs[0]), true, &seam.on_blend[0]),
+        (EdgeKey::New(made.contacts[1]), true, &upper.on_blend),
+        (EdgeKey::New(made.arcs[0]), false, &seam.on_blend[1]),
+        (EdgeKey::New(made.contacts[0]), false, &lower.on_blend),
+    ])
+}
+
+/// A closed-form ring's loop: the lower contact along `u`, up at the far
+/// end, the upper contact back, down at the near end.
+fn closed_form_ring_loop<'a>(
+    r: &'a Ring,
+    miters: &'a [Miter],
+    miter_at: &BTreeMap<VertexId, usize>,
+    made: &Made,
+) -> RingLoop<'a> {
+    let [lower, upper] = &r.contacts;
+    // Each end's edge, its pcurve, and whether it runs up from the lower
+    // contact: a seam's and a face end's do, a junction's when its `q` is
+    // on the lower contact.
+    let (far, near) = match &r.ends {
+        RingEnds::Seam(seam) => (
+            (made.arcs[0], &seam.on_blend[1], true),
+            (made.arcs[0], &seam.on_blend[0], true),
+        ),
+        RingEnds::Open(ends) => {
+            // The edge's end is at the far `u` when the contacts run with
+            // `u`, its start otherwise.
+            let (hi, lo) = if lower.along_u { (1, 0) } else { (0, 1) };
+            let end = |j: usize| match &ends[j] {
+                RingEnd::Face(end) => (made.arcs[j], &end.on_blend, end.lo_first),
+                RingEnd::Junction(vertex) => {
+                    let junction = &miters[miter_at[vertex]];
+                    let side = usize::from(junction.edges[0] != r.edge);
+                    // Up from the lower contact when `range.lo()` is on
+                    // it: at `q` when `q` is.
+                    (
+                        made.arcs[j],
+                        &junction.on_blend[side],
+                        junction.q_first == (junction.shared[side] == 0),
+                    )
+                }
+            };
+            (end(hi), end(lo))
+        }
+    };
+    [
+        (
+            EdgeKey::New(made.contacts[0]),
+            lower.along_u,
+            &lower.on_blend,
+        ),
+        (EdgeKey::New(far.0), far.2, far.1),
+        (
+            EdgeKey::New(made.contacts[1]),
+            !upper.along_u,
+            &upper.on_blend,
+        ),
+        (EdgeKey::New(near.0), !near.2, near.1),
+    ]
 }

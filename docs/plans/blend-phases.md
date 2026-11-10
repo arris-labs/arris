@@ -98,7 +98,7 @@ and `git diff <plan start> -- tests/fixtures 'crates/**/cancel_counts.txt'
 - [x] Step 8 **[2]** — `add_stripes` as a loop over its five parts; the
   `flush-*` fixtures and `blend_prop`'s run-over section are the ones to
   watch.
-- [ ] Step 9 **[2]** — `rewrite_faces` split along its phases;
+- [x] Step 9 **[2]** — `rewrite_faces` split along its phases;
   `add_ring_faces` writes one loop. `blend/split-torus-ring-fillet` and
   the rim fixtures are the ones to watch.
 
