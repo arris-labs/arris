@@ -261,8 +261,8 @@ above when it wants a fix; the block moves or is deleted then.
 
 - What: the two sides of a split do not add up to the body (or fused, return it) within the property's bound: volume `137.24890858034738` against `137.24890677390906` (1.3e-8 relative), `92.18650840929413` against `92.18650763835187` (8e-9), and an area `44.072387211050064` against `44.07238750630362` (7e-9).
 - Where: `the_sides_add_up_to_the_body::shard_1`, `the_sides_fused_are_the_body::shard_1`, `a_reversed_plane_turns_the_sheet::shard_1` (`crates/arris-ops/tests/split_prop.rs:236`).
-- Seen: runs 40469593843 (10-27, area), 40842304608 (10-29, fused volume), 41611704820 (11-03, both volumes), commits `83b4152d` and `bbcea937`; 11-03 seed `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81`, 5000 cases.
-- Reproduce: `ARRIS_PROPTEST_SEED=5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test split_prop -E 'test(/the_sides_/)'`.
+- Seen: runs 40469593843 (10-27, area), 40842304608 (10-29, fused volume), 41611704820 (11-03, both volumes), commits `83b4152d` and `bbcea937`; 11-03 seed `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81`, 5000 cases; and 11-10 (run 42771888324, commit `148e0bfa`, seed `146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055`, job 129681410953): `the_sides_fused_are_the_body`, fused volume `777.4528383997541` against `777.4528420883281` (4e-6 absolute, 5e-9 relative) at `split_prop.rs:236`.
+- Reproduce: `ARRIS_PROPTEST_SEED=5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test split_prop -E 'test(/the_sides_/)'`; the 11-10 case alone: `ARRIS_PROPTEST_SEED=146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055 ARRIS_PROPTEST_CHUNK=122 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test split_prop -E 'test(/the_sides_fused_are_the_body/)'`.
 - Evidence: the three differences are of one size, 7e-9 to 1.3e-8, near the walked blends' measure error (`mass-properties-of-a-thick-torus-inertia` and the fit tolerance), not a missing face.
 - State: raw.
 - The fix is: shrink to a fixture and decide whether the bound or the measure of a NURBS face (the surface grid) is at fault.
@@ -281,7 +281,7 @@ above when it wants a fix; the block moves or is deleted then.
 
 - What: `arris-geom::extrema_surfaces` fails its NURBS shards and `random_pairs` on all 13 nightlies from 10-22 to 11-03: the grid's or the sample's extremum is not among the reported points (a degree-1 or degree-2 NURBS surface or a cone); also `extrema_surface::random_nurbs_pairs::n1`/`n3` (10-24, 10-28).
 - Where: `nurbs_feet::n0`..`n2`, `nurbs_heights::h0`..`h2`, `random_pairs::s0`..`s3` (`crates/arris-geom/tests/extrema_surfaces.rs`).
-- Seen: every night 10-22 to 11-03 (runs 39741382716 to 41611704820); earlier seeds `05c5e3bc…d965466` and `f39a418b…71da79d` (10-16 and 10-20, `cd10106`); latest `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81` (11-03, `bbcea937`, run 41611704820), 5000 cases.; 11-07 (run 42356866658, seed `5f5f0065…29df`): `extrema_surfaces` `nurbs_feet::n0` and `n2`, and `line_nurbs`'s `a_random_nurbs_is_met_where_its_grid_is_pierced::shard_3`
+- Seen: every night 10-22 to 11-03 (runs 39741382716 to 41611704820); earlier seeds `05c5e3bc…d965466` and `f39a418b…71da79d` (10-16 and 10-20, `cd10106`); latest `5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81` (11-03, `bbcea937`, run 41611704820), 5000 cases.; 11-07 (run 42356866658, seed `5f5f0065…29df`): `extrema_surfaces` `nurbs_feet::n0` and `n2`, and `line_nurbs`'s `a_random_nurbs_is_met_where_its_grid_is_pierced::shard_3`; and 11-10 (run 42771888324, commit `148e0bfa`, seed `146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055`, job 129681411106): `nurbs_heights`, the grid's maximum at uv [0.4231770833333426, 0.026367187500003903], point [8.49, -29.71, -37.44], is not among the 2 reported points (chunk 8, `ARRIS_PROPTEST_SEED=146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055 ARRIS_PROPTEST_CHUNK=8 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test extrema_surfaces`)
 - Reproduce: `ARRIS_PROPTEST_SEED=5078719ef4595b8e11268bd4e2f6ee8e06947062f001f3e0e3c472c2a34fff81 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test extrema_surfaces`.
 - Evidence: 11-03 `random_pairs::s3`: the sample's local minimum at [4.9131, 189.479] (39.2667) is not in `SurfaceExtrema`; 10-31 `random_pairs::s2`: [2.0153, -196.0547] (13.0301); 10-25: `isolated: []` for a minimum at 14.818. None panics; none shrunk. (The line this replaces recorded 10-16 and 10-20.)
 - State: raw.
@@ -450,7 +450,7 @@ above when it wants a fix; the block moves or is deleted then.
 
 - What: a fillet of a cusp corner whose two faces are tori is refused `no closed form` for torus against torus, and the property reports that refusal as a failure: `Fillet of both edges of the cusp: no closed form for +e15 (torus surface) against +e22 (torus surface)`. The same refusal reaches `ends_fillet_as_their_sections` on 11-05 as `no closed form for +e42 (torus surface) against +f26 (cylinder surface)`.
 - Where: `cusp_corner_complement_fillets_are_the_mutual_trim` (`crates/arris-ops/tests/blend_prop.rs`, shards 0 and 2) and `cusp_corner_complement_fillet_cancel_and_refusal_roll_back` (shard 0); `ends_fillet_as_their_sections` shard 3.
-- Seen: runs 42002718510 (11-05, seed `cd3af2c65bc838d00637730aa75aa2389d0873d6dc560ca2017ccd9da51f1bc4`), 42194578709 (11-06, seed `7c4060bc63013af77e926b9724be6b65abd9c3d3d9b8f627fe93ecabbc6d81d7`) and 42356866658 (11-07, seed `5f5f00655a43300dd98229aff1e3274c8a8bf1f185b5647b95a5c01de04e29df`), commit `1a7bc1e6`, 5000 cases; three nights running, and new to this list.
+- Seen: runs 42002718510 (11-05, seed `cd3af2c65bc838d00637730aa75aa2389d0873d6dc560ca2017ccd9da51f1bc4`), 42194578709 (11-06, seed `7c4060bc63013af77e926b9724be6b65abd9c3d3d9b8f627fe93ecabbc6d81d7`) and 42356866658 (11-07, seed `5f5f00655a43300dd98229aff1e3274c8a8bf1f185b5647b95a5c01de04e29df`), commit `1a7bc1e6`, 5000 cases; three nights running, and new to this list; and 11-10 (run 42771888324, commit `148e0bfa`, seed `146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055`, job 129681411029): `ends_fillet_as_their_sections`, `Fillet of the posed scene: no closed form for +e` (torus `+e42` against cylinder `+f26`), chunk 93, replayed alone by `ARRIS_PROPTEST_SEED=146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055 ARRIS_PROPTEST_CHUNK=93 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test blend_prop -E 'test(/ends_fillet_as_their_sections/)'`.
 - Reproduce: `ARRIS_PROPTEST_SEED=cd3af2c65bc838d00637730aa75aa2389d0873d6dc560ca2017ccd9da51f1bc4 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test blend_prop -E 'test(/cusp_corner_complement_fillets/)'` (the shrunk `CornerCase` is in the failure's message; the cancel-and-refusal test runs 3,100 s to 3,300 s per shard).
 - Evidence: the failure prints the minimal `CornerCase`; it is not read further.
 - State: raw.
@@ -499,6 +499,26 @@ above when it wants a fix; the block moves or is deleted then.
 - A multi-shell boolean reads its lump order from a scratch copy of the model (`Build::lump_order` clones `self.m`): `Build` holds `&'m Model` and hands out `&'m` borrows (`surface_of`), so a rolled-back `Model::transaction` needs `&mut` threaded through every `Build` method; the alternative is one assembly whose staged shells are reordered after `lumps`, taken if its dump is byte-identical (plans/builder-split step 7 finding)
 - `corpus/step/features.rs`: the doc comment of `edge_at` sits stacked above `face_at`'s and `edge_at` has none; `corpus/read_back.rs`'s `read_back` is still 160 lines (plans/long-functions review)
 - A fillet of STC-07 AP242 e3 #210 (the battery's sample once it leaves out the tangent edges, ADR-0070) builds and the result fails the checker at `Full`: S5 leaves four cylinder × cylinder pairs undecided (f344/f352, f346/f354, f348/f356, f350/f358), which `check_leaving_nurbs` does not leave since no NURBS face is among them; `regression/nist-stc-07-ap242-fillet-checker-undecided` (battery-honesty step 6)
+
+### differential-multi-tool-booleans-fail-with-internal-lumps
+
+- What: the differential's multi-tool booleans return a typed `Internal(Lumps)` error on some of 1000 recipes, where the oracle returns a body; the test fails.
+- Where: `arris_and_the_oracle_agree_on_multi_tool_booleans`, `crates/arris/tests/differential.rs`.
+- Seen: run 42771888324 (11-10), commit `148e0bfa`, seed `146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055`, 1000 cases (job 129681410801).
+- Reproduce: `ARRIS_PROPTEST_SEED=146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055 ARRIS_DIFF_CASES=1000 cargo nextest run -p arris --test differential`; the JUnit is the artifact `junit-differential` of the run.
+- Evidence: the triage prints class `differential`, key `Internal(Lumps)`, apart from the counts disagreement of `differential-multi-tool-disagreements`; the recipe is not read further. Not shrunk.
+- State: raw.
+- The fix is: shrink one recipe to a `regression/` fixture and find which result has more than one lump where the body should have one.
+
+### torus-horn-and-spindle-section-test-panics
+
+- What: a PANIC, not a refusal: `random_horn_and_spindle_sections_keep_their_band` panics at `crates/arris-geom/tests/trace_torus.rs:563`, the test's own `assert!(d <= 2.0 * across, ...)` that a cell of the torus's band, where the section passes through it, lies within twice the cell's diagonals of the trace of the other surface. A panic on geometry breaks `.agents/rules/kernel.md` (typed errors, never a panic): **this is the one a human should prioritise**, apart from the known `refused:` signature of the same test (`nurbs-trace-and-section-properties`), which is a typed refusal.
+- Where: `random_horn_and_spindle_sections_keep_their_band`, `crates/arris-geom/tests/trace_torus.rs:563`.
+- Seen: run 42771888324 (11-10), commit `148e0bfa`, seed `146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055`, 5000 cases, chunk 63 (job 129681411106).
+- Reproduce: `ARRIS_PROPTEST_SEED=146a623ac4a8012181e40b52ebd863a16cb1f15e5f3c8cbb3699e78c13516055 ARRIS_PROPTEST_CHUNK=63 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test trace_torus -E 'test(/random_horn_and_spindle_sections_keep_their_band/)'`.
+- Evidence: the triage key is `panic crates/arris-geom/tests/trace_torus.rs:563`; the failure message names the cell `(i, j)`, the torus and the other surface; the distance `d` is not recorded here. Not shrunk.
+- State: raw.
+- The fix is: shrink the case to a `regression/` fixture, then decide whether the trace misses a branch of the section near the horn or spindle (a kernel defect) or the band test's bound is wrong.
 
 ## Rejected
 

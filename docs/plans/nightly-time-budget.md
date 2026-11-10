@@ -108,11 +108,12 @@ a given design; **[3]** unproven. **[CI]**: the only test is a CI run.
   with a scratch-tree case that catches a dangling slug.
 - [x] Step 7 **[1]** — The triage step in the property and differential jobs,
   nextest `|| true`, `--no-capture` dropped. `tools/workflows-test.sh`.
-- [ ] Step 8 **[1]** **[CI]** — Dispatch the whole workflow against the
+- [x] Step 8 **[1]** **[CI]** — Dispatch the whole workflow against the
   acceptance; a failure read as new gets its block and entry, or stands as a
-  real new one. Run 42724063416 was the first dispatch: every acceptance line
-  held, the listed `sweep_prop` timeouts admitted (Open questions); the
-  differential's cap was repaired by 5a284f7b. One more dispatch confirms it.
+  real new one. Run 42771888324 held every acceptance line (21 jobs none
+  cancelled, no unlisted TIMEOUT, property jobs at most ~257 min with
+  prop-budget totals, differential 4550 s under its 4 h cap); its new
+  signatures are recorded as findings, the floor panic fixed by 4853bec1.
 
 ## Acceptance
 - `ARRIS_PROPTEST_CASES=16 cargo nextest run -p arris-debug -E

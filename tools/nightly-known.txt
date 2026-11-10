@@ -41,3 +41,13 @@ nurbs-trace-and-section-properties arris-geom::trace::random_cone_pairs_trace as
 # The multi-tool differential's counts disagreement with Open CASCADE (read from
 # the job log of run 42659620551: the differential's JUnit is not uploaded yet).
 differential-multi-tool-disagreements arris::differential::arris_and_the_oracle_agree_on_multi_tool_booleans differential Disagree(counts)
+# The multi-tool differential's recipes that return Internal(Lumps).
+differential-multi-tool-booleans-fail-with-internal-lumps arris::differential::arris_and_the_oracle_agree_on_multi_tool_booleans differential Internal(Lumps)
+# The fused sides' volume differs from the body's by 5e-9 relative.
+split-sides-differ-from-the-body-by-1e-8 arris-ops::split_prop::the_sides_fused_are_the_body assert fused volume
+# A torus against a cylinder at a posed end: no closed form for the fillet.
+cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::ends_fillet_as_their_sections assert Fillet of the posed scene: no closed form for +e
+# The grid's maximum of a NURBS surface is not reported.
+extrema-surfaces-and-neighbours-fail-on-nurbs-grids arris-geom::extrema_surfaces::nurbs_heights assert the grid's maximum at
+# A PANIC at the test's own assert (kernel rule: no panics on geometry); prioritise.
+torus-horn-and-spindle-section-test-panics arris-geom::trace_torus::random_horn_and_spindle_sections_keep_their_band panic crates/arris-geom/tests/trace_torus.rs:563
