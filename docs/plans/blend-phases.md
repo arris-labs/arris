@@ -93,7 +93,7 @@ and `git diff <plan start> -- tests/fixtures 'crates/**/cancel_counts.txt'
   classify-and-joins phase to `build/classify.rs`.
 - [x] Step 5 **[1]** — Move the make phase to `build/make.rs`.
 - [x] Step 6 **[1]** — Move the entities phase to `build/entities.rs`.
-- [ ] Step 7 **[1]** — Move the faces phase to `build/faces.rs`; `mod.rs`
+- [x] Step 7 **[1]** — Move the faces phase to `build/faces.rs`; `mod.rs`
   holds what the deltas list and no phase's function.
 - [ ] Step 8 **[2]** — `add_stripes` as a loop over its five parts; the
   `flush-*` fixtures and `blend_prop`'s run-over section are the ones to
@@ -127,6 +127,7 @@ and `git diff <plan start> -- tests/fixtures 'crates/**/cancel_counts.txt'
 
 ## Open questions
 - None for the human. The agent names `junction`'s context struct and
-  the phase functions at their steps, and decides at step 7 whether
-  `record` (143 lines) earns its own `record.rs`; each choice goes in the
-  commit body.
+  the phase functions at their steps; each choice goes in the commit body.
+- *Settled (step 7):* `record` stays in `mod.rs`: provenance closes the
+  assembly driver, and the shared types, driver and record fit in 518
+  lines without a separate file.
