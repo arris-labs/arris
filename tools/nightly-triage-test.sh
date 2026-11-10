@@ -112,6 +112,24 @@ run j3.xml k3.txt
 has '`open-diff`: 1' "a known differential class is counted"
 has 'differential `Internal(Split)`' "another class in the same run stays new"
 
+# A caught kernel panic printed by the differential's hook does not hide its
+# case lines: the known case is still counted, the checker case is its own.
+cat > j5.xml <<X
+<testsuites><testsuite><testcase name="arris_and_the_oracle_agree" classname="arris::differential"><failure message="m">thread 't' panicked at crates/arris/tests/differential.rs:19:5:
+2 failing recipes:
+
+case 222: Disagree(counts): Arris 16 vertices against 14
+
+case 598: CheckerViolation: L5 f3: loop intersects itself
+</failure><system-err>thread 'main' panicked at crates/arris-ops/src/blend/walk.rs:812:9:
+index out of bounds
+</system-err></testcase></testsuite></testsuites>
+X
+run j5.xml k3.txt
+has '`open-diff`: 1' "a caught panic does not hide a known case line"
+has 'differential `CheckerViolation(L5)`' "a checker case line is reached past a caught panic"
+hasnt 'walk.rs:812' "no panic key when case lines are present"
+
 # Only known failures: green.
 cat > j4.xml <<X
 <testsuites><testsuite><testcase name="t::shard_0" classname="c::b"><failure type="test timeout"></failure></testcase></testsuite></testsuites>

@@ -93,13 +93,8 @@ def classify(kind, text):
         return [("timeout", "-")]
     if "property aborted" in text:
         return [("abort", "-")]
-    for m in PANIC.finditer(text):
-        if os.path.basename(m.group(1)) not in HARNESS:
-            return [("panic", f"{m.group(1)}:{m.group(2)}")]
-    m = CHECKER.search(text)
-    if m:
-        r = ROW.search(m.group(1))
-        return [("checker", r.group(1) if r else "-")]
+    # The differential catches each recipe's panic and prints its hook line
+    # into the same stream, so its case lines are read before any panic site.
     cases = []
     for m in CASE.finditer(text):
         name = m.group(1)
@@ -112,6 +107,13 @@ def classify(kind, text):
         cases.append(("differential", name))
     if cases:
         return sorted(set(cases))
+    for m in PANIC.finditer(text):
+        if os.path.basename(m.group(1)) not in HARNESS:
+            return [("panic", f"{m.group(1)}:{m.group(2)}")]
+    m = CHECKER.search(text)
+    if m:
+        r = ROW.search(m.group(1))
+        return [("checker", r.group(1) if r else "-")]
     msg = message(text)
     first = msg.split("\n", 1)[0]
     t = TOKEN.search(first)
