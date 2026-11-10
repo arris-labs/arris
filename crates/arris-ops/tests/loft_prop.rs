@@ -5,14 +5,14 @@
 //! circles on the xy plane raised along z, so the closed forms are known.
 
 use arris_check::{Level, Unchecked, Violation, check};
+use arris_debug::prop::profile::LoftSection;
 use arris_debug::testing::fail;
 use arris_debug::unmetered::mass_properties;
 use arris_debug::{prop, prop_shards};
-use arris_geom::{Profile, ProfileLoop, ProfileSegment, Surface};
-use arris_math::{Frame, Point2, Point3, Vec3, real};
+use arris_geom::{Profile, Surface};
+use arris_math::{Frame, real};
 use arris_ops::{Control, LoftKind, OpError, extrude, loft, transform};
 use arris_topo::{Body, Model};
-use core::f64::consts::PI;
 use proptest::prelude::*;
 
 /// How near two builds of one body come, as a fraction of its size: the
@@ -23,67 +23,16 @@ const REL: f64 = 1e-7;
 /// How near an extrude and a loft of equal sections come: both are exact.
 const EXACT_REL: f64 = 1e-9;
 
-/// One section on its plane: a rectangle of half extents, or a circle.
-#[derive(Debug, Clone, Copy)]
-enum Section {
-    Rectangle(f64, f64),
-    Circle(f64),
-}
-
-impl Section {
-    fn area(self) -> f64 {
-        match self {
-            Section::Rectangle(x, y) => 4.0 * x * y,
-            Section::Circle(r) => PI * r * r,
-        }
-    }
-
-    fn scaled(self, s: f64) -> Section {
-        match self {
-            Section::Rectangle(x, y) => Section::Rectangle(x * s, y * s),
-            Section::Circle(r) => Section::Circle(r * s),
-        }
-    }
-
-    fn at(self, z: f64) -> Profile {
-        let plane = Frame::new(Point3::new(0.0, 0.0, z), Vec3::z(), Vec3::x())
-            .unwrap_or_else(|_| Frame::world());
-        let outer = match self {
-            Section::Rectangle(hx, hy) => {
-                let p = |u: f64, v: f64| Point2::new(u * hx, v * hy);
-                ProfileLoop::Path {
-                    start: p(-1.0, -1.0),
-                    segments: vec![
-                        ProfileSegment::LineTo(p(1.0, -1.0)),
-                        ProfileSegment::LineTo(p(1.0, 1.0)),
-                        ProfileSegment::LineTo(p(-1.0, 1.0)),
-                        ProfileSegment::LineTo(p(-1.0, -1.0)),
-                    ],
-                }
-            }
-            Section::Circle(radius) => ProfileLoop::Circle {
-                center: Point2::origin(),
-                radius,
-            },
-        };
-        Profile {
-            plane,
-            outer,
-            holes: Vec::new(),
-        }
-    }
-}
-
-fn rectangle() -> impl Strategy<Value = Section> {
+fn rectangle() -> impl Strategy<Value = LoftSection> {
     (prop::finite_f64(0.8..=3.0), prop::finite_f64(0.8..=3.0))
-        .prop_map(|(x, y)| Section::Rectangle(x, y))
+        .prop_map(|(x, y)| LoftSection::Rectangle(x, y))
 }
 
-fn circle() -> impl Strategy<Value = Section> {
-    prop::finite_f64(0.8..=3.0).prop_map(Section::Circle)
+fn circle() -> impl Strategy<Value = LoftSection> {
+    prop::finite_f64(0.8..=3.0).prop_map(LoftSection::Circle)
 }
 
-fn any_section() -> impl Strategy<Value = Section> {
+fn any_section() -> impl Strategy<Value = LoftSection> {
     prop_oneof![rectangle(), circle()]
 }
 
@@ -94,7 +43,7 @@ fn heights(count: usize) -> impl Strategy<Value = Vec<f64>> {
 /// Two or three sections raised by cumulative heights, a ruled loft of
 /// either kind of section, or a smooth one of one kind only.
 fn stack() -> impl Strategy<Value = (LoftKind, Vec<Profile>)> {
-    let raise = |sections: Vec<Section>, heights: Vec<f64>| {
+    let raise = |sections: Vec<LoftSection>, heights: Vec<f64>| {
         let mut z = 0.0;
         let mut profiles = vec![sections[0].at(0.0)];
         for (s, h) in sections[1..].iter().zip(&heights) {

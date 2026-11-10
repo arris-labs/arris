@@ -40,6 +40,7 @@ use arris_math::{Axis, Frame, Isometry, Point2, Point3, Reflection, Vec3};
 use proptest::prelude::*;
 
 use super::body::{MAX_EXTENT, MIN_EXTENT};
+use super::profile::LoftSection;
 use super::turned::Turned;
 use super::{finite_f64, point_in_box, pose, radius, rotation, unit_vec3};
 use crate::fixtures::{
@@ -354,29 +355,6 @@ fn sweep_shape() -> impl Strategy<Value = Shape> {
 /// kind only: a circle against a rectangle is paired differently by Open
 /// CASCADE (ADR-0065 §2).
 fn loft_shape() -> impl Strategy<Value = Shape> {
-    let section = |z: f64, kind: &LoftSection| Profile {
-        plane: Frame::new(Point3::new(0.0, 0.0, z), Vec3::z(), Vec3::x())
-            .unwrap_or_else(|_| Frame::world()),
-        outer: match *kind {
-            LoftSection::Rectangle(hx, hy) => {
-                let p = |u: f64, v: f64| Point2::new(u * hx, v * hy);
-                ProfileLoop::Path {
-                    start: p(-1.0, -1.0),
-                    segments: vec![
-                        ProfileSegment::LineTo(p(1.0, -1.0)),
-                        ProfileSegment::LineTo(p(1.0, 1.0)),
-                        ProfileSegment::LineTo(p(-1.0, 1.0)),
-                        ProfileSegment::LineTo(p(-1.0, -1.0)),
-                    ],
-                }
-            }
-            LoftSection::Circle(radius) => ProfileLoop::Circle {
-                center: Point2::origin(),
-                radius,
-            },
-        },
-        holes: Vec::new(),
-    };
     let extent = || finite_f64(0.8..=3.0);
     let rectangle = (extent(), extent()).prop_map(|(x, y)| LoftSection::Rectangle(x, y));
     let circle = extent().prop_map(LoftSection::Circle);
@@ -387,23 +365,16 @@ fn loft_shape() -> impl Strategy<Value = Shape> {
     ]
     .prop_map(move |(kinds, heights)| {
         let mut z = 0.0;
-        let mut sections = vec![section(0.0, &kinds[0])];
+        let mut sections = vec![kinds[0].at(0.0)];
         for (kind, height) in kinds[1..].iter().zip(&heights) {
             z += height;
-            sections.push(section(z, kind));
+            sections.push(kind.at(z));
         }
         Shape::Loft {
             sections,
             centre: Point3::new(0.0, 0.0, z / 2.0),
         }
     })
-}
-
-/// One section of a [`loft_shape`] on the `z` axis.
-#[derive(Debug, Clone, Copy)]
-enum LoftSection {
-    Rectangle(f64, f64),
-    Circle(f64),
 }
 
 /// A stadium of two lines `l` long and two half circles of radius `r`, or a

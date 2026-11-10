@@ -2,7 +2,8 @@
 //! a random plane pose, in either orientation; a rectilinear staircase
 //! beside an axis or reaching it, with the sweep parameters that go with
 //! it; and a general profile beside an axis or with a side along it, whose
-//! segments sweep every surface kind.
+//! segments sweep every surface kind. [`LoftSection`] holds the rectangular
+//! and circular sections shared by loft recipes and properties.
 //!
 //! Every profile a strategy here produces is a *valid* one —
 //! `Profile::edges` accepts it — so a property over sweeps never has to
@@ -635,5 +636,61 @@ fn build_general(
         },
         angle,
         length,
+    }
+}
+
+/// One section on its plane: a rectangle of half extents, or a circle.
+#[derive(Debug, Clone, Copy)]
+pub enum LoftSection {
+    /// A rectangle specified by its x and y half extents.
+    Rectangle(f64, f64),
+    /// A circle specified by its radius.
+    Circle(f64),
+}
+
+impl LoftSection {
+    /// The enclosed area in the section plane.
+    pub fn area(self) -> f64 {
+        match self {
+            LoftSection::Rectangle(x, y) => 4.0 * x * y,
+            LoftSection::Circle(r) => core::f64::consts::PI * r * r,
+        }
+    }
+
+    /// A section with each linear dimension multiplied by `s`.
+    pub fn scaled(self, s: f64) -> LoftSection {
+        match self {
+            LoftSection::Rectangle(x, y) => LoftSection::Rectangle(x * s, y * s),
+            LoftSection::Circle(r) => LoftSection::Circle(r * s),
+        }
+    }
+
+    /// The section on the xy plane raised to height `z`.
+    pub fn at(self, z: f64) -> Profile {
+        let plane = Frame::new(Point3::new(0.0, 0.0, z), Vec3::z(), Vec3::x())
+            .unwrap_or_else(|_| Frame::world());
+        let outer = match self {
+            LoftSection::Rectangle(hx, hy) => {
+                let p = |u: f64, v: f64| Point2::new(u * hx, v * hy);
+                ProfileLoop::Path {
+                    start: p(-1.0, -1.0),
+                    segments: vec![
+                        ProfileSegment::LineTo(p(1.0, -1.0)),
+                        ProfileSegment::LineTo(p(1.0, 1.0)),
+                        ProfileSegment::LineTo(p(-1.0, 1.0)),
+                        ProfileSegment::LineTo(p(-1.0, -1.0)),
+                    ],
+                }
+            }
+            LoftSection::Circle(radius) => ProfileLoop::Circle {
+                center: Point2::origin(),
+                radius,
+            },
+        };
+        Profile {
+            plane,
+            outer,
+            holes: Vec::new(),
+        }
     }
 }

@@ -93,7 +93,7 @@ Scale: **[1]** routine, **[2]** careful, **[3]** unproven
   `cargo nextest list -E` lists the same names with their prefix dropped,
   before and after (a scratch script; the counts go in the body).
   `tools/nightly-triage-test.sh` passes.
-- [ ] Step 2 **[1]** — one `LoftSection` in `prop::profile`, used by
+- [x] Step 2 **[1]** — one `LoftSection` in `prop::profile`, used by
   `loft_prop` and `recipe::loft_shape`. Test: `loft_prop` and the recipe's
   properties pass at 256 cases. The multi-tool differential's fixed-seed
   case list is unchanged (`regression/revolve-cut-many-box-*` still case
