@@ -89,7 +89,7 @@ and `git diff <plan start> -- tests/fixtures 'crates/**/cancel_counts.txt'
   table row; the `ogive-bar-ruling-*` fixtures are the ones to watch.
 - [x] Step 3 **[2]** — `ring::place_contacts` split along its phases;
   the rim and `cusp-*` fixtures are the ones to watch.
-- [ ] Step 4 **[1]** — `git mv` `build.rs` to `build/mod.rs`; move the
+- [x] Step 4 **[1]** — `git mv` `build.rs` to `build/mod.rs`; move the
   classify-and-joins phase to `build/classify.rs`.
 - [ ] Step 5 **[1]** — Move the make phase to `build/make.rs`.
 - [ ] Step 6 **[1]** — Move the entities phase to `build/entities.rs`.
