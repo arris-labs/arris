@@ -1795,69 +1795,15 @@ pub fn lint(dir: &Path) -> Vec<String> {
     };
     let name = &fixture.name;
     let mut problem = |text: String| problems.push(format!("{name}: {text}"));
+    for text in lint_header(&fixture)
+        .into_iter()
+        .chain(lint_recipe_names(&fixture.recipe))
+    {
+        problem(text);
+    }
     let r = &fixture.recipe;
-    let x = &fixture.expected;
-    if x.recipe_sha256 != fixture.recipe_sha256 {
-        problem(format!(
-            "expected.json is stale: recipe hash {} but the recipe hashes to {} — rerun tools/oracle/expected.py",
-            x.recipe_sha256, fixture.recipe_sha256
-        ));
-    }
-    if let Some(posed) = &fixture.pose_of {
-        if posed.own_record {
-            problem(format!(
-                "analytic.pose_of borrows {}'s {SECOND_ORACLE}, so this directory's own would be a second source",
-                posed.name
-            ));
-        }
-        if r.analytic.measure_differs.is_none() {
-            problem("analytic.pose_of needs analytic.measure_differs: it names the record that holds the measures".into());
-        }
-        if !r.steps.iter().any(|s| matches!(s, Step::Transform { .. })) {
-            problem("analytic.pose_of needs a transform step, the pose".into());
-        }
-        match &fixture.second_oracle {
-            None => problem(format!(
-                "analytic.pose_of names {}, which has no {SECOND_ORACLE}",
-                posed.name
-            )),
-            Some(second) => {
-                if second.recipe_sha256 != posed.recipe_sha256 {
-                    problem(format!("{}'s {SECOND_ORACLE} is stale", posed.name));
-                }
-                if second.results.values().any(|m| m.operand.is_none()) {
-                    problem(format!(
-                        "analytic.pose_of needs {}'s {SECOND_ORACLE} to be a record of changes: a motion moves a centroid and an inertia",
-                        posed.name
-                    ));
-                }
-            }
-        }
-    } else if let Some(second) = &fixture.second_oracle {
-        if second.recipe_sha256 != fixture.recipe_sha256 {
-            problem(format!(
-                "{SECOND_ORACLE} is stale: recipe hash {} but the recipe hashes to {} — rerun the second oracle and tools/oracle/second_oracle.py",
-                second.recipe_sha256, fixture.recipe_sha256
-            ));
-        }
-        if r.analytic.measure_differs.is_none() {
-            problem(format!(
-                "{SECOND_ORACLE} holds nothing without analytic.measure_differs (ADR-0073)"
-            ));
-        }
-    }
-    let names: std::collections::BTreeSet<&str> = r.steps.iter().map(Step::name).collect();
-    if names.len() != r.steps.len() {
-        problem("duplicate step names".into());
-    }
-    if !names.contains(r.result.as_str()) {
-        problem(format!("result {:?} is not a step", r.result));
-    }
-    let rel = |a: f64, b: f64| (a - b).abs() <= ANALYTIC_REL * a.abs().max(b.abs()).max(1e-300);
-    let area = name.split('/').next().unwrap_or_default();
-    let dumped = DUMPED_AREAS.contains(&area);
     for variant in r.variant_names() {
-        let Some(m) = x.results.get(&variant) else {
+        let Some(m) = fixture.expected.results.get(&variant) else {
             problem(format!(
                 "variant {variant:?} has no result in expected.json"
             ));
@@ -1866,314 +1812,492 @@ pub fn lint(dir: &Path) -> Vec<String> {
         let Some(params) = r.params_of(&variant) else {
             continue;
         };
+        for text in lint_flags(&fixture, &variant, m) {
+            problem(text);
+        }
         let a = &r.analytic;
-        if !m.dropped_edges.is_empty() && a.expect_error.is_none() {
-            problem(format!(
-                "[{variant}] the oracle dropped {} asked edge(s) (dropped_edges), so it blended less than the recipe asks: the recipe names the edge Open CASCADE took, or expects Arris's refusal with analytic.expect_error (ADR-0070)",
-                m.dropped_edges.len()
-            ));
-        }
-        let dump = crate::corpus::dump_path(dir, &variant);
-        if area == REGRESSION_AREA && dump.is_file() {
-            problem(format!(
-                "[{variant}] {} is committed under {REGRESSION_AREA}/: the fixture passes, so it moves into its area with its test renamed",
-                dump.file_name().unwrap_or_default().to_string_lossy()
-            ));
-        }
-        if a.degenerate && a.expect_error.is_some() {
-            problem("analytic.degenerate and analytic.expect_error are both set".into());
-        }
-        if a.counts_differ.is_some() {
-            if a.counts.is_none() {
-                problem("analytic.counts_differ needs analytic.counts, Arris's".into());
-            }
-            if a.degenerate || a.expect_error.is_some() {
-                problem("analytic.counts_differ needs a result Arris builds".into());
-            }
-        }
-        let second = (fixture.second_oracle.as_ref()).and_then(|s| s.results.get(&variant));
-        if a.measure_differs.is_some() && fixture.second_oracle.is_some() {
-            let stated: Vec<&str> = [
-                ("volume", a.volume.is_some()),
-                ("area", a.area.is_some()),
-                ("centroid", a.centroid.is_some()),
-                ("inertia", a.inertia.is_some()),
-            ]
-            .into_iter()
-            .filter_map(|(field, stated)| stated.then_some(field))
-            .collect();
-            if !stated.is_empty() {
-                problem(format!(
-                    "analytic.measure_differs is held to {SECOND_ORACLE}, so analytic.{} would be a second source (ADR-0073)",
-                    stated.join(", analytic.")
-                ));
-            }
-            if second.is_none() {
-                problem(format!("[{variant}] {SECOND_ORACLE} has no result"));
-            }
-            if a.degenerate || a.expect_error.is_some() {
-                problem("analytic.measure_differs needs a result Arris builds".into());
-            }
-        } else if a.measure_differs.is_some() && fixture.pose_of.is_none() {
-            let missing: Vec<&str> = [
-                ("volume", a.volume.is_none()),
-                ("area", a.area.is_none()),
-                ("centroid", a.centroid.is_none()),
-                ("inertia", a.inertia.is_none()),
-            ]
-            .into_iter()
-            .filter_map(|(field, absent)| absent.then_some(field))
-            .collect();
-            if !missing.is_empty() {
-                problem(format!(
-                    "analytic.measure_differs needs the closed forms it is held to: analytic.{} missing",
-                    missing.join(", analytic.")
-                ));
-            }
-            if a.degenerate || a.expect_error.is_some() {
-                problem("analytic.measure_differs needs a result Arris builds".into());
-            }
-        }
-        if a.checker_undecided.is_some() && (a.degenerate || a.expect_error.is_some()) {
-            problem("analytic.checker_undecided needs a result Arris builds".into());
-        }
-        if a.occt_file_measure_differs.is_some() && a.measure_differs.is_none() {
-            problem("analytic.occt_file_measure_differs needs analytic.measure_differs".into());
-        }
-        if a.step_differs.is_some() && (a.degenerate || a.expect_error.is_some()) {
-            problem("analytic.step_differs needs a result Arris builds".into());
-        }
-        for (key, refused) in [
-            ("occt_step_refused", a.occt_step_refused.is_some()),
-            ("occt_nurbs_refused", a.occt_nurbs_refused.is_some()),
-            ("occt_step_unread", a.occt_step_unread.is_some()),
-        ] {
-            if refused && (a.degenerate || a.expect_error.is_some() || a.step_differs.is_some()) {
-                problem(format!(
-                    "analytic.{key} needs a result Arris builds whose Open CASCADE STEP is read back"
-                ));
-            }
-        }
-        // A refusal Arris owes where Open CASCADE makes nothing — no
-        // solid, or a crash recorded as the empty result (ADR-0048 §6) — is
-        // asserted, and the oracle's degenerate record is all there is.
         let nothing_to_refuse = a.expect_error.is_some() && m.degenerate;
-        if a.degenerate != m.degenerate && !nothing_to_refuse {
-            problem(format!(
-                "[{variant}] analytic.degenerate {} but the oracle says {}",
-                a.degenerate, m.degenerate
-            ));
+        if (a.degenerate != m.degenerate && !nothing_to_refuse) || m.degenerate {
             continue;
         }
-        if m.degenerate {
+        for text in lint_dump_presence(&fixture, &variant) {
+            problem(text);
+        }
+        let mut complete = true;
+        for text in lint_euler(a, &variant, m, &mut complete) {
+            problem(text);
+        }
+        if !complete {
             continue;
         }
-        if dumped && a.expect_error.is_none() && !dump.is_file() {
-            problem(format!(
-                "[{variant}] {} is not committed: a fixture the runner compares carries its blessed dump (ARRIS_BLESS=1), so an #[ignore]d one fails here",
-                dump.file_name().unwrap_or_default().to_string_lossy()
-            ));
-        }
-        // A sheet closes no Euler line: it is an open surface, and the
-        // builder's own line over its boundary cycles is the checker's.
-        let c = m.counts;
-        if !m.sheet {
-            let Some(chi) = m.euler_characteristic else {
-                problem(format!(
-                    "[{variant}] expected.json lacks euler_characteristic"
-                ));
-                continue;
-            };
-            let counted = EulerLine::new(c.vertices, c.edges, c.faces, c.loops, c.shells);
-            let chi_from_counts = counted.characteristic();
-            if chi != chi_from_counts {
-                problem(format!(
-                    "[{variant}] euler_characteristic {chi} does not match the counts ({chi_from_counts})"
-                ));
-            }
-            let non_manifold = matches!(
-                a.expect_error,
-                Some(
-                    ExpectError::NonManifold
-                        | ExpectError::TangentContact
-                        | ExpectError::FrameDoesNotClose
-                )
-            );
-            let genus = match (m.genus, non_manifold) {
-                (Some(genus), _) => Some(genus),
-                // Solids sharing an edge or a vertex, or faces sharing a
-                // tangent contact as an edge of four, close no Euler line.
-                (None, true) => {
-                    if a.genus.is_some() {
-                        problem(format!(
-                            "[{variant}] analytic.genus is set for a non-manifold result, which has none"
-                        ));
-                    }
-                    None
-                }
-                (None, false) => {
-                    problem(format!("[{variant}] expected.json lacks genus"));
-                    continue;
-                }
-            };
-            if let (Some(g), Some(genus)) = (a.genus, genus) {
-                // The Euler line: V − E + F − (L − F) − 2(S − G) = 0. Under
-                // `counts_differ` the analytic genus is Arris's, and the
-                // oracle's counts close at the oracle's own.
-                let at = if a.counts_differ.is_some() { genus } else { g };
-                let line = counted.at_genus(at);
-                if line != 0 {
-                    problem(format!(
-                        "[{variant}] Euler line is {line}, not 0: counts {c:?} with analytic genus {g} (oracle genus {genus})"
-                    ));
-                }
-                if let (Some(_), Some(ac)) = (&a.counts_differ, a.counts) {
-                    let line = EulerLine::new(ac.vertices, ac.edges, ac.faces, ac.loops, ac.shells)
-                        .at_genus(g);
-                    if line != 0 {
-                        problem(format!(
-                            "[{variant}] Euler line of Arris's counts is {line}, not 0: {ac:?} with analytic genus {g}"
-                        ));
-                    }
-                }
-            }
-        }
-        // The measurements that differ from their closed forms: a problem
-        // each, or under `measure_differs` the claim that at least one
-        // does (ADR-0015).
         let mut differs = Vec::new();
-        if let Some(v) = &a.volume {
-            match (v.eval(&params), m.volume) {
-                (Ok(av), Some(ov)) if !rel(av, ov) => {
-                    differs.push(format!("analytic volume {av} vs oracle {ov}"))
-                }
-                (Err(e), _) => problem(format!("[{variant}] analytic volume: {e}")),
-                _ => {}
-            }
+        for text in lint_closed_forms(&fixture, &variant, m, &params, &mut differs) {
+            problem(text);
         }
-        if let Some(v) = &a.area {
-            match (v.eval(&params), m.area) {
-                (Ok(av), Some(ov)) if !rel(av, ov) => {
-                    differs.push(format!("analytic area {av} vs oracle {ov}"))
-                }
-                (Err(e), _) => problem(format!("[{variant}] analytic area: {e}")),
-                _ => {}
-            }
-        }
-        if let (Some(cent), Some(oc)) = (&a.centroid, m.centroid) {
-            for (i, n) in cent.iter().enumerate() {
-                match n.eval(&params) {
-                    Ok(av) if (av - oc[i]).abs() > r.tolerances.centroid_abs.max(ANALYTIC_REL) => {
-                        differs.push(format!("analytic centroid[{i}] {av} vs oracle {}", oc[i]));
-                    }
-                    Err(e) => problem(format!("[{variant}] analytic centroid: {e}")),
-                    _ => {}
-                }
-            }
-        }
-        if let (Some(tensor), Some(oi)) = (&a.inertia, m.inertia) {
-            // Relative to the tensor's largest component, as the runner
-            // compares it: a product of inertia that cancels to zero is
-            // not compared against itself.
-            let scale = oi
-                .iter()
-                .flatten()
-                .fold(0.0f64, |s, x| s.max(x.abs()))
-                .max(f64::MIN_POSITIVE);
-            for (i, row) in tensor.iter().enumerate() {
-                for (j, n) in row.iter().enumerate() {
-                    match n.eval(&params) {
-                        Ok(av) if (av - oi[i][j]).abs() > ANALYTIC_REL * scale => {
-                            differs.push(format!(
-                                "analytic inertia[{i}][{j}] {av} vs oracle {}",
-                                oi[i][j]
-                            ));
-                        }
-                        Err(e) => problem(format!("[{variant}] analytic inertia: {e}")),
-                        _ => {}
-                    }
-                }
-            }
-        }
-        // A record no claim holds is a problem already, its numbers none.
-        if let Some(s) = second.filter(|_| a.measure_differs.is_some()) {
-            if let Some(ov) = m.volume.filter(|&ov| !rel(s.volume, ov)) {
-                differs.push(format!("second oracle volume {} vs oracle {ov}", s.volume));
-            }
-            if let Some(ov) = m.area.filter(|&ov| !rel(s.area, ov)) {
-                differs.push(format!("second oracle area {} vs oracle {ov}", s.area));
-            }
-            if let Some(oc) = m.centroid {
-                let far = |i: usize| {
-                    (s.centroid[i] - oc[i]).abs() > r.tolerances.centroid_abs.max(ANALYTIC_REL)
-                };
-                if (0..3).any(far) {
-                    differs.push(format!(
-                        "second oracle centroid {:?} vs oracle {oc:?}",
-                        s.centroid
-                    ));
-                }
-            }
-            if let Some(oi) = m.inertia {
-                let scale = (oi.iter().flatten()).fold(0.0f64, |s, x| s.max(x.abs()));
-                let far = (s.inertia.iter().flatten().zip(oi.iter().flatten()))
-                    .any(|(x, y)| (x - y).abs() > ANALYTIC_REL * scale.max(f64::MIN_POSITIVE));
-                if far {
-                    differs.push("second oracle inertia vs oracle".into());
-                }
-            }
-        }
-        if a.measure_differs.is_none() {
-            for d in differs {
-                problem(format!("[{variant}] {d}"));
-            }
-        } else if differs.is_empty()
-            && (second.is_some() || (fixture.second_oracle.is_none() && fixture.pose_of.is_none()))
+        let second = fixture
+            .second_oracle
+            .as_ref()
+            .and_then(|s| s.results.get(&variant));
+        differs.extend(lint_second_oracle(r, m, second));
+        for text in lint_measure_difference(&fixture, &variant, differs)
+            .into_iter()
+            .chain(lint_counts(a, &variant, m.counts))
+            .chain(lint_probes(r, &variant, m))
         {
-            // A variant the record lacks is a problem already.
-            let held = if second.is_some() {
-                "the second oracle's record is"
-            } else {
-                "every closed form is"
-            };
-            problem(format!(
-                "[{variant}] analytic.measure_differs is set but {held} the oracle's measurement"
+            problem(text);
+        }
+    }
+    problems
+}
+
+fn lint_header(fixture: &Fixture) -> Vec<String> {
+    let mut problems = Vec::new();
+    let r = &fixture.recipe;
+    let x = &fixture.expected;
+    if x.recipe_sha256 != fixture.recipe_sha256 {
+        problems.push(format!(
+            "expected.json is stale: recipe hash {} but the recipe hashes to {} — rerun tools/oracle/expected.py",
+            x.recipe_sha256, fixture.recipe_sha256
+        ));
+    }
+    if let Some(posed) = &fixture.pose_of {
+        if posed.own_record {
+            problems.push(format!(
+                "analytic.pose_of borrows {}'s {SECOND_ORACLE}, so this directory's own would be a second source",
+                posed.name
             ));
         }
-        if let Some(ac) = a.counts {
-            if a.counts_differ.is_none() && ac != c {
-                problem(format!(
-                    "[{variant}] analytic counts {ac:?} vs oracle {c:?}"
-                ));
-            }
-            if a.counts_differ.is_some() && ac == c {
-                problem(format!(
-                    "[{variant}] analytic.counts_differ is set but the counts {ac:?} are the oracle's"
-                ));
-            }
+        if r.analytic.measure_differs.is_none() {
+            problems.push("analytic.pose_of needs analytic.measure_differs: it names the record that holds the measures".into());
         }
-        let by_label: BTreeMap<&str, Class> = m
-            .probes
-            .iter()
-            .map(|p| (p.label.as_str(), p.class))
-            .collect();
-        for p in &r.probes {
-            match (p.expect, by_label.get(p.label.as_str())) {
-                (_, None) => problem(format!(
-                    "[{variant}] probe {:?} has no oracle result",
-                    p.label
-                )),
-                (Some(e), Some(o)) if e != *o => {
-                    problem(format!(
-                        "[{variant}] probe {:?} expected {e:?}, oracle says {o:?}",
-                        p.label
+        if !r.steps.iter().any(|s| matches!(s, Step::Transform { .. })) {
+            problems.push("analytic.pose_of needs a transform step, the pose".into());
+        }
+        match &fixture.second_oracle {
+            None => problems.push(format!(
+                "analytic.pose_of names {}, which has no {SECOND_ORACLE}",
+                posed.name
+            )),
+            Some(second) => {
+                if second.recipe_sha256 != posed.recipe_sha256 {
+                    problems.push(format!("{}'s {SECOND_ORACLE} is stale", posed.name));
+                }
+                if second.results.values().any(|m| m.operand.is_none()) {
+                    problems.push(format!(
+                        "analytic.pose_of needs {}'s {SECOND_ORACLE} to be a record of changes: a motion moves a centroid and an inertia",
+                        posed.name
                     ));
                 }
+            }
+        }
+    } else if let Some(second) = &fixture.second_oracle {
+        if second.recipe_sha256 != fixture.recipe_sha256 {
+            problems.push(format!(
+                "{SECOND_ORACLE} is stale: recipe hash {} but the recipe hashes to {} — rerun the second oracle and tools/oracle/second_oracle.py",
+                second.recipe_sha256, fixture.recipe_sha256
+            ));
+        }
+        if r.analytic.measure_differs.is_none() {
+            problems.push(format!(
+                "{SECOND_ORACLE} holds nothing without analytic.measure_differs (ADR-0073)"
+            ));
+        }
+    }
+
+    problems
+}
+
+fn lint_recipe_names(r: &Recipe) -> Vec<String> {
+    let mut problems = Vec::new();
+    let names: std::collections::BTreeSet<&str> = r.steps.iter().map(Step::name).collect();
+    if names.len() != r.steps.len() {
+        problems.push("duplicate step names".into());
+    }
+    if !names.contains(r.result.as_str()) {
+        problems.push(format!("result {:?} is not a step", r.result));
+    }
+
+    problems
+}
+
+fn lint_flags(fixture: &Fixture, variant: &str, m: &Measured) -> Vec<String> {
+    let mut problems = Vec::new();
+    let r = &fixture.recipe;
+    let a = &r.analytic;
+    let area = fixture.name.split('/').next().unwrap_or_default();
+    if !m.dropped_edges.is_empty() && a.expect_error.is_none() {
+        problems.push(format!(
+            "[{variant}] the oracle dropped {} asked edge(s) (dropped_edges), so it blended less than the recipe asks: the recipe names the edge Open CASCADE took, or expects Arris's refusal with analytic.expect_error (ADR-0070)",
+            m.dropped_edges.len()
+        ));
+    }
+    // Keep this before the remaining flags to preserve diagnostic order.
+    let dump = crate::corpus::dump_path(&fixture.dir, variant);
+    if area == REGRESSION_AREA && dump.is_file() {
+        problems.push(format!(
+            "[{variant}] {} is committed under {REGRESSION_AREA}/: the fixture passes, so it moves into its area with its test renamed",
+            dump.file_name().unwrap_or_default().to_string_lossy()
+        ));
+    }
+    if a.degenerate && a.expect_error.is_some() {
+        problems.push("analytic.degenerate and analytic.expect_error are both set".into());
+    }
+    if a.counts_differ.is_some() {
+        if a.counts.is_none() {
+            problems.push("analytic.counts_differ needs analytic.counts, Arris's".into());
+        }
+        if a.degenerate || a.expect_error.is_some() {
+            problems.push("analytic.counts_differ needs a result Arris builds".into());
+        }
+    }
+    let second = (fixture.second_oracle.as_ref()).and_then(|s| s.results.get(variant));
+    if a.measure_differs.is_some() && fixture.second_oracle.is_some() {
+        let stated: Vec<&str> = [
+            ("volume", a.volume.is_some()),
+            ("area", a.area.is_some()),
+            ("centroid", a.centroid.is_some()),
+            ("inertia", a.inertia.is_some()),
+        ]
+        .into_iter()
+        .filter_map(|(field, stated)| stated.then_some(field))
+        .collect();
+        if !stated.is_empty() {
+            problems.push(format!(
+                "analytic.measure_differs is held to {SECOND_ORACLE}, so analytic.{} would be a second source (ADR-0073)",
+                stated.join(", analytic.")
+            ));
+        }
+        if second.is_none() {
+            problems.push(format!("[{variant}] {SECOND_ORACLE} has no result"));
+        }
+        if a.degenerate || a.expect_error.is_some() {
+            problems.push("analytic.measure_differs needs a result Arris builds".into());
+        }
+    } else if a.measure_differs.is_some() && fixture.pose_of.is_none() {
+        let missing: Vec<&str> = [
+            ("volume", a.volume.is_none()),
+            ("area", a.area.is_none()),
+            ("centroid", a.centroid.is_none()),
+            ("inertia", a.inertia.is_none()),
+        ]
+        .into_iter()
+        .filter_map(|(field, absent)| absent.then_some(field))
+        .collect();
+        if !missing.is_empty() {
+            problems.push(format!(
+                "analytic.measure_differs needs the closed forms it is held to: analytic.{} missing",
+                missing.join(", analytic.")
+            ));
+        }
+        if a.degenerate || a.expect_error.is_some() {
+            problems.push("analytic.measure_differs needs a result Arris builds".into());
+        }
+    }
+    if a.checker_undecided.is_some() && (a.degenerate || a.expect_error.is_some()) {
+        problems.push("analytic.checker_undecided needs a result Arris builds".into());
+    }
+    if a.occt_file_measure_differs.is_some() && a.measure_differs.is_none() {
+        problems.push("analytic.occt_file_measure_differs needs analytic.measure_differs".into());
+    }
+    if a.step_differs.is_some() && (a.degenerate || a.expect_error.is_some()) {
+        problems.push("analytic.step_differs needs a result Arris builds".into());
+    }
+    for (key, refused) in [
+        ("occt_step_refused", a.occt_step_refused.is_some()),
+        ("occt_nurbs_refused", a.occt_nurbs_refused.is_some()),
+        ("occt_step_unread", a.occt_step_unread.is_some()),
+    ] {
+        if refused && (a.degenerate || a.expect_error.is_some() || a.step_differs.is_some()) {
+            problems.push(format!(
+                "analytic.{key} needs a result Arris builds whose Open CASCADE STEP is read back"
+            ));
+        }
+    }
+    // A refusal Arris owes where Open CASCADE makes nothing — no
+    // solid, or a crash recorded as the empty result (ADR-0048 §6) — is
+    // asserted, and the oracle's degenerate record is all there is.
+    let nothing_to_refuse = a.expect_error.is_some() && m.degenerate;
+    if a.degenerate != m.degenerate && !nothing_to_refuse {
+        problems.push(format!(
+            "[{variant}] analytic.degenerate {} but the oracle says {}",
+            a.degenerate, m.degenerate
+        ));
+    }
+
+    problems
+}
+
+fn lint_dump_presence(fixture: &Fixture, variant: &str) -> Vec<String> {
+    let mut problems = Vec::new();
+    let r = &fixture.recipe;
+    let a = &r.analytic;
+    let area = fixture.name.split('/').next().unwrap_or_default();
+    let dumped = DUMPED_AREAS.contains(&area);
+    let dump = crate::corpus::dump_path(&fixture.dir, variant);
+    if dumped && a.expect_error.is_none() && !dump.is_file() {
+        problems.push(format!(
+            "[{variant}] {} is not committed: a fixture the runner compares carries its blessed dump (ARRIS_BLESS=1), so an #[ignore]d one fails here",
+            dump.file_name().unwrap_or_default().to_string_lossy()
+        ));
+    }
+
+    problems
+}
+
+// Missing Euler data stops the remaining checks for this variant, as in
+// the original lint loop; a mismatch still allows its measurements to run.
+fn lint_euler(a: &Analytic, variant: &str, m: &Measured, complete: &mut bool) -> Vec<String> {
+    let mut problems = Vec::new();
+    // A sheet closes no Euler line: it is an open surface, and the
+    // builder's own line over its boundary cycles is the checker's.
+    let c = m.counts;
+    if !m.sheet {
+        let Some(chi) = m.euler_characteristic else {
+            problems.push(format!(
+                "[{variant}] expected.json lacks euler_characteristic"
+            ));
+            *complete = false;
+            return problems;
+        };
+        let counted = EulerLine::new(c.vertices, c.edges, c.faces, c.loops, c.shells);
+        let chi_from_counts = counted.characteristic();
+        if chi != chi_from_counts {
+            problems.push(format!(
+                "[{variant}] euler_characteristic {chi} does not match the counts ({chi_from_counts})"
+            ));
+        }
+        let non_manifold = matches!(
+            a.expect_error,
+            Some(
+                ExpectError::NonManifold
+                    | ExpectError::TangentContact
+                    | ExpectError::FrameDoesNotClose
+            )
+        );
+        let genus = match (m.genus, non_manifold) {
+            (Some(genus), _) => Some(genus),
+            // Solids sharing an edge or a vertex, or faces sharing a
+            // tangent contact as an edge of four, close no Euler line.
+            (None, true) => {
+                if a.genus.is_some() {
+                    problems.push(format!(
+                        "[{variant}] analytic.genus is set for a non-manifold result, which has none"
+                    ));
+                }
+                None
+            }
+            (None, false) => {
+                problems.push(format!("[{variant}] expected.json lacks genus"));
+                *complete = false;
+                return problems;
+            }
+        };
+        if let (Some(g), Some(genus)) = (a.genus, genus) {
+            // The Euler line: V − E + F − (L − F) − 2(S − G) = 0. Under
+            // `counts_differ` the analytic genus is Arris's, and the
+            // oracle's counts close at the oracle's own.
+            let at = if a.counts_differ.is_some() { genus } else { g };
+            let line = counted.at_genus(at);
+            if line != 0 {
+                problems.push(format!(
+                    "[{variant}] Euler line is {line}, not 0: counts {c:?} with analytic genus {g} (oracle genus {genus})"
+                ));
+            }
+            if let (Some(_), Some(ac)) = (&a.counts_differ, a.counts) {
+                let line = EulerLine::new(ac.vertices, ac.edges, ac.faces, ac.loops, ac.shells)
+                    .at_genus(g);
+                if line != 0 {
+                    problems.push(format!(
+                        "[{variant}] Euler line of Arris's counts is {line}, not 0: {ac:?} with analytic genus {g}"
+                    ));
+                }
+            }
+        }
+    }
+
+    problems
+}
+
+fn lint_closed_forms(
+    fixture: &Fixture,
+    variant: &str,
+    m: &Measured,
+    params: &BTreeMap<String, f64>,
+    differs: &mut Vec<String>,
+) -> Vec<String> {
+    let mut problems = Vec::new();
+    let r = &fixture.recipe;
+    let a = &r.analytic;
+    // The measurements that differ from their closed forms: a problem
+    // each, or under `measure_differs` the claim that at least one
+    // does (ADR-0015).
+    if let Some(v) = &a.volume {
+        match (v.eval(params), m.volume) {
+            (Ok(av), Some(ov)) if !rel(av, ov) => {
+                differs.push(format!("analytic volume {av} vs oracle {ov}"))
+            }
+            (Err(e), _) => problems.push(format!("[{variant}] analytic volume: {e}")),
+            _ => {}
+        }
+    }
+    if let Some(v) = &a.area {
+        match (v.eval(params), m.area) {
+            (Ok(av), Some(ov)) if !rel(av, ov) => {
+                differs.push(format!("analytic area {av} vs oracle {ov}"))
+            }
+            (Err(e), _) => problems.push(format!("[{variant}] analytic area: {e}")),
+            _ => {}
+        }
+    }
+    if let (Some(cent), Some(oc)) = (&a.centroid, m.centroid) {
+        for (i, n) in cent.iter().enumerate() {
+            match n.eval(params) {
+                Ok(av) if (av - oc[i]).abs() > r.tolerances.centroid_abs.max(ANALYTIC_REL) => {
+                    differs.push(format!("analytic centroid[{i}] {av} vs oracle {}", oc[i]));
+                }
+                Err(e) => problems.push(format!("[{variant}] analytic centroid: {e}")),
                 _ => {}
             }
         }
     }
+    if let (Some(tensor), Some(oi)) = (&a.inertia, m.inertia) {
+        // Relative to the tensor's largest component, as the runner
+        // compares it: a product of inertia that cancels to zero is
+        // not compared against itself.
+        let scale = oi
+            .iter()
+            .flatten()
+            .fold(0.0f64, |s, x| s.max(x.abs()))
+            .max(f64::MIN_POSITIVE);
+        for (i, row) in tensor.iter().enumerate() {
+            for (j, n) in row.iter().enumerate() {
+                match n.eval(params) {
+                    Ok(av) if (av - oi[i][j]).abs() > ANALYTIC_REL * scale => {
+                        differs.push(format!(
+                            "analytic inertia[{i}][{j}] {av} vs oracle {}",
+                            oi[i][j]
+                        ));
+                    }
+                    Err(e) => problems.push(format!("[{variant}] analytic inertia: {e}")),
+                    _ => {}
+                }
+            }
+        }
+    }
+
     problems
+}
+
+fn lint_second_oracle(r: &Recipe, m: &Measured, second: Option<&SecondMeasured>) -> Vec<String> {
+    let a = &r.analytic;
+    let mut differs = Vec::new();
+    // A record no claim holds is a problem already, its numbers none.
+    if let Some(s) = second.filter(|_| a.measure_differs.is_some()) {
+        if let Some(ov) = m.volume.filter(|&ov| !rel(s.volume, ov)) {
+            differs.push(format!("second oracle volume {} vs oracle {ov}", s.volume));
+        }
+        if let Some(ov) = m.area.filter(|&ov| !rel(s.area, ov)) {
+            differs.push(format!("second oracle area {} vs oracle {ov}", s.area));
+        }
+        if let Some(oc) = m.centroid {
+            let far = |i: usize| {
+                (s.centroid[i] - oc[i]).abs() > r.tolerances.centroid_abs.max(ANALYTIC_REL)
+            };
+            if (0..3).any(far) {
+                differs.push(format!(
+                    "second oracle centroid {:?} vs oracle {oc:?}",
+                    s.centroid
+                ));
+            }
+        }
+        if let Some(oi) = m.inertia {
+            let scale = (oi.iter().flatten()).fold(0.0f64, |s, x| s.max(x.abs()));
+            let far = (s.inertia.iter().flatten().zip(oi.iter().flatten()))
+                .any(|(x, y)| (x - y).abs() > ANALYTIC_REL * scale.max(f64::MIN_POSITIVE));
+            if far {
+                differs.push("second oracle inertia vs oracle".into());
+            }
+        }
+    }
+
+    differs
+}
+
+fn lint_measure_difference(fixture: &Fixture, variant: &str, differs: Vec<String>) -> Vec<String> {
+    let mut problems = Vec::new();
+    let r = &fixture.recipe;
+    let a = &r.analytic;
+    let second = fixture
+        .second_oracle
+        .as_ref()
+        .and_then(|s| s.results.get(variant));
+    if a.measure_differs.is_none() {
+        for d in differs {
+            problems.push(format!("[{variant}] {d}"));
+        }
+    } else if differs.is_empty()
+        && (second.is_some() || (fixture.second_oracle.is_none() && fixture.pose_of.is_none()))
+    {
+        // A variant the record lacks is a problem already.
+        let held = if second.is_some() {
+            "the second oracle's record is"
+        } else {
+            "every closed form is"
+        };
+        problems.push(format!(
+            "[{variant}] analytic.measure_differs is set but {held} the oracle's measurement"
+        ));
+    }
+
+    problems
+}
+
+fn lint_counts(a: &Analytic, variant: &str, c: Counts) -> Vec<String> {
+    let mut problems = Vec::new();
+    if let Some(ac) = a.counts {
+        if a.counts_differ.is_none() && ac != c {
+            problems.push(format!(
+                "[{variant}] analytic counts {ac:?} vs oracle {c:?}"
+            ));
+        }
+        if a.counts_differ.is_some() && ac == c {
+            problems.push(format!(
+                "[{variant}] analytic.counts_differ is set but the counts {ac:?} are the oracle's"
+            ));
+        }
+    }
+
+    problems
+}
+
+fn lint_probes(r: &Recipe, variant: &str, m: &Measured) -> Vec<String> {
+    let mut problems = Vec::new();
+    let by_label: BTreeMap<&str, Class> = m
+        .probes
+        .iter()
+        .map(|p| (p.label.as_str(), p.class))
+        .collect();
+    for p in &r.probes {
+        match (p.expect, by_label.get(p.label.as_str())) {
+            (_, None) => problems.push(format!(
+                "[{variant}] probe {:?} has no oracle result",
+                p.label
+            )),
+            (Some(e), Some(o)) if e != *o => {
+                problems.push(format!(
+                    "[{variant}] probe {:?} expected {e:?}, oracle says {o:?}",
+                    p.label
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    problems
+}
+
+fn rel(a: f64, b: f64) -> bool {
+    (a - b).abs() <= ANALYTIC_REL * a.abs().max(b.abs()).max(1e-300)
 }
 
 #[cfg(test)]

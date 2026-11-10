@@ -108,7 +108,7 @@ Scale: **[1]** routine, **[2]** careful, **[3]** unproven
   tests with their family. Test: step 3's four outputs byte-identical
   again, and the crate's census tests (`horn_census`,
   `parallel_cylinder_census`, the unit tests) list and pass the same.
-- [ ] Step 5 **[1]** — `fixtures::lint` as one check per row. Test:
+- [x] Step 5 **[1]** — `fixtures::lint` as one check per row. Test:
   `corpus_lint` passes unchanged, its mutated-fixture tests included. A
   scratch harness also runs the lint before and after over every corpus
   directory, with each of `corpus_lint`'s mutations applied to a copy of
