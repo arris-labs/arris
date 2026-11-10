@@ -71,7 +71,9 @@ Deletion is the "done" signal; anything worth keeping moves first.
    comes back empty first: the docs-refs test refuses a file citing it. An
    idea's `absorbed by plans/<slug>` status and the backlog's mentions are
    reworded to name the part done ("the rewrite seams part is done"), not
-   deleted.
+   deleted. An idea whose last part this plan absorbed is `git rm`'d in the
+   same commit (`docs/README.md`, the idea lifecycle), and `git status
+   --short` shows no staged or tracked change left behind.
 10. **Sweep the build cache** (`target/` grows past 100 GB otherwise; build
    output only, never `target/oracle-cache`), in the background under the
    verification's lock, so it waits out a verification in flight and none
