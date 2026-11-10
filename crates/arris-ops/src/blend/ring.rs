@@ -1097,6 +1097,20 @@ fn blend_surface(env: &Env<'_>, rd: &RingRead<'_>, sec: &Section) -> Result<Blen
     })
 }
 
+/// The contacts ordered by the blend's `v`, their face pcurve anchors,
+/// and the open ends read before the contacts are placed.
+struct ContactPlacement {
+    /// Original face slot, face, circle and blend `v`, in increasing `v`.
+    by_v: [(usize, FaceId, Curve, f64); 2],
+    /// Curved-face anchors in the original face order.
+    use_uv: [Option<Point2>; 2],
+    /// Contact parameters in `by_v` order, at the edge's start and end.
+    ends_at: [[f64; 2]; 2],
+    corners: [Option<LoneCorner>; 2],
+    across: [Option<Across>; 2],
+    swapped: bool,
+}
+
 /// The open arc's corners, each contact's end parameters and the contacts
 /// themselves, on their faces and the blend.
 fn place_contacts(
@@ -1107,202 +1121,295 @@ fn place_contacts(
     junctions: &BTreeSet<VertexId>,
     cusps: &BTreeMap<VertexId, CuspEnd>,
 ) -> Result<Placed, OpError> {
-    let m = env.m;
-    let (tol, samples) = (env.tol, env.samples);
-    let RingRead {
-        e,
-        range,
-        mid,
-        edge,
-        entity,
-        curve,
-        uses,
-        faces,
-        rim,
-        tolerance,
-        z,
-        curved: [fa, fb],
-        ..
-    } = *rd;
-    let (v_a, v_b) = (bl.v_a, bl.v_b);
-    let surface = &bl.surface;
-    let on_a = bl.on_a.clone();
-    let on_b = bl.on_b.clone();
-    let too_large =
-        |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
-    let line_tol = Tolerance::new(tolerance, tol.angular);
-    let geometry = fault_of;
-    // A curved face's own `(u, v)` at the edge's start, which its
-    // contact's pcurve is placed at, in `u` and on a torus in `v` too: the
-    // contact is within half a turn of the edge round the tube. A plane has
-    // none.
-    let mut use_uv = [None; 2];
-    for (i, uv) in use_uv.iter_mut().enumerate() {
-        if [fa, fb][i].is_some() {
-            *uv = Some(m.curve2(uses[i].pcurve)?.point(range.lo()));
-        }
-    }
-    let mut contacts: Vec<RingContact> = Vec::with_capacity(2);
-    let mut run: Option<(usize, RunOver)> = None;
-    let mut by_v = [(0, faces[0], on_a, v_a), (1, faces[1], on_b, v_b)];
-    let swapped = v_b < v_a;
-    if swapped {
-        by_v.swap(0, 1);
-    }
-    // An open arc's corners, read before its contacts as a stripe's are:
-    // an end at a tangent corner edge that is no junction is
-    // `BlendReason::TangentChain`, whatever the contacts do beside it.
-    let open = entity.start() != entity.end();
-    let mut corners: [Option<LoneCorner>; 2] = [None, None];
-    if open {
-        // The edge's uses by contact, which the corner is read through.
-        let use_of = |face: FaceId| {
-            uses.iter()
-                .copied()
-                .find(|u| u.face == face)
-                .ok_or(invariant("a contact on one of the edge's faces"))
-        };
-        let contact_uses = [use_of(by_v[0].1)?, use_of(by_v[1].1)?];
-        for (j, at_lo) in [(0, true), (1, false)] {
-            let vertex = if at_lo { entity.start() } else { entity.end() };
-            if !junctions.contains(&vertex) && !cusps.contains_key(&vertex) {
-                corners[j] =
-                    Some(corner_of(env, edge, &contact_uses, vertex, at_lo)?.lone(edge, vertex)?);
+    let mut placement = ContactPlacement::read(env, rd, bl)?;
+    placement.read_corners(env, rd, junctions, cusps)?;
+    placement.trim_across(env, rd)?;
+    placement.trim_cusps(rd, cusps)?;
+    placement.place(env, meter, rd, bl)
+}
+
+impl ContactPlacement {
+    /// Read the curved faces' pcurve anchors and order the contacts by `v`.
+    fn read(env: &Env<'_>, rd: &RingRead<'_>, bl: &Blended) -> Result<Self, OpError> {
+        let m = env.m;
+        let RingRead {
+            range,
+            uses,
+            faces,
+            curved: [fa, fb],
+            ..
+        } = *rd;
+        let (v_a, v_b) = (bl.v_a, bl.v_b);
+        let on_a = bl.on_a.clone();
+        let on_b = bl.on_b.clone();
+        // A curved face's own `(u, v)` at the edge's start, which its
+        // contact's pcurve is placed at, in `u` and on a torus in `v` too: the
+        // contact is within half a turn of the edge round the tube. A plane has
+        // none.
+        let mut use_uv = [None; 2];
+        for (i, uv) in use_uv.iter_mut().enumerate() {
+            if [fa, fb][i].is_some() {
+                *uv = Some(m.curve2(uses[i].pcurve)?.point(range.lo()));
             }
         }
+        let mut by_v = [(0, faces[0], on_a, v_a), (1, faces[1], on_b, v_b)];
+        let swapped = v_b < v_a;
+        if swapped {
+            by_v.swap(0, 1);
+        }
+        Ok(Self {
+            by_v,
+            use_uv,
+            ends_at: [[range.lo(), range.hi()]; 2],
+            corners: [None, None],
+            across: [None, None],
+            swapped,
+        })
     }
-    // Each open end's face across, read against the axis; where it is off
-    // the axis each contact's own parameter there, in the edge's, which
-    // the contact circles share: the crossing on the vertex's side, moved
-    // by whole turns to the edge's own end.
-    let mut across: [Option<Across>; 2] = [None, None];
-    let mut ends_at = [[range.lo(), range.hi()]; 2];
-    for (j, at_lo) in [(0, true), (1, false)] {
-        let Some((_, face, spine)) = corners[j] else {
-            continue;
-        };
-        // A face of no family is refused at its end, after the contacts.
-        let across_surface = m.surface(m.face(face)?.surface())?;
-        across[j] = across_of(across_surface, rim.origin(), z, tol, tolerance);
-        let Some(kind) = across[j].filter(|k| !matches!(k, Across::Axis)) else {
-            continue;
-        };
-        let t_end = if at_lo { range.lo() } else { range.hi() };
-        // At a cusp the vertex is on the line through both axes, so the
-        // side is the edge's own, read at its midpoint: an open arc is
-        // under a turn, so it lies wholly on one side (ADR-0042 §2).
-        let side_point = if spine.is_some() {
-            curve.point(mid)
-        } else {
-            curve.point(t_end)
-        };
-        for (slot, (_, _, contact, _)) in by_v.iter().enumerate() {
-            // The contact on the wall tangent to the face across meets it
-            // on the spine, at the vertex's own angle: the contact runs
-            // on that wall as the edge does, `Q` (ADR-0042 §2).
-            if spine == Some(slot) {
-                continue;
-            }
-            let &Curve::Circle { frame, radius } = contact else {
-                return Err(invariant("a contact circle"));
+
+    /// Read open corners before any contact can be refused beside them.
+    fn read_corners(
+        &mut self,
+        env: &Env<'_>,
+        rd: &RingRead<'_>,
+        junctions: &BTreeSet<VertexId>,
+        cusps: &BTreeMap<VertexId, CuspEnd>,
+    ) -> Result<(), OpError> {
+        let RingRead {
+            entity, uses, edge, ..
+        } = *rd;
+        let by_v = &self.by_v;
+        // An open arc's corners, read before its contacts as a stripe's are:
+        // an end at a tangent corner edge that is no junction is
+        // `BlendReason::TangentChain`, whatever the contacts do beside it.
+        let open = entity.start() != entity.end();
+        if open {
+            // The edge's uses by contact, which the corner is read through.
+            let use_of = |face: FaceId| {
+                uses.iter()
+                    .copied()
+                    .find(|u| u.face == face)
+                    .ok_or(invariant("a contact on one of the edge's faces"))
             };
-            let point = kind
-                .meet(frame.origin(), z, radius, side_point, tolerance)
-                .ok_or_else(|| too_large(face))?;
-            let t = contact.project(point).map_err(geometry)?.t;
-            ends_at[slot][j] = t + TAU * ((t_end - t) / TAU).round();
+            let contact_uses = [use_of(by_v[0].1)?, use_of(by_v[1].1)?];
+            for (j, at_lo) in [(0, true), (1, false)] {
+                let vertex = if at_lo { entity.start() } else { entity.end() };
+                if !junctions.contains(&vertex) && !cusps.contains_key(&vertex) {
+                    self.corners[j] = Some(
+                        corner_of(env, edge, &contact_uses, vertex, at_lo)?.lone(edge, vertex)?,
+                    );
+                }
+            }
         }
+        Ok(())
     }
-    // At a cusp both of whose edges are blended (ADR-0084 §4′), the
-    // contact on the shared face ends at `T*`, where it crosses the other
-    // blend's, and the other runs on to the spine at the vertex's angle.
-    if open {
+
+    /// Trim each contact against the face across an open end.
+    fn trim_across(&mut self, env: &Env<'_>, rd: &RingRead<'_>) -> Result<(), OpError> {
+        let m = env.m;
+        let tol = env.tol;
+        let RingRead {
+            e,
+            range,
+            mid,
+            curve,
+            rim,
+            tolerance,
+            z,
+            ..
+        } = *rd;
+        let by_v = &self.by_v;
+        let corners = &self.corners;
+        let too_large =
+            |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
+        let geometry = fault_of;
+        // Each open end's face across, read against the axis; where it is off
+        // the axis each contact's own parameter there, in the edge's, which
+        // the contact circles share: the crossing on the vertex's side, moved
+        // by whole turns to the edge's own end.
         for (j, at_lo) in [(0, true), (1, false)] {
-            let vertex = if at_lo { entity.start() } else { entity.end() };
-            let Some(end) = cusps.get(&vertex) else {
+            let Some((_, face, spine)) = corners[j] else {
                 continue;
             };
-            let slot = (by_v.iter())
-                .position(|(_, face, _, _)| *face == end.top)
-                .ok_or(invariant("a cusp's shared face among the contacts'"))?;
-            let contact = &by_v[slot].2;
-            let at = contact.project(end.point).map_err(geometry)?;
-            if at.distance > tolerance {
-                return Err(invariant("the cusp's T* on the contact"));
-            }
+            // A face of no family is refused at its end, after the contacts.
+            let across_surface = m.surface(m.face(face)?.surface())?;
+            self.across[j] = across_of(across_surface, rim.origin(), z, tol, tolerance);
+            let Some(kind) = self.across[j].filter(|k| !matches!(k, Across::Axis)) else {
+                continue;
+            };
             let t_end = if at_lo { range.lo() } else { range.hi() };
-            ends_at[slot][j] = at.t + TAU * ((t_end - at.t) / TAU).round();
+            // At a cusp the vertex is on the line through both axes, so the
+            // side is the edge's own, read at its midpoint: an open arc is
+            // under a turn, so it lies wholly on one side (ADR-0042 §2).
+            let side_point = if spine.is_some() {
+                curve.point(mid)
+            } else {
+                curve.point(t_end)
+            };
+            for (slot, (_, _, contact, _)) in by_v.iter().enumerate() {
+                // The contact on the wall tangent to the face across meets it
+                // on the spine, at the vertex's own angle: the contact runs
+                // on that wall as the edge does, `Q` (ADR-0042 §2).
+                if spine == Some(slot) {
+                    continue;
+                }
+                let &Curve::Circle { frame, radius } = contact else {
+                    return Err(invariant("a contact circle"));
+                };
+                let point = kind
+                    .meet(frame.origin(), z, radius, side_point, tolerance)
+                    .ok_or_else(|| too_large(face))?;
+                let t = contact.project(point).map_err(geometry)?.t;
+                self.ends_at[slot][j] = t + TAU * ((t_end - t) / TAU).round();
+            }
         }
+        Ok(())
     }
-    for (slot, (i, face, contact, v)) in by_v.into_iter().enumerate() {
-        // A contact the end trims to nothing has left its face.
-        let [lo, hi] = ends_at[slot];
-        let length = match contact {
-            Curve::Circle { radius, .. } => (hi - lo) * radius,
-            Curve::Line { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_) => 0.0,
-        };
-        if length <= tolerance {
-            return Err(too_large(face));
+
+    /// End a cusp's shared-face contact at the two blends' `T*`.
+    fn trim_cusps(
+        &mut self,
+        rd: &RingRead<'_>,
+        cusps: &BTreeMap<VertexId, CuspEnd>,
+    ) -> Result<(), OpError> {
+        let RingRead {
+            entity,
+            range,
+            tolerance,
+            ..
+        } = *rd;
+        let open = entity.start() != entity.end();
+        let by_v = &self.by_v;
+        let geometry = fault_of;
+        // At a cusp both of whose edges are blended (ADR-0084 §4′), the
+        // contact on the shared face ends at `T*`, where it crosses the other
+        // blend's, and the other runs on to the spine at the vertex's angle.
+        if open {
+            for (j, at_lo) in [(0, true), (1, false)] {
+                let vertex = if at_lo { entity.start() } else { entity.end() };
+                let Some(end) = cusps.get(&vertex) else {
+                    continue;
+                };
+                let slot = (by_v.iter())
+                    .position(|(_, face, _, _)| *face == end.top)
+                    .ok_or(invariant("a cusp's shared face among the contacts'"))?;
+                let contact = &by_v[slot].2;
+                let at = contact.project(end.point).map_err(geometry)?;
+                if at.distance > tolerance {
+                    return Err(invariant("the cusp's T* on the contact"));
+                }
+                let t_end = if at_lo { range.lo() } else { range.hi() };
+                self.ends_at[slot][j] = at.t + TAU * ((t_end - at.t) / TAU).round();
+            }
         }
-        let range = Interval::new(lo, hi).map_err(|_| too_large(face))?;
-        let mid = range.midpoint();
-        let face_surface = m.surface(m.face(face)?.surface())?;
-        let on_face =
-            pcurve_on(&contact, range, face_surface, line_tol, meter).map_err(geometry)?;
-        let on_face = match (use_uv[i], face_surface) {
-            (Some(uv), Surface::Torus { .. }) => placed_uv(on_face, range.lo(), uv),
-            (Some(uv), _) => placed(on_face, range.lo(), uv.x, face_surface.period()[0]),
-            (None, _) => on_face,
-        };
-        if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
-            let leaving = bl.centres.as_ref().map(|centres| Leaving {
-                blended: edge,
-                face,
-                other: faces[1 - i],
-                contact: &contact,
-                range,
-                centres,
-                tolerance,
-            });
-            // A closed edge's torus is rolled on the edge the contact runs
-            // over; any other ring is refused naming it.
-            let rolls = !open && matches!(surface, Surface::Torus { .. });
-            if run.is_some() || !rolls {
-                return Err(run_over::refusal(
-                    env,
-                    leaving.as_ref(),
-                    too_large(face),
-                    meter,
+        Ok(())
+    }
+
+    /// Place the trimmed contacts on their faces and the blend, reading a run-over.
+    fn place(
+        self,
+        env: &Env<'_>,
+        meter: &mut Meter<'_>,
+        rd: &RingRead<'_>,
+        bl: &Blended,
+    ) -> Result<Placed, OpError> {
+        let m = env.m;
+        let (tol, samples) = (env.tol, env.samples);
+        let RingRead {
+            e,
+            edge,
+            entity,
+            faces,
+            tolerance,
+            ..
+        } = *rd;
+        let Self {
+            by_v,
+            use_uv,
+            ends_at,
+            corners,
+            across,
+            swapped,
+        } = self;
+        let surface = &bl.surface;
+        let too_large =
+            |face: FaceId| degenerate(vec![e, forward(face)], Reason::Blend(BlendReason::TooLarge));
+        let line_tol = Tolerance::new(tolerance, tol.angular);
+        let geometry = fault_of;
+        let open = entity.start() != entity.end();
+        let mut contacts: Vec<RingContact> = Vec::with_capacity(2);
+        let mut run: Option<(usize, RunOver)> = None;
+        for (slot, (i, face, contact, v)) in by_v.into_iter().enumerate() {
+            // A contact the end trims to nothing has left its face.
+            let [lo, hi] = ends_at[slot];
+            let length = match contact {
+                Curve::Circle { radius, .. } => (hi - lo) * radius,
+                Curve::Line { .. } | Curve::Ellipse { .. } | Curve::Nurbs(_) => 0.0,
+            };
+            if length <= tolerance {
+                return Err(too_large(face));
+            }
+            let range = Interval::new(lo, hi).map_err(|_| too_large(face))?;
+            let mid = range.midpoint();
+            let face_surface = m.surface(m.face(face)?.surface())?;
+            let on_face =
+                pcurve_on(&contact, range, face_surface, line_tol, meter).map_err(geometry)?;
+            let on_face = match (use_uv[i], face_surface) {
+                (Some(uv), Surface::Torus { .. }) => placed_uv(on_face, range.lo(), uv),
+                (Some(uv), _) => placed(on_face, range.lo(), uv.x, face_surface.period()[0]),
+                (None, _) => on_face,
+            };
+            if !on_side_of_face(m, face, &on_face, range, Side::Inside, samples)? {
+                let leaving = bl.centres.as_ref().map(|centres| Leaving {
+                    blended: edge,
+                    face,
+                    other: faces[1 - i],
+                    contact: &contact,
+                    range,
+                    centres,
+                    tolerance,
+                });
+                // A closed edge's torus is rolled on the edge the contact runs
+                // over; any other ring is refused naming it.
+                let rolls = !open && matches!(surface, Surface::Torus { .. });
+                if run.is_some() || !rolls {
+                    return Err(run_over::refusal(
+                        env,
+                        leaving.as_ref(),
+                        too_large(face),
+                        meter,
+                    ));
+                }
+                run = Some((
+                    slot,
+                    run_over::run(env, leaving.as_ref(), too_large(face), meter)?,
                 ));
             }
-            run = Some((
-                slot,
-                run_over::run(env, leaving.as_ref(), too_large(face), meter)?,
-            ));
+            let on_blend =
+                pcurve_on(&contact, range, surface, line_tol, meter).map_err(geometry)?;
+            let along_u = on_blend.point(mid).x > on_blend.point(range.lo()).x;
+            let target = Point2::new(if along_u { 0.0 } else { TAU }, v);
+            contacts.push(RingContact {
+                face,
+                range,
+                points: [contact.point(range.lo()), contact.point(range.hi())],
+                curve: contact,
+                on_face,
+                on_blend: placed_uv(on_blend, range.lo(), target),
+                along_u,
+            });
         }
-        let on_blend = pcurve_on(&contact, range, surface, line_tol, meter).map_err(geometry)?;
-        let along_u = on_blend.point(mid).x > on_blend.point(range.lo()).x;
-        let target = Point2::new(if along_u { 0.0 } else { TAU }, v);
-        contacts.push(RingContact {
-            face,
-            range,
-            points: [contact.point(range.lo()), contact.point(range.hi())],
-            curve: contact,
-            on_face,
-            on_blend: placed_uv(on_blend, range.lo(), target),
-            along_u,
-        });
+        let contacts: [RingContact; 2] = contacts
+            .try_into()
+            .map_err(|_| invariant("two contacts of the blend"))?;
+        Ok(Placed {
+            contacts,
+            corners,
+            across,
+            swapped,
+            run,
+        })
     }
-    let contacts: [RingContact; 2] = contacts
-        .try_into()
-        .map_err(|_| invariant("two contacts of the blend"))?;
-    Ok(Placed {
-        contacts,
-        corners,
-        across,
-        swapped,
-        run,
-    })
 }
 
 /// Where a closed edge's vertex has the seams of its faces cut to the

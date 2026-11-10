@@ -87,7 +87,7 @@ and `git diff <plan start> -- tests/fixtures 'crates/**/cancel_counts.txt'
   `cusp-*` fixtures are the ones to watch.
 - [x] Step 2 **[2]** — `stripe::stripe` read once, one function per
   table row; the `ogive-bar-ruling-*` fixtures are the ones to watch.
-- [ ] Step 3 **[2]** — `ring::place_contacts` split along its phases;
+- [x] Step 3 **[2]** — `ring::place_contacts` split along its phases;
   the rim and `cusp-*` fixtures are the ones to watch.
 - [ ] Step 4 **[1]** — `git mv` `build.rs` to `build/mod.rs`; move the
   classify-and-joins phase to `build/classify.rs`.
