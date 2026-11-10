@@ -28,250 +28,315 @@ pub(super) fn add_stripes(
     joins: &Joins,
     drafted: &Drafted,
 ) -> Result<Vec<StripeMade>, OpError> {
-    let (m, view, _, tol, _, meter) = ctx.parts();
-    let Draft {
-        rw,
-        cuts,
-        edits,
-        crowded,
-    } = draft;
+    let mut made = Vec::with_capacity(blends.len());
+    for blend in blends {
+        let vertices = stripe_end_vertices(&mut draft.rw, blend, joins, drafted);
+        let rolled = stripe_run_over(ctx, draft, blend, vertices)?;
+        let contacts = stripe_contact_edges(ctx.m, &mut draft.rw, blend, vertices, rolled.as_ref());
+        let mut stripe = StripeMade {
+            vertices,
+            contacts,
+            rolled,
+            ..Default::default()
+        };
+        stripe_end_arcs(ctx, draft, blend, joins, drafted, &mut stripe)?;
+        stripe_remnants(ctx.m, &ctx.view, draft, blend, &stripe)?;
+        made.push(stripe);
+    }
+    Ok(made)
+}
+
+/// Each end's contact vertices, shared at a pole, miter or corner.
+fn stripe_end_vertices(
+    rw: &mut Rewrite,
+    blend: &Blend,
+    joins: &Joins,
+    drafted: &Drafted,
+) -> [[usize; 2]; 2] {
     let Joins {
-        miters,
-        miter_at: _,
-        cusps: _,
-        corners,
-        corner_at: _,
+        miters, corners, ..
     } = joins;
     let (miter_made, corner_made) = (&drafted.miters, &drafted.corners);
-    let mut made: Vec<StripeMade> = Vec::with_capacity(blends.len());
-    for blend in blends {
-        let mut vertices = [[0usize; 2]; 2];
-        let mut crossings: Vec<usize> = Vec::new();
-        for (end_index, end) in blend.ends.iter().enumerate() {
-            match end {
-                EndKind::Face(face_end) => {
-                    for (k, slot) in vertices[end_index].iter_mut().enumerate() {
-                        *slot = rw.vertex(VertexSpec::New {
-                            point: face_end.points[k],
-                            tolerance: vertex_tolerance_of(&blend.ends, k),
-                        });
-                    }
-                }
-                EndKind::Pole(pole) => {
-                    let at = rw.vertex(match pole.remnant {
-                        None => VertexSpec::Keep(pole.vertex),
-                        Some(r) => VertexSpec::New {
-                            point: r.point,
-                            tolerance: r.tolerance,
-                        },
+    let mut vertices = [[0usize; 2]; 2];
+    for (end_index, end) in blend.ends.iter().enumerate() {
+        match end {
+            EndKind::Face(face_end) => {
+                for (k, slot) in vertices[end_index].iter_mut().enumerate() {
+                    *slot = rw.vertex(VertexSpec::New {
+                        point: face_end.points[k],
+                        tolerance: vertex_tolerance_of(&blend.ends, k),
                     });
-                    vertices[end_index] = [at; 2];
                 }
-                EndKind::Miter { at, side } => {
-                    let shared = miters[*at].shared[*side];
-                    vertices[end_index][shared] = miter_made[*at].vertices[0];
-                    vertices[end_index][1 - shared] = miter_made[*at].far(&miters[*at], *side);
-                }
-                EndKind::Corner { at, side } => {
-                    for (k, slot) in vertices[end_index].iter_mut().enumerate() {
-                        *slot = corner_made[*at].vertices[corners[*at].contact_point[*side][k]];
-                    }
+            }
+            EndKind::Pole(pole) => {
+                let at = rw.vertex(match pole.remnant {
+                    None => VertexSpec::Keep(pole.vertex),
+                    Some(r) => VertexSpec::New {
+                        point: r.point,
+                        tolerance: r.tolerance,
+                    },
+                });
+                vertices[end_index] = [at; 2];
+            }
+            EndKind::Miter { at, side } => {
+                let shared = miters[*at].shared[*side];
+                vertices[end_index][shared] = miter_made[*at].vertices[0];
+                vertices[end_index][1 - shared] = miter_made[*at].far(&miters[*at], *side);
+            }
+            EndKind::Corner { at, side } => {
+                for (k, slot) in vertices[end_index].iter_mut().enumerate() {
+                    *slot = corner_made[*at].vertices[corners[*at].contact_point[*side][k]];
                 }
             }
         }
-        // A run-over cuts the contacts at its crossings, and its own edits
-        // of the faces take the contacts' place (ADR-0071 §2).
-        let rolled = match &blend.rolled {
-            Some(rolled) => Some(add_run_over(
+    }
+    vertices
+}
+
+fn stripe_run_over(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    blend: &Blend,
+    vertices: [[usize; 2]; 2],
+) -> Result<Option<RolledMade>, OpError> {
+    let (m, view, _, _, _, _) = ctx.parts();
+    let Draft {
+        rw, edits, crowded, ..
+    } = draft;
+    // A run-over cuts the contacts at its crossings, and its own edits
+    // of the faces take the contacts' place (ADR-0071 §2).
+    let rolled = match &blend.rolled {
+        Some(rolled) => Some(add_run_over(
+            m,
+            view,
+            rw,
+            edits,
+            rolled,
+            vertices,
+            crowded.contains(&rolled.run.edge),
+        )?),
+        None => None,
+    };
+    Ok(rolled)
+}
+
+fn stripe_contact_edges(
+    m: &mut Model,
+    rw: &mut Rewrite,
+    blend: &Blend,
+    vertices: [[usize; 2]; 2],
+    rolled: Option<&RolledMade>,
+) -> [usize; 2] {
+    let mut contact_edges = [0usize; 2];
+    for (k, contact) in blend.contacts.iter().enumerate() {
+        if let Some(rolled) = rolled {
+            contact_edges[k] = rolled.contacts[k][0];
+            continue;
+        }
+        // An edge is no wider than its vertices: a contact pinned to a
+        // kink's junction (ADR-0075) widens the vertices it ends at.
+        for end in vertices {
+            if let VertexSpec::New { tolerance, .. } = &mut rw.vertices[end[k]] {
+                *tolerance = tolerance.max(contact.tolerance);
+            }
+        }
+        contact_edges[k] = rw.edge(
+            EdgeSpec::New {
+                geometry: EdgeGeometry::Curve {
+                    curve: m.add_curve(contact.line.clone()),
+                    range: contact.range,
+                },
+                start: VertexKey::New(vertices[0][k]),
+                end: VertexKey::New(vertices[1][k]),
+                tolerance: contact.tolerance,
+            },
+            None,
+        );
+    }
+    contact_edges
+}
+
+/// Each end's arcs and fan crossings, with the cuts and face insertions.
+fn stripe_end_arcs(
+    ctx: &mut BlendCtx<'_, '_>,
+    draft: &mut Draft,
+    blend: &Blend,
+    joins: &Joins,
+    drafted: &Drafted,
+    made: &mut StripeMade,
+) -> Result<(), OpError> {
+    let (m, view, _, tol, _, meter) = ctx.parts();
+    let Draft {
+        rw, cuts, edits, ..
+    } = draft;
+    let miters = &joins.miters;
+    let (miter_made, corner_made) = (&drafted.miters, &drafted.corners);
+    let StripeMade {
+        vertices,
+        crossings,
+        arcs,
+        ..
+    } = made;
+    for (end_index, end) in blend.ends.iter().enumerate() {
+        let face_end = match end {
+            EndKind::Face(face_end) => face_end,
+            EndKind::Pole(_) => {
+                // The collapsed row, across from one contact to the
+                // other at the kept vertex.
+                let at = VertexKey::New(vertices[end_index][0]);
+                arcs[end_index].push(rw.edge(
+                    EdgeSpec::New {
+                        geometry: EdgeGeometry::Degenerate {
+                            range: Interval::UNIT,
+                        },
+                        start: at,
+                        end: at,
+                        tolerance: blend.stripe.tolerance,
+                    },
+                    None,
+                ));
+                continue;
+            }
+            EndKind::Miter { at, side } => {
+                arcs[end_index] = miter_made[*at].arcs(&miters[*at], *side);
+                continue;
+            }
+            EndKind::Corner { at, side } => {
+                arcs[end_index].push(corner_made[*at].arcs[*side]);
+                continue;
+            }
+        };
+        // The points of the end in its order: the first trim point, a
+        // fan's crossings, the other trim point; each crossing cuts its
+        // extra edge (ADR-0043 §5).
+        let mut along = vec![vertices[end_index][0]];
+        for crossing in &face_end.crossings {
+            let v = rw.vertex(VertexSpec::New {
+                point: crossing.point,
+                tolerance: crossing.tolerance,
+            });
+            cut_once(cuts, &crossing.trim, v)?;
+            crossings.push(v);
+            along.push(v);
+        }
+        along.push(vertices[end_index][1]);
+        for (k, trim) in face_end.trims.iter().enumerate() {
+            cut_once(cuts, trim, vertices[end_index][k])?;
+        }
+        // A flush fan keeps the second corner edge's part from the
+        // vertex to its trim, an edge between the first and the last
+        // piece (ADR-0082 §2).
+        let mut tail = None;
+        if let Some(last) = face_end.flush {
+            let first = face_end.pieces[0].face;
+            let (for_first, for_last) = flush_tail(
                 m,
                 view,
                 rw,
-                edits,
-                rolled,
-                vertices,
-                crowded.contains(&rolled.run.edge),
-            )?),
-            None => None,
-        };
-        let mut contact_edges = [0usize; 2];
-        for (k, contact) in blend.contacts.iter().enumerate() {
-            if let Some(rolled) = &rolled {
-                contact_edges[k] = rolled.contacts[k][0];
-                continue;
-            }
-            // An edge is no wider than its vertices: a contact pinned to a
-            // kink's junction (ADR-0075) widens the vertices it ends at.
-            for end in vertices {
-                if let VertexSpec::New { tolerance, .. } = &mut rw.vertices[end[k]] {
-                    *tolerance = tolerance.max(contact.tolerance);
-                }
-            }
-            contact_edges[k] = rw.edge(
+                face_end,
+                vertices[end_index][1],
+                [first, last],
+                tol,
+                meter,
+            )?;
+            edits
+                .entry(last)
+                .or_default()
+                .insert
+                .insert(face_end.vertex, for_last);
+            tail = Some(for_first);
+        }
+        for (i, piece) in face_end.pieces.iter().enumerate() {
+            let (from, to) = (along[i], along[i + 1]);
+            let (first, second) = if piece.arc.lo_first {
+                (from, to)
+            } else {
+                (to, from)
+            };
+            let arc = rw.edge(
                 EdgeSpec::New {
                     geometry: EdgeGeometry::Curve {
-                        curve: m.add_curve(contact.line.clone()),
-                        range: contact.range,
+                        curve: m.add_curve(piece.arc.curve.clone()),
+                        range: piece.arc.range,
                     },
-                    start: VertexKey::New(vertices[0][k]),
-                    end: VertexKey::New(vertices[1][k]),
-                    tolerance: contact.tolerance,
+                    start: VertexKey::New(first),
+                    end: VertexKey::New(second),
+                    tolerance: piece.arc.tolerance,
                 },
                 None,
             );
-        }
-        let mut arcs: [Vec<usize>; 2] = Default::default();
-        for (end_index, end) in blend.ends.iter().enumerate() {
-            let face_end = match end {
-                EndKind::Face(face_end) => face_end,
-                EndKind::Pole(_) => {
-                    // The collapsed row, across from one contact to the
-                    // other at the kept vertex.
-                    let at = VertexKey::New(vertices[end_index][0]);
-                    arcs[end_index].push(rw.edge(
-                        EdgeSpec::New {
-                            geometry: EdgeGeometry::Degenerate {
-                                range: Interval::UNIT,
-                            },
-                            start: at,
-                            end: at,
-                            tolerance: blend.stripe.tolerance,
-                        },
-                        None,
-                    ));
-                    continue;
-                }
-                EndKind::Miter { at, side } => {
-                    arcs[end_index] = miter_made[*at].arcs(&miters[*at], *side);
-                    continue;
-                }
-                EndKind::Corner { at, side } => {
-                    arcs[end_index].push(corner_made[*at].arcs[*side]);
-                    continue;
-                }
+            arcs[end_index].push(arc);
+            // The edge cut at the arc's start: the first corner edge,
+            // or the extra edge before this piece.
+            let edge_at_lo = match i.checked_sub(1) {
+                None => face_end.trims[0].edge,
+                Some(j) => face_end.crossings[j].trim.edge,
             };
-            // The points of the end in its order: the first trim point, a
-            // fan's crossings, the other trim point; each crossing cuts its
-            // extra edge (ADR-0043 §5).
-            let mut along = vec![vertices[end_index][0]];
-            for crossing in &face_end.crossings {
-                let v = rw.vertex(VertexSpec::New {
-                    point: crossing.point,
-                    tolerance: crossing.tolerance,
-                });
-                cut_once(cuts, &crossing.trim, v)?;
-                crossings.push(v);
-                along.push(v);
-            }
-            along.push(vertices[end_index][1]);
-            for (k, trim) in face_end.trims.iter().enumerate() {
-                cut_once(cuts, trim, vertices[end_index][k])?;
-            }
-            // A flush fan keeps the second corner edge's part from the
-            // vertex to its trim, an edge between the first and the last
-            // piece (ADR-0082 §2).
-            let mut tail = None;
-            if let Some(last) = face_end.flush {
-                let first = face_end.pieces[0].face;
-                let (for_first, for_last) = flush_tail(
-                    m,
-                    view,
-                    rw,
-                    face_end,
-                    vertices[end_index][1],
-                    [first, last],
-                    tol,
-                    meter,
-                )?;
-                edits
-                    .entry(last)
-                    .or_default()
-                    .insert
-                    .insert(face_end.vertex, for_last);
-                tail = Some(for_first);
-            }
-            for (i, piece) in face_end.pieces.iter().enumerate() {
-                let (from, to) = (along[i], along[i + 1]);
-                let (first, second) = if piece.arc.lo_first {
-                    (from, to)
-                } else {
-                    (to, from)
-                };
-                let arc = rw.edge(
-                    EdgeSpec::New {
-                        geometry: EdgeGeometry::Curve {
-                            curve: m.add_curve(piece.arc.curve.clone()),
-                            range: piece.arc.range,
-                        },
-                        start: VertexKey::New(first),
-                        end: VertexKey::New(second),
-                        tolerance: piece.arc.tolerance,
-                    },
-                    None,
-                );
-                arcs[end_index].push(arc);
-                // The edge cut at the arc's start: the first corner edge,
-                // or the extra edge before this piece.
-                let edge_at_lo = match i.checked_sub(1) {
-                    None => face_end.trims[0].edge,
-                    Some(j) => face_end.crossings[j].trim.edge,
-                };
-                let pcurve = m.add_curve2(piece.arc.on_face.clone());
-                edits.entry(piece.face).or_default().insert.insert(
-                    face_end.vertex,
-                    Insertion {
-                        arc: EdgeKey::New(arc),
-                        pcurve,
-                        lo_first: piece.arc.lo_first,
-                        edge_at_lo,
-                        splits: (!face_end.stays.is_empty())
-                            .then_some(face_end.trims.map(|trim| trim.edge)),
-                        tail,
-                    },
-                );
-            }
+            let pcurve = m.add_curve2(piece.arc.on_face.clone());
+            edits.entry(piece.face).or_default().insert.insert(
+                face_end.vertex,
+                Insertion {
+                    arc: EdgeKey::New(arc),
+                    pcurve,
+                    lo_first: piece.arc.lo_first,
+                    edge_at_lo,
+                    splits: (!face_end.stays.is_empty())
+                        .then_some(face_end.trims.map(|trim| trim.edge)),
+                    tail,
+                },
+            );
         }
-        // Where the stripe stops short of a vertex, the edge's remnant runs
-        // on to it, and on each face the edge is the remnants and the
-        // contact between them, in the edge's direction (ADR-0074).
-        let remnants = remnant_edges(m, rw, blend, vertices)?;
-        if rolled.is_some() && remnants.iter().any(Option::is_some) {
-            return Err(degenerate(
-                vec![forward(blend.stripe.edge)],
-                Reason::Blend(BlendReason::TangentChain),
-            ));
-        }
-        for (k, contact) in blend.contacts.iter().enumerate() {
-            if rolled.is_some() {
-                continue;
-            }
-            let pcurve = m.add_curve2(contact.on_face.clone());
-            let edit = edits.entry(contact.face).or_default();
-            let contact_use = (EdgeKey::New(contact_edges[k]), pcurve);
-            if remnants.iter().all(Option::is_none) {
-                edit.replace.insert(blend.stripe.edge, contact_use);
-                continue;
-            }
-            let own = (view.uses.get(&blend.stripe.edge).into_iter().flatten())
-                .find(|u| u.face == contact.face)
-                .ok_or(invariant("the blended edge's use by its face"))?
-                .pcurve;
-            let [lo, hi] = remnants.map(|r| r.map(|r| SplitPiece::Use(EdgeKey::New(r), own)));
-            let pieces = lo
-                .into_iter()
-                .chain([SplitPiece::Use(contact_use.0, contact_use.1)]);
-            edit.split
-                .insert(blend.stripe.edge, pieces.chain(hi).collect());
-        }
-        made.push(StripeMade {
-            vertices,
-            crossings,
-            contacts: contact_edges,
-            arcs,
-            added: 0,
-            rolled,
-        });
     }
-    Ok(made)
+    Ok(())
+}
+
+fn stripe_remnants(
+    m: &mut Model,
+    view: &BodyView,
+    draft: &mut Draft,
+    blend: &Blend,
+    made: &StripeMade,
+) -> Result<(), OpError> {
+    let Draft { rw, edits, .. } = draft;
+    let StripeMade {
+        vertices,
+        contacts: contact_edges,
+        rolled,
+        ..
+    } = made;
+    // Where the stripe stops short of a vertex, the edge's remnant runs
+    // on to it, and on each face the edge is the remnants and the
+    // contact between them, in the edge's direction (ADR-0074).
+    let remnants = remnant_edges(m, rw, blend, *vertices)?;
+    if rolled.is_some() && remnants.iter().any(Option::is_some) {
+        return Err(degenerate(
+            vec![forward(blend.stripe.edge)],
+            Reason::Blend(BlendReason::TangentChain),
+        ));
+    }
+    for (k, contact) in blend.contacts.iter().enumerate() {
+        if rolled.is_some() {
+            continue;
+        }
+        let pcurve = m.add_curve2(contact.on_face.clone());
+        let edit = edits.entry(contact.face).or_default();
+        let contact_use = (EdgeKey::New(contact_edges[k]), pcurve);
+        if remnants.iter().all(Option::is_none) {
+            edit.replace.insert(blend.stripe.edge, contact_use);
+            continue;
+        }
+        let own = (view.uses.get(&blend.stripe.edge).into_iter().flatten())
+            .find(|u| u.face == contact.face)
+            .ok_or(invariant("the blended edge's use by its face"))?
+            .pcurve;
+        let [lo, hi] = remnants.map(|r| r.map(|r| SplitPiece::Use(EdgeKey::New(r), own)));
+        let pieces = lo
+            .into_iter()
+            .chain([SplitPiece::Use(contact_use.0, contact_use.1)]);
+        edit.split
+            .insert(blend.stripe.edge, pieces.chain(hi).collect());
+    }
+    Ok(())
 }
 
 /// A flush fan's kept edge (ADR-0082 §2): the second corner edge's curve from
@@ -418,47 +483,11 @@ pub(super) fn add_rings(
         edits,
         crowded,
     } = draft;
-    let Joins {
-        miters, miter_at, ..
-    } = joins;
+    let miter_at = &joins.miter_at;
     let miter_made = &drafted.miters;
     let mut ring_made: Vec<Made> = Vec::with_capacity(rings.len());
     for r in rings {
-        let mut vertices = [[0usize; 2]; 2];
-        match &r.ends {
-            RingEnds::Seam(seam) => {
-                for (slot, contact) in vertices[0].iter_mut().zip(&r.contacts) {
-                    *slot = rw.vertex(VertexSpec::New {
-                        point: contact.points[0],
-                        tolerance: seam.vertex_tolerance,
-                    });
-                }
-                vertices[1] = vertices[0];
-            }
-            RingEnds::Open(ends) => {
-                for (j, end) in ends.iter().enumerate() {
-                    match end {
-                        RingEnd::Face(end) => {
-                            for (c, contact) in r.contacts.iter().enumerate() {
-                                vertices[j][c] = rw.vertex(VertexSpec::New {
-                                    point: contact.points[j],
-                                    tolerance: end.vertex_tolerance[c],
-                                });
-                            }
-                        }
-                        RingEnd::Junction(vertex) => {
-                            let at = *miter_at
-                                .get(vertex)
-                                .ok_or(invariant("a junction at the ring's end"))?;
-                            let side = usize::from(miters[at].edges[0] != r.edge);
-                            let shared = miters[at].shared[side];
-                            vertices[j][shared] = miter_made[at].vertices[0];
-                            vertices[j][1 - shared] = miter_made[at].vertices[1];
-                        }
-                    }
-                }
-            }
-        }
+        let vertices = ring_end_vertices(rw, r, joins, drafted)?;
         // A run-over cuts the contacts into pieces and leaves the torus
         // without a seam edge (ADR-0071 §2).
         let rolled_made = match &r.rolled {
@@ -568,6 +597,55 @@ pub(super) fn add_rings(
         });
     }
     Ok(ring_made)
+}
+
+/// A ring's contacts share their vertices at a seam or a junction.
+fn ring_end_vertices(
+    rw: &mut Rewrite,
+    r: &Ring,
+    joins: &Joins,
+    drafted: &Drafted,
+) -> Result<[[usize; 2]; 2], OpError> {
+    let Joins {
+        miters, miter_at, ..
+    } = joins;
+    let miter_made = &drafted.miters;
+    let mut vertices = [[0usize; 2]; 2];
+    match &r.ends {
+        RingEnds::Seam(seam) => {
+            for (slot, contact) in vertices[0].iter_mut().zip(&r.contacts) {
+                *slot = rw.vertex(VertexSpec::New {
+                    point: contact.points[0],
+                    tolerance: seam.vertex_tolerance,
+                });
+            }
+            vertices[1] = vertices[0];
+        }
+        RingEnds::Open(ends) => {
+            for (j, end) in ends.iter().enumerate() {
+                match end {
+                    RingEnd::Face(end) => {
+                        for (c, contact) in r.contacts.iter().enumerate() {
+                            vertices[j][c] = rw.vertex(VertexSpec::New {
+                                point: contact.points[j],
+                                tolerance: end.vertex_tolerance[c],
+                            });
+                        }
+                    }
+                    RingEnd::Junction(vertex) => {
+                        let at = *miter_at
+                            .get(vertex)
+                            .ok_or(invariant("a junction at the ring's end"))?;
+                        let side = usize::from(miters[at].edges[0] != r.edge);
+                        let shared = miters[at].shared[side];
+                        vertices[j][shared] = miter_made[at].vertices[0];
+                        vertices[j][1 - shared] = miter_made[at].vertices[1];
+                    }
+                }
+            }
+        }
+    }
+    Ok(vertices)
 }
 
 /// The edges that two or more run-overs cross.

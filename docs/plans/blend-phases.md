@@ -95,7 +95,7 @@ and `git diff <plan start> -- tests/fixtures 'crates/**/cancel_counts.txt'
 - [x] Step 6 **[1]** — Move the entities phase to `build/entities.rs`.
 - [x] Step 7 **[1]** — Move the faces phase to `build/faces.rs`; `mod.rs`
   holds what the deltas list and no phase's function.
-- [ ] Step 8 **[2]** — `add_stripes` as a loop over its five parts; the
+- [x] Step 8 **[2]** — `add_stripes` as a loop over its five parts; the
   `flush-*` fixtures and `blend_prop`'s run-over section are the ones to
   watch.
 - [ ] Step 9 **[2]** — `rewrite_faces` split along its phases;
@@ -131,3 +131,7 @@ and `git diff <plan start> -- tests/fixtures 'crates/**/cancel_counts.txt'
 - *Settled (step 7):* `record` stays in `mod.rs`: provenance closes the
   assembly driver, and the shared types, driver and record fit in 518
   lines without a separate file.
+- *Settled (step 8):* also extract `add_rings`' end vertices in
+  `entities.rs`: its 166 lines exceed the existing acceptance bound of
+  150 for every function under `build/`. This small extraction preserves
+  allocation order and keeps the file under 800 lines.
