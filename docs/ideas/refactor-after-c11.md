@@ -1,6 +1,6 @@
 # Idea: refactor-after-c11
 
-- Status: Accepted (B); the nightly's panics and the rewrite seams plans are done and retired; the rest (`blend-phases`, then `census-and-tests`) is still to plan, in that order
+- Status: Accepted (B); the nightly's panics and the rewrite seams plans are done and retired; `blend-phases` absorbed by plans/blend-phases; `census-and-tests` is still to plan
 - Raised: 2026-11-04
 - Prompt (verbatim from the human): "/refactor-review" (handed over by C11's close)
 
@@ -54,31 +54,6 @@ compared in the source) or **measured** (a count or a hash).
   `STEP_HALVINGS`, `FLUSH_SAMPLES`, and the line/spline descent's six):
   *no longer apply*. `small-seams` read the descents and found two
   different algorithms. Each constant is its own budget.
-
-### For a `blend-phases` plan (read structure, measured sizes)
-- **`blend/build.rs` is 2557 lines (1701 at the base)** and holds five
-  phases:
-  - classify and joins (`classify` … `cusp_of`);
-  - make (`make_stripes` … `add_corners`);
-  - entities (`add_stripes` … `shorten_edges`);
-  - faces (`rewrite_faces` … `add_ring_faces`);
-  - `record`.
-
-  → `blend/build/` by phase, as `boolean/pave/` was split.
-- **The functions C11 grew**, with their lengths at the base:
-
-  | Function | Lines | Was | Along |
-  |---|---|---|---|
-  | `junction::junction` | 376 | 228 | pair the contacts, exits across a kink, the lean, the meeting, the slide onto a seam, the trims: phases over a context, as `blend::build` |
-  | `stripe::stripe` | 279 | 199 | one function per row of the surface-pair table (two planes, a plane and a cylinder, two cylinders), the dihedral read once |
-  | `build::add_stripes` | 258 | 172 | end vertices, the run-over, contact edges, end arcs, remnants |
-  | `ring::place_contacts` | 205 | 158 | — |
-  | `build::rewrite_faces` | 186 | 127 | — |
-
-  `rolled_of` and `add_run_over` (153 each) are new and stay as they are.
-- **`add_ring_faces` writes a ring's four-use loop twice**: once for the
-  walked ring, once for the closed form. With `StoredUse::new` it is one
-  loop over `(edge, forward, pcurve)`.
 
 ### For a `census-and-tests` plan (read)
 - **`debug/census.rs` is 2705 lines (+623)** and holds five censuses:

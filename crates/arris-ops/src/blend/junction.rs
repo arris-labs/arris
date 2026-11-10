@@ -166,371 +166,505 @@ pub(super) fn junction(
     meter: &mut Meter<'_>,
 ) -> Result<Miter, OpError> {
     meter.tick()?;
-    let (mut ra, mut rb) = (a.at(m, vertex)?, b.at(m, vertex)?);
-    let (v, edges) = (forward(vertex), [forward(ra.edge), forward(rb.edge)]);
-    let vertex_blend = || {
-        degenerate(
-            vec![edges[0], edges[1], v],
-            Reason::Blend(BlendReason::VertexBlend),
-        )
-    };
-    // The contacts of `a` and `b` on one face, as `(ka, kb)` pairs.
-    let mut pairs: Vec<(usize, usize)> = Vec::with_capacity(2);
-    for (ka, fa) in ra.faces.iter().enumerate() {
-        for (kb, fb) in rb.faces.iter().enumerate() {
-            if fa == fb {
-                pairs.push((ka, kb));
-            }
-        }
-    }
-    // The vertex's other edges, the ones the runs' contacts end on.
-    let at_vertex = view
-        .vertex_edges
-        .get(&vertex)
-        .ok_or(invariant("the junction vertex's edges"))?;
-    let others: Vec<EdgeId> = at_vertex
-        .iter()
-        .copied()
-        .filter(|&e| e != ra.edge && e != rb.edge)
-        .collect();
-    let faces_of = |w: EdgeId| -> Result<BTreeSet<FaceId>, OpError> {
-        Ok(view
-            .uses
-            .get(&w)
-            .ok_or(invariant("the junction's corner edge's uses"))?
-            .iter()
-            .map(|u| u.face)
-            .collect())
-    };
-    // `ka` and `kb` the contacts that meet at `q`, `wq` the edge `q` cuts
-    // where the runs share no face, `w` the edge `p` cuts, if any.
-    let (ka, kb, wq, w) = match (&pairs[..], &others[..]) {
-        // A vertex of three edges: `q` on the shared face, `p` on the
-        // third edge between the two faces the runs do not share.
-        (&[(ka, kb)], &[w]) => {
-            if faces_of(w)? != BTreeSet::from([ra.faces[1 - ka], rb.faces[1 - kb]]) {
-                return Err(vertex_blend());
-            }
-            (ka, kb, None, Some(w))
-        }
-        // Runs that continue one another between the same two faces
-        // (ADR-0041 §2): each contact meets the other run's on its own
-        // face, `q` on `a`'s contact at `u = 0`, nothing cut.
-        (&[(0, kb), (1, jb)], &[]) if jb == 1 - kb => (0, kb, None, None),
-        // The same with the seam of one face at the vertex: `p` on the
-        // contacts on that face, the seam cut there as a closed edge's is.
-        (&[(0, kb), (1, jb)], &[w]) if jb == 1 - kb => {
-            let seam = view
-                .uses
-                .get(&w)
-                .ok_or(invariant("the junction's seam's uses"))?;
-            match seam[..] {
-                [s, t] if s.face == t.face && s.face == ra.faces[1] => (0, kb, None, Some(w)),
-                [s, t] if s.face == t.face && s.face == ra.faces[0] => (1, 1 - kb, None, Some(w)),
-                _ => return Err(vertex_blend()),
-            }
-        }
-        // The same with a seam of each face at the vertex, both curved:
-        // `q` on the contacts on `a`'s first face, its seam cut there, `p`
-        // on the second's, that seam cut there.
-        (&[(0, kb), (1, jb)], &[w0, w1]) if jb == 1 - kb => {
-            let seam_of = |w: EdgeId, face: FaceId| -> Result<bool, OpError> {
-                let uses = view
-                    .uses
-                    .get(&w)
-                    .ok_or(invariant("the junction's seam's uses"))?;
-                Ok(matches!(uses[..], [s, t] if s.face == t.face && s.face == face))
-            };
-            if seam_of(w0, ra.faces[0])? && seam_of(w1, ra.faces[1])? {
-                (0, kb, Some(w0), Some(w1))
-            } else if seam_of(w1, ra.faces[0])? && seam_of(w0, ra.faces[1])? {
-                (0, kb, Some(w1), Some(w0))
-            } else {
-                return Err(vertex_blend());
-            }
-        }
-        // A vertex of four where both faces turn (ADR-0039 §2): each
-        // contact of `a` meets the contact of `b` across the tangent edge
-        // between their faces, `q` on the one from `a`'s contact at
-        // `u = 0`, `p` on the other.
-        (&[], &[w0, w1]) => {
-            let mut across: [Option<(usize, EdgeId)>; 2] = [None; 2];
-            for w in [w0, w1] {
-                let faces_w = faces_of(w)?;
-                for (k, slot) in across.iter_mut().enumerate() {
-                    for (j, &fb) in rb.faces.iter().enumerate() {
-                        if faces_w == BTreeSet::from([ra.faces[k], fb])
-                            && slot.replace((j, w)).is_some()
-                        {
-                            return Err(vertex_blend());
-                        }
-                    }
-                }
-            }
-            let [Some((kb, wq)), Some((jb, w))] = across else {
-                return Err(vertex_blend());
-            };
-            if jb == kb || wq == w {
-                return Err(vertex_blend());
-            }
-            (0, kb, Some(wq), Some(w))
-        }
-        _ => return Err(vertex_blend()),
-    };
+    let (ra, rb) = (a.at(m, vertex)?, b.at(m, vertex)?);
     let runs_tolerance = ra.tolerance.max(rb.tolerance);
-    // Across a kink a walked contact's far end may lie past its face, which
-    // ends short of the vertex by less than the vertex's tolerance: the
-    // contact ends where it leaves the face, on the corner edge.
-    let mut exits: [Option<f64>; 2] = [None; 2];
-    if let Some(within) = kink {
-        for (side, (run, at, far)) in [(a, &mut ra, 1 - ka), (b, &mut rb, 1 - kb)]
-            .into_iter()
-            .enumerate()
-        {
-            let Run::Line(s) = run else {
-                continue;
-            };
-            let Section::Walked { .. } = s.section else {
-                continue;
-            };
-            let inward = if s.start == vertex { 1.0 } else { -1.0 };
-            let Some(t) = last_on_face(m, s, far, at.faces[far], at.t, inward, within)? else {
-                return Err(degenerate(
-                    vec![edges[0], edges[1], v],
-                    Reason::Blend(BlendReason::TangentChain),
-                ));
-            };
-            if t != at.t {
-                at.points[far] = s.lines[far].point(t);
-                exits[side] = Some(t);
-            }
-        }
+    let mut junction = Junction {
+        m,
+        view,
+        a,
+        b,
+        ra,
+        rb,
+        vertex,
+        kink,
+        tol,
+        runs_tolerance,
+        tolerance: kink.map_or(runs_tolerance, |within| within.max(runs_tolerance)),
+        gap: 0.0,
+    };
+    let contacts = junction.pair_contacts()?;
+    let exits = junction.kink_exits(contacts)?;
+    let leans = junction.lean(contacts)?;
+    let mut meeting = junction.meeting(contacts)?;
+    let slid = junction.slide_to_seam(contacts, &mut meeting, leans)?;
+    junction.trims(contacts, meeting, exits, leans || slid, meter)
+}
+
+/// The two runs read at a junction, with the tolerances all its phases share.
+struct Junction<'a> {
+    m: &'a Model,
+    view: &'a BodyView,
+    a: Run<'a>,
+    b: Run<'a>,
+    ra: RunAt<'a>,
+    rb: RunAt<'a>,
+    vertex: VertexId,
+    kink: Option<f64>,
+    tol: Tolerance,
+    runs_tolerance: f64,
+    /// How far apart the runs may meet: their own tolerance, or across a
+    /// kink the vertex's.
+    tolerance: f64,
+    /// The half of the widest gap a mean point closes: each run's distance
+    /// to the junction.
+    gap: f64,
+}
+
+/// The contacts that meet at `q`, and the edges cut by `q` and `p`.
+#[derive(Clone, Copy)]
+struct Contacts {
+    ka: usize,
+    kb: usize,
+    wq: Option<EdgeId>,
+    w: Option<EdgeId>,
+}
+
+/// The shared and far contacts, and the shared contacts' crossing at a kink.
+struct Meeting {
+    q: Point3,
+    p: Point3,
+    crossed: Option<([f64; 2], Point3)>,
+}
+
+impl Junction<'_> {
+    fn vertex_blend(&self) -> OpError {
+        self.blend_refusal(BlendReason::VertexBlend)
     }
-    // How far apart the runs may meet: their own tolerance, or across a kink
-    // the vertex's.
-    let tolerance = kink.map_or(runs_tolerance, |within| within.max(runs_tolerance));
-    if ra.convex != rb.convex {
-        return Err(invariant("both runs of a junction convex or both concave"));
+
+    fn blend_refusal(&self, reason: BlendReason) -> OpError {
+        degenerate(
+            vec![
+                forward(self.ra.edge),
+                forward(self.rb.edge),
+                forward(self.vertex),
+            ],
+            Reason::Blend(reason),
+        )
     }
-    // The closed forms' runs meet within their tolerance wherever the
-    // tangent-vertex test holds; a walked run's ball may not (the field's
-    // doc). Where the third edge leans, both runs are read again at the one
-    // ball off the vertex (ADR-0072); any other is a junction no shared arc
-    // makes: refused by name.
-    let walked = ra.walked || rb.walked;
-    let apart = |pa: Point3, pb: Point3| (pa - pb).norm() > tolerance;
-    let leans = walked
-        && kink.is_none()
-        && (apart(ra.points[ka], rb.points[kb])
-            || apart(ra.points[1 - ka], rb.points[1 - kb])
-            || matches!((ra.centre, rb.centre), (Some(ca), Some(cb)) if apart(ca, cb)));
-    if leans {
-        let w = match (wq, w) {
-            (None, Some(w)) => w,
-            _ => return Err(vertex_blend()),
-        };
-        if !leaning(m, view, [a, b], [&mut ra, &mut rb], [ka, kb], w, tol)? {
-            return Err(vertex_blend());
-        }
-    }
-    let refused = |what: &'static str| {
-        if kink.is_some() {
-            degenerate(
-                vec![edges[0], edges[1], v],
-                Reason::Blend(BlendReason::TangentChain),
-            )
-        } else if walked {
-            vertex_blend()
+
+    fn refused(&self, what: &'static str) -> OpError {
+        if self.kink.is_some() {
+            self.blend_refusal(BlendReason::TangentChain)
+        } else if self.ra.walked || self.rb.walked {
+            self.vertex_blend()
         } else {
             invariant(what)
         }
-    };
-    // The half of the widest gap a mean point closes: each run's distance
-    // to the junction.
-    let mut gap = 0.0_f64;
-    // Across a kink the contacts on the shared face cross short of the
-    // vertex, the balls' gap lying along the edges: they end there, on that
-    // face exactly (ADR-0075 §2).
-    // Contacts that do not cross, because the kink is too slight to tell
-    // them from one line, end where they are, and meet if the vertex's
-    // tolerance holds them.
-    let crossed = match kink {
-        Some(_) => shared_crossing(
-            [a, b],
-            [ka, kb],
-            [ra.t, rb.t],
-            [ra.points[ka], rb.points[kb]],
-            tolerance,
-            tol,
-        ),
-        None => None,
-    };
-    let mut meet = |pa: Point3, pb: Point3, within: f64, what: &'static str| {
+    }
+
+    fn meet(
+        &mut self,
+        pa: Point3,
+        pb: Point3,
+        within: f64,
+        what: &'static str,
+    ) -> Result<Point3, OpError> {
         let d = (pa - pb).norm();
         if d > within {
-            return Err(refused(what));
+            return Err(self.refused(what));
         }
-        gap = gap.max(0.5 * d);
+        self.gap = self.gap.max(0.5 * d);
         Ok(pa + (pb - pa) * 0.5)
-    };
-    let q = match crossed {
-        Some((_, q)) => q,
-        None => meet(
-            ra.points[ka],
-            rb.points[kb],
-            tolerance,
-            "the contacts on the shared face or the first tangent edge through one point",
-        )?,
-    };
-    // The far contacts meet on the third edge as one ball's would, a kink's
-    // too: its faces there close their loops only at one point, unless the
-    // kink is too slight for its contacts to cross.
-    let p = meet(
-        ra.points[1 - ka],
-        rb.points[1 - kb],
-        if kink.is_some() && crossed.is_some() {
-            runs_tolerance
-        } else {
-            tolerance
-        },
-        "the other contacts through one point of the third edge",
-    )?;
-    // A walked run's contact is on a seam of the curved face only where the
-    // loop crosses it square; at a slant the junction slides along the spine
-    // to the ball whose contact is on the seam (ADR-0083), and the seam is
-    // cut there. Any other corner edge the contact misses is refused by name.
-    let mut slid = false;
-    let mut q = q;
-    let mut p = p;
-    if walked && kink.is_none() && !leans {
-        let off = [(wq, q), (w, p)]
-            .into_iter()
-            .filter_map(|(edge, at)| edge.map(|edge| (edge, at)))
-            .map(|(edge, at)| on_corner_edge(m, edge, at).map(|on| (edge, on)))
-            .collect::<Result<Vec<_>, _>>()?;
-        let missed: Vec<EdgeId> = off
+    }
+
+    fn pair_contacts(&self) -> Result<Contacts, OpError> {
+        // The contacts of `a` and `b` on one face, as `(ka, kb)` pairs.
+        let mut pairs: Vec<(usize, usize)> = Vec::with_capacity(2);
+        for (ka, fa) in self.ra.faces.iter().enumerate() {
+            for (kb, fb) in self.rb.faces.iter().enumerate() {
+                if fa == fb {
+                    pairs.push((ka, kb));
+                }
+            }
+        }
+        // The vertex's other edges, the ones the runs' contacts end on.
+        let at_vertex = self
+            .view
+            .vertex_edges
+            .get(&self.vertex)
+            .ok_or(invariant("the junction vertex's edges"))?;
+        let others: Vec<EdgeId> = at_vertex
             .iter()
-            .filter(|&&(_, on)| !on)
-            .map(|&(edge, _)| edge)
+            .copied()
+            .filter(|&e| e != self.ra.edge && e != self.rb.edge)
             .collect();
-        if !missed.is_empty() {
-            if !slide(m, view, [a, b], [&mut ra, &mut rb], vertex, &missed)? {
-                return Err(vertex_blend());
+        let faces_of = |w: EdgeId| -> Result<BTreeSet<FaceId>, OpError> {
+            Ok(self
+                .view
+                .uses
+                .get(&w)
+                .ok_or(invariant("the junction's corner edge's uses"))?
+                .iter()
+                .map(|u| u.face)
+                .collect())
+        };
+        // `ka` and `kb` the contacts that meet at `q`, `wq` the edge `q` cuts
+        // where the runs share no face, `w` the edge `p` cuts, if any.
+        let (ka, kb, wq, w) = match (&pairs[..], &others[..]) {
+            // A vertex of three edges: `q` on the shared face, `p` on the
+            // third edge between the two faces the runs do not share.
+            (&[(ka, kb)], &[w]) => {
+                if faces_of(w)? != BTreeSet::from([self.ra.faces[1 - ka], self.rb.faces[1 - kb]]) {
+                    return Err(self.vertex_blend());
+                }
+                (ka, kb, None, Some(w))
             }
-            slid = true;
-            q = meet(
-                ra.points[ka],
-                rb.points[kb],
-                tolerance,
-                "the contacts on the shared face through one point",
-            )?;
-            p = meet(
-                ra.points[1 - ka],
-                rb.points[1 - kb],
-                tolerance,
-                "the other contacts through one point of the third edge",
-            )?;
-        }
-    }
-    for (edge, at) in [(wq, q), (w, p)] {
-        if let Some(edge) = edge
-            && walked
-            && !on_corner_edge(m, edge, at)?
-        {
-            return Err(vertex_blend());
-        }
-    }
-    let q_trim = wq
-        .map(|wq| cut_corner(m, ra.edge, wq, vertex, q))
-        .transpose()?;
-    let trim = w
-        .map(|w| cut_corner(m, ra.edge, w, vertex, p))
-        .transpose()?;
-    let (curve, range) = match (ra.centre, rb.centre) {
-        (None, None) => chord(q, p, tol)?,
-        (Some(ca), Some(cb)) => {
-            let centre = meet(ca, cb, tolerance, "the runs' balls one ball")?;
-            let (x, y) = (q - centre, p - centre);
-            let radius = x.norm();
-            if (y.norm() - radius).abs() > tolerance {
-                return Err(refused("the ball touching both faces across"));
+            // Runs that continue one another between the same two faces
+            // (ADR-0041 §2): each contact meets the other run's on its own
+            // face, `q` on `a`'s contact at `u = 0`, nothing cut.
+            (&[(0, kb), (1, jb)], &[]) if jb == 1 - kb => (0, kb, None, None),
+            // The same with the seam of one face at the vertex: `p` on the
+            // contacts on that face, the seam cut there as a closed edge's is.
+            (&[(0, kb), (1, jb)], &[w]) if jb == 1 - kb => {
+                let seam = self
+                    .view
+                    .uses
+                    .get(&w)
+                    .ok_or(invariant("the junction's seam's uses"))?;
+                match seam[..] {
+                    [s, t] if s.face == t.face && s.face == self.ra.faces[1] => {
+                        (0, kb, None, Some(w))
+                    }
+                    [s, t] if s.face == t.face && s.face == self.ra.faces[0] => {
+                        (1, 1 - kb, None, Some(w))
+                    }
+                    _ => return Err(self.vertex_blend()),
+                }
             }
-            let Some(normal) = UnitVec3::try_new(x.cross(&y), tol.linear) else {
-                return Err(invariant("a junction arc of positive angle"));
+            // The same with a seam of each face at the vertex, both curved:
+            // `q` on the contacts on `a`'s first face, its seam cut there, `p`
+            // on the second's, that seam cut there.
+            (&[(0, kb), (1, jb)], &[w0, w1]) if jb == 1 - kb => {
+                let seam_of = |w: EdgeId, face: FaceId| -> Result<bool, OpError> {
+                    let uses = self
+                        .view
+                        .uses
+                        .get(&w)
+                        .ok_or(invariant("the junction's seam's uses"))?;
+                    Ok(matches!(uses[..], [s, t] if s.face == t.face && s.face == face))
+                };
+                if seam_of(w0, self.ra.faces[0])? && seam_of(w1, self.ra.faces[1])? {
+                    (0, kb, Some(w0), Some(w1))
+                } else if seam_of(w1, self.ra.faces[0])? && seam_of(w0, self.ra.faces[1])? {
+                    (0, kb, Some(w1), Some(w0))
+                } else {
+                    return Err(self.vertex_blend());
+                }
+            }
+            // A vertex of four where both faces turn (ADR-0039 §2): each
+            // contact of `a` meets the contact of `b` across the tangent edge
+            // between their faces, `q` on the one from `a`'s contact at
+            // `u = 0`, `p` on the other.
+            (&[], &[w0, w1]) => {
+                let mut across: [Option<(usize, EdgeId)>; 2] = [None; 2];
+                for w in [w0, w1] {
+                    let faces_w = faces_of(w)?;
+                    for (k, slot) in across.iter_mut().enumerate() {
+                        for (j, &fb) in self.rb.faces.iter().enumerate() {
+                            if faces_w == BTreeSet::from([self.ra.faces[k], fb])
+                                && slot.replace((j, w)).is_some()
+                            {
+                                return Err(self.vertex_blend());
+                            }
+                        }
+                    }
+                }
+                let [Some((kb, wq)), Some((jb, w))] = across else {
+                    return Err(self.vertex_blend());
+                };
+                if jb == kb || wq == w {
+                    return Err(self.vertex_blend());
+                }
+                (0, kb, Some(wq), Some(w))
+            }
+            _ => return Err(self.vertex_blend()),
+        };
+        Ok(Contacts { ka, kb, wq, w })
+    }
+
+    fn kink_exits(&mut self, contacts: Contacts) -> Result<[Option<f64>; 2], OpError> {
+        let Contacts { ka, kb, .. } = contacts;
+        // Across a kink a walked contact's far end may lie past its face, which
+        // ends short of the vertex by less than the vertex's tolerance: the
+        // contact ends where it leaves the face, on the corner edge.
+        let edges = [forward(self.ra.edge), forward(self.rb.edge)];
+        let mut exits: [Option<f64>; 2] = [None; 2];
+        if let Some(within) = self.kink {
+            for (side, (run, at, far)) in [
+                (self.a, &mut self.ra, 1 - ka),
+                (self.b, &mut self.rb, 1 - kb),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let Run::Line(s) = run else {
+                    continue;
+                };
+                let Section::Walked { .. } = s.section else {
+                    continue;
+                };
+                let inward = if s.start == self.vertex { 1.0 } else { -1.0 };
+                let Some(t) = last_on_face(self.m, s, far, at.faces[far], at.t, inward, within)?
+                else {
+                    return Err(degenerate(
+                        vec![edges[0], edges[1], forward(self.vertex)],
+                        Reason::Blend(BlendReason::TangentChain),
+                    ));
+                };
+                if t != at.t {
+                    at.points[far] = s.lines[far].point(t);
+                    exits[side] = Some(t);
+                }
+            }
+        }
+        Ok(exits)
+    }
+
+    fn lean(&mut self, contacts: Contacts) -> Result<bool, OpError> {
+        let Contacts { ka, kb, wq, w } = contacts;
+        if self.ra.convex != self.rb.convex {
+            return Err(invariant("both runs of a junction convex or both concave"));
+        }
+        // The closed forms' runs meet within their tolerance wherever the
+        // tangent-vertex test holds; a walked run's ball may not (the field's
+        // doc). Where the third edge leans, both runs are read again at the one
+        // ball off the vertex (ADR-0072); any other is a junction no shared arc
+        // makes: refused by name.
+        let walked = self.ra.walked || self.rb.walked;
+        let apart = |pa: Point3, pb: Point3| (pa - pb).norm() > self.tolerance;
+        let leans = walked
+            && self.kink.is_none()
+            && (apart(self.ra.points[ka], self.rb.points[kb])
+                || apart(self.ra.points[1 - ka], self.rb.points[1 - kb])
+                || matches!((self.ra.centre, self.rb.centre), (Some(ca), Some(cb)) if apart(ca, cb)));
+        if leans {
+            let w = match (wq, w) {
+                (None, Some(w)) => w,
+                _ => return Err(self.vertex_blend()),
             };
-            let frame = Frame::new(centre, normal.into_inner(), x)?;
-            let angle = real::atan2(x.cross(&y).norm(), x.dot(&y));
-            (
-                Curve::Circle { frame, radius },
-                Interval::new(0.0, angle)
-                    .map_err(|_| invariant("a junction arc of positive angle"))?,
-            )
+            if !leaning(
+                self.m,
+                self.view,
+                [self.a, self.b],
+                [&mut self.ra, &mut self.rb],
+                [ka, kb],
+                w,
+                self.tol,
+            )? {
+                return Err(self.vertex_blend());
+            }
         }
-        (Some(_), None) | (None, Some(_)) => {
-            return Err(invariant("one kind of blend in one call"));
+        Ok(leans)
+    }
+
+    fn meeting(&mut self, contacts: Contacts) -> Result<Meeting, OpError> {
+        let Contacts { ka, kb, .. } = contacts;
+        // Across a kink the contacts on the shared face cross short of the
+        // vertex, the balls' gap lying along the edges: they end there, on that
+        // face exactly (ADR-0075 §2).
+        // Contacts that do not cross, because the kink is too slight to tell
+        // them from one line, end where they are, and meet if the vertex's
+        // tolerance holds them.
+        let crossed = match self.kink {
+            Some(_) => shared_crossing(
+                [self.a, self.b],
+                [ka, kb],
+                [self.ra.t, self.rb.t],
+                [self.ra.points[ka], self.rb.points[kb]],
+                self.tolerance,
+                self.tol,
+            ),
+            None => None,
+        };
+        let q = match crossed {
+            Some((_, q)) => q,
+            None => self.meet(
+                self.ra.points[ka],
+                self.rb.points[kb],
+                self.tolerance,
+                "the contacts on the shared face or the first tangent edge through one point",
+            )?,
+        };
+        // The far contacts meet on the third edge as one ball's would, a kink's
+        // too: its faces there close their loops only at one point, unless the
+        // kink is too slight for its contacts to cross.
+        let p = self.meet(
+            self.ra.points[1 - ka],
+            self.rb.points[1 - kb],
+            if self.kink.is_some() && crossed.is_some() {
+                self.runs_tolerance
+            } else {
+                self.tolerance
+            },
+            "the other contacts through one point of the third edge",
+        )?;
+        Ok(Meeting { q, p, crossed })
+    }
+
+    fn slide_to_seam(
+        &mut self,
+        contacts: Contacts,
+        meeting: &mut Meeting,
+        leans: bool,
+    ) -> Result<bool, OpError> {
+        let Contacts { ka, kb, wq, w } = contacts;
+        let Meeting { q, p, .. } = meeting;
+        let walked = self.ra.walked || self.rb.walked;
+        // A walked run's contact is on a seam of the curved face only where the
+        // loop crosses it square; at a slant the junction slides along the spine
+        // to the ball whose contact is on the seam (ADR-0083), and the seam is
+        // cut there. Any other corner edge the contact misses is refused by name.
+        let mut slid = false;
+        if walked && self.kink.is_none() && !leans {
+            let off = [(wq, *q), (w, *p)]
+                .into_iter()
+                .filter_map(|(edge, at)| edge.map(|edge| (edge, at)))
+                .map(|(edge, at)| on_corner_edge(self.m, edge, at).map(|on| (edge, on)))
+                .collect::<Result<Vec<_>, _>>()?;
+            let missed: Vec<EdgeId> = off
+                .iter()
+                .filter(|&&(_, on)| !on)
+                .map(|&(edge, _)| edge)
+                .collect();
+            if !missed.is_empty() {
+                if !slide(
+                    self.m,
+                    self.view,
+                    [self.a, self.b],
+                    [&mut self.ra, &mut self.rb],
+                    self.vertex,
+                    &missed,
+                )? {
+                    return Err(self.vertex_blend());
+                }
+                slid = true;
+                *q = self.meet(
+                    self.ra.points[ka],
+                    self.rb.points[kb],
+                    self.tolerance,
+                    "the contacts on the shared face through one point",
+                )?;
+                *p = self.meet(
+                    self.ra.points[1 - ka],
+                    self.rb.points[1 - kb],
+                    self.tolerance,
+                    "the other contacts through one point of the third edge",
+                )?;
+            }
         }
-    };
-    // Across a kink the edge and its vertices stand off each run by the
-    // gap the mean ball closes, within the vertex's tolerance; elsewhere the
-    // runs' own tolerance covers it.
-    let tolerance = match kink {
-        Some(_) => runs_tolerance.max(gap),
-        None => tolerance,
-    };
-    // Across a kink the arc's ends stand off each blend by up to the gap,
-    // where the blend's domain ends and the projection clamps; the fit is
-    // held to a quarter of its tolerance (`SECTION_FIT_FRACTION`), so the
-    // tolerance is widened to leave the pcurve that gap and no more.
-    let arc_tol = Tolerance::new(
-        match kink {
-            Some(_) => tolerance / SECTION_FIT_FRACTION,
-            None => tolerance,
-        },
-        tol.angular,
-    );
-    let mut on_blend: Vec<Curve2> = Vec::with_capacity(2);
-    for (run, at, k) in [(a, &ra, ka), (b, &rb, kb)] {
-        let pcurve = pcurve_on(&curve, range, at.surface, arc_tol, meter).map_err(fault_of)?;
-        on_blend.push(run.place(pcurve, range.lo(), k, at));
-    }
-    let on_blend: [Curve2; 2] = on_blend
-        .try_into()
-        .map_err(|_| invariant("the junction's two pcurves"))?;
-    let mut t = [[ra.t; 2], [rb.t; 2]];
-    if let Some(([ta, tb], _)) = crossed {
-        (t[0][ka], t[1][kb]) = (ta, tb);
-    }
-    for (side, far) in [(0, 1 - ka), (1, 1 - kb)] {
-        if let Some(exit) = exits[side] {
-            t[side][far] = exit;
+        for (edge, at) in [(wq, *q), (w, *p)] {
+            if let Some(edge) = edge
+                && walked
+                && !on_corner_edge(self.m, edge, at)?
+            {
+                return Err(self.vertex_blend());
+            }
         }
+        Ok(slid)
     }
-    Ok(Miter {
-        edges: [ra.edge, rb.edge],
-        shared: [ka, kb],
-        t,
-        q,
-        p3: p,
-        curve,
-        range,
-        q_first: true,
-        lo_first: [ka == 0, kb == 0],
-        on_blend,
-        trim,
-        q_trim,
-        trim_arc: None,
-        leaning: leans || slid,
-        kink,
-        tolerance,
-        q_tolerance: match wq {
-            Some(wq) => tolerance.max(m.edge(wq)?.tolerance()),
-            None => tolerance,
-        },
-        p3_tolerance: match w {
-            Some(w) => tolerance.max(m.edge(w)?.tolerance()),
-            None => tolerance,
-        },
-    })
+
+    fn trims(
+        &mut self,
+        contacts: Contacts,
+        meeting: Meeting,
+        exits: [Option<f64>; 2],
+        leaning: bool,
+        meter: &mut Meter<'_>,
+    ) -> Result<Miter, OpError> {
+        let Contacts { ka, kb, wq, w } = contacts;
+        let Meeting { q, p, crossed } = meeting;
+        let q_trim = wq
+            .map(|wq| cut_corner(self.m, self.ra.edge, wq, self.vertex, q))
+            .transpose()?;
+        let trim = w
+            .map(|w| cut_corner(self.m, self.ra.edge, w, self.vertex, p))
+            .transpose()?;
+        let (curve, range) = match (self.ra.centre, self.rb.centre) {
+            (None, None) => chord(q, p, self.tol)?,
+            (Some(ca), Some(cb)) => {
+                let centre = self.meet(ca, cb, self.tolerance, "the runs' balls one ball")?;
+                let (x, y) = (q - centre, p - centre);
+                let radius = x.norm();
+                if (y.norm() - radius).abs() > self.tolerance {
+                    return Err(self.refused("the ball touching both faces across"));
+                }
+                let Some(normal) = UnitVec3::try_new(x.cross(&y), self.tol.linear) else {
+                    return Err(invariant("a junction arc of positive angle"));
+                };
+                let frame = Frame::new(centre, normal.into_inner(), x)?;
+                let angle = real::atan2(x.cross(&y).norm(), x.dot(&y));
+                (
+                    Curve::Circle { frame, radius },
+                    Interval::new(0.0, angle)
+                        .map_err(|_| invariant("a junction arc of positive angle"))?,
+                )
+            }
+            (Some(_), None) | (None, Some(_)) => {
+                return Err(invariant("one kind of blend in one call"));
+            }
+        };
+        // Across a kink the edge and its vertices stand off each run by the
+        // gap the mean ball closes, within the vertex's tolerance; elsewhere the
+        // runs' own tolerance covers it.
+        let final_tolerance = match self.kink {
+            Some(_) => self.runs_tolerance.max(self.gap),
+            None => self.tolerance,
+        };
+        // Across a kink the arc's ends stand off each blend by up to the gap,
+        // where the blend's domain ends and the projection clamps; the fit is
+        // held to a quarter of its tolerance (`SECTION_FIT_FRACTION`), so the
+        // tolerance is widened to leave the pcurve that gap and no more.
+        let arc_tol = Tolerance::new(
+            match self.kink {
+                Some(_) => final_tolerance / SECTION_FIT_FRACTION,
+                None => final_tolerance,
+            },
+            self.tol.angular,
+        );
+        let mut on_blend: Vec<Curve2> = Vec::with_capacity(2);
+        for (run, at, k) in [(self.a, &self.ra, ka), (self.b, &self.rb, kb)] {
+            let pcurve = pcurve_on(&curve, range, at.surface, arc_tol, meter).map_err(fault_of)?;
+            on_blend.push(run.place(pcurve, range.lo(), k, at));
+        }
+        let on_blend: [Curve2; 2] = on_blend
+            .try_into()
+            .map_err(|_| invariant("the junction's two pcurves"))?;
+        let mut t = [[self.ra.t; 2], [self.rb.t; 2]];
+        if let Some(([ta, tb], _)) = crossed {
+            (t[0][ka], t[1][kb]) = (ta, tb);
+        }
+        for (side, far) in [(0, 1 - ka), (1, 1 - kb)] {
+            if let Some(exit) = exits[side] {
+                t[side][far] = exit;
+            }
+        }
+        Ok(Miter {
+            edges: [self.ra.edge, self.rb.edge],
+            shared: [ka, kb],
+            t,
+            q,
+            p3: p,
+            curve,
+            range,
+            q_first: true,
+            lo_first: [ka == 0, kb == 0],
+            on_blend,
+            trim,
+            q_trim,
+            trim_arc: None,
+            leaning,
+            kink: self.kink,
+            tolerance: final_tolerance,
+            q_tolerance: match wq {
+                Some(wq) => final_tolerance.max(self.m.edge(wq)?.tolerance()),
+                None => final_tolerance,
+            },
+            p3_tolerance: match w {
+                Some(w) => final_tolerance.max(self.m.edge(w)?.tolerance()),
+                None => final_tolerance,
+            },
+        })
+    }
 }
 
 /// Where the walked stripe `s`'s contact `k` on `face`, running inward from
