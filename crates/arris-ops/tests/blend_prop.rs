@@ -3726,15 +3726,16 @@ fn oblique_holds(case: Oblique) -> Result<bool, TestCaseError> {
 /// A rounded block or pocket at a random tilt of 5° to 40°, corner and
 /// fillet radius and pose: the junctions at leaning rulings meet on one
 /// ball off the vertex. A refusal by name passes a case, so each shard
-/// also builds at least `BUILT_FLOOR` of its cases: a regression that
-/// refused every pose would otherwise pass with nothing built.
+/// also builds at least `BUILT_FLOOR` of the cases it ran (a budgeted
+/// shard may stop early): a regression that refused every pose would
+/// otherwise pass with nothing built.
 mod oblique_chains_meet_on_the_rulings_offset {
     use super::*;
     use std::cell::Cell;
 
     const SHARDS: u32 = 4;
 
-    /// The share of a shard's cases that must build: half the least a
+    /// The share of a shard's cases run that must build: half the least a
     /// shard of a 1000-case run built, 225 of 250 (225 to 234,
     /// walked-saddle-cell, step 9).
     const BUILT_FLOOR: f64 = 0.45;
@@ -3743,10 +3744,14 @@ mod oblique_chains_meet_on_the_rulings_offset {
         /// The cases this thread's shard built; the runner calls the
         /// property on the shard's own thread (no fork, no timeout).
         static BUILT: Cell<u32> = const { Cell::new(0) };
+        /// The cases this thread's shard ran: under the nightly time
+        /// budget a shard may stop before its nominal count.
+        static RAN: Cell<u32> = const { Cell::new(0) };
     }
 
     fn shard(index: u32) {
         BUILT.set(0);
+        RAN.set(0);
         prop::check_shard(
             index,
             SHARDS,
@@ -3760,6 +3765,7 @@ mod oblique_chains_meet_on_the_rulings_offset {
                 prop::pose(),
             ),
             |(length, width, corner, tilt, r, concave, pose)| {
+                RAN.set(RAN.get() + 1);
                 let built = oblique_holds(Oblique {
                     length,
                     width,
@@ -3775,12 +3781,12 @@ mod oblique_chains_meet_on_the_rulings_offset {
                 Ok(())
             },
         );
-        let cases = prop::cases_per_shard(SHARDS);
+        let ran = RAN.get();
         let built = BUILT.get();
-        let floor = (BUILT_FLOOR * f64::from(cases)).floor();
+        let floor = (BUILT_FLOOR * f64::from(ran)).floor();
         assert!(
             f64::from(built) >= floor,
-            "shard {index} built {built} of {cases} cases, under its floor of {floor}"
+            "shard {index} built {built} of {ran} cases run, under its floor of {floor}"
         );
     }
 
