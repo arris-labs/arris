@@ -85,7 +85,7 @@ fn trace_on(top: &Frame, curve: &Curve, tol: Tolerance) -> Option<Trace> {
     };
     match *curve {
         Curve::Circle { frame, radius } => {
-            // The same predicate as `cusp_of`'s squareness test (build.rs):
+            // The same predicate as `cusp_of`'s squareness test (blend/build/classify.rs):
             // the sine between the axis and the normal within `tol.angular`.
             (frame.z().cross(&n).norm() <= tol.angular).then(|| Trace::Circle {
                 centre: flat(frame.origin()),
