@@ -85,7 +85,7 @@ and `git diff <plan start> -- tests/fixtures 'crates/**/cancel_counts.txt'
   and six phases. The slot chains (`blend/slot-chain-posed-pcurve-end`,
   `blend/nist-ftc-11-ap242-slot-chain-fillet`) and the `*-seam-*` and
   `cusp-*` fixtures are the ones to watch.
-- [ ] Step 2 **[2]** — `stripe::stripe` read once, one function per
+- [x] Step 2 **[2]** — `stripe::stripe` read once, one function per
   table row; the `ogive-bar-ruling-*` fixtures are the ones to watch.
 - [ ] Step 3 **[2]** — `ring::place_contacts` split along its phases;
   the rim and `cusp-*` fixtures are the ones to watch.
