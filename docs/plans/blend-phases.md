@@ -92,7 +92,7 @@ and `git diff <plan start> -- tests/fixtures 'crates/**/cancel_counts.txt'
 - [x] Step 4 **[1]** — `git mv` `build.rs` to `build/mod.rs`; move the
   classify-and-joins phase to `build/classify.rs`.
 - [x] Step 5 **[1]** — Move the make phase to `build/make.rs`.
-- [ ] Step 6 **[1]** — Move the entities phase to `build/entities.rs`.
+- [x] Step 6 **[1]** — Move the entities phase to `build/entities.rs`.
 - [ ] Step 7 **[1]** — Move the faces phase to `build/faces.rs`; `mod.rs`
   holds what the deltas list and no phase's function.
 - [ ] Step 8 **[2]** — `add_stripes` as a loop over its five parts; the
