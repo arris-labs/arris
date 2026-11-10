@@ -1,6 +1,6 @@
 # Idea: refactor-after-c11
 
-- Status: Accepted (B); the nightly's panics and the rewrite seams plans are done and retired; `blend-phases` absorbed by plans/blend-phases; `census-and-tests` is still to plan
+- Status: Accepted (B); the nightly's panics and the rewrite seams plans are done and retired; `blend-phases` done and retired; `census-and-tests`, the last plan, is still to plan
 - Raised: 2026-11-04
 - Prompt (verbatim from the human): "/refactor-review" (handed over by C11's close)
 
