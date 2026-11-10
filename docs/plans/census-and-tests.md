@@ -98,7 +98,7 @@ Scale: **[1]** routine, **[2]** careful, **[3]** unproven
   properties pass at 256 cases. The multi-tool differential's fixed-seed
   case list is unchanged (`regression/revolve-cut-many-box-*` still case
   230).
-- [ ] Step 3 **[1]** — `over_committed_tier`, and the four `_committed`
+- [x] Step 3 **[1]** — `over_committed_tier`, and the four `_committed`
   functions on it. First, save the parent's output of `real_parts
   --census-committed`, `--run-over-committed`, `--vertex-blend-committed`
   and `--cusp-pairs-committed` (release, the oracle's cache) under
@@ -147,6 +147,6 @@ Scale: **[1]** routine, **[2]** careful, **[3]** unproven
   The exact slow-test exclusion in `.config/nextest.toml` and its
   `tools/profile-test.sh` record also take the new `real_part_kinks::`
   prefix, preserving the `fast` slice.
-- ⚠ OPEN: if a census table differs between two runs on the same tree (a
-  cache miss, for example), step 3 records it and diffs only the
-  deterministic tables. Agent decides, by step 3.
+- Settled (step 3): all four release census tables match the parent
+  byte for byte with the oracle cache enabled. No nondeterministic
+  fields needed excluding; baselines are in `target/census-baseline/`.

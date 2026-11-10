@@ -407,14 +407,7 @@ pub fn cusp_pairs_file(file: &Path) -> Result<Vec<CuspPair>, String> {
 /// # Errors
 /// A fixture cannot be loaded, or [`cusp_pairs_file`] fails.
 pub fn cusp_pairs_committed() -> Result<Vec<(String, Vec<CuspPair>)>, String> {
-    let mut out = Vec::new();
-    for name in COMMITTED_TIER {
-        let fixture = part::load(&corpus_root().join(name)).map_err(|e| e.to_string())?;
-        let file = fixture.dir.join(&fixture.part.file);
-        let part = name.rsplit('/').next().unwrap_or(name).to_string();
-        out.push((part, cusp_pairs_file(&file)?));
-    }
-    Ok(out)
+    over_committed_tier(false, |file, _| cusp_pairs_file(file))
 }
 
 /// The census of cusp pairs: one row per part and outcome, with the count.
@@ -1161,21 +1154,7 @@ pub fn vertex_blend_file(
 /// # Errors
 /// As [`committed`] and [`ask_the_oracle_vertex`].
 pub fn vertex_blend_committed() -> Result<Vec<(String, Vec<SolidCensus>)>, String> {
-    let mut out = Vec::new();
-    for name in COMMITTED_TIER {
-        let fixture = part::load(&corpus_root().join(name)).map_err(|e| e.to_string())?;
-        let refused: Vec<String> = (fixture.part.solids.iter())
-            .filter(|s| matches!(s.battery.get("fillet"), Some(Class::ArrisRefuses(_))))
-            .map(|s| crate::battery::key(s.id, s.instance))
-            .collect();
-        let file = fixture.dir.join(&fixture.part.file);
-        let part = name.rsplit('/').next().unwrap_or(name).to_string();
-        out.push((
-            part,
-            vertex_blend_file(&file, &|k| refused.iter().any(|r| r == k))?,
-        ));
-    }
-    Ok(out)
+    over_committed_tier(true, vertex_blend_file)
 }
 
 /// The `VertexBlend` edges of the solids, counted by `part → cause`, and
@@ -1672,13 +1651,12 @@ pub fn parallel_cylinder_census_file(
     Ok(out)
 }
 
-/// The committed tier's fillet column counted: every solid whose fillet
-/// stage the fixture records as refused by Arris
-/// ([`Class::ArrisRefuses`]), by part.
-///
-/// # Errors
-/// A fixture or its file cannot be read.
-pub fn committed() -> Result<Vec<(String, Vec<SolidCensus>)>, String> {
+// Keep the committed tier's part order and share its recorded fillet filter.
+// A census of all solids can ignore the predicate by passing `false`.
+fn over_committed_tier<T>(
+    only_refused: bool,
+    per_file: impl Fn(&Path, &dyn Fn(&str) -> bool) -> Result<T, String>,
+) -> Result<Vec<(String, T)>, String> {
     let mut out = Vec::new();
     for name in COMMITTED_TIER {
         let fixture = part::load(&corpus_root().join(name)).map_err(|e| e.to_string())?;
@@ -1690,10 +1668,20 @@ pub fn committed() -> Result<Vec<(String, Vec<SolidCensus>)>, String> {
         let part = name.rsplit('/').next().unwrap_or(name).to_string();
         out.push((
             part,
-            census_file(&file, &|k| refused.iter().any(|r| r == k))?,
+            per_file(&file, &|k| !only_refused || refused.iter().any(|r| r == k))?,
         ));
     }
     Ok(out)
+}
+
+/// The committed tier's fillet column counted: every solid whose fillet
+/// stage the fixture records as refused by Arris
+/// ([`Class::ArrisRefuses`]), by part.
+///
+/// # Errors
+/// A fixture or its file cannot be read.
+pub fn committed() -> Result<Vec<(String, Vec<SolidCensus>)>, String> {
+    over_committed_tier(true, census_file)
 }
 
 /// [`census_file`] of `file`, and each solid's `BlendTooLarge` edges put to
@@ -1717,21 +1705,7 @@ pub fn run_over_file(
 /// # Errors
 /// As [`committed`] and [`ask_the_oracle`].
 pub fn run_over_committed() -> Result<Vec<(String, Vec<SolidCensus>)>, String> {
-    let mut out = Vec::new();
-    for name in COMMITTED_TIER {
-        let fixture = part::load(&corpus_root().join(name)).map_err(|e| e.to_string())?;
-        let refused: Vec<String> = (fixture.part.solids.iter())
-            .filter(|s| matches!(s.battery.get("fillet"), Some(Class::ArrisRefuses(_))))
-            .map(|s| crate::battery::key(s.id, s.instance))
-            .collect();
-        let file = fixture.dir.join(&fixture.part.file);
-        let part = name.rsplit('/').next().unwrap_or(name).to_string();
-        out.push((
-            part,
-            run_over_file(&file, &|k| refused.iter().any(|r| r == k))?,
-        ));
-    }
-    Ok(out)
+    over_committed_tier(true, run_over_file)
 }
 
 /// The table `part → first refusal → what stands behind it`, markdown: one
