@@ -144,9 +144,10 @@ fn a_solid_fixture_matches_mass_properties_area_and_open_cascade() {
 /// `BRepGProp::SurfaceProperties` of that face. The two kernels number faces
 /// differently, so each of Arris's is paired with the nearest unpaired
 /// centroid; a face left unpaired, or a count that differs, fails. The area
-/// holds to 1e-8, not the body's 1e-9: Open CASCADE's default quadrature of
-/// a trimmed curved face is good to about 1.5e-9 (the cross-cylinders and
-/// ball-ball faces), which the body's sum partly cancels.
+/// holds to 1e-9 as the body's does; Open CASCADE integrates each face as `_area`
+/// would, adaptively on a spline-bounded shape (ball-ball-common). The
+/// cross-cylinders' faces are held to their closed forms instead, Open
+/// CASCADE being 1.3e-9 off them (ADR-0015).
 #[test]
 fn each_face_of_the_battery_matches_open_cascade() {
     let root = fixtures::corpus_root();
@@ -196,11 +197,28 @@ fn each_face_of_the_battery_matches_open_cascade() {
                 .map(|(i, _)| i)
                 .unwrap_or_else(|| panic!("{name}: {f:?} has no face left to pair"));
             let occt = theirs[at].take().unwrap();
-            assert!(
-                close(p.area, occt.area, 1e-8),
-                "{name} {f:?}: area {} vs {}",
-                p.area,
+            // Open CASCADE's quadrature of the cross-cylinders' lens faces is
+            // 1.3e-9 off the closed form, which its own two integrations
+            // agree on (ADR-0015): with R = 1 the six faces are 2, 2, 4, 1,
+            // 3 and 4 (the lenses and the pieces the seams cut them into,
+            // summing to 16R^2), whole numbers to the closed form, and
+            // Arris is held to that; Open CASCADE to 1e-8, its drift
+            // (1.3e-9 on the half lens: 1.99999999742).
+            let want_area = if name == "boolean/cross-cylinders-common" {
+                let lens = occt.area.round();
+                assert!(
+                    close(occt.area, lens, 1e-8),
+                    "{name} {f:?}: Open CASCADE area {} vs closed form {lens}",
+                    occt.area
+                );
+                lens
+            } else {
                 occt.area
+            };
+            assert!(
+                close(p.area, want_area, 1e-9),
+                "{name} {f:?}: area {} vs {want_area}",
+                p.area
             );
             assert!(
                 dist(&occt) <= 1e-7 * occt.area.sqrt(),

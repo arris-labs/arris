@@ -92,8 +92,10 @@ right within a given design; **[3]** unproven.
   `oracle::occt_surface_faces`, and a test over the existing `BATTERY` in
   `surface_properties.rs` pairing faces by nearest centroid (the closest area where
   coaxial walls share one) and holding each
-  pair to the battery's tolerances (area 1e-8 relative here, see Settled; centroid 1e-7 √A,
-  tensor 1e-7 of its scale). Needs the oracle environment (`tools/oracle`),
+  pair to the battery's tolerances (area 1e-9 relative, centroid 1e-7 √A,
+  tensor 1e-7 of its scale). The oracle integrates each face as `_area`
+  does (adaptive where the shape is spline-bounded); cross-cylinders'
+  faces are held to their closed forms, see Settled. Needs the oracle environment (`tools/oracle`),
   as the battery's body test does.
 - [x] Step 4 **[1]** — the determinism record: per-face surface properties
   of the boolean recipe digested from `to_bits` into
@@ -134,10 +136,16 @@ right within a given design; **[3]** unproven.
 
 ## Settled
 
-- Step 3's per-face area tolerance is 1e-8, not the body's 1e-9: Open CASCADE's
-  default quadrature of a trimmed curved face is off by up to 1.4e-9 relative
-  (cross-cylinders, ball-ball faces; Arris's agree to the closed forms), which
-  the body's sum partly cancels. Centroid and tensor keep their tolerances.
+- Step 3 holds every battery face's area to 1e-9. The oracle's `--faces`
+  follows `_area`'s choice (adaptive, `SPLINE_EPS`, on a spline-bounded
+  shape: ball-ball-common is then within 5e-11 of its closed forms; fixed-order
+  was 6e-10 to 9e-10 off). On cross-cylinders-common both integrations agree
+  and are 1.3e-9 off the closed form (the half lens: 1.99999999742 for 2R^2),
+  so Open CASCADE is wrong there (ADR-0015): Arris's faces are held to the
+  closed forms (2, 2, 4, 1, 3, 4 at R = 1) and Open CASCADE's to 1e-8.
+- A face with no vertices takes the origin as its reference, as a body without
+  vertices does. Step 1 never triggered the cost: the sphere dome has pole
+  vertices, and its test passes at 1e-10.
 
 ## Open questions
 
@@ -145,8 +153,3 @@ right within a given design; **[3]** unproven.
   over a `surface_properties` taking `impl Into<Entity>`, which would break the
   body signature. Agent's pick: the second function, additive and named for
   what it takes; decided, revisit only if step 1 finds a reason.
-- ⚠ OPEN: a face with no vertices (a full sphere's face, if a primitive makes
-  one) takes the origin as its reference, as a body without vertices does; on
-  a body posed far away that costs rounding in the first moments. Agent
-  decides in step 1: if the sphere test shows it beyond 1e-12 relative, use
-  the centre of the face's `bounds` instead.

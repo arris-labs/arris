@@ -398,8 +398,10 @@ def surface_properties(shape: TopoDS_Shape) -> dict:
     density -- `area`, `centroid` and the `inertia` tensor about it, in the
     physical convention -- as `BRepGProp::SurfaceProperties` gives them,
     summed face by face (a face used twice counts twice, as it is in
-    Arris), what `arris_ops::measure::SurfaceProperties` is held to. The
-    area is `_area`'s, so an extrusion face keeps its exact integration."""
+    Arris), what `arris_ops::measure::SurfaceProperties` is held to. Every
+    face is integrated fixed-order whatever the shape: this is not `_area`'s
+    integration (adaptive on a spline-bounded shape, exact on an extrusion
+    face), and `face_surface_properties` is the per-face one that follows it."""
     total = GProp_GProps()
     for face in _faces(shape):
         props = GProp_GProps()
@@ -417,11 +419,18 @@ def face_surface_properties(shape: TopoDS_Shape) -> list[dict]:
     """The surface properties (`area`, `centroid`, `inertia` about it, unit
     area density) of each `TopoDS_Face` of `shape` on its own, in the walk's
     order, what `arris_ops::measure::face_surface_properties` is held to.
-    Arris and Open CASCADE number faces differently: the caller pairs them."""
+    Arris and Open CASCADE number faces differently: the caller pairs them.
+    Each face is integrated as `_area` would integrate it inside the shape:
+    adaptive, to SPLINE_EPS, where the shape is spline-bounded, fixed-order
+    otherwise."""
     out = []
+    spline = _spline_bounded(shape)
     for face in _faces(shape):
         props = GProp_GProps()
-        BRepGProp.SurfaceProperties_s(face, props)
+        if spline:
+            BRepGProp.SurfaceProperties_s(face, props, SPLINE_EPS)
+        else:
+            BRepGProp.SurfaceProperties_s(face, props)
         c = props.CentreOfMass()
         out.append(
             {
