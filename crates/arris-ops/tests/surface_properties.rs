@@ -140,6 +140,85 @@ fn a_solid_fixture_matches_mass_properties_area_and_open_cascade() {
     }
 }
 
+/// Each face of the battery on its own against Open CASCADE's
+/// `BRepGProp::SurfaceProperties` of that face. The two kernels number faces
+/// differently, so each of Arris's is paired with the nearest unpaired
+/// centroid; a face left unpaired, or a count that differs, fails. The area
+/// holds to 1e-8, not the body's 1e-9: Open CASCADE's default quadrature of
+/// a trimmed curved face is good to about 1.5e-9 (the cross-cylinders and
+/// ball-ball faces), which the body's sum partly cancels.
+#[test]
+fn each_face_of_the_battery_matches_open_cascade() {
+    let root = fixtures::corpus_root();
+    for name in BATTERY {
+        let dir = root.join(name);
+        let chain = corpus::chain(&dir, "default").unwrap();
+        let body = chain.result().unwrap();
+        let mut theirs: Vec<Option<oracle::SurfaceMeasure>> =
+            oracle::occt_surface_faces(&dir, None)
+                .unwrap()
+                .into_iter()
+                .map(Some)
+                .collect();
+        let faces = chain.model.faces(body).unwrap();
+        assert_eq!(faces.len(), theirs.len(), "{name}: face count");
+        for f in faces {
+            let p = face_surface_properties(&chain.model, f).unwrap();
+            let dist = |o: &oracle::SurfaceMeasure| {
+                (p.centroid - Point3::new(o.centroid[0], o.centroid[1], o.centroid[2])).norm()
+            };
+            // The nearest centroid; where several lie within the centroid's
+            // tolerance (coaxial walls share one), the closest area.
+            let near = |o: &oracle::SurfaceMeasure| dist(o) <= 1e-7 * o.area.sqrt();
+            let at = theirs
+                .iter()
+                .enumerate()
+                .filter_map(|(i, o)| o.as_ref().map(|o| (i, o)))
+                .min_by(|(_, a), (_, b)| {
+                    (
+                        !near(a),
+                        if near(a) {
+                            (a.area - p.area).abs()
+                        } else {
+                            dist(a)
+                        },
+                    )
+                        .partial_cmp(&(
+                            !near(b),
+                            if near(b) {
+                                (b.area - p.area).abs()
+                            } else {
+                                dist(b)
+                            },
+                        ))
+                        .unwrap()
+                })
+                .map(|(i, _)| i)
+                .unwrap_or_else(|| panic!("{name}: {f:?} has no face left to pair"));
+            let occt = theirs[at].take().unwrap();
+            assert!(
+                close(p.area, occt.area, 1e-8),
+                "{name} {f:?}: area {} vs {}",
+                p.area,
+                occt.area
+            );
+            assert!(
+                dist(&occt) <= 1e-7 * occt.area.sqrt(),
+                "{name} {f:?}: centroid {} vs {:?}",
+                p.centroid,
+                occt.centroid
+            );
+            let want = tensor(occt.inertia);
+            let scale = want.iter().fold(0.0f64, |s, x| s.max(x.abs()));
+            assert!(
+                (p.inertia - want).iter().all(|d| d.abs() <= 1e-7 * scale),
+                "{name} {f:?}: inertia\n{}\nvs\n{want}",
+                p.inertia
+            );
+        }
+    }
+}
+
 /// The faces of `body` whose surface is of `kind`, in the walk's order.
 fn faces_of(m: &Model, body: Body, kind: SurfaceKind) -> Vec<Face> {
     m.faces(body)

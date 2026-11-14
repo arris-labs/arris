@@ -88,10 +88,11 @@ right within a given design; **[3]** unproven.
   areas, area-weighted centroids and parallel-axis-carried tensors combine to
   its `surface_properties` within 1e-12 relative (area, centroid) and 1e-10
   of the tensor's scale.
-- [ ] Step 3 **[2]** — Open CASCADE per face: `occt_surface.py --faces`,
+- [x] Step 3 **[2]** — Open CASCADE per face: `occt_surface.py --faces`,
   `oracle::occt_surface_faces`, and a test over the existing `BATTERY` in
-  `surface_properties.rs` pairing faces by nearest centroid and holding each
-  pair to the battery's tolerances (area 1e-9 relative, centroid 1e-7 √A,
+  `surface_properties.rs` pairing faces by nearest centroid (the closest area where
+  coaxial walls share one) and holding each
+  pair to the battery's tolerances (area 1e-8 relative here, see Settled; centroid 1e-7 √A,
   tensor 1e-7 of its scale). Needs the oracle environment (`tools/oracle`),
   as the battery's body test does.
 - [ ] Step 4 **[1]** — the determinism record: per-face surface properties
@@ -130,6 +131,13 @@ right within a given design; **[3]** unproven.
   and inertia, a body's being their sum.
 - `AGENTS.md` current state: only if this is the last work before C12's first
   plan (one clause).
+
+## Settled
+
+- Step 3's per-face area tolerance is 1e-8, not the body's 1e-9: Open CASCADE's
+  default quadrature of a trimmed curved face is off by up to 1.4e-9 relative
+  (cross-cylinders, ball-ball faces; Arris's agree to the closed forms), which
+  the body's sum partly cancels. Centroid and tensor keep their tolerances.
 
 ## Open questions
 

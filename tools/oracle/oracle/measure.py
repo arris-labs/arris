@@ -413,6 +413,26 @@ def surface_properties(shape: TopoDS_Shape) -> dict:
     }
 
 
+def face_surface_properties(shape: TopoDS_Shape) -> list[dict]:
+    """The surface properties (`area`, `centroid`, `inertia` about it, unit
+    area density) of each `TopoDS_Face` of `shape` on its own, in the walk's
+    order, what `arris_ops::measure::face_surface_properties` is held to.
+    Arris and Open CASCADE number faces differently: the caller pairs them."""
+    out = []
+    for face in _faces(shape):
+        props = GProp_GProps()
+        BRepGProp.SurfaceProperties_s(face, props)
+        c = props.CentreOfMass()
+        out.append(
+            {
+                "area": props.Mass(),
+                "centroid": [c.X(), c.Y(), c.Z()],
+                "inertia": inertia(props),
+            }
+        )
+    return out
+
+
 def sheet(shape: TopoDS_Shape) -> dict:
     """What expected.json records of one sheet -- a shell of a surface
     model, not in a solid: its counts (no solid) and its surface properties

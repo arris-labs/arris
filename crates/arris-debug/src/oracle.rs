@@ -780,6 +780,52 @@ pub fn occt_surface(dir: &Path, variant: Option<&str>) -> Result<SurfaceMeasure,
     Ok(read)
 }
 
+/// Open CASCADE's surface properties of each face of the result of the
+/// fixture in `dir` under `variant` (`default` when `None`), one
+/// [`SurfaceMeasure`] per face on its own, from `occt_surface.py --faces`.
+/// The faces come in Open CASCADE's walk order, which is not Arris's: a
+/// caller pairs them by centroid. Cached like [`occt_surface`].
+///
+/// Errors: [`OracleError::Environment`] as [`occt_surface`]'s.
+///
+/// ```no_run
+/// use arris_debug::{fixtures, oracle};
+///
+/// let dir = fixtures::corpus_root().join("primitive/box");
+/// let faces = oracle::occt_surface_faces(&dir, None).unwrap();
+/// assert_eq!(faces.len(), 6);
+/// ```
+pub fn occt_surface_faces(
+    dir: &Path,
+    variant: Option<&str>,
+) -> Result<Vec<SurfaceMeasure>, OracleError> {
+    let spec = std::fs::read(dir.join("fixture.json")).ok();
+    let variant = variant.unwrap_or("default");
+    let keyed = format!("faces:{variant}");
+    let slot = cache::slot("occt_surface.py", &[spec.as_deref()], Some(&keyed));
+    let parse = |bytes: &[u8]| {
+        serde_json::from_slice::<Vec<SurfaceMeasure>>(bytes).map_err(|e| OracleError::Environment {
+            message: format!("occt_surface.py --faces output did not parse as JSON: {e}"),
+        })
+    };
+    if let Some(bytes) = slot.as_ref().and_then(|(d, k)| cache::load(d, k)) {
+        if let Ok(read) = parse(&bytes) {
+            return Ok(read);
+        }
+    }
+    let output = spawn(
+        uv("occt_surface.py")
+            .arg(dir)
+            .args(["--variant", variant, "--faces"]),
+    )?;
+    if !output.status.success() {
+        return Err(environment(&output));
+    }
+    let read = parse(&output.stdout)?;
+    keep(slot, &output.stdout);
+    Ok(read)
+}
+
 /// Open CASCADE's verdict on one edge filleted alone (`occt_fillet_edges.py`).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct EdgeVerdict {
