@@ -18,8 +18,8 @@ use arris::io::step::ReadOptions;
 use arris::math::{Axis, Control, Frame, Point2, Point3, Vec3};
 use arris::topo::Model;
 use arris_debug::unmetered::{
-    cut, extrude, fillet, mass_properties, primitive_box, primitive_cylinder, revolve, step_read,
-    tessellate,
+    cut, extrude, face_surface_properties, fillet, mass_properties, primitive_box,
+    primitive_cylinder, revolve, step_read, tessellate,
 };
 use sha2::{Digest, Sha256};
 
@@ -243,6 +243,28 @@ fn step_recipe(m: &mut Model) -> (arris::topo::Body, arris::topo::Provenance) {
     (body.body, body.provenance)
 }
 
+/// The boolean recipe's faces: each face's surface properties digested
+/// from `to_bits` in the body's face order (area, centroid, then the
+/// inertia tensor's nine entries column-major).
+fn face_surface_record(m: &Model, body: arris::topo::Body) -> serde_json::Value {
+    let faces = m.faces(body).expect("the body resolves");
+    let mut bytes = Vec::new();
+    for face in &faces {
+        let p = face_surface_properties(m, *face).unwrap_or_else(|e| panic!("{e:?}"));
+        bytes.extend_from_slice(&p.area.to_bits().to_le_bytes());
+        for c in p.centroid.coords.iter() {
+            bytes.extend_from_slice(&c.to_bits().to_le_bytes());
+        }
+        for v in p.inertia.iter() {
+            bytes.extend_from_slice(&v.to_bits().to_le_bytes());
+        }
+    }
+    serde_json::json!({
+        "faces": faces.len(),
+        "surface_sha256": sha256(&bytes),
+    })
+}
+
 /// The tessellation of the boolean recipe: positions and triangles.
 fn tessellation_record(m: &mut Model) -> serde_json::Value {
     let (body, _) = boolean_recipe(m);
@@ -283,6 +305,9 @@ fn recipes() -> BTreeMap<&'static str, serde_json::Value> {
         let (body, prov) = build(&mut m);
         out.insert(name, record(&m, body, &prov));
     }
+    let mut m = Model::default();
+    let (body, _) = boolean_recipe(&mut m);
+    out.insert("boolean-cut-faces", face_surface_record(&m, body));
     out.insert("tessellation", tessellation_record(&mut Model::default()));
     out
 }

@@ -4,6 +4,10 @@
     "body_sha256": "498f3e0fd83a081559c1848a369f18dd325d4ce0598dbe0de511dca525cb4ca6",
     "volume": "69.40971946360715"
   },
+  "boolean-cut-faces": {
+    "faces": 4,
+    "surface_sha256": "2454ede35decc25ff08da0a1770c6d7688195e60dfe996b291224d9247770c41"
+  },
   "fillet": {
     "area": "45.6382285092516",
     "body_sha256": "be6cbb76ed3d2de56ca4d994fe59b66510355ff8c159c69a982adef2255d1b00",

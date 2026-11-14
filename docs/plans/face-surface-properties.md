@@ -95,7 +95,7 @@ right within a given design; **[3]** unproven.
   pair to the battery's tolerances (area 1e-8 relative here, see Settled; centroid 1e-7 √A,
   tensor 1e-7 of its scale). Needs the oracle environment (`tools/oracle`),
   as the battery's body test does.
-- [ ] Step 4 **[1]** — the determinism record: per-face surface properties
+- [x] Step 4 **[1]** — the determinism record: per-face surface properties
   of the boolean recipe digested from `to_bits` into
   `crates/arris/tests/determinism.rs`'s expected record, re-blessed in this
   commit (`fixtures:` in the message, why: a new record, no value moved).
