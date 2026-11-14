@@ -6,15 +6,17 @@
 
 use core::f64::consts::PI;
 
+use arris_debug::testing::fail;
 use arris_debug::unmetered::{
-    face_surface_properties, mass_properties, revolve, split, surface_properties,
+    cut, face_surface_properties, mass_properties, revolve, split, surface_properties,
 };
-use arris_debug::{corpus, fixtures, oracle, sample};
+use arris_debug::{corpus, fixtures, oracle, prop, prop_shards, sample};
 use arris_geom::{Profile, ProfileLoop, ProfileSegment, SurfaceKind};
 use arris_math::{Axis, Frame, Matrix3, Point2, Point3, Vec3};
 use arris_ops::OpError;
 use arris_topo::{Body, Face, FaceId, Model};
 use core::f64::consts::TAU;
+use proptest::prelude::*;
 
 fn close(a: f64, b: f64, rel: f64) -> bool {
     (a - b).abs() <= rel * a.abs().max(b.abs()).max(1e-300)
@@ -339,4 +341,51 @@ fn a_face_that_does_not_resolve_is_not_found() {
         face_surface_properties(&m, gone),
         Err(OpError::NotFound(_))
     ));
+}
+
+prop_shards! {
+    /// A body's surface properties are its faces' combined: areas summed,
+    /// centroids area-weighted, each tensor carried to the body's centroid
+    /// and summed. Over a box, a cylinder and the box cut by the
+    /// cylinder, each in a random pose.
+    a_bodys_surface_properties_are_its_faces_combined
+        [shard_0 shard_1 shard_2 shard_3]
+        (pair) = prop::body::overlapping_pair() => {
+            let mut m = Model::default();
+            let (a, b) = pair.build(&mut m).map_err(fail)?;
+            let (c, _) = cut(&mut m, a, b).map_err(fail)?;
+            for (name, body) in [("box", a), ("cylinder", b), ("cut", c)] {
+                let whole = surface_properties(&m, body).map_err(fail)?;
+                let mut area = 0.0;
+                let mut moment = Vec3::zeros();
+                let mut parts = Vec::new();
+                for f in m.faces(body).map_err(fail)? {
+                    let p = face_surface_properties(&m, f)
+                        .map_err(|e| fail(format!("{name}: {e}")))?;
+                    area += p.area;
+                    moment += p.area * p.centroid.coords;
+                    parts.push(p);
+                }
+                prop_assert!(
+                    (area - whole.area).abs() <= 1e-12 * whole.area,
+                    "{}: area {} vs {}", name, area, whole.area
+                );
+                let centroid = Point3::from(moment / area);
+                let reach = whole.centroid.coords.abs().max() + whole.area.sqrt();
+                prop_assert!(
+                    (centroid - whole.centroid).norm() <= 1e-12 * reach,
+                    "{}: centroid {:?} vs {:?}", name, centroid, whole.centroid
+                );
+                let mut tensor = Matrix3::zeros();
+                for p in &parts {
+                    tensor += p.inertia_about(whole.centroid);
+                }
+                let scale = whole.inertia.abs().max();
+                prop_assert!(
+                    (tensor - whole.inertia).abs().max() <= 1e-10 * scale,
+                    "{}: tensor {:?} vs {:?}", name, tensor, whole.inertia
+                );
+            }
+            Ok(())
+        }
 }

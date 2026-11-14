@@ -83,7 +83,7 @@ right within a given design; **[3]** unproven.
   a sphere split at its equator (centroid r/2 above it); a torus face. Errors:
   a face id that does not resolve is `NotFound`; reversed and forward uses
   agree to the bit. The body's existing tests stay byte-identical.
-- [ ] Step 2 **[2]** — the sum identity as a property test: random boxes,
+- [x] Step 2 **[2]** — the sum identity as a property test: random boxes,
   cylinders and a cut of the two in random poses; for each body the faces'
   areas, area-weighted centroids and parallel-axis-carried tensors combine to
   its `surface_properties` within 1e-12 relative (area, centroid) and 1e-10
