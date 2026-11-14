@@ -20,7 +20,7 @@ use arris_geom::integrate::{region_integral, surface_grid};
 use arris_math::real;
 use arris_math::{Aabb, Control, Matrix3, Meter, Point3, Vec3};
 use arris_topo::entity::{Body as BodyEntity, BodyKind};
-use arris_topo::{Body, FaceId, Model, Shape};
+use arris_topo::{Body, Face, FaceId, Model, Shape};
 
 use crate::error::{InputReason, OpError, Reason};
 
@@ -77,8 +77,13 @@ impl MassProperties {
 }
 
 /// The surface properties of a body at unit area density
-/// (`docs/ARCHITECTURE.md` §Operations): what [`surface_properties`]
-/// returns, of a sheet's faces as of a solid's boundary.
+/// (`docs/ARCHITECTURE.md` §Operations): what [`surface_properties`] and
+/// [`face_surface_properties`] return, of a sheet's faces as of a solid's
+/// boundary, or of one face.
+///
+/// A body's is its faces' combined: the areas summed, the centroids
+/// weighted by area, and each face's tensor carried to the body's centroid
+/// by [`Self::inertia_about`] and summed.
 ///
 /// The mass is the area. The inertia tensor is about the centroid, in
 /// the physical convention of [`MassProperties`] — `∫ (|r|² I − r rᵀ)
@@ -302,13 +307,94 @@ pub fn surface_properties(
     let mut meter = Meter::new(control);
     let entity = m.body(body.id)?;
     let faces = face_uses(m, body, entity)?;
-
     let reference = reference_point(m, body)?;
-    let first = integrate_surface(m, &faces, reference, &SURFACE_FIRST, &mut meter)?;
+    properties_of(
+        m,
+        &faces,
+        reference,
+        Shape::new(body.id, body.orientation),
+        &mut meter,
+    )
+}
+
+/// The surface properties of one face at unit area density: its area,
+/// centroid and the inertia tensor about the centroid, by the quadrature
+/// [`surface_properties`] takes a body's by, so a body's figure is the sum
+/// of its faces' to rounding — areas added, centroids weighted by area,
+/// tensors carried to the body's centroid by
+/// [`SurfaceProperties::inertia_about`] and added. The face's own region
+/// in its (u, v) is integrated, trimmed by its loops; orientation does not
+/// enter, so a reversed use of the face gives the same value to the bit.
+/// The first moments are taken about the centre of the box of the face's
+/// own vertices (the origin when it has none), the second about the
+/// centroid, for [`mass_properties`]'s reasons.
+///
+/// A query: it takes `&Model`, returns no body and records no provenance.
+/// A face is not a body, so the checker is not run on it; what the query
+/// resolves it verifies, as [`crate::query::face_frame`] does.
+///
+/// Errors: [`OpError::NotFound`] when the face, its surface, a loop's
+/// curve or a vertex does not resolve; [`OpError::Degenerate`] with
+/// [`InputReason::NotPositive`] naming the face for a face with no area;
+/// [`OpError::Interrupted`] from the control's meter.
+///
+/// ```
+/// use arris_ops::measure::face_surface_properties;
+/// use arris_ops::primitive_box;
+/// use arris_topo::Model;
+/// use arris_math::Point3;
+///
+/// let mut m = Model::default();
+/// let none = arris_ops::Control::NONE;
+/// let (body, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 3.0, 4.0), &none).unwrap();
+/// // Every face of a box is a rectangle: its area is the product of its
+/// // sides, its centroid the middle of them.
+/// let mut total = 0.0;
+/// for face in m.faces(body).unwrap() {
+///     let p = face_surface_properties(&m, face, &none).unwrap();
+///     total += p.area;
+/// }
+/// assert!((total - 52.0).abs() < 1e-12 * 52.0);
+/// ```
+pub fn face_surface_properties(
+    m: &Model,
+    face: Face,
+    control: &Control<'_>,
+) -> Result<SurfaceProperties, OpError> {
+    let mut meter = Meter::new(control);
+    let entity = m.face(face.id)?;
+    let mut points = Vec::new();
+    for coedge in entity.loops().iter().flat_map(|l| l.coedges()) {
+        let edge = m.edge(coedge.edge_use().id)?;
+        for v in [edge.start(), edge.end()] {
+            points.push(m.vertex(v)?.point().coords.into());
+        }
+    }
+    let reference = Aabb::of_points(&points).map_or_else(Vec3::zeros, |b| Vec3::from(b.center()));
+    properties_of(
+        m,
+        &[(face.id, 1.0)],
+        reference,
+        Shape::new(face.id, face.orientation),
+        &mut meter,
+    )
+}
+
+/// The two passes of the surface properties over `faces`: the area and
+/// first moments about `reference`, then the second moments about the
+/// centroid. `named` is what a zero area is reported against.
+fn properties_of(
+    m: &Model,
+    faces: &[(FaceId, f64)],
+    reference: Vec3,
+    named: Shape,
+    meter: &mut Meter<'_>,
+) -> Result<SurfaceProperties, OpError> {
+    let first = integrate_surface(m, faces, reference, &SURFACE_FIRST, meter)?;
     let area = first[0];
     if !(area.is_finite() && area > 0.0) {
         return Err(OpError::Degenerate {
-            entities: vec![Shape::new(body.id, body.orientation)],
+            entities: vec![named],
             reason: Reason::Input(InputReason::NotPositive {
                 what: "the area",
                 value: area,
@@ -316,7 +402,7 @@ pub fn surface_properties(
         });
     }
     let centroid = Point3::from(reference + Vec3::new(first[1], first[2], first[3]) / area);
-    let second = integrate_surface(m, &faces, centroid.coords, &SURFACE_SECOND, &mut meter)?;
+    let second = integrate_surface(m, faces, centroid.coords, &SURFACE_SECOND, meter)?;
     let inertia = Matrix3::new(
         second[1] + second[2],
         -second[3],

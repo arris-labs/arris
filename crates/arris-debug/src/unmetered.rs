@@ -192,6 +192,14 @@ pub fn surface_properties(
     arris_ops::measure::surface_properties(m, body, &Control::NONE)
 }
 
+/// [`arris_ops::measure::face_surface_properties`] to its end.
+pub fn face_surface_properties(
+    m: &Model,
+    face: Face,
+) -> Result<arris_ops::measure::SurfaceProperties, OpError> {
+    arris_ops::measure::face_surface_properties(m, face, &Control::NONE)
+}
+
 /// [`arris_mesh::tessellate`] to its end.
 pub fn tessellate(
     m: &Model,
