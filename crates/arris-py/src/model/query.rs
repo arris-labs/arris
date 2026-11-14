@@ -3,6 +3,13 @@
 
 use super::*;
 
+/// What `Model.surface_properties` measures: a body or one face.
+#[derive(FromPyObject)]
+pub(crate) enum SurfaceEntity<'py> {
+    Body(PyRef<'py, Body>),
+    Face(PyRef<'py, Face>),
+}
+
 #[pymethods]
 impl Model {
     /// The volume, area, centroid and inertia of the solid `body`, at unit
@@ -36,10 +43,11 @@ impl Model {
         Ok(MassProperties::new(kernel))
     }
 
-    /// The area, centroid and inertia of the faces of `body` — a solid's
-    /// boundary or a sheet's faces — at unit area density.
+    /// The area, centroid and inertia of the faces of `entity` at unit area
+    /// density: of a `Body` (a solid's boundary or a sheet's faces) or of one
+    /// `Face`. A body's figure is its faces' combined.
     ///
-    /// Raises `OpDegenerateError` for a body whose faces have no area and
+    /// Raises `OpDegenerateError` for a body or face with no area and
     /// `Interrupted` when `cancel` or `budget` stops it.
     ///
     /// ```python
@@ -50,20 +58,35 @@ impl Model {
     /// props = model.surface_properties(body)
     /// assert abs(props.area - 22) < 1e-12
     /// assert props.centroid == (0.5, 1.0, 1.5)
+    /// [top] = [f for f in record.generated_from(arris.Role("box", "Face", "Z", "Max"))
+    ///          if isinstance(f, arris.Face)]
+    /// face = model.surface_properties(top)
+    /// assert abs(face.area - 2) < 1e-12
+    /// assert all(abs(c - h) < 1e-12 for c, h in zip(face.centroid, (0.5, 1, 3)))
     /// ```
-    #[pyo3(signature = (body, *, cancel=None, budget=None))]
+    #[pyo3(signature = (entity, *, cancel=None, budget=None))]
     fn surface_properties(
         &self,
         py: Python<'_>,
-        body: &Body,
+        entity: SurfaceEntity<'_>,
         cancel: Option<&Cancel>,
         budget: Option<u64>,
     ) -> PyResult<SurfaceProperties> {
-        let body = body.resolve(&self.shared)?;
         let limits = Limits::new(cancel, budget);
-        let kernel = self.run(py, &limits, move |m, control| {
-            arris::ops::measure::surface_properties(m, body, control)
-        })?;
+        let kernel = match entity {
+            SurfaceEntity::Body(body) => {
+                let body = body.resolve(&self.shared)?;
+                self.run(py, &limits, move |m, control| {
+                    arris::ops::measure::surface_properties(m, body, control)
+                })?
+            }
+            SurfaceEntity::Face(face) => {
+                let face = face.resolve(&self.shared)?;
+                self.run(py, &limits, move |m, control| {
+                    arris::ops::measure::face_surface_properties(m, face, control)
+                })?
+            }
+        };
         Ok(SurfaceProperties::new(kernel))
     }
 

@@ -99,7 +99,7 @@ right within a given design; **[3]** unproven.
   of the boolean recipe digested from `to_bits` into
   `crates/arris/tests/determinism.rs`'s expected record, re-blessed in this
   commit (`fixtures:` in the message, why: a new record, no value moved).
-- [ ] Step 5 **[1]** — the binding: `Model.surface_properties` takes `Body |
+- [x] Step 5 **[1]** — the binding: `Model.surface_properties` takes `Body |
   Face`; stub, docstring example (a box's top face: area and centroid);
   `crates/arris-py/tests/test_queries.py` covers a half cylinder's face
   centroid against 2r/π and a stale face handle raising as `surface()` does.

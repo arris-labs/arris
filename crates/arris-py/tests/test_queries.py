@@ -116,6 +116,40 @@ def test_the_surface_properties_of_a_solid_are_its_boundary_s():
         arris.Model().surface_properties(body)
 
 
+def test_a_half_cylinders_wall_has_its_centroid_two_r_over_pi_off_the_axis():
+    model = arris.Model()
+    body, _ = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 2, 5)
+    # A plane through the axis splits the cylinder into two halves. Each
+    # half's wall is two quarter walls, so the half's figure is their sum.
+    above, below, _ = model.split(body, (0, 0, 0), (1, 0, 0))
+    for half in (above, below):
+        walls = [f for f in model.faces(half) if model.surface(f).kind == "cylinder"]
+        parts = [model.surface_properties(f) for f in walls]
+        area = sum(p.area for p in parts)
+        assert area == pytest.approx(math.pi * 2 * 5, rel=1e-9)
+        centroid = [sum(p.area * p.centroid[i] for p in parts) / area for i in range(3)]
+        assert abs(centroid[0]) == pytest.approx(2 * 2 / math.pi, rel=1e-9)
+        assert centroid[1] == pytest.approx(0, abs=1e-9)
+        assert centroid[2] == pytest.approx(2.5, rel=1e-9)
+        # A body's figure is the sum of its faces': the walls and the caps.
+        faces_area = sum(model.surface_properties(f).area for f in model.faces(half))
+        assert model.surface_properties(half).area == pytest.approx(faces_area, rel=1e-9)
+    with pytest.raises(arris.ForeignHandleError):
+        arris.Model().surface_properties(walls[0])
+
+
+def test_a_face_handle_that_went_stale_raises_as_surface_does():
+    model = arris.Model()
+    kept, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
+    freed, _ = model.primitive_box((5, 5, 5), (6, 6, 6))
+    face = model.faces(freed)[0]
+    assert model.retain([kept]) > 0
+    with pytest.raises(arris.StaleHandleError):
+        model.surface(face)
+    with pytest.raises(arris.StaleHandleError):
+        model.surface_properties(face)
+
+
 def test_the_measures_stop_for_a_budget_and_refuse_a_foreign_body():
     model = arris.Model()
     body, _ = model.primitive_box((0, 0, 0), (1, 1, 1))
