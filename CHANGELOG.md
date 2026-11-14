@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.11.0 — 2026-11-14
+
 - `measure::face_surface_properties` gives one face's area, centroid and
   inertia tensor by the quadrature `surface_properties` takes a body's by, so
   a body's figure is the sum of its faces'. In Python,

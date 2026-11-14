@@ -45,7 +45,8 @@ CASCADE cannot; closed with five nightly findings open, two of them panics
 the histogram is 0, so ADR-0020's consumer amendment picked it.
 The nightly's two panics (the posed slot chain and elbow, a NURBS curve
 called `Coincident`) are fixed. The refactor review's remaining census and
-test work is done. **Next:** C12's first `/idea` or `/plan`.
+test work is done. Per-face surface properties landed beside C12 and shipped as
+0.11.0 (2026-11-14). **Next:** C12's first `/idea` or `/plan`.
 
 ## Rules that are not derivable from the code
 
