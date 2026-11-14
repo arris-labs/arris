@@ -1088,6 +1088,12 @@ the README, held to Open CASCADE's reading of its STEP. Beside it, a test-held
 capability matrix (`crates/arris/tests/capability.rs`) records what each
 operation does or refuses for every face kind.
 
+**Per-face surface properties** (landed 2026-11-14 at a consumer's ask,
+ADR-0020's amendment). `measure::face_surface_properties` and Python's
+`Model.surface_properties(face)` give one face's area, centroid and inertia
+by the body's quadrature; a body's figure is the sum of its faces', and each
+face of the surface battery matches Open CASCADE's.
+
 ---
 
 ## Named cycles, unordered

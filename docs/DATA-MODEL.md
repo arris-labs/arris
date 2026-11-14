@@ -1634,7 +1634,8 @@ test scaffolding that stores a dangling reference as given), the builder
   Non-manifold structure is thus representable from day one (`SEED.md`
   §9); sheets are built by `ops::planar_face` (a profile), by the STEP reader
   (a surface model) and by `ops::section` (a planar section), and measured
-  by `measure::surface_properties` (area, centroid, inertia, any body);
+  by `measure::surface_properties` (area, centroid, inertia, any body) and,
+  per face, by `measure::face_surface_properties`;
   `transform` and `mirror` take one and return one of its kind; every other
   operation that needs an inside accepts `Solid` only, and `mass_properties`
   refuses a non-solid as `OpError::Degenerate` with `InputReason::NotSolid`.

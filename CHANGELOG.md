@@ -10,7 +10,8 @@ into its version (ADR-0027).
 
 - `measure::face_surface_properties` gives one face's area, centroid and
   inertia tensor by the quadrature `surface_properties` takes a body's by, so
-  a body's figure is the sum of its faces'.
+  a body's figure is the sum of its faces'. In Python,
+  `Model.surface_properties` takes a `Face` as well as a `Body`.
 - A NURBS curve with knot spans too narrow to resolve (a domain of 1e-71,
   say) is no longer reported `Coincident` with a line or another analytic
   curve it leaves across those spans: the verdict now looks at every knot
@@ -20,6 +21,12 @@ into its version (ADR-0027).
   moved far from where its file put it no longer fails the checker.
 - A fillet or chamfer along a long, nearly tangent run far from the origin
   that ended in an internal error (a surface fit out of spans) now builds.
+
+### Breaking
+
+- Python's `Model.surface_properties` names its first parameter `entity`, not
+  `body`, since it takes a `Body` or a `Face`: pass it positionally, or
+  rename a `body=` keyword to `entity=`.
 
 ## 0.10.0 — 2026-11-04
 
