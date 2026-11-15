@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.11.1 — 2026-11-16
+
 - The Python package `arris` is now on PyPI. 0.11.0's wheels never published, so
   this release carries the same code as 0.11.0 and is the first on PyPI.
 
