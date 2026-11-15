@@ -341,8 +341,8 @@ mod tests {
                 );
             }
         }
-        for k in 0..2 {
-            assert!(end.gaps[k] <= tol().linear, "gap {k}: {:e}", end.gaps[k]);
+        for (k, gap) in end.gaps.iter().enumerate().take(2) {
+            assert!(*gap <= tol().linear, "gap {k}: {gap:e}");
         }
         let first = end.curve.point(if end.lo_first { lo } else { hi });
         assert!((first - points[0]).norm() <= tol().linear);
