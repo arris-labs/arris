@@ -573,19 +573,8 @@ impl Model {
     /// assert!(m.body(cylinder.id).is_err() && m.body(cube.id).is_ok());
     /// ```
     pub fn retain(&mut self, keep: &[handle::Body]) -> Result<usize, NotFound> {
-        let mut live = crate::walk::Closure::default();
-        let mut bodies = Vec::new();
-        for &body in keep {
-            let c = self.closure(body)?;
-            live.vertices.extend(c.vertices);
-            live.edges.extend(c.edges);
-            live.faces.extend(c.faces);
-            live.shells.extend(c.shells);
-            live.curves.extend(c.curves);
-            live.surfaces.extend(c.surfaces);
-            live.curve2s.extend(c.curve2s);
-            bodies.push(body.id);
-        }
+        let mut live = self.closures(keep)?;
+        let mut bodies: Vec<BodyId> = keep.iter().map(|b| b.id).collect();
         fn sweep<T: Clone, I: Copy + Ord>(
             arena: &mut Arena<T>,
             live: &mut Vec<I>,
@@ -646,17 +635,7 @@ impl Model {
         keep: &[handle::Body],
     ) -> Result<usize, NotFound> {
         let gone = self.closure(body)?;
-        let mut live = crate::walk::Closure::default();
-        for &b in keep {
-            let c = self.closure(b)?;
-            live.vertices.extend(c.vertices);
-            live.edges.extend(c.edges);
-            live.faces.extend(c.faces);
-            live.shells.extend(c.shells);
-            live.curves.extend(c.curves);
-            live.surfaces.extend(c.surfaces);
-            live.curve2s.extend(c.curve2s);
-        }
+        let live = self.closures(keep)?;
         fn free<T: Clone, I: Copy + Ord>(
             arena: &mut Arena<T>,
             gone: &[I],

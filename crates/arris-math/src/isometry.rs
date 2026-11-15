@@ -2,7 +2,7 @@
 
 use nalgebra::{Isometry3, Translation3, UnitQuaternion};
 
-use crate::{Frame, Point3, UnitVec3, Vec3};
+use crate::{Point3, UnitVec3, Vec3};
 
 /// A rigid motion: a rotation followed by a translation, `p ↦ R p + t`.
 /// Lengths and angles are preserved, so a `Frame` moved by one is still a
@@ -74,12 +74,6 @@ impl Isometry {
     /// `R u`, re-normalised so the result is unit to rounding.
     pub fn apply_unit(&self, u: UnitVec3) -> UnitVec3 {
         UnitVec3::new_normalize(self.inner.transform_vector(&u))
-    }
-
-    /// The frame moved by this motion; the same as
-    /// [`Frame::transformed`].
-    pub fn apply_frame(&self, frame: &Frame) -> Frame {
-        frame.transformed(self)
     }
 
     /// The motion that is `self` first, then `next`:

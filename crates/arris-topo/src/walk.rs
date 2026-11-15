@@ -90,6 +90,25 @@ impl Model {
         Ok(self.walk(body)?.vertices)
     }
 
+    /// The closures of `bodies` concatenated, kind by kind: unsorted, with
+    /// an entity reachable from two bodies listed twice. The live set
+    /// [`Model::retain`] and [`Model::discard`] keep. Errors: a body does
+    /// not resolve.
+    pub(crate) fn closures(&self, bodies: &[Body]) -> Result<Closure, NotFound> {
+        let mut all = Closure::default();
+        for &body in bodies {
+            let c = self.closure(body)?;
+            all.vertices.extend(c.vertices);
+            all.edges.extend(c.edges);
+            all.faces.extend(c.faces);
+            all.shells.extend(c.shells);
+            all.curves.extend(c.curves);
+            all.surfaces.extend(c.surfaces);
+            all.curve2s.extend(c.curve2s);
+        }
+        Ok(all)
+    }
+
     /// Everything reachable from `body`, as sorted id lists per kind.
     /// Errors: the body does not resolve.
     pub fn closure(&self, body: Body) -> Result<Closure, NotFound> {

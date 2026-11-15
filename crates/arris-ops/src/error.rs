@@ -4,10 +4,62 @@
 use arris_check::{ClassifyError, LumpError, Report};
 use arris_geom::{GeomError, GeomKind, LoftError, PathError, ProfileError};
 use arris_math::{FrameError, Interrupted};
-use arris_topo::builder::BuildError;
+use arris_topo::builder::{BuildError, EdgeRef, FaceRef, VertexRef};
 use arris_topo::{AnyId, Body, EdgeId, FaceId, NotFound, Shape};
 
-use crate::build::{BuildSlot, Rejection};
+/// A slot of the builder handed to [`build`](fn@crate::build), named in
+/// its refusals.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum BuildSlot {
+    /// A vertex slot.
+    Vertex(VertexRef),
+    /// An edge slot.
+    Edge(EdgeRef),
+    /// A face slot.
+    Face(FaceRef),
+    /// A shell, by the index its faces carry.
+    Shell(usize),
+}
+
+impl core::fmt::Display for BuildSlot {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            BuildSlot::Vertex(v) => write!(f, "{v}"),
+            BuildSlot::Edge(e) => write!(f, "{e}"),
+            BuildSlot::Face(x) => write!(f, "{x}"),
+            BuildSlot::Shell(i) => write!(f, "shell {i}"),
+        }
+    }
+}
+
+/// Why [`build`](fn@crate::build) refused the consumer's topology as a
+/// solid: the input's fault, not the kernel's, so none is
+/// [`OpError::Internal`].
+#[derive(Debug, Clone, PartialEq)]
+pub enum Rejection {
+    /// [`Builder::finish`](arris_topo::builder::Builder::finish) refused
+    /// it: a loop with no uses, a missing pcurve, an edge not used exactly
+    /// twice.
+    Builder(Box<BuildError>),
+    /// The slot is an entity already in the model, taken whole by a
+    /// `Keep` spec of
+    /// [`Builder::assemble`](arris_topo::builder::Builder::assemble):
+    /// `build` makes a body from nothing, and a kept entity is another
+    /// body's.
+    Kept(BuildSlot),
+    /// The finished body fails the checker at `Level::Full`.
+    Checker(Box<Report>),
+}
+
+impl core::fmt::Display for Rejection {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Rejection::Builder(e) => write!(f, "the builder refused it: {e}"),
+            Rejection::Kept(slot) => write!(f, "{slot} is an entity already in the model"),
+            Rejection::Checker(report) => write!(f, "it fails the checker:\n{report}"),
+        }
+    }
+}
 
 /// Why a requested result has no valid representation, grouped by the
 /// operation that raises it. [`Reason::name`] is the stable name of the

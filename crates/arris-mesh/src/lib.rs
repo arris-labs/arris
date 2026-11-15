@@ -27,6 +27,7 @@
 
 pub mod cdt;
 mod corners;
+mod error;
 mod polyline;
 mod tessellate;
 mod trimesh;
@@ -35,8 +36,9 @@ mod trimesh;
 // so a mesh caller reaches them through this crate as it always has.
 pub use arris_math::{Aabb, Interval};
 pub use corners::{CornerFace, Corners, NORMAL_UNIT_SLACK};
+pub use error::MeshError;
 pub use polyline::Polyline;
 pub use tessellate::{
     MAX_INTERIOR_POINTS, MeshRequest, RING_RATIO, tessellate, tessellate_faces, tessellate_with,
 };
-pub use trimesh::{EdgeRange, FaceRange, MeshError, TriMesh};
+pub use trimesh::{EdgeRange, FaceRange, TriMesh};

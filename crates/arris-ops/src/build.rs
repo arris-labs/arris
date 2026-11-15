@@ -1,17 +1,16 @@
 //! `build`: a solid from topology the consumer filled, every entity
 //! recorded under the consumer's own key (ADR-0028).
 
-use core::fmt;
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::{Level, Report};
+use arris_check::Level;
 use arris_math::{Control, Meter};
-use arris_topo::builder::{BuildError, Builder, Built, EdgeRef, FaceRef, VertexRef};
+use arris_topo::builder::{Builder, Built, EdgeRef, FaceRef, VertexRef};
 use arris_topo::entity::BodyKind;
 use arris_topo::provenance::ConsumerKey;
 use arris_topo::{Body, Model, Orientation, Provenance, Role, Shape};
 
-use crate::error::{Fault, OpError};
+use crate::error::{BuildSlot, Fault, OpError, Rejection};
 
 /// The consumer's key for every slot of a [`Builder`]: what
 /// [`build`] records each entity it appends as `Generated` from, as
@@ -37,55 +36,6 @@ pub struct BuildKeys {
     pub shells: Vec<u64>,
     /// The body's key.
     pub body: u64,
-}
-
-/// A slot of the builder handed to [`build`], named in its refusals.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum BuildSlot {
-    /// A vertex slot.
-    Vertex(VertexRef),
-    /// An edge slot.
-    Edge(EdgeRef),
-    /// A face slot.
-    Face(FaceRef),
-    /// A shell, by the index its faces carry.
-    Shell(usize),
-}
-
-impl fmt::Display for BuildSlot {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            BuildSlot::Vertex(v) => write!(f, "{v}"),
-            BuildSlot::Edge(e) => write!(f, "{e}"),
-            BuildSlot::Face(x) => write!(f, "{x}"),
-            BuildSlot::Shell(i) => write!(f, "shell {i}"),
-        }
-    }
-}
-
-/// Why [`build`] refused the consumer's topology as a solid: the input's
-/// fault, not the kernel's, so none is [`OpError::Internal`].
-#[derive(Debug, Clone, PartialEq)]
-pub enum Rejection {
-    /// [`Builder::finish`] refused it: a loop with no uses, a missing
-    /// pcurve, an edge not used exactly twice.
-    Builder(Box<BuildError>),
-    /// The slot is an entity already in the model, taken whole by a
-    /// `Keep` spec of [`Builder::assemble`]: `build` makes a body from
-    /// nothing, and a kept entity is another body's.
-    Kept(BuildSlot),
-    /// The finished body fails the checker at `Level::Full`.
-    Checker(Box<Report>),
-}
-
-impl fmt::Display for Rejection {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Rejection::Builder(e) => write!(f, "the builder refused it: {e}"),
-            Rejection::Kept(slot) => write!(f, "{slot} is an entity already in the model"),
-            Rejection::Checker(report) => write!(f, "it fails the checker:\n{report}"),
-        }
-    }
 }
 
 /// The provenance of a body every entity of which has a role: each

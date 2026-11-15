@@ -306,6 +306,16 @@ impl Frame {
     }
 }
 
+// `Isometry::apply_frame` lives beside the frame it moves, so `isometry` names no
+// frame and the two modules do not name each other.
+impl Isometry {
+    /// The frame moved by this motion; the same as
+    /// [`Frame::transformed`].
+    pub fn apply_frame(&self, frame: &Frame) -> Frame {
+        frame.transformed(self)
+    }
+}
+
 pub(crate) fn is_finite3(v: &Vec3) -> bool {
     v.iter().all(|c| c.is_finite())
 }
