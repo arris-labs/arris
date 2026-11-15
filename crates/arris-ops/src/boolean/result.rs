@@ -19,11 +19,11 @@ use arris_topo::{
     Shape, ShellId, VertexId,
 };
 
-use super::pieces::{Alias, ERef, EdgeOnFace, PieceUse, SplitFace, SubEdge, VRef, split_face};
+use super::pieces::{Alias, EdgeOnFace, SplitFace, split_face};
 use super::{EdgeImage, Interferences, VertexSource, meet_curves};
 use crate::error::{BooleanReason, Fault, InputReason, OpError, Reason, SplitFault};
 use crate::pass::pass;
-use crate::rebuild::{self, Kept, Plan, Policy, forward};
+use crate::rebuild::{self, ERef, Kept, PieceUse, Plan, Policy, SubEdge, VRef, forward};
 
 /// Which selection over the decomposition: one table, three
 /// operations (`docs/ARCHITECTURE.md` §Operations).

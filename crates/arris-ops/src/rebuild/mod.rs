@@ -20,8 +20,11 @@ use arris_topo::{
 };
 
 use crate::boolean::Interferences;
-use crate::boolean::pieces::{ERef, PieceUse, SubEdge, VRef};
 use crate::error::{Fault, OpError};
+
+mod piece;
+
+pub(crate) use piece::{ERef, PieceUse, SubEdge, VRef};
 
 /// A `Forward` handle to `id`, as a [`Shape`].
 pub(crate) fn forward(id: impl Into<EntityId>) -> Shape {
