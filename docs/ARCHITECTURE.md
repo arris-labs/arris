@@ -1497,10 +1497,9 @@ tessellation can never disagree about a point past a period —
 point on the boundary to its vertex, else its edge, the same way, also
 trying periods on a closed edge; the free `domain::boundary_entity(model,
 edges, point)` does the same over a whole body's edges, which the
-classifier below asks of one. It replaced `Checker::face_side` and
-`faces_fine`, the classifier's own polygons, `check::uv_bounds`, the
-boolean's `FaceInfo`'s domain part and mesh's padded (u, v) box — one
-definition, not five (ADR-0004). The checker's `Full` rows and the
+classifier below asks of one. It is the only definition of a face's
+(u, v) domain: the checker, the classifier, the boolean's `FaceInfo` and
+mesh all ask it, none keeps polygons or a padded box of its own (ADR-0004). The checker's `Full` rows and the
 classifier build it at the model's parametric tolerance; a boolean builds
 it at the pair's own face tolerance — S5's `regions_overlap` and
 `curve_is_interior_to_both`, and the classifier's boundary and ray tests,
