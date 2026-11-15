@@ -176,6 +176,7 @@ class Module:
     text: str = ""
     uses: list[tuple[list[str], str]] = field(default_factory=list)  # (segs, bound name)
     reexport: set[int] = field(default_factory=set)  # indices into uses written as `pub use`
+    doc_only: set[int] = field(default_factory=set)  # indices into uses only a doc link reads
     inline: list[tuple[list[str], bool]] = field(default_factory=list)  # (segs, resolved like a use)
     items: dict[str, int] = field(default_factory=dict)  # name → line
 
@@ -246,6 +247,14 @@ class Workspace:
                 m.reexport.update(range(len(m.uses), len(m.uses) + len(new)))
             m.uses.extend(new)
         no_use = USE.sub(lambda u: re.sub(r"[^\n]", " ", u.group(0)), text)
+        # A private import whose name the code never writes but a doc comment does is
+        # there for a doc link (rustc counts those as uses): it couples nothing, so it
+        # draws no arrow. A trait imported for its methods is never written either, but
+        # no doc names it, so it stays.
+        idents = set(re.findall(r"[A-Za-z_]\w*", no_use))
+        docs = set(re.findall(r"[A-Za-z_]\w*", " ".join(re.findall(r"^\s*//[/!](.*)$", raw, re.M))))
+        m.doc_only = {i for i, (segs, name) in enumerate(m.uses)
+                      if i not in m.reexport and name not in idents and name in docs}
         for p in INLINE.finditer(no_use):
             m.inline.append(([s.strip() for s in p.group(0).split("::")], False))
         heads = {k[-1] for k in crate.modules if k[:-1] == path and len(k) == len(path) + 1} | {n for _, n in m.uses}
@@ -332,7 +341,7 @@ class Workspace:
         w: dict = defaultdict(int)
         for c in self.crates.values():
             for path, m in c.modules.items():
-                refs = [(segs, True, i in m.reexport) for i, (segs, _) in enumerate(m.uses)] + \
+                refs = [(segs, True, i in m.reexport) for i, (segs, _) in enumerate(m.uses) if i not in m.doc_only] + \
                        [(s, u, False) for s, u in m.inline]
                 for segs, from_use, reexport in refs:
                     if segs and segs[-1] == "*":
@@ -454,6 +463,10 @@ class Chart:
         return "\n".join(out) + "\n"
 
 
+def paths(n: int) -> str:
+    return f"{n} path" if n == 1 else f"{n} paths"
+
+
 def kloc(n: int) -> str:
     return f"{n / 1000:.1f}k" if n >= 1000 else str(n)
 
@@ -569,8 +582,8 @@ def view_layers(ws: Workspace) -> tuple[Chart, list[str]]:
             findings.append(f"{c.name} has no layer in tools/check-layers.sh")
         if len(c.modules) > 1:
             marks.append("drill")
-        ch.node(c.short, c.name, meta=f"layer {'?' if c.layer is None else c.layer} · {len(c.modules)} modules · {kloc(loc)} lines",
-                color=layer_color(c.layer), marks=marks, tip=f"{c.name}: {loc} non-blank lines in {len(c.modules)} modules")
+        ch.node(c.short, c.name, meta=f"layer {'?' if c.layer is None else c.layer} · {len(c.modules) - 1} modules · {kloc(loc)} lines",
+                color=layer_color(c.layer), marks=marks, tip=f"{c.name}: {loc} non-blank lines in {len(c.modules) - 1} modules and lib.rs")
     for c in ws.crates.values():
         for dep, kind in sorted(c.deps):
             if dep not in ws.crates or kind == "build":
@@ -585,8 +598,8 @@ def view_layers(ws: Workspace) -> tuple[Chart, list[str]]:
                 findings.append(f"{c.name} declares {dep} but no source path names it (unused dependency?)")
             if kind == "dev":
                 continue
-            ch.edges.append({"a": c.short, "b": ws.short(dep), "w": max(r, 1), "label": f"{r} paths", "red": red,
-                             "tip": f"{c.name} → {dep}: {r} paths"})
+            ch.edges.append({"a": c.short, "b": ws.short(dep), "w": max(r, 1), "label": paths(r), "red": red,
+                             "tip": f"{c.name} → {dep}: {paths(r)}"})
     normal = defaultdict(set)
     for e in ch.edges:
         normal[e["a"]].add(e["b"])
@@ -634,7 +647,8 @@ def view_container(ws: Workspace, crate: str, mod: tuple, docs: set, min_weight:
         elif bi:
             ext_in[(one_step_out(ws, crate, mod, ac, am, 0), node(bm))] += n
     ch = Chart(f"{c.name}{'::' + label_of(mod) if mod else ''}",
-               f"{len(kids)} modules{f' in layer {c.layer}' if not mod else ''}, {kloc(subtree_loc(c, mod))} lines. "
+               f"{len(kids)} child modules ({sum(1 for p in c.modules if p[: len(mod)] == mod and p != mod)} in all)"
+               f"{f' in layer {c.layer}' if not mod else ''}, {kloc(subtree_loc(c, mod))} lines. "
                "A → B: A names paths defined in B; users above, what they use below. "
                "Pills are the neighbours outside, one step out. A stacked box holds modules: click to open it.")
     findings = []
@@ -706,7 +720,7 @@ def view_container(ws: Workspace, crate: str, mod: tuple, docs: set, min_weight:
             continue
         same = comp_of[a] == comp_of[b] and comp_of[a] < len(sccs)
         ch.edges.append({"a": a, "b": b, "w": n, "label": str(n), "red": same and len(sccs[comp_of[a]]) <= SMALL_CYCLE,
-                         "tip": f"{a} → {b}: {n} paths"})
+                         "tip": f"{a} → {b}: {paths(n)}"})
     # Outside neighbours: users on top, what is used at the bottom, the heaviest few each side.
     tot_in, tot_out = defaultdict(int), defaultdict(int)
     for (o, _), n in ext_in.items():
@@ -737,7 +751,7 @@ def view_container(ws: Workspace, crate: str, mod: tuple, docs: set, min_weight:
             pill_cut += len(lst) - len(kept)
             for n, v in kept:
                 a, b = (o, v) if side == "in" else (v, o)
-                ch.edges.append({"a": a, "b": b, "w": n, "label": str(n), "dash": True, "tip": f"{a} → {b}: {n} paths"})
+                ch.edges.append({"a": a, "b": b, "w": n, "label": str(n), "dash": True, "tip": f"{a} → {b}: {paths(n)}"})
     rest_in, rest_out = len(tot_in) - len(top), len(set(tot_out) - set(top) - set(bottom))
     ch.legend = [("sw-drill", "holds modules: click to open"), ("sw-cycle", f"cycle (≤{SMALL_CYCLE} modules)"),
                  ("sw-tangle", "tangle (larger cycle)"), ("sw-undoc", "no design doc names it"),
@@ -1121,7 +1135,7 @@ def main() -> None:
     drift, f = view_drift(ws, docs)
     findings += f
     write(ws, a.out or root / "target/archmap", charts, details(ws, docs), start, flows, drift, findings,
-          "archmap.py " + " ".join(sys.argv[1:]))
+          " ".join(["archmap.py", *sys.argv[1:]]))
 
 
 if __name__ == "__main__":
