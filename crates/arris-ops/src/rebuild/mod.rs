@@ -15,16 +15,15 @@ use arris_topo::builder::{
 };
 use arris_topo::entity::{BodyKind, Coedge, EdgeGeometry};
 use arris_topo::{
-    Body, Curve2Id, CurveId, EdgeId, EntityId, Face as FaceHandle, FaceId, Model, Orientation,
-    Provenance, Shape, ShellId, SurfaceId, VertexId,
+    Body, Curve2Id, EdgeId, EntityId, Face as FaceHandle, FaceId, Model, Orientation, Provenance,
+    Shape, ShellId, SurfaceId, VertexId,
 };
 
-use crate::boolean::Interferences;
 use crate::error::{Fault, OpError};
 
 mod piece;
 
-pub(crate) use piece::{ERef, PieceUse, SubEdge, VRef};
+pub(crate) use piece::{ERef, NewSection, NewVertex, PieceUse, SubEdge, VRef};
 
 /// A `Forward` handle to `id`, as a [`Shape`].
 pub(crate) fn forward(id: impl Into<EntityId>) -> Shape {
@@ -91,9 +90,8 @@ pub(crate) fn assembly(
     touched: &BTreeSet<EdgeId>,
     retolerated: &BTreeMap<VertexId, f64>,
     edge_tolerance: &BTreeMap<ERef, f64>,
-    i: &Interferences,
-    curve_ids: &[CurveId],
-    vref_of: &[VRef],
+    section_vertices: &[NewVertex],
+    section_edges: &[NewSection],
     pieces: &[Kept],
     shells: &[Vec<usize>],
 ) -> Result<Plan, OpError> {
@@ -128,8 +126,8 @@ pub(crate) fn assembly(
                 (s.start, s.end)
             }
             ERef::Section(k) => {
-                let s = &i.sections[k];
-                (vref_of[s.start], vref_of[s.end])
+                let s = &section_edges[k];
+                (s.start, s.end)
             }
         };
         used_vertices.insert(start);
@@ -150,7 +148,7 @@ pub(crate) fn assembly(
     for v in order {
         if vertex_new(v) {
             let (point, tolerance) = match v {
-                VRef::Section(k) => (i.vertices[k].point, i.vertices[k].tolerance),
+                VRef::Section(k) => (section_vertices[k].point, section_vertices[k].tolerance),
                 VRef::Existing(id) => {
                     let stored = m.vertex(id)?;
                     (
@@ -212,18 +210,18 @@ pub(crate) fn assembly(
             }
         }
     }
-    for (k, s) in i.sections.iter().enumerate() {
+    for (k, s) in section_edges.iter().enumerate() {
         let r = ERef::Section(k);
         if !used_edges.contains(&r) {
             continue;
         }
         assembly.edges.push(EdgeSpec::New {
             geometry: EdgeGeometry::Curve {
-                curve: curve_ids[s.curve],
+                curve: s.curve,
                 range: s.range,
             },
-            start: vkey[&vref_of[s.start]],
-            end: vkey[&vref_of[s.end]],
+            start: vkey[&s.start],
+            end: vkey[&s.end],
             tolerance: s.tolerance,
         });
         ekey.insert(r, EdgeKey::New(new_edges.len()));

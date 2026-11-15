@@ -75,7 +75,7 @@ bound has to be established here.
   path; reword the two doc comments. `cargo test -p arris-ops` passes
   unchanged; `grep -n 'boolean::pieces' crates/arris-ops/src/rebuild` is
   empty.
-- [ ] Step 2 **[1]** — Add `NewVertex` and `NewSection`; change
+- [x] Step 2 **[1]** — Add `NewVertex` and `NewSection`; change
   `rebuild::assembly` to take them; build them in `Build::assembly`.
   `grep -rn 'boolean' crates/arris-ops/src/rebuild --include=*.rs` hits
   only comments; `archmap.py ops` no longer lists the cycle; the boolean,

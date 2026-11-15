@@ -3,8 +3,8 @@
 //! has an id. `rebuild` owns it, so the boolean that produces pieces (and
 //! a blend later) depends on `rebuild` and never the reverse (ADR-0004).
 
-use arris_math::Interval;
-use arris_topo::{Curve2Id, EdgeId, Orientation, VertexId};
+use arris_math::{Interval, Point3};
+use arris_topo::{Curve2Id, CurveId, EdgeId, Orientation, VertexId};
 
 /// A vertex of the result as the split names it before it has an id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -39,6 +39,33 @@ pub(crate) struct SubEdge {
     pub start: VRef,
     /// The vertex at `range.hi()`.
     pub end: VRef,
+}
+
+/// A section vertex the producer hands `assembly`, indexed by
+/// [`VRef::Section`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct NewVertex {
+    /// Where it is.
+    pub point: Point3,
+    /// Its tolerance.
+    pub tolerance: f64,
+}
+
+/// A section edge the producer hands `assembly`, indexed by
+/// [`ERef::Section`]: its curve is already the model's id and its ends
+/// are already vertices of the result.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct NewSection {
+    /// The curve, in the model.
+    pub curve: CurveId,
+    /// The parameter range on it.
+    pub range: Interval,
+    /// The vertex at `range.lo()`.
+    pub start: VRef,
+    /// The vertex at `range.hi()`.
+    pub end: VRef,
+    /// Its tolerance.
+    pub tolerance: f64,
 }
 
 /// One use of an edge piece by a piece's loop, in the *stored* sense:

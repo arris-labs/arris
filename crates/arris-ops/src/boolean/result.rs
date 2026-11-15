@@ -23,7 +23,9 @@ use super::pieces::{Alias, EdgeOnFace, SplitFace, split_face};
 use super::{EdgeImage, Interferences, VertexSource, meet_curves};
 use crate::error::{BooleanReason, Fault, InputReason, OpError, Reason, SplitFault};
 use crate::pass::pass;
-use crate::rebuild::{self, ERef, Kept, PieceUse, Plan, Policy, SubEdge, VRef, forward};
+use crate::rebuild::{
+    self, ERef, Kept, NewSection, NewVertex, PieceUse, Plan, Policy, SubEdge, VRef, forward,
+};
 
 /// Which selection over the decomposition: one table, three
 /// operations (`docs/ARCHITECTURE.md` §Operations).
@@ -1826,6 +1828,27 @@ impl Build<'_> {
         let policy: Vec<Policy> = (0..self.bodies.len())
             .map(|side| self.op.policy(side))
             .collect();
+        let section_vertices: Vec<NewVertex> = self
+            .i
+            .vertices
+            .iter()
+            .map(|v| NewVertex {
+                point: v.point,
+                tolerance: v.tolerance,
+            })
+            .collect();
+        let section_edges: Vec<NewSection> = self
+            .i
+            .sections
+            .iter()
+            .map(|s| NewSection {
+                curve: self.curve_ids[s.curve],
+                range: s.range,
+                start: self.vref_of[s.start],
+                end: self.vref_of[s.end],
+                tolerance: s.tolerance,
+            })
+            .collect();
         rebuild::assembly(
             self.m,
             &policy,
@@ -1835,9 +1858,8 @@ impl Build<'_> {
             &self.touched,
             &self.retolerated,
             &self.edge_tolerance,
-            self.i,
-            &self.curve_ids,
-            &self.vref_of,
+            &section_vertices,
+            &section_edges,
             &self.kept,
             shells,
         )
