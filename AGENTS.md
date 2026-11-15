@@ -15,6 +15,7 @@ project's words, one meaning each: use them as written. Skills live in
 `.agents/skills/` (same symlink arrangement): the idea → plan → work →
 retire → close-cycle → release pipeline, `refactor-review` (structural
 debt, measured and read, as one idea), `inspect` for seeing geometry,
+`map` for seeing the architecture (charts and checks derived from the code),
 and for the human `/next`, `/handoff`, `/retro` and `/wait-what`.
 
 ## Setup (once per clone)

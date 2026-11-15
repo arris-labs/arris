@@ -1,0 +1,18 @@
+{
+  "title": "fuse: one decomposition, one selection (ADR-0004)",
+  "direction": "TB",
+  "nodes": [
+    {"id": "fuse", "label": "fuse(a, b)", "at": "ops::fuse"},
+    {"id": "inter", "label": "decompose both operands: face pairs, paves, section edges", "at": "ops::boolean::interferences_many"},
+    {"id": "pave", "label": "the pave model", "at": "ops::boolean::pave::build"},
+    {"id": "each", "label": "one result per selection", "at": "ops::boolean::result::boolean_each"},
+    {"id": "plan", "label": "realise vertices, sub-edges, contacts, select pieces, order shells", "at": "ops::boolean::result::select_and_plan"},
+    {"id": "classify", "label": "is a piece inside the other operand?", "at": "check::classify_point"},
+    {"id": "assemble", "label": "assemble the kept faces", "at": "topo::Builder"},
+    {"id": "prov", "label": "generated / modified / deleted", "at": "ops::rebuild::write_provenance"}
+  ],
+  "edges": [
+    ["fuse", "inter"], ["inter", "pave", "per face pair"], ["fuse", "each", "the Interferences"],
+    ["each", "plan"], ["plan", "classify", "per piece"], ["each", "assemble", "the Plan"], ["assemble", "prov"]
+  ]
+}

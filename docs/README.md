@@ -46,7 +46,9 @@ before a cycle closes. The pipeline is walked by the shared skills `/idea`,
 remaining step runs in a fresh subagent on its tier (`.agents/tiers.md`), and
 the conducting session retires the plan itself; `/work <slug> step N` does one
 step in the current session. `inspect`, beside them, is how the agent sees a shape it is
-changing without a GUI. `/refactor-review`, suggested after each
+changing without a GUI; `map` is how it sees the architecture — the crates,
+then each module down to the deepest, an operation's stages — drawn from the
+code and checked against the design docs. `/refactor-review`, suggested after each
 `/close-cycle`, measures and reads the workspace for structural debt and
 writes it as one idea whose milestone plans run in the side slot. For the human: `/next` says where things stand and
 what to run, `/handoff` writes a note a fresh session continues from,
