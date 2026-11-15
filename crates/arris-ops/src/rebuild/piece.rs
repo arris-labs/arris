@@ -1,7 +1,7 @@
 //! The vocabulary a producer hands [`assembly`](super::assembly) its
 //! pieces in: a vertex, an edge and a use of an edge, each named before it
-//! has an id. `rebuild` owns it, so the boolean that produces pieces (and
-//! a blend later) depends on `rebuild` and never the reverse (ADR-0004).
+//! has an id. `rebuild` owns it, so the boolean that produces pieces
+//! depends on `rebuild` and never the reverse (ADR-0004).
 
 use arris_math::{Interval, Point3};
 use arris_topo::{Curve2Id, CurveId, EdgeId, Orientation, VertexId};

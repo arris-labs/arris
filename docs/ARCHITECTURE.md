@@ -797,6 +797,10 @@ the same `AssemblySlots` `transform` reads its own outputs through. The
 boolean layers its own two relations on top — a section vertex's or
 edge's `Generated` from the face pair that made it, meaningless without
 `Interferences` — inline, over the `Provenance` the writer returns.
+`rebuild` owns the piece vocabulary a producer speaks to it (`VRef`,
+`ERef`, `SubEdge`, `PieceUse`) and takes a boolean's section geometry as
+new vertices and sections (`NewVertex`, `NewSection`), so it names nothing
+of the boolean's: the dependency runs boolean → rebuild only.
 `boolean()` is `rebuild`'s first caller; a blend is its second, through
 `rebuild::rewrite`: one operand, its faces kept by id unless their loops
 change, its edges and vertices kept unless a new edge is a piece of one
