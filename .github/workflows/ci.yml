@@ -253,10 +253,14 @@ jobs:
   # The Open CASCADE oracle agrees with itself: every op against closed
   # forms, committed expected.json values reproduced, OCCT's own STEP read
   # back clean (tools/oracle/README.md).
+  # Pinned: `ubuntu-latest` became 26.04 in November 2026 and on it 14
+  # fixtures' fresh Open CASCADE runs differ from their committed
+  # expected.json (same wheel, same fixtures; the records match on 24.04 and
+  # on the dev machine). The records are blessed where they were built.
   oracle:
     needs: reuse
     if: needs.reuse.outputs.skip != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.1.0
