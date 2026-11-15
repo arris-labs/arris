@@ -8,6 +8,9 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- The Python package `arris` is now on PyPI. 0.11.0's wheels never published, so
+  this release carries the same code as 0.11.0 and is the first on PyPI.
+
 ## 0.11.0 — 2026-11-14
 
 - `measure::face_surface_properties` gives one face's area, centroid and
