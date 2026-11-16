@@ -807,6 +807,16 @@ came from, and a cavity made of a cut tool's pieces alone is `Generated`
 from the tool's shell. Tolerances follow data-model §Tolerances' growth rule and a
 piece keeps its parent's.
 
+Operands may share entities: a body split and fused back keeps the faces
+the split left untouched, by id, so it shares them, their edges and their
+vertices with the body it was split from. The pave model reads every
+entity as one operand's, so `boolean/shared.rs` replaces an operand that
+shares any vertex, edge, face or shell with an earlier operand by its copy
+(`transform`'s `copy_body` on the same geometry) inside the boolean's
+transaction, and writes the result's record and a refusal's entities back
+against the caller's ids (data-model §Provenance). Operands that share
+nothing are read as given.
+
 The keep-by-id assembly and the provenance writer above are
 `arris-ops`'s own `rebuild` module (ADR-0004), not the boolean's: a
 `Policy` per operand (`Reuse`, an untouched entity kept by id and a piece

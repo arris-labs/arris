@@ -158,12 +158,9 @@ fn halved() -> impl Strategy<Value = Halved> {
 
 /// A box split by a plane and its sides fused back is the same solid:
 /// `interference` with the whole box answers its volume, each inside the
-/// other.
-///
-/// Ignored: every case fails as
-/// `regression/interference-box-against-its-split-and-fused-sides` does.
+/// other. The fused body keeps the box's untouched faces by id, so the two
+/// operands share entities (`query/interference-box-against-its-split-and-fused-sides`).
 #[test]
-#[ignore = "finds regression/interference-box-against-its-split-and-fused-sides"]
 fn a_box_against_itself_split_another_way_overlaps_in_its_volume() {
     prop::check(halved(), |case| {
         let mut m = Model::default();

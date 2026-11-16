@@ -134,11 +134,16 @@ bound is established here.
   t = 0, so `piece_along` read it as off the block. A closed edge's point
   is now within a block a period from its projection
   (`boolean/fuse-many-coaxial-cylinders-and-box`).
-- [ ] Step 9 **[3]** — `interference-box-against-its-split-and-fused-sides`
+- [x] Step 9 **[3]** — `interference-box-against-its-split-and-fused-sides`
   (found by step 6): a box split by a plane and fused back fails
   `interference` against the original with `Builder Closure EdgeUses`.
   Find why the fused body breaks the common, fix it, and move the fixture
-  to `query/` green.
+  to `query/` green. It was not the split's cap: the fused body keeps the
+  box's top and bottom faces by id, and the boolean keys every entity by
+  id as one operand's. An operand sharing an entity with an earlier one
+  is copied before the decomposition (`boolean/shared.rs`) and the record
+  and refusals written back against its ids; `fuse`, `cut`, `common` and
+  their n-ary forms of a body with its own split side faulted alike.
 
 ## Acceptance
 
@@ -163,7 +168,8 @@ bound is established here.
 - `docs/ROADMAP.md` C12: the in-list line marked done with its counts.
 - `CHANGELOG.md` `Unreleased`: chained fuses on a shared plane, slots
   across slots, and cuts over an existing bore now build; `interference`
-  of differently split bodies answers.
+  of differently split bodies answers; a boolean or `interference` of a
+  body with its split sides fused back (sharing its faces) builds.
 - `AGENTS.md` current state, the **Next** line: the tangency-faults idea.
 
 ## Open questions
@@ -192,7 +198,10 @@ bound is established here.
   plan's domain like the first two:
   `regression/fuse-many-three-boxes-plane-against-plane-unsupported`
   (plane against plane `Unsupported` in the n-ary call, before step 8
-  too), so it stays ignored. Not weakened: the draws exclude tangency (the tangency-faults
+  too), so it stays ignored. Step 9 fixed the fourth
+  (`query/interference-box-against-its-split-and-fused-sides`): the
+  operands shared entities by id, and the split-and-fused property passes
+  at 1000 cases, no longer ignored. Not weakened: the draws exclude tangency (the tangency-faults
   idea's) and poses (the tolerance band's).
 - Settled (conductor, after step 6): faults 3 and 4 are this plan's and
   get steps 8 and 9. Faults 1 and 2 (plane against line `Unsupported`) are

@@ -16,6 +16,7 @@ mod pave;
 pub(crate) mod pieces;
 mod result;
 mod section;
+mod shared;
 mod split;
 
 use core::fmt;
@@ -655,6 +656,13 @@ pub fn interferences_many(
 /// parent's. The result is deterministic: the same ids on every run and
 /// every platform.
 ///
+/// The operands may share entities by id, as a body and one split from it
+/// and fused back do: the tool is then decomposed as its copy, so an
+/// entity of it the result keeps is `Modified` from the tool's own, and a
+/// shared entity the result keeps by id is the target's, untouched
+/// (`docs/DATA-MODEL.md` §Provenance). Every boolean reads shared
+/// operands so.
+///
 /// A face of the target coincident with a face of the tool is the
 /// flush case, a named one: the two faces' edges split each other on
 /// their shared surface, and a piece of the target's face lying on the
@@ -878,9 +886,14 @@ fn many(
     for &body in operands {
         crate::verify_solid(m, body)?;
     }
-    let mut meter = Meter::new(control);
-    let i = pave::build(m, operands, &mut meter)?;
-    result::boolean(m, &i, op, &mut meter)
+    m.transaction(|m| {
+        let apart = shared::apart(m, operands, control)?;
+        let mut meter = Meter::new(control);
+        let made = pave::build(m, &apart.operands, &mut meter)
+            .and_then(|i| result::boolean(m, &i, op, &mut meter))
+            .and_then(|(body, made)| Ok((body, apart.restore(m, body, made)?)));
+        made.map_err(|e| apart.error(e))
+    })
 }
 
 /// `body` named by a boolean's refusal.
@@ -991,9 +1004,14 @@ pub fn common(
 ) -> Result<(Body, Provenance), OpError> {
     crate::verify_solid(m, a)?;
     crate::verify_solid(m, b)?;
-    let mut meter = Meter::new(control);
-    let i = pave::build(m, &[a, b], &mut meter)?;
-    result::boolean(m, &i, result::Op::Common, &mut meter)
+    m.transaction(|m| {
+        let apart = shared::apart(m, &[a, b], control)?;
+        let mut meter = Meter::new(control);
+        let made = pave::build(m, &apart.operands, &mut meter)
+            .and_then(|i| result::boolean(m, &i, result::Op::Common, &mut meter))
+            .and_then(|(body, made)| Ok((body, apart.restore(m, body, made)?)));
+        made.map_err(|e| apart.error(e))
+    })
 }
 
 /// What [`common_probe`] found: the pave model, and the common built from
@@ -1021,9 +1039,15 @@ pub(crate) fn common_probe(
 ) -> Result<Probe, OpError> {
     crate::verify_solid(m, a)?;
     crate::verify_solid(m, b)?;
+    // The caller's model is a scratch copy and the record is not kept, so
+    // the copy `apart` appends needs no transaction and no restore; an
+    // error still names the caller's entities.
+    let apart = shared::apart(m, &[a, b], control)?;
     let mut meter = Meter::new(control);
-    let i = pave::build(m, &[a, b], &mut meter)?;
-    let common = match result::boolean_each_witnessed(m, &i, &[result::Op::Common], &mut meter) {
+    let i = pave::build(m, &apart.operands, &mut meter).map_err(|e| apart.error(e))?;
+    let common = match result::boolean_each_witnessed(m, &i, &[result::Op::Common], &mut meter)
+        .map_err(|e| apart.error(e))
+    {
         Ok(mut made) => {
             let (body, _, outside) =
                 made.pop()

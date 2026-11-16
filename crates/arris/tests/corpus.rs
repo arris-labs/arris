@@ -127,6 +127,10 @@ corpus_tests! {
     /// thirds fused from pieces: overlap 4, each inside the other. A seam
     /// of one body crossing a seam of the other is not one curve.
     query_interference_box_against_its_halves => query "query/interference-box-against-its-halves";
+    /// A box against itself split by a plane and fused back, a body that
+    /// shares the box's untouched faces by id: overlap 4, each inside the
+    /// other.
+    query_interference_box_against_its_split_and_fused_sides => query "query/interference-box-against-its-split-and-fused-sides";
     /// A block, cylinder, tube, ball, cone, torus and U-bracket cut by planes
     /// across, along and through their seams and apex (ADR-0056).
     query_section_primitives => query "query/section-primitives";
@@ -2151,10 +2155,6 @@ corpus_tests! {
     /// plane and the third's wall across both: every pair and the chain build.
     #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (plans/flat-edge-read-as-tangent-contact step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
-    /// A box against itself split by a plane and fused back: overlap 4, each
-    /// inside the other.
-    #[ignore = "Fault::Builder Closure EdgeUses: the common's builder meets an edge used by no coedge, for any box split across and fused back (plans/flat-edge-read-as-tangent-contact step 6)"]
-    regression_interference_box_against_its_split_and_fused_sides => query "regression/interference-box-against-its-split-and-fused-sides";
 }
 
 /// A variant the recipe does not have fails naming it.

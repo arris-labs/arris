@@ -1,6 +1,6 @@
 {
   "kind": "query",
-  "description": "a 2 x 2 x 1 box split by the plane z = 0.5 into two sides, and the sides fused back: the same solid, so interference of the box against it is an overlap of the box's whole volume 4 with each inside the other. Arris faults instead, in the common's builder (Internal Builder Closure EdgeUses, an edge used by no coedge); the same box fused from two boxes instead of a split answers. Every box of the split-and-fused-back property fails alike (plans/flat-edge-read-as-tangent-contact step 6). The answers are Open CASCADE's",
+  "description": "a 2 x 2 x 1 box split by the plane z = 0.5 into two sides, and the sides fused back: the same solid, so interference of the box against it is an overlap of the box's whole volume 4 with each inside the other. The fused body keeps the box's top and bottom faces by id, with their edges and vertices, so the two operands share entities; the boolean read each shared entity as both operands' at once and faulted in the common's builder (Internal Builder Closure EdgeUses, an edge used by no coedge), where the same box fused from two boxes answered. An operand sharing an entity with an earlier one is now copied before the decomposition (plans/flat-edge-read-as-tangent-contact step 9). The answers are Open CASCADE's",
   "steps": [
     {
       "name": "whole",

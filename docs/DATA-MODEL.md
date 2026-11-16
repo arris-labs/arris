@@ -2394,6 +2394,16 @@ of the tool order while the geometry (volume, area, counts) is not; an
 entity no tool touched keeps its id (`is_kept`). A tool that misses the
 target is `Deleted` whole.
 
+**Operands that share entities** (one body split from the other and fused
+back) are decomposed with the later one copied (architecture §Operations),
+and the record is written against the caller's ids: an origin in the copy
+is its original; an entity of the copy the result keeps is `Modified` from
+its original, which the result no longer holds by id; a shared entity is
+one input, so when the result keeps it by id (the earlier operand's,
+untouched) what the copy's reading made of it is `Generated` from it and
+it is not `Deleted`, and otherwise the pieces of both readings are its
+pieces, `Deleted` only when neither left one.
+
 ## Native format
 
 `arris-io::native` is `serde` of the `Model` under a version header

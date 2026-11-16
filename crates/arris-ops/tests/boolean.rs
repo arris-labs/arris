@@ -1967,3 +1967,89 @@ fn a_wall_pinched_at_a_singular_point_is_non_manifold() {
     }
     assert_eq!(arris_debug::dump_text(&m, main).unwrap(), before);
 }
+
+/// A box and its sides split by a plane and fused back share the box's top
+/// and bottom faces by id, with their edges and vertices: every boolean of
+/// the two, and of the box with one side, builds checker-clean with its
+/// record audited against both operands' ids, the way a box fused from
+/// two boxes does (`query/interference-box-against-its-split-and-fused-sides`).
+#[test]
+fn operands_that_share_entities_build_with_their_own_ids() {
+    use arris_check::{Level, check};
+    use arris_debug::unmetered::split;
+    use arris_topo::provenance::audit;
+
+    type Op = fn(&mut Model, Body, Body) -> Result<(Body, arris_topo::Provenance), OpError>;
+    let mut m = Model::default();
+    let (whole, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 1.0)).unwrap();
+    let plane = Frame::from_z(Point3::new(0.0, 0.0, 0.5), Vec3::z()).unwrap();
+    let sides = split(&mut m, whole, &plane).unwrap();
+    let (back, _) = fuse(&mut m, sides.positive, sides.negative).unwrap();
+    let shared = m.closure(whole).unwrap().faces;
+    assert!(
+        m.closure(back)
+            .unwrap()
+            .faces
+            .iter()
+            .any(|f| shared.contains(f)),
+        "the fused sides keep a face of the box by id"
+    );
+    let cases: [(&str, Op, Body, Body, f64); 7] = [
+        ("common of the box and its sides", common, whole, back, 4.0),
+        ("fuse of the box and its sides", fuse, whole, back, 4.0),
+        (
+            "common of the box and a side",
+            common,
+            whole,
+            sides.positive,
+            2.0,
+        ),
+        (
+            "common of a side and the box",
+            common,
+            sides.positive,
+            whole,
+            2.0,
+        ),
+        (
+            "cut of a side from the box",
+            cut,
+            whole,
+            sides.positive,
+            2.0,
+        ),
+        (
+            "fuse of the box and a side",
+            fuse,
+            whole,
+            sides.positive,
+            4.0,
+        ),
+        (
+            "cut of a side from the sides",
+            cut,
+            back,
+            sides.negative,
+            2.0,
+        ),
+    ];
+    for (name, op, a, b, volume) in cases {
+        let (r, p) = op(&mut m, a, b).unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert!(
+            check(&m, r, Level::Full).is_ok(),
+            "{name}: not clean at Full"
+        );
+        audit(&m, &[a, b], r, &p).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let v = mass_properties(&m, r).unwrap().volume;
+        assert!((v - volume).abs() < 1e-9 * volume, "{name}: volume {v}");
+    }
+    // A refusal names the caller's bodies, not the copy it was decomposed
+    // on.
+    match cut(&mut m, sides.positive, whole) {
+        Err(OpError::Degenerate { entities, .. }) => {
+            let named: Vec<_> = entities.iter().map(|s| s.id).collect();
+            assert_eq!(named, [sides.positive.id.into(), whole.id.into()]);
+        }
+        other => panic!("cut of the box from a side: {other:?}"),
+    }
+}
