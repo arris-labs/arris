@@ -87,7 +87,7 @@ bound is established here.
   `three-slots-through-cylinder` (the harness's closed form, genus 5).
   `interference-box-against-its-halves` (whole~halves and halves~thirds,
   overlap 4). `cut-many-bore-over-bore-of-its-width` (V = 320 − 1.375π).
-- [ ] Step 2 **[3]** — An image held once per (edge, block, face) in both
+- [x] Step 2 **[3]** — An image held once per (edge, block, face) in both
   of `coincident`'s loops. The cylinder chain, the box L and the slots
   build checker-green to their oracle values and move into `boolean/` with
   blessed dumps. The risk is the flush selection of a face that an image
@@ -95,6 +95,9 @@ bound is established here.
 - [ ] Step 3 **[2]** — The interference fixture moves into
   `query/interference-parts` green, both pairs at overlap 4 and both
   containment flags. If step 2 does not cover it, its cause is found here.
+  After step 2, halves~thirds is refused as `Fault::CommonBlock`: a piece
+  of one body's seam lies along the other's face boundary and matches no
+  piece of it. The bore over a bore still reads as the contact.
 - [ ] Step 4 **[3]** — The bore over a bore: find the second duplicate,
   extend `along` across operands as the deltas say, and move the fixture
   to `boolean/` green. Cutting the bore and the counterbore as two tools

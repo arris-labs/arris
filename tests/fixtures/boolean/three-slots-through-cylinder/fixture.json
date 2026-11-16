@@ -1,5 +1,5 @@
 {
-  "description": "a cylinder (radius 4, height 10, axis z, centred on the origin) cut by three 9 x 1 x 6 boxes through its axis, 60 degrees apart, one call each: cut, cut, cut. The first two build; the third is refused as a tangent contact the faces do not have, since the second slot's floor was split by the first and the third slot's floor is coincident with both pieces (the training harness's wall_anchor programs). The desired answer is the closed form: six windows in the wall, six columns joining two slabs, genus 5",
+  "description": "a cylinder (radius 4, height 10, axis z, centred on the origin) cut by three 9 x 1 x 6 boxes through its axis, 60 degrees apart, one call each: cut, cut, cut. The first two build; the third was refused as a tangent contact the faces do not have, since the second slot's floor was split by the first and the third slot's floor is coincident with both pieces, which imaged their shared edge twice (the training harness's wall_anchor programs). The desired answer is the closed form: six windows in the wall, six columns joining two slabs, genus 5",
   "params": {
     "rho": 4,
     "a": 0.5,

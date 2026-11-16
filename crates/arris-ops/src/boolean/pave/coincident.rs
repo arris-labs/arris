@@ -220,6 +220,21 @@ impl<'m, 'c> Build<'m, 'c> {
         }))
     }
 
+    /// Whether piece `index` of `edge` is already among `images` on
+    /// `face`: an edge piece is placed on a face once, whichever pair
+    /// meets it first.
+    fn held(&self, images: &[EdgeImage], edge: EdgeId, index: usize, face: FaceId) -> bool {
+        images.iter().any(|x| {
+            let pair = &self.pairs[x.pair];
+            let on = if x.on == pair.operands[1] {
+                pair.b
+            } else {
+                pair.a
+            };
+            (x.edge, x.index, on) == (edge, index, face)
+        })
+    }
+
     /// Every piece of every edge of both faces of each `Coincident` pair
     /// decided against the other face: inside it, an image with its
     /// pcurve there; along its boundary, a common block with the piece
@@ -261,6 +276,13 @@ impl<'m, 'c> Build<'m, 'c> {
                                 );
                                 blocks.push(b);
                             }
+                            continue;
+                        }
+                        // An edge two coplanar faces of its operand share
+                        // lies in one face of the other operand coincident
+                        // with both: imaged there once, under the first
+                        // pair, or the arrangement meets one curve twice.
+                        if self.held(&images, e.id, block.index, other.id) {
                             continue;
                         }
                         if let Some(image) = self.image(pi, side, e, f, other, &block)? {
@@ -344,6 +366,9 @@ impl<'m, 'c> Build<'m, 'c> {
                     }
                     continue;
                 }
+                if self.held(&images, e.id, block.index, other.id) {
+                    continue;
+                }
                 if let Some(image) = self.image(pi, side, e, f, other, &block)? {
                     floors.push((block.start, image.tolerance));
                     floors.push((block.end, image.tolerance));
@@ -367,18 +392,7 @@ impl<'m, 'c> Build<'m, 'c> {
             };
             // The piece is placed once on a face, whichever pair placed it
             // first: an edge lying in the face is imaged there already.
-            let on = |x: &EdgeImage| {
-                let pair = &self.pairs[x.pair];
-                if x.on == pair.operands[1] {
-                    pair.b
-                } else {
-                    pair.a
-                }
-            };
-            let held = images.iter().any(|x: &EdgeImage| {
-                (x.edge, x.index, on(x)) == (along.edge, along.block.index, other.id)
-            });
-            if held {
+            if self.held(&images, along.edge, along.block.index, other.id) {
                 continue;
             }
             // Outside the other face, the block bounds nothing there.

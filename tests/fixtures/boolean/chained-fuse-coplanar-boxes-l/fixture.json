@@ -1,5 +1,5 @@
 {
-  "description": "three boxes in an L on one plane z = 0, [0,2]x[0,2], [1,3]x[0,2] and [0.5,2.5]x[1,3], each 1 high, fused as a chain, (a + b) + c. The n-ary call builds, and so do three boxes in a row; the chain is refused as a tangent contact the faces do not have (the same cause as chained-fuse-coplanar-cylinders: the edge the first fuse leaves on the end plane lies inside the third box's end face and is imaged twice). The desired answer is the closed form: the union is [0,3]x[0,2] and [0.5,2.5]x[2,3], 8 in area and 12 round",
+  "description": "three boxes in an L on one plane z = 0, [0,2]x[0,2], [1,3]x[0,2] and [0.5,2.5]x[1,3], each 1 high, fused as a chain, (a + b) + c. The n-ary call builds, and so do three boxes in a row; the chain was refused as a tangent contact the faces do not have (the same cause as chained-fuse-coplanar-cylinders: the edge the first fuse leaves on the end plane lies inside the third box's end face and was imaged twice). The desired answer is the closed form: the union is [0,3]x[0,2] and [0.5,2.5]x[2,3], 8 in area and 12 round",
   "params": {
     "h": 1
   },

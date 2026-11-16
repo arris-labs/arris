@@ -17,6 +17,8 @@ boolean/boss-flush: 23
 boolean/boss-flush-band-ends: 23
 boolean/boss-flush-four-into: 22
 boolean/cavity-cylinder: 18
+boolean/chained-fuse-coplanar-boxes-l: 132
+boolean/chained-fuse-coplanar-cylinders: 123
 boolean/chamfered-boss-slot-cut: 31677
 boolean/coaxial-cut: 24
 boolean/coaxial-cut-band-ends: 24
@@ -145,6 +147,7 @@ boolean/tee-unequal-drill-cut: 13700
 boolean/tee-unequal-fuse: 18822
 boolean/tee-unequal-slot-cut: 4096
 boolean/three-bores-one-point-cut-many: 16145
+boolean/three-slots-through-cylinder: 412
 boolean/through-hole: 26
 boolean/tilted-cylinder-slot-cut: 1547
 boolean/tripod-fuse-many: 16109
