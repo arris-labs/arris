@@ -123,6 +123,10 @@ corpus_tests! {
     /// (ADR-0061), a box far from it is apart in Open CASCADE's answer and
     /// refused here (ADR-0055).
     query_interference_nurbs_cylinder => query "query/interference-nurbs-cylinder";
+    /// A box against the same box split another way, its halves and its
+    /// thirds fused from pieces: overlap 4, each inside the other. A seam
+    /// of one body crossing a seam of the other is not one curve.
+    query_interference_box_against_its_halves => query "query/interference-box-against-its-halves";
     /// A block, cylinder, tube, ball, cone, torus and U-bracket cut by planes
     /// across, along and through their seams and apex (ADR-0056).
     query_section_primitives => query "query/section-primitives";
@@ -2124,10 +2128,6 @@ corpus_tests! {
     /// where Open CASCADE builds it.
     #[ignore = "OpError::Degenerate: the corner at the end of a ruling blend whose neighbour in line is another ruling blend of a different face pair is not covered (docs/BACKLOG.md, the ruling chain over a ledge)"]
     regression_ogive_bar_step_chain_fillet => run "regression/ogive-bar-step-chain-fillet";
-    /// A box against the same box split another way, its halves and its
-    /// thirds fused from pieces: overlap 4, each inside the other.
-    #[ignore = "OpError::Internal (CommonBlock): thirds against halves, a piece of one body's seam lies along the other's face boundary but matches no piece of it (plans/flat-edge-read-as-tangent-contact step 3)"]
-    regression_interference_box_against_its_halves => query "regression/interference-box-against-its-halves";
     /// A bore of a hole's own width and a wider counterbore, the tools' tops
     /// inside the part, cut in one call: an annular chamber round the hole.
     #[ignore = "OpError::Degenerate (TangentContact): one curve on the hole wall is entered twice, as the bore's rim image and as the counterbore's section edge (plans/flat-edge-read-as-tangent-contact)"]

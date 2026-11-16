@@ -1,6 +1,6 @@
 {
   "kind": "query",
-  "description": "a 2 x 2 x 1 box against itself split another way: halves (two boxes fused across x = 1, whose faces keep the seam as an edge between coplanar pieces) and thirds (three boxes fused across y = 2/3 and y = 4/3). The same solid, so the overlap is the whole 4 and each operand lies in the other. Arris refuses interference of the box against the halves, and of the halves against the thirds, with a tangent contact the faces do not have: the box's face is coincident with both coplanar pieces and images the seam twice (the training harness's phone_stand pairs, 100 of 100). The desired answers are Open CASCADE's",
+  "description": "a 2 x 2 x 1 box against itself split another way: halves (two boxes fused across x = 1, whose faces keep the seam as an edge between coplanar pieces) and thirds (three boxes fused across y = 2/3 and y = 4/3). The same solid, so the overlap is the whole 4 and each operand lies in the other. Arris refused interference of the box against the halves with a tangent contact the faces do not have (the box's face is coincident with both coplanar pieces and imaged the seam twice), and the thirds against the halves with a kernel fault (a seam crossing another at the midpoint of one was read as one curve by `same_section`) - the training harness's phone_stand pairs, 100 of 100. The answers are Open CASCADE's",
   "steps": [
     {"name": "whole", "op": "box", "min": [0, 0, 0], "max": [2, 2, 1]},
     {"name": "left", "op": "box", "min": [0, 0, 0], "max": [1, 2, 1]},

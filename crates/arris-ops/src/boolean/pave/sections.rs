@@ -580,7 +580,11 @@ impl<'m, 'c> Build<'m, 'c> {
     /// are one section by their surfaces: a face beside `fa` using `ea`
     /// and one beside `fb` using `eb` lie on one surface too, so both
     /// edges lie on the section of the two surfaces, and they are the
-    /// same curve when `ea`'s midpoint lies on `eb` within `tol`.
+    /// same curve when `ea`'s midpoint lies on `eb` within `tol`. Where the
+    /// face beside an edge lies on the other face's surface too — an edge
+    /// two coplanar pieces of one operand share — the faces have no
+    /// section, the edge is any curve on the plane, and the midpoint says
+    /// nothing: two edges crossing at it are not one curve.
     pub(super) fn same_section(
         &self,
         ea: &EdgeInfo<'m>,
@@ -593,6 +597,9 @@ impl<'m, 'c> Build<'m, 'c> {
         else {
             return false;
         };
+        if self.beside_on(oa, ea.id, fa.id, fb.id) || self.beside_on(ob, eb.id, fb.id, fa.id) {
+            return false;
+        }
         let beside = self.faces[ob]
             .iter()
             .filter(|g| g.id != fb.id && g.edges().contains(&eb.id))
