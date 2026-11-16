@@ -114,7 +114,34 @@ pub fn unit_box(m: &mut Model) -> Result<Body, SampleError> {
 /// assert_eq!(m.edges(b).unwrap().len(), 12);
 /// ```
 pub fn cuboid(m: &mut Model, min: Point3, max: Point3) -> Result<Body, SampleError> {
-    cuboid_with(m, min, max, Flavour::Analytic)
+    cuboid_with(m, min, max, Flavour::Analytic, None)
+}
+
+/// [`cuboid`] with its eight vertices at `vertex_tolerance` while its
+/// edges and faces keep the model's `default_tolerance`: the shape of a
+/// part whose corners were welded loosely. Each vertex is stored off its
+/// corner, outward along the diagonal, 0.95 of its tolerance from where
+/// its edges end. Errors as [`cuboid`], and a
+/// `vertex_tolerance` that is not finite and positive.
+///
+/// ```
+/// use arris_debug::sample;
+/// use arris_topo::Model;
+/// use arris_math::Point3;
+///
+/// let mut m = Model::default();
+/// let b = sample::cuboid_loose_vertices(&mut m, Point3::origin(), Point3::new(4.0, 3.0, 2.0), 0.05).unwrap();
+/// let v = m.closure(b).unwrap().vertices[0];
+/// assert_eq!(m.vertex(v).unwrap().tolerance(), 0.05);
+/// ```
+pub fn cuboid_loose_vertices(
+    m: &mut Model,
+    min: Point3,
+    max: Point3,
+    vertex_tolerance: f64,
+) -> Result<Body, SampleError> {
+    let vertex_tolerance = positive("vertex tolerance", vertex_tolerance)?;
+    cuboid_with(m, min, max, Flavour::Analytic, Some(vertex_tolerance))
 }
 
 /// [`cuboid`] with the same topology, pcurves and tolerances, but its
@@ -136,14 +163,19 @@ pub fn cuboid(m: &mut Model, min: Point3, max: Point3) -> Result<Body, SampleErr
 /// assert_eq!(text.matches("nurbs degree").count(), 2, "one curve, one surface");
 /// ```
 pub fn cuboid_nurbs(m: &mut Model, min: Point3, max: Point3) -> Result<Body, SampleError> {
-    cuboid_with(m, min, max, Flavour::NurbsProbe)
+    cuboid_with(m, min, max, Flavour::NurbsProbe, None)
 }
+
+/// How far a loose vertex is lifted off its corner, per axis, in its
+/// tolerance: the diagonal is then 0.95 of it, inside the ball.
+const LOOSE_LIFT: f64 = 0.55;
 
 fn cuboid_with(
     m: &mut Model,
     min: Point3,
     max: Point3,
     flavour: Flavour,
+    vertex_tolerance: Option<f64>,
 ) -> Result<Body, SampleError> {
     let dx = positive("x extent", max.x - min.x)?;
     let dy = positive("y extent", max.y - min.y)?;
@@ -242,7 +274,15 @@ fn cuboid_with(
     }
 
     let vertices: Vec<_> = (0..8)
-        .map(|i| m.raw().add_vertex(Vertex::new(corner(i), tol)))
+        .map(|i| {
+            // A loose vertex sits off its corner, outward along the
+            // diagonal, as far as its tolerance admits of its edges' ends.
+            let lift = vertex_tolerance.map_or(0.0, |t| LOOSE_LIFT * t);
+            let side = |bit: usize| if i & bit == 0 { -lift } else { lift };
+            let at = corner(i) + Vec3::new(side(1), side(2), side(4));
+            m.raw()
+                .add_vertex(Vertex::new(at, vertex_tolerance.unwrap_or(tol)))
+        })
         .collect();
     let mut edges = Vec::with_capacity(12);
     for (&(a, b), curve) in ends.iter().zip(curves) {

@@ -158,7 +158,7 @@ impl<'m> FaceDomain<'m> {
     /// has no polygon (L1's and E1's to report). The (u, v) box holds the
     /// true boundary: it is the polygons' box grown by their chord
     /// deviation. The 3D box holds the face: its edges' curve boxes, each
-    /// grown by the edge's tolerance, and the surface over the (u, v)
+    /// grown by the edge's tolerance, its vertices' points grown by theirs, and the surface over the (u, v)
     /// box, all grown by the face's own tolerance.
     ///
     /// Errors: the face, its surface, or a pcurve, edge or curve it uses
@@ -214,6 +214,14 @@ impl<'m> FaceDomain<'m> {
                 edges.push(c.edge());
             }
             let edge = model.edge(c.edge())?;
+            // A vertex's tolerance may exceed its edges' and the face's:
+            // the point a vertex holds is boxed by that tolerance, so a
+            // point on the vertex is in the face's box.
+            for v in [edge.start(), edge.end()] {
+                let vertex = model.vertex(v)?;
+                let b = Aabb::of_point(vertex.point()).inflated(vertex.tolerance());
+                curves = Some(curves.map_or(b, |acc| acc.union(b)));
+            }
             let Some((curve, range)) = edge.curve() else {
                 continue;
             };

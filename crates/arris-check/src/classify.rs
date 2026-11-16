@@ -153,9 +153,6 @@ pub struct Classifier<'m> {
     /// The largest face tolerance: how far behind its origin a ray still
     /// starts on a face.
     reach: f64,
-    /// The largest vertex tolerance among the faces' vertices: how far a
-    /// point may be from every face box and still be on a vertex.
-    vertex_reach: f64,
 }
 
 impl<'m> Classifier<'m> {
@@ -222,14 +219,6 @@ impl<'m> Classifier<'m> {
             .iter()
             .filter_map(|&id| Some(model.face(id).ok()?.tolerance()))
             .fold(0.0, f64::max);
-        let vertex_reach = faces
-            .iter()
-            .filter_map(|&id| model.face(id).ok())
-            .flat_map(|face| face.loops().iter().flat_map(|l| l.coedges()))
-            .filter_map(|c| model.edge(c.edge()).ok())
-            .flat_map(|edge| [edge.start(), edge.end()])
-            .filter_map(|v| Some(model.vertex(v).ok()?.tolerance()))
-            .fold(0.0, f64::max);
         Classifier {
             model,
             precision,
@@ -238,7 +227,6 @@ impl<'m> Classifier<'m> {
             domains,
             tree,
             reach,
-            vertex_reach,
         }
     }
 
@@ -254,11 +242,11 @@ impl<'m> Classifier<'m> {
     /// or edge of any of the faces ([`boundary_entity`]), else a face.
     pub(crate) fn on(&self, point: Point3) -> Result<Option<Shape>, ClassifyError> {
         // Only the faces whose boxes hold the point can have it on their
-        // boundary or surface: a box holds its face's edges and surface
-        // inflated by their tolerances, and the region adds the largest
-        // vertex tolerance. `near` answers in `FaceId` order, the order
+        // boundary or surface: a box holds its face's edges, vertices and
+        // surface inflated by their tolerances, and the region adds the
+        // largest face tolerance (a ray's start). `near` answers in `FaceId` order, the order
         // of `self.faces`, so the first face found is the same one.
-        let region = Aabb::of_point(point).inflated(self.vertex_reach.max(self.reach));
+        let region = Aabb::of_point(point).inflated(self.reach);
         self.on_among(&self.tree.near(&region), point)
     }
 
