@@ -119,7 +119,7 @@ bound is established here.
   equals `fuse_many` in volume and area or both refuse alike. A random box
   split by a random plane and fused back has `interference` with the
   whole box equal to its volume.
-- [ ] Step 7 **[1]** — `crates/arris-py/tests/test_coplanar_chain.py`
+- [x] Step 7 **[1]** — `crates/arris-py/tests/test_coplanar_chain.py`
   runs the harness's four programs as the binding sees them: the three
   cylinders' chain, three slots, the interference of the box against its
   halves, and `cut` with a bore and a counterbore. Each matches its closed
