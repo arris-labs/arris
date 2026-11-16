@@ -945,7 +945,7 @@ the named cycle next in line.*
 - A flat internal edge read as a tangent contact: a chained fuse on a
   shared end plane, a third slot across a cylinder, `interference` of one
   part split two ways, a bore over a bore of its width
-  (`docs/ideas/flat-edge-read-as-tangent-contact.md`).
+  (`docs/plans/flat-edge-read-as-tangent-contact.md`).
 - Tangency faults: an operand tangent inside another, a tool tangent
   to a bore, two chamfers that use up a face, contacts that end in an
   internal error. Each one builds, or at the least is a typed refusal
