@@ -854,14 +854,27 @@ pub fn probe_stage(
     chain: &Chain,
     expected: &Measured,
 ) -> Result<(), CorpusError> {
+    if expected.probes.is_empty() {
+        return Ok(());
+    }
     let body = result_of(fixture, chain)?;
-    for probe in &expected.probes {
-        let point = Point3::new(probe.point[0], probe.point[1], probe.point[2]);
-        let found = match classify_point(&chain.model, body, point) {
-            Ok(Classification::Inside) => Ok(Class::In),
-            Ok(Classification::Outside) => Ok(Class::Out),
-            Ok(Classification::On(_)) => Ok(Class::On),
-            Err(e) => Err(e.to_string()),
+    let points: Vec<Point3> = expected
+        .probes
+        .iter()
+        .map(|probe| Point3::new(probe.point[0], probe.point[1], probe.point[2]))
+        .collect();
+    let answers = arris_ops::query::classify_points(&chain.model, body, &points, &Control::NONE)
+        .map_err(|source| CorpusError::Op {
+            fixture: fixture.name.clone(),
+            step: chain.result.clone(),
+            source,
+        })?;
+    for (probe, answer) in expected.probes.iter().zip(answers) {
+        let found = match answer {
+            Some(Classification::Inside) => Ok(Class::In),
+            Some(Classification::Outside) => Ok(Class::Out),
+            Some(Classification::On(_)) => Ok(Class::On),
+            None => Err("undecided: no ray decided the point".to_string()),
         };
         let matches = match &found {
             Ok(class) => *class == probe.class,

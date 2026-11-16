@@ -105,7 +105,7 @@ bound has to be established here.
   projection and a point-only B-spline sampler brought it to 0.39 s, of which
   0.29 s is the faces' domains. The bar is relaxed to 0.6 s as the open
   question allows and the rest is a backlog line.
-- [ ] Step 3 **[1]** — `probe_stage` goes through `classify_points` (one
+- [x] Step 3 **[1]** — `probe_stage` goes through `classify_points` (one
   call per fixture). `None` becomes a probe failure that says "undecided".
   The corpus's probe stage passes unchanged over every area.
 - [ ] Step 4 **[1]** — `Model.classify_points` in `arris-py`, with its stub
