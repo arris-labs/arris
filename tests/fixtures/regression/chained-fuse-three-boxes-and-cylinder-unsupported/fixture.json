@@ -1,0 +1,112 @@
+{
+  "description": "three boxes and a unit cylinder standing on the plane z = 0, each 1 high, fused as a chain, ((a + b) + c) + d; the cylinder's axis is at the origin and its wall is tangent to nothing. Every pair fuses and the n-ary call builds; the chain is refused, plane against line Unsupported, at the last step (the shrunk draw of the chained-fuse property, plans/flat-edge-read-as-tangent-contact step 6, shard 1). The desired answer is the union",
+  "steps": [
+    {
+      "name": "a",
+      "op": "box",
+      "min": [
+        1.0267505537931783,
+        1.1540662130943113,
+        0
+      ],
+      "max": [
+        3.0267505537931783,
+        4.149956790923335,
+        1
+      ]
+    },
+    {
+      "name": "b",
+      "op": "box",
+      "min": [
+        -0.6712756899242178,
+        -0.8211499794572814,
+        0
+      ],
+      "max": [
+        4.25743822208346,
+        3.892795198737158,
+        1
+      ]
+    },
+    {
+      "name": "c",
+      "op": "box",
+      "min": [
+        -0.06658814330974394,
+        -1.515650760779318,
+        0
+      ],
+      "max": [
+        5.060064129601943,
+        1.3387303749383166,
+        1
+      ]
+    },
+    {
+      "name": "d",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1,
+      "height": 1
+    },
+    {
+      "name": "ab",
+      "op": "fuse",
+      "a": "a",
+      "b": "b"
+    },
+    {
+      "name": "abc",
+      "op": "fuse",
+      "a": "ab",
+      "b": "c"
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "a": "abc",
+      "b": "d"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_a_only",
+      "point": [
+        2.0,
+        3.6,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_cylinder_only",
+      "point": [
+        -0.5,
+        0.0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside",
+      "point": [
+        -3.0,
+        -3.0,
+        0.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {}
+}

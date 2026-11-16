@@ -617,7 +617,12 @@ each through the other, some with a seam through a crossing vertex, its
 (ADR-0009): a box cut by one or two slabs that cross it, drawn together
 with a second set of slabs and a resized, re-posed box, so the same
 recipe is built twice under a parameter edit that never changes which
-entities bound which piece.
+entities bound which piece. `standing` draws three to five boxes and
+cylinders on one plane, half on whole numbers so bases, tops and walls
+come out flush, none with a wall tangent to another: `fuse_many` is held to
+the chain of `fuse`s on it, and a box split by a plane and fused back to
+`interference` with the whole (`coplanar_prop`, both `#[ignore]`d until the
+fixtures they found pass).
 
 `ops::split(m, body, plane: &Frame, control)` cuts a solid by a plane and
 keeps both sides (ADR-0051): `Split { positive, negative, provenance }`,

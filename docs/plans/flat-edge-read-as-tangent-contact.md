@@ -114,7 +114,7 @@ bound is established here.
 - [x] Step 5 **[2]** — The guard in `Arrangement::sorted`, with a unit
   test that enters one section twice on a face and expects the fault
   named. Rerun every fixture that expects `TangentContact`; none may flip.
-- [ ] Step 6 **[2]** — Property test (`arris-debug/src/prop`): n random
+- [x] Step 6 **[2]** — Property test (`arris-debug/src/prop`): n random
   boxes or cylinders standing on one plane, n in 3..5. The chained fuse
   equals `fuse_many` in volume and area or both refuse alike. A random box
   split by a random plane and fused back has `interference` with the
@@ -164,6 +164,16 @@ bound is established here.
   two circles tangent at one node stay the contact: the band test
   (`tolerance_band`'s edge-on-edge cut) found the first two, which a looser
   guard turned into the fault.
+- Found (step 6): `coplanar_prop` fails at 1000 cases on four faults, each
+  a `regression/` fixture (`two-boxes-on-one-plane-fuse-unsupported`,
+  `chained-fuse-three-boxes-and-cylinder-unsupported`,
+  `fuse-many-coaxial-cylinders-and-box-curve-entered-twice`,
+  `interference-box-against-its-split-and-fused-sides`), the last two
+  inside this plan's domain (the guard fires on a coincident cylinder wall;
+  a split-and-fused body breaks the common). The acceptance's "passes at
+  1000 cases in CI" waits on their fixes; `docs/BACKLOG.md` §Findings
+  holds them. Not weakened: the draws exclude tangency (the tangency-faults
+  idea's) and poses (the tolerance band's).
 - Decided (agent): the guard is a `Fault::Invariant`, an `OpInternalError`
   in Python. C12 forbids that error for harness programs, but the guard
   fires only on a kernel bug. Reporting such a bug as a contact sent four

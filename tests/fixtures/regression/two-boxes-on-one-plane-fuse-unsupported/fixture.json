@@ -1,0 +1,79 @@
+{
+  "description": "two boxes standing on the plane z = 0, each 1 high, their footprints [-0.447, 3.339] x [-2.124, 3.546] and [-1.739, 1.739] x [-2.305, 1.307] overlapping and nowhere touching along an edge (the shrunk draw of the chained-fuse property, plans/flat-edge-read-as-tangent-contact step 6; two of the three boxes of its failing draws). Both bottoms are the one plane z = 0 and so are both tops. Arris refuses the fuse, plane against line Unsupported, where unposed boxes of nearly any other numbers fuse (3 of 3000 quarter-grid pairs fail, those that abut). Open CASCADE builds it. The desired answer is the union: 1 high over the two footprints less their overlap",
+  "steps": [
+    {
+      "name": "a",
+      "op": "box",
+      "min": [
+        -0.44706792491418823,
+        -2.124134873295659,
+        0
+      ],
+      "max": [
+        3.339249645863796,
+        3.5457719806707275,
+        1
+      ]
+    },
+    {
+      "name": "b",
+      "op": "box",
+      "min": [
+        -1.7386351641476103,
+        -2.3048670873248263,
+        0
+      ],
+      "max": [
+        1.7386351641476103,
+        1.3073184113066738,
+        1
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "a": "a",
+      "b": "b"
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_a_only",
+      "point": [
+        3.0,
+        3.0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_b_only",
+      "point": [
+        -1.5,
+        -2.0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_both",
+      "point": [
+        0.5,
+        0.0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "outside_corner",
+      "point": [
+        3.0,
+        -2.5,
+        0.5
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {}
+}

@@ -2134,6 +2134,22 @@ corpus_tests! {
     /// where Open CASCADE builds it.
     #[ignore = "OpError::Degenerate: the corner at the end of a ruling blend whose neighbour in line is another ruling blend of a different face pair is not covered (docs/BACKLOG.md, the ruling chain over a ledge)"]
     regression_ogive_bar_step_chain_fillet => run "regression/ogive-bar-step-chain-fillet";
+    /// Two overlapping boxes standing on the plane z = 0, nowhere abutting
+    /// (the coplanar-solids property's shrunk draw): the union is one solid.
+    #[ignore = "OpError::Unsupported: plane against line, the bottoms' coplanar edge of one box against the other's face, for these numbers and not for nearly any others (plans/flat-edge-read-as-tangent-contact step 6)"]
+    regression_two_boxes_on_one_plane_fuse_unsupported => run "regression/two-boxes-on-one-plane-fuse-unsupported";
+    /// Three boxes and a cylinder on one plane fused as a chain: every pair
+    /// and the n-ary call build, the chain's last step is refused.
+    #[ignore = "OpError::Unsupported: plane against line at the chain's last step, where the n-ary call builds (plans/flat-edge-read-as-tangent-contact step 6)"]
+    regression_chained_fuse_three_boxes_and_cylinder_unsupported => run "regression/chained-fuse-three-boxes-and-cylinder-unsupported";
+    /// Two coaxial cylinders of one radius and a box across them, fused in one
+    /// call: the arrangement meets one curve twice and says so.
+    #[ignore = "Fault::Invariant: one curve entered twice on a face, where the chain of fuses builds (plans/flat-edge-read-as-tangent-contact step 6)"]
+    regression_fuse_many_coaxial_cylinders_and_box_curve_entered_twice => run "regression/fuse-many-coaxial-cylinders-and-box-curve-entered-twice";
+    /// A box against itself split by a plane and fused back: overlap 4, each
+    /// inside the other.
+    #[ignore = "Fault::Builder Closure EdgeUses: the common's builder meets an edge used by no coedge, for any box split across and fused back (plans/flat-edge-read-as-tangent-contact step 6)"]
+    regression_interference_box_against_its_split_and_fused_sides => query "regression/interference-box-against-its-split-and-fused-sides";
 }
 
 /// A variant the recipe does not have fails naming it.

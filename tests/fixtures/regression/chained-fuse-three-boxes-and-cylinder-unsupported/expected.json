@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "a2f6c015e2f2768b705c4dfc715b37e7ca1cbd52b4a2a8f5879446cea310b08e",
+  "results": {
+    "default": {
+      "area": 81.71493494658249,
+      "centroid": [
+        2.0172667495615824,
+        1.1546243443294266,
+        0.5000000000000001
+      ],
+      "counts": {
+        "edges": 89,
+        "faces": 41,
+        "loops": 41,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 50
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          75.23345931947773,
+          8.673401623766367,
+          2.4868995751603507e-14
+        ],
+        [
+          8.673401623766367,
+          74.61774234196044,
+          3.552713678800501e-15
+        ],
+        [
+          2.4868995751603507e-14,
+          3.552713678800501e-15,
+          144.94505672220217
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 89,
+        "faces": 41,
+        "loops": 41,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 50
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_a_only",
+          "point": [
+            2.0,
+            3.6,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_cylinder_only",
+          "point": [
+            -0.5,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            -3.0,
+            -3.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 29.43686963541559
+    }
+  }
+}

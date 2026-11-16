@@ -1,0 +1,31 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "d0a77bb4af2652577cc4d4c7d6ea24c91c529b31664a6548de2bab0e5a4dd430",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 3.999999999999999
+          },
+          "label": "whole against back"
+        },
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 3.999999999999999
+          },
+          "label": "back against whole"
+        }
+      ]
+    }
+  }
+}

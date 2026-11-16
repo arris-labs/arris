@@ -1,0 +1,72 @@
+{
+  "kind": "query",
+  "description": "a 2 x 2 x 1 box split by the plane z = 0.5 into two sides, and the sides fused back: the same solid, so interference of the box against it is an overlap of the box's whole volume 4 with each inside the other. Arris faults instead, in the common's builder (Internal Builder Closure EdgeUses, an edge used by no coedge); the same box fused from two boxes instead of a split answers. Every box of the split-and-fused-back property fails alike (plans/flat-edge-read-as-tangent-contact step 6). The answers are Open CASCADE's",
+  "steps": [
+    {
+      "name": "whole",
+      "op": "box",
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        2,
+        2,
+        1
+      ]
+    },
+    {
+      "name": "cut",
+      "op": "split",
+      "of": "whole",
+      "plane": {
+        "origin": [
+          0,
+          0,
+          0.5
+        ],
+        "normal": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "name": "back",
+      "op": "fuse",
+      "a": "cut.positive",
+      "b": "cut.negative"
+    }
+  ],
+  "result": "whole",
+  "queries": [
+    {
+      "label": "whole against back",
+      "interference": {
+        "a": {
+          "step": "whole"
+        },
+        "b": {
+          "step": "back"
+        }
+      },
+      "expect": "overlapping",
+      "expect_volume": 4
+    },
+    {
+      "label": "back against whole",
+      "interference": {
+        "a": {
+          "step": "back"
+        },
+        "b": {
+          "step": "whole"
+        }
+      },
+      "expect": "overlapping",
+      "expect_volume": 4
+    }
+  ]
+}

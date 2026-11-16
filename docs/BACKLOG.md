@@ -232,6 +232,16 @@ but no fixture yet, `fixture` and `excluded` are pinned somewhere that
 fails when the bug moves. Any of these three becomes a fixture and a line
 above when it wants a fix; the block moves or is deleted then.
 
+### coplanar-solids-property-finds-four-faults
+
+- What: four kernel faults the coplanar-solids property found in unposed boxes and cylinders standing on z = 0: two boxes with coplanar bottoms refused as plane against line `Unsupported` for some numbers (and a chain of three boxes and a cylinder refused at its last step where the n-ary call builds); `fuse_many` of two coaxial cylinders of one radius and a box stopping at the step 5 guard (`Fault::Invariant`, one curve entered twice) where the chain builds; and `interference` of a box against itself split by a plane and fused back failing in the common's builder (`EdgeUses`, an edge of no coedge) for every box.
+- Where: `the_chained_fuse_on_a_shared_plane_is_fuse_many` and `a_box_against_itself_split_another_way_overlaps_in_its_volume`, `crates/arris-ops/tests/coplanar_prop.rs`, both `#[ignore]`d until their fixtures pass.
+- Seen: plans/flat-edge-read-as-tangent-contact step 6, default seed, 1000 cases (the chain property passes at 16), the tip after step 5.
+- Reproduce: `ARRIS_PROPTEST_CASES=1000 cargo nextest run -p arris-ops --test coplanar_prop --run-ignored all`.
+- Evidence: the four shrunk draws are the fixtures `regression/two-boxes-on-one-plane-fuse-unsupported`, `regression/chained-fuse-three-boxes-and-cylinder-unsupported`, `regression/fuse-many-coaxial-cylinders-and-box-curve-entered-twice` and `regression/interference-box-against-its-split-and-fused-sides`. Outside these, a cylinder tangent to a box face or to another cylinder fused with the draws' other solids returns a body that fails the checker (`L5 loop 0 intersects itself`) or an `Internal` builder or split fault: that is `docs/ideas/tangency-faults.md`, and the strategy (`prop::body::standing`) leaves those draws out. Posing the draws (a flush plane to the pose's rounding) hits the tolerance band's `Unsupported` for generic numbers (two boxes, tilted) and, for a cylinder tangent to a face, a builder fault where the unposed refusal is by name; the strategy is unposed.
+- State: fixture (the four above).
+- The fix is: for the first two, find what makes `Build::coincident` or the pave step ask a plane for its section with a line that lies in it for these numbers; for the third, the n-ary fuse's order of a coincident cylinder wall and a box wall across it; for the fourth, whatever the split's cap leaves in the fused body that the common's builder reads as an edge of no coedge. Then the two properties become `prop_shards!`.
+
 ### split-side-of-a-body-is-not-an-operand-clean-at-full
 
 - What: a fillet or chamfer of a split's side leaves a body the checker does not clean at `Full`: a fillet gives `L5 loop 0 intersects itself` (16 shards over the nights) or `S5 … intersect away from their shared edges` (11) or an NURBS pair `S5?` undecided (9); a chamfer gives `E8` (the output edge self-intersects at t near 2.9 to 3.4 or 6.0 to 6.6, 13 times).

@@ -2199,3 +2199,151 @@ pub fn multi_cut() -> impl Strategy<Value = MultiCut> {
             pose,
         })
 }
+
+/// How near two lengths of a [`Standing`] draw are for the draw to call them
+/// tangent. The whole-number half is exact and the generic half is
+/// never this close by chance, so the value only has to be far under a
+/// whole number's spacing and far over rounding.
+const TANGENT_HAIR: f64 = 1e-9; // tol-literal: a strategy's own exactness bound, no entity
+
+/// What one solid of a [`Standing`] set is, before its motion.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum StandingShape {
+    /// A box `half` wide either way of its centre across `x` and `y`.
+    Box {
+        /// The half sides across `x` and `y`.
+        half: (f64, f64),
+    },
+    /// A cylinder on the `z` axis through its centre.
+    Cylinder {
+        /// The radius.
+        radius: f64,
+    },
+}
+
+/// One solid standing on the plane `z = 0`: its base on it, its axis
+/// above `centre`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StandingSolid {
+    /// The shape across `x` and `y`.
+    pub shape: StandingShape,
+    /// The centre of its base.
+    pub centre: (f64, f64),
+    /// The height above the plane.
+    pub height: f64,
+}
+
+/// A few boxes and cylinders standing on the plane `z = 0`: the operands of the chained fuse on a shared end plane (an
+/// image of an edge that lies in two coplanar faces of one operand, once
+/// per face). Half of the draws put sizes, centres and heights on whole
+/// numbers, so bases, tops and walls come out flush and the fuse meets the
+/// L of boxes and the equal-height chain; the other half are generic.
+/// No cylinder's wall is tangent to another solid's wall or face
+/// ([`Standing::tangent`]): that contact is `docs/ideas/tangency-faults.md`'s,
+/// and a fuse over it returns a body that fails the checker or refuses
+/// differently under another operand order. They are not posed: a flush plane under a rotation is only flush to the
+/// pose's rounding, the tolerance band's own case (ADR-0022), which the
+/// standing sets leave to the band survey.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Standing {
+    /// The solids, in the order of the call.
+    pub solids: Vec<StandingSolid>,
+}
+
+impl Standing {
+    /// Whether a cylinder's wall touches another solid's wall or a plane of
+    /// its faces along a line: a box side at a distance of the radius from
+    /// the axis, or a second cylinder whose axis is the sum or the
+    /// difference of the radii away (coaxial ones are not tangent). Every
+    /// such plane is counted, past the face's own extent, so a draw is
+    /// only ever excluded too much.
+    pub fn tangent(&self) -> bool {
+        let touches = |a: f64, b: f64| (a - b).abs() <= TANGENT_HAIR;
+        self.solids.iter().enumerate().any(|(i, s)| {
+            let StandingShape::Cylinder { radius } = s.shape else {
+                return false;
+            };
+            self.solids.iter().enumerate().any(|(j, o)| {
+                i != j
+                    && match o.shape {
+                        StandingShape::Box { half } => {
+                            let planes_x = [o.centre.0 - half.0, o.centre.0 + half.0];
+                            let planes_y = [o.centre.1 - half.1, o.centre.1 + half.1];
+                            planes_x
+                                .iter()
+                                .any(|&p| touches((s.centre.0 - p).abs(), radius))
+                                || planes_y
+                                    .iter()
+                                    .any(|&p| touches((s.centre.1 - p).abs(), radius))
+                        }
+                        StandingShape::Cylinder { radius: other } => {
+                            let d = real::hypot(s.centre.0 - o.centre.0, s.centre.1 - o.centre.1);
+                            d > TANGENT_HAIR
+                                && (touches(d, radius + other)
+                                    || touches(d, (radius - other).abs()))
+                        }
+                    }
+            })
+        })
+    }
+
+    /// The solids as bodies of `m`.
+    pub fn build(&self, m: &mut Model) -> Result<Vec<Body>, OpError> {
+        self.solids
+            .iter()
+            .map(|s| match s.shape {
+                StandingShape::Box { half } => Boxed {
+                    min: Point3::new(s.centre.0 - half.0, s.centre.1 - half.1, 0.0),
+                    max: Point3::new(s.centre.0 + half.0, s.centre.1 + half.1, s.height),
+                    pose: Isometry::identity(),
+                }
+                .build(m),
+                StandingShape::Cylinder { radius } => Cylindrical {
+                    axis: Axis::z_at(Point3::new(s.centre.0, s.centre.1, 0.0)),
+                    radius,
+                    height: s.height,
+                    pose: Isometry::identity(),
+                }
+                .build(m),
+            })
+            .collect()
+    }
+}
+
+/// [`Standing`] sets of `count` solids, `count` in `counts`.
+pub fn standing_of(counts: RangeInclusive<usize>) -> impl Strategy<Value = Standing> {
+    // A value in `range`, generic or on a whole number.
+    fn grid(range: RangeInclusive<i32>, whole: bool) -> BoxedStrategy<f64> {
+        let (lo, hi) = (f64::from(*range.start()), f64::from(*range.end()));
+        if whole {
+            range.prop_map(f64::from).boxed()
+        } else {
+            finite_f64(lo..=hi).boxed()
+        }
+    }
+    let solid = |whole: bool| {
+        let shape = prop_oneof![
+            (grid(1..=3, whole), grid(1..=3, whole)).prop_map(|half| StandingShape::Box { half }),
+            grid(1..=3, whole).prop_map(|radius| StandingShape::Cylinder { radius }),
+        ];
+        (
+            shape,
+            (grid(-3..=3, whole), grid(-3..=3, whole)),
+            grid(1..=6, whole),
+        )
+            .prop_map(|(shape, centre, height)| StandingSolid {
+                shape,
+                centre,
+                height,
+            })
+    };
+    let set = |whole: bool| proptest::collection::vec(solid(whole), counts.clone());
+    prop_oneof![set(true), set(false)]
+        .prop_map(|solids| Standing { solids })
+        .prop_filter("no wall is tangent to another solid", |s| !s.tangent())
+}
+
+/// [`standing_of`] three to five solids.
+pub fn standing() -> impl Strategy<Value = Standing> {
+    standing_of(3..=5)
+}
