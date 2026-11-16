@@ -9,6 +9,7 @@
 //! representative lies inside the trim; the rest of its level set reaches
 //! a boundary, whose own terms attain it.
 
+use super::fault_classify;
 use arris_check::classify::{Classification, Classifier};
 use arris_check::domain::{FaceDomain, shifts};
 use arris_check::tree::FaceTree;
@@ -866,10 +867,6 @@ fn face_face(
         });
     }
     Ok(())
-}
-
-fn fault_classify(e: arris_check::classify::ClassifyError) -> OpError {
-    OpError::Internal(Fault::Classify(e))
 }
 
 /// Whether `p` is strictly inside the solid `body`.

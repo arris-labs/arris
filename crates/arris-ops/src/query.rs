@@ -12,6 +12,7 @@ mod interference;
 pub use distance::{Distance, Foot, FootParam, Operand, distance};
 pub use interference::{Clash, Contact, Interference, interference, interference_many};
 
+use arris_check::classify::{Classification, Classifier, ClassifyError};
 use arris_check::domain::FaceDomain;
 use arris_check::tree::FaceTree;
 use arris_geom::region2::Side;
@@ -20,7 +21,7 @@ use arris_geom::{
     intersect_curve_surface, intersect_curves, project_to_plane as project,
 };
 use arris_math::{
-    Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3, wrap_angle,
+    Control, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3, wrap_angle,
 };
 use arris_topo::{Body, EdgeId, EntityId, Face, FaceId, Model, Orientation, Shape, VertexId};
 
@@ -488,6 +489,80 @@ pub fn ray_fire(m: &Model, body: Body, ray: &Ray, which: RayHits) -> Result<Vec<
         RayHits::All => merged,
         RayHits::First => merged.into_iter().take(1).collect(),
     })
+}
+
+/// The classification of each of `points` against the solid `body`, in the
+/// order given: [`arris_check::classify::classify_point`]'s answer for each
+/// point, computed over one [`Classifier`] built for the body once.
+///
+/// `Some(Inside)`, `Some(Outside)` or `Some(On(shape))` as
+/// `classify_point` gives it. `None` marks a point no ray decided
+/// (`ClassifyError::Undecided`): a per-point answer, so one grazing point
+/// never fails the batch. The batch runs in order on one thread, so the
+/// answers do not depend on the machine.
+///
+/// The control's budget counts points: one step per point, and
+/// [`OpError::Interrupted`] reports how many were done.
+///
+/// Errors: `InputReason::NonFinite` for a non-finite point, checked before
+/// any point is classified; `OpError::Internal` with `Fault::Classify` for
+/// a body that does not resolve or a ray whose surface fails;
+/// [`OpError::Interrupted`] when the control stops it.
+///
+/// ```
+/// use arris_check::classify::Classification;
+/// use arris_math::{Control, Point3};
+/// use arris_ops::primitive_box;
+/// use arris_ops::query::classify_points;
+/// use arris_topo::Model;
+///
+/// let mut m = Model::default();
+/// let none = Control::NONE;
+/// let (body, _) = primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 2.0, 2.0), &none)?;
+/// let points = [
+///     Point3::new(1.0, 1.0, 1.0),
+///     Point3::new(3.0, 1.0, 1.0),
+///     Point3::new(2.0, 1.0, 1.0),
+/// ];
+/// let codes = classify_points(&m, body, &points, &none)?;
+/// assert_eq!(codes[0], Some(Classification::Inside));
+/// assert_eq!(codes[1], Some(Classification::Outside));
+/// assert!(matches!(codes[2], Some(Classification::On(_))));
+/// # Ok::<(), arris_ops::OpError>(())
+/// ```
+pub fn classify_points(
+    m: &Model,
+    body: Body,
+    points: &[Point3],
+    control: &Control<'_>,
+) -> Result<Vec<Option<Classification>>, OpError> {
+    if points
+        .iter()
+        .any(|p| !p.coords.iter().all(|c| c.is_finite()))
+    {
+        return Err(OpError::Degenerate {
+            entities: vec![],
+            reason: Reason::Input(InputReason::NonFinite { what: "the point" }),
+        });
+    }
+    let classifier = Classifier::of_body(m, body).map_err(fault_classify)?;
+    let mut meter = Meter::new(control);
+    let mut out = Vec::with_capacity(points.len());
+    for &p in points {
+        meter.tick()?;
+        out.push(match classifier.classify(p) {
+            Ok(classified) => Some(classified),
+            Err(ClassifyError::Undecided { .. }) => None,
+            Err(e) => return Err(fault_classify(e)),
+        });
+    }
+    Ok(out)
+}
+
+/// A classifier failure a query could not have prevented: the kernel's
+/// fault, naming the entities it was about.
+fn fault_classify(e: ClassifyError) -> OpError {
+    OpError::Internal(Fault::Classify(e))
 }
 
 fn non_finite(shape: Shape, what: &'static str) -> OpError {
