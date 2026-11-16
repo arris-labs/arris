@@ -49,7 +49,9 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
      run (another runner, a workflow) carries **[CI]** after its grade: it
      needs a push, so the plan's header says it runs on `plan/<slug>`.
    - *Acceptance* is an executable corpus run, ideally the milestone's own:
-     which fixtures, which oracle values, which property tests. A fixture
+     which fixtures, which oracle values, which property tests. A pruning or
+     acceleration step is held equal to its unaccelerated path (`classify`
+     vs `classify_linear`) over samples with loose, unequal tolerances. A fixture
      with no closed form (a walked blend) is held to the second oracle's
      record (ADR-0073), taken before a law is chosen: when it is missing,
      step 1 takes it and no ADR fixes a law before it. A plan that needs

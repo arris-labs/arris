@@ -72,6 +72,8 @@ miss); reporting after one step and waiting for another `/work` is a bug.
 - One step per commit, its box ticked only when its test ran.
 - No foreground wait: no `until`, `while` or `sleep` loop on a gate, a test
   run or CI. The completion notification is the wait.
+- A classifier "no verdict" error is transient: retry the identical call
+  once; don't rewrite the command into variants.
 - A failing hook is fixed, or the step stops and says why; `--no-verify`
   is never the way past it.
 - A case that will not pass with the design as written is an open question
@@ -98,7 +100,8 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    under `timeout` if it ends within 3 minutes, else with
    `run_in_background`, and you end your turn only when the commit is in
    `git log -1`, never while a run or the commit's hook is pending; the
-   commit's test half is not yours to wait for. You answer to the conductor, never the human:
+   commit's test half is not yours to wait for. Never `until`/`while`/`sleep`
+   in Bash or Monitor; `tools/verify.sh --status` waits for you. You answer to the conductor, never the human:
    hand back the commit id and anything surprising, or the question that
    stopped you." The conductor writes no code itself; it alone talks to
    the human.
