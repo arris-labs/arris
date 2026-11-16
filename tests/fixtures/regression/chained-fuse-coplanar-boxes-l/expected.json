@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "1e4b0525ac75ef633f1a85c0300a3b5b97c539a30b928a864035be8428901fab",
+  "results": {
+    "default": {
+      "area": 28.0,
+      "centroid": [
+        1.4999999999999998,
+        1.3749999999999998,
+        0.5
+      ],
+      "counts": {
+        "edges": 54,
+        "faces": 24,
+        "loops": 24,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 32
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          6.208333333333336,
+          -3.552713678800501e-15,
+          -8.881784197001252e-16
+        ],
+        [
+          -3.552713678800501e-15,
+          5.833333333333332,
+          -1.7763568394002505e-15
+        ],
+        [
+          -8.881784197001252e-16,
+          -1.7763568394002505e-15,
+          10.708333333333336
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 54,
+        "faces": 24,
+        "loops": 24,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 32
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_a_only",
+          "point": [
+            0.25,
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_c_only",
+          "point": [
+            2.25,
+            2.5,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_triple",
+          "point": [
+            1.5,
+            1.5,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_corner",
+          "point": [
+            0.25,
+            2.5,
+            0.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_end_plane",
+          "point": [
+            1.5,
+            1.5,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_wall_of_c",
+          "point": [
+            0.5,
+            2.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 8.0
+    }
+  }
+}

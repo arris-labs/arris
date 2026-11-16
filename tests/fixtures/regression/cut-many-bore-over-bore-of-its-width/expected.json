@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "0a7ce66062dc8dbf907cee3fca53ca2d5c6145f9da54a5b09d6a99e2b7f67d4f",
+  "results": {
+    "default": {
+      "area": 321.2787595947438,
+      "centroid": [
+        -1.1032144669565634e-16,
+        2.5638800930215273e-17,
+        0.0009329828369072257
+      ],
+      "counts": {
+        "edges": 21,
+        "faces": 11,
+        "loops": 15,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          2128.481588642053,
+          -1.773822666612982e-14,
+          -2.24485891046791e-14
+        ],
+        [
+          -1.773822666612982e-14,
+          3088.481588642053,
+          7.961167177067889e-15
+        ],
+        [
+          -2.24485891046791e-14,
+          7.961167177067889e-15,
+          4372.20432347345
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 21,
+        "faces": 11,
+        "loops": 15,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 14
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "in_chamber",
+          "point": [
+            0.8,
+            0.0,
+            -0.25
+          ]
+        },
+        {
+          "class": "in",
+          "label": "above_chamber",
+          "point": [
+            0.8,
+            0.0,
+            0.25
+          ]
+        },
+        {
+          "class": "in",
+          "label": "below_chamber",
+          "point": [
+            0.8,
+            0.0,
+            -0.75
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_hole",
+          "point": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chamber_wall",
+          "point": [
+            1.0,
+            0.0,
+            -0.25
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_chamber_ceiling",
+          "point": [
+            0.8,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_plate",
+          "point": [
+            3.0,
+            2.0,
+            1.0
+          ]
+        }
+      ],
+      "volume": 315.68031010131403
+    }
+  }
+}

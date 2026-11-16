@@ -1,0 +1,32 @@
+{
+  "description": "a 10 x 8 x 4 box centred on the origin with a through hole of radius 1/2 on z, then, in one cut of two tools, a bore of the hole's own radius from z = 0 down and a counterbore of radius 1 on z -1/2 to 0: the tools' tops at z = 0 lie inside the part, the bore's wall is coincident with the hole's, and the part keeps an annular chamber round the hole (cq's .hole(1).cboreHole(1, 2, 0.5) at the box's middle plane). Open CASCADE builds it; Arris refuses it as a tangent contact the faces do not have: one curve on the hole wall is entered twice, as the bore's rim image and as the counterbore's section edge. A bore of another radius cuts, and so does no bore. The desired answer is the closed form: the box less the hole, less the chamber ring of 0.375 pi",
+  "params": {
+    "r": 0.5,
+    "R": 1,
+    "d": 0.5
+  },
+  "steps": [
+    {"name": "box", "op": "box", "min": [-5, -4, -2], "max": [5, 4, 2]},
+    {"name": "hole", "op": "cylinder", "base": [0, 0, -3], "axis": [0, 0, 1], "radius": "r", "height": 6},
+    {"name": "drilled", "op": "cut", "target": "box", "tool": "hole"},
+    {"name": "bore", "op": "cylinder", "base": [0, 0, -3], "axis": [0, 0, 1], "radius": "r", "height": 3},
+    {"name": "counterbore", "op": "cylinder", "base": [0, 0, "-d"], "axis": [0, 0, 1], "radius": "R", "height": "d"},
+    {"name": "result", "op": "cut", "target": "drilled", "tools": ["bore", "counterbore"]}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in_chamber", "point": [0.8, 0, -0.25], "expect": "out"},
+    {"label": "above_chamber", "point": [0.8, 0, 0.25], "expect": "in"},
+    {"label": "below_chamber", "point": [0.8, 0, -0.75], "expect": "in"},
+    {"label": "in_hole", "point": [0, 0, 1], "expect": "out"},
+    {"label": "on_chamber_wall", "point": [1, 0, -0.25], "expect": "on"},
+    {"label": "on_chamber_ceiling", "point": [0.8, 0, 0], "expect": "on"},
+    {"label": "in_plate", "point": [3, 2, 1], "expect": "in"}
+  ],
+  "analytic": {
+    "volume": "10 * 8 * 4 - pi * r ^ 2 * 4 - pi * (R ^ 2 - r ^ 2) * d",
+    "area": "2 * (10 * 8 + 10 * 4 + 8 * 4) - 2 * pi * r ^ 2 + 2 * pi * r * 4 - 2 * pi * r * d + 2 * pi * R * d + 2 * pi * (R ^ 2 - r ^ 2)",
+    "centroid": [0, 0, "pi * (R ^ 2 - r ^ 2) * d * d / 2 / (10 * 8 * 4 - pi * r ^ 2 * 4 - pi * (R ^ 2 - r ^ 2) * d)"],
+    "genus": 1
+  }
+}

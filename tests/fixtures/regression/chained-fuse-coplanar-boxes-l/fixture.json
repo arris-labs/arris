@@ -1,0 +1,28 @@
+{
+  "description": "three boxes in an L on one plane z = 0, [0,2]x[0,2], [1,3]x[0,2] and [0.5,2.5]x[1,3], each 1 high, fused as a chain, (a + b) + c. The n-ary call builds, and so do three boxes in a row; the chain is refused as a tangent contact the faces do not have (the same cause as chained-fuse-coplanar-cylinders: the edge the first fuse leaves on the end plane lies inside the third box's end face and is imaged twice). The desired answer is the closed form: the union is [0,3]x[0,2] and [0.5,2.5]x[2,3], 8 in area and 12 round",
+  "params": {
+    "h": 1
+  },
+  "steps": [
+    {"name": "a", "op": "box", "min": [0, 0, 0], "max": [2, 2, "h"]},
+    {"name": "b", "op": "box", "min": [1, 0, 0], "max": [3, 2, "h"]},
+    {"name": "c", "op": "box", "min": [0.5, 1, 0], "max": [2.5, 3, "h"]},
+    {"name": "ab", "op": "fuse", "a": "a", "b": "b"},
+    {"name": "result", "op": "fuse", "a": "ab", "b": "c"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in_a_only", "point": [0.25, 0.5, 0.5], "expect": "in"},
+    {"label": "in_c_only", "point": [2.25, 2.5, 0.5], "expect": "in"},
+    {"label": "in_triple", "point": [1.5, 1.5, 0.5], "expect": "in"},
+    {"label": "outside_corner", "point": [0.25, 2.5, 0.5], "expect": "out"},
+    {"label": "on_end_plane", "point": [1.5, 1.5, 0], "expect": "on"},
+    {"label": "on_wall_of_c", "point": [0.5, 2, 0.5], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "8 * h",
+    "area": "16 + 12 * h",
+    "centroid": [1.5, 1.375, "h / 2"],
+    "genus": 0
+  }
+}

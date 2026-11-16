@@ -2112,6 +2112,29 @@ corpus_tests! {
     /// where Open CASCADE builds it.
     #[ignore = "OpError::Degenerate: the corner at the end of a ruling blend whose neighbour in line is another ruling blend of a different face pair is not covered (docs/BACKLOG.md, the ruling chain over a ledge)"]
     regression_ogive_bar_step_chain_fillet => run "regression/ogive-bar-step-chain-fillet";
+    /// Three unit cylinders on one plane, their axes at the corners of an
+    /// equilateral triangle of side 1, fused as a chain: the third meets an
+    /// edge on the end plane shared by two coplanar pieces of the first fuse.
+    /// The n-ary fuse builds it. The desired answer is the closed form.
+    #[ignore = "OpError::Degenerate (TangentContact): the end plane's edge shared by two coplanar pieces is imaged on the third operand's coincident face once per piece and the arrangement reads one curve twice (plans/flat-edge-read-as-tangent-contact)"]
+    regression_chained_fuse_coplanar_cylinders => run "regression/chained-fuse-coplanar-cylinders";
+    /// Three boxes in an L on one plane fused as a chain: the same cause as
+    /// the cylinders'. The desired answer is the closed form.
+    #[ignore = "OpError::Degenerate (TangentContact): the end plane's edge shared by two coplanar pieces is imaged on the third operand's coincident face once per piece and the arrangement reads one curve twice (plans/flat-edge-read-as-tangent-contact)"]
+    regression_chained_fuse_coplanar_boxes_l => run "regression/chained-fuse-coplanar-boxes-l";
+    /// A cylinder cut by three slots through its axis, 60 degrees apart, one
+    /// cut each: the third slot's floor is coincident with the pieces the
+    /// second one split. The desired answer is the closed form, genus 5.
+    #[ignore = "OpError::Degenerate (TangentContact): a slot floor split by an earlier slot is imaged once per coplanar piece and the arrangement reads one curve twice (plans/flat-edge-read-as-tangent-contact)"]
+    regression_three_slots_through_cylinder => run "regression/three-slots-through-cylinder";
+    /// A box against the same box split another way, its halves and its
+    /// thirds fused from pieces: overlap 4, each inside the other.
+    #[ignore = "OpError::Degenerate (TangentContact): the box's face is coincident with both coplanar pieces of the other body and images the seam twice (plans/flat-edge-read-as-tangent-contact)"]
+    regression_interference_box_against_its_halves => query "regression/interference-box-against-its-halves";
+    /// A bore of a hole's own width and a wider counterbore, the tools' tops
+    /// inside the part, cut in one call: an annular chamber round the hole.
+    #[ignore = "OpError::Degenerate (TangentContact): one curve on the hole wall is entered twice, as the bore's rim image and as the counterbore's section edge (plans/flat-edge-read-as-tangent-contact)"]
+    regression_cut_many_bore_over_bore_of_its_width => run "regression/cut-many-bore-over-bore-of-its-width";
 }
 
 /// A variant the recipe does not have fails naming it.

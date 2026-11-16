@@ -1,0 +1,61 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "ebfd8016ea91e3c14d6f776af9b38a4d22c88fe2fc3d8c475defa512a8f49a54",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 3.9999999999999982
+          },
+          "label": "whole against its halves"
+        },
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 3.9999999999999987
+          },
+          "label": "halves against the whole"
+        },
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 4.0
+          },
+          "label": "whole against its thirds"
+        },
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 4.0
+          },
+          "label": "halves against thirds"
+        },
+        {
+          "interference": {
+            "a_in_b": true,
+            "b_in_a": true,
+            "distance": 0.0,
+            "verdict": "overlapping",
+            "volume": 4.0
+          },
+          "label": "thirds against halves"
+        }
+      ]
+    }
+  }
+}

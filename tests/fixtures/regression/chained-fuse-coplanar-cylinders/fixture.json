@@ -1,0 +1,29 @@
+{
+  "description": "three unit cylinders (height 1) standing on one plane z = 0 with their axes at the corners of an equilateral triangle of side 1, fused as a chain, (a + b) + c. Every pair fuses, and the n-ary call builds; the chain is refused as a tangent contact the faces do not have: the end plane's edge shared by two coplanar pieces of the first fuse lies inside the third cylinder's end face, which is coincident with both pieces and so images the edge twice (the training harness's lobed_knob programs). The desired answer is the closed form below, which Open CASCADE matches: the union of three unit discs 1 apart is 3 pi / 2 + sqrt 3 in area, its boundary 3 pi long",
+  "params": {
+    "r": 1,
+    "h": 1
+  },
+  "steps": [
+    {"name": "a", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": "r", "height": "h"},
+    {"name": "b", "op": "cylinder", "base": [1, 0, 0], "axis": [0, 0, 1], "radius": "r", "height": "h"},
+    {"name": "c", "op": "cylinder", "base": [0.5, "sqrt(3) / 2", 0], "axis": [0, 0, 1], "radius": "r", "height": "h"},
+    {"name": "ab", "op": "fuse", "a": "a", "b": "b"},
+    {"name": "result", "op": "fuse", "a": "ab", "b": "c"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside_a", "point": [-0.5, 0, 0.5], "expect": "in"},
+    {"label": "inside_triple", "point": [0.5, 0.288675134594813, 0.5], "expect": "in"},
+    {"label": "outside_between", "point": [-0.8, 0.9, 0.5], "expect": "out"},
+    {"label": "on_wall_a", "point": [-1, 0, 0.5], "expect": "on"},
+    {"label": "on_end_plane", "point": [0.5, 0.288675134594813, 0], "expect": "on"},
+    {"label": "above", "point": [0.5, 0.288675134594813, 1.5], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "(3 * pi / 2 + sqrt(3)) * h",
+    "area": "2 * (3 * pi / 2 + sqrt(3)) + 3 * pi * h",
+    "centroid": [0.5, "sqrt(3) / 6", 0.5],
+    "genus": 0
+  }
+}

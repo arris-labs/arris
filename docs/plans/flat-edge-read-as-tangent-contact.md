@@ -79,7 +79,7 @@ Grades: **[1]** routine; **[2]** careful, a geometric or numeric case
 within a given design; **[3]** unproven, an algorithm whose robustness or
 bound is established here.
 
-- [ ] Step 1 **[2]** — The five cases as `tests/fixtures/regression/`
+- [x] Step 1 **[2]** — The five cases as `tests/fixtures/regression/`
   fixtures, each `#[ignore]`d with the desired `ok`, Open CASCADE's values
   from `tools/oracle/`, and the closed form in the note.
   `chained-fuse-coplanar-cylinders` (V = 3π/2 + √3, A = 6π + 2√3).

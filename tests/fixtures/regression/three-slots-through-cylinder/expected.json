@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "a84e4276d1229d4242d5c3ae49dec0868d0443fc25d7ecf29a06519b453a08b1",
+  "results": {
+    "default": {
+      "area": 581.829827309293,
+      "centroid": [
+        -1.7066657097663785e-16,
+        -4.77500840008464e-16,
+        -1.5114382669517743e-16
+      ],
+      "counts": {
+        "edges": 96,
+        "faces": 41,
+        "loops": 46,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 52
+      },
+      "degenerate": false,
+      "euler_characteristic": -8,
+      "genus": 5,
+      "inertia": [
+        [
+          5430.272243157618,
+          3.018988982857945e-13,
+          1.77635683940026e-15
+        ],
+        [
+          3.018988982857945e-13,
+          5430.272243157574,
+          -9.59232693276135e-14
+        ],
+        [
+          1.77635683940026e-15,
+          -9.59232693276135e-14,
+          3251.178030042996
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 96,
+        "faces": 41,
+        "loops": 46,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 52
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_column",
+          "point": [
+            0.0,
+            2.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_slot_centre",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in_slot_arm",
+          "point": [
+            3.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_slab",
+          "point": [
+            3.0,
+            0.0,
+            4.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_slot_ceiling",
+          "point": [
+            3.0,
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_column_side",
+          "point": [
+            3.0,
+            0.5,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            5.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 374.6191656909373
+    }
+  }
+}

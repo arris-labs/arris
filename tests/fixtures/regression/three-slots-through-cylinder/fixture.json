@@ -1,0 +1,34 @@
+{
+  "description": "a cylinder (radius 4, height 10, axis z, centred on the origin) cut by three 9 x 1 x 6 boxes through its axis, 60 degrees apart, one call each: cut, cut, cut. The first two build; the third is refused as a tangent contact the faces do not have, since the second slot's floor was split by the first and the third slot's floor is coincident with both pieces (the training harness's wall_anchor programs). The desired answer is the closed form: six windows in the wall, six columns joining two slabs, genus 5",
+  "params": {
+    "rho": 4,
+    "a": 0.5,
+    "H": 10,
+    "t": 6
+  },
+  "steps": [
+    {"name": "body", "op": "cylinder", "base": [0, 0, "-H / 2"], "axis": [0, 0, 1], "radius": "rho", "height": "H"},
+    {"name": "slot0", "op": "box", "min": ["-9 / 2", "-a", "-t / 2"], "max": ["9 / 2", "a", "t / 2"]},
+    {"name": "slot1", "op": "transform", "of": "slot0", "rotate": {"axis": [0, 0, 1], "origin": [0, 0, 0], "angle_deg": 60}},
+    {"name": "slot2", "op": "transform", "of": "slot0", "rotate": {"axis": [0, 0, 1], "origin": [0, 0, 0], "angle_deg": 120}},
+    {"name": "cut0", "op": "cut", "target": "body", "tool": "slot0"},
+    {"name": "cut1", "op": "cut", "target": "cut0", "tool": "slot1"},
+    {"name": "result", "op": "cut", "target": "cut1", "tool": "slot2"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in_column", "point": [0, 2, 0], "expect": "in"},
+    {"label": "in_slot_centre", "point": [0, 0, 0], "expect": "out"},
+    {"label": "in_slot_arm", "point": [3, 0, 0], "expect": "out"},
+    {"label": "in_slab", "point": [3, 0, 4], "expect": "in"},
+    {"label": "on_slot_ceiling", "point": [3, 0, 3], "expect": "on"},
+    {"label": "on_column_side", "point": [3, 0.5, 0], "expect": "on"},
+    {"label": "outside", "point": [5, 0, 0], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "pi * rho ^ 2 * H - t * (3 * (2 * a * sqrt(rho ^ 2 - a ^ 2) + 2 * rho ^ 2 * atan(a / sqrt(rho ^ 2 - a ^ 2))) - 3 * (8 * a ^ 2 / sqrt(3)) + 2 * sqrt(3) * a ^ 2)",
+    "area": "2 * pi * rho ^ 2 + 2 * pi * rho * H - 6 * t * 2 * rho * atan(a / sqrt(rho ^ 2 - a ^ 2)) + 2 * (3 * (2 * a * sqrt(rho ^ 2 - a ^ 2) + 2 * rho ^ 2 * atan(a / sqrt(rho ^ 2 - a ^ 2))) - 3 * (8 * a ^ 2 / sqrt(3)) + 2 * sqrt(3) * a ^ 2) + 12 * t * (sqrt(rho ^ 2 - a ^ 2) - sqrt(3) * a)",
+    "centroid": [0, 0, 0],
+    "genus": 5
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "kind": "query",
+  "description": "a 2 x 2 x 1 box against itself split another way: halves (two boxes fused across x = 1, whose faces keep the seam as an edge between coplanar pieces) and thirds (three boxes fused across y = 2/3 and y = 4/3). The same solid, so the overlap is the whole 4 and each operand lies in the other. Arris refuses interference of the box against the halves, and of the halves against the thirds, with a tangent contact the faces do not have: the box's face is coincident with both coplanar pieces and images the seam twice (the training harness's phone_stand pairs, 100 of 100). The desired answers are Open CASCADE's",
+  "steps": [
+    {"name": "whole", "op": "box", "min": [0, 0, 0], "max": [2, 2, 1]},
+    {"name": "left", "op": "box", "min": [0, 0, 0], "max": [1, 2, 1]},
+    {"name": "right", "op": "box", "min": [1, 0, 0], "max": [2, 2, 1]},
+    {"name": "halves", "op": "fuse", "a": "left", "b": "right"},
+    {"name": "front", "op": "box", "min": [0, 0, 0], "max": [2, "2 / 3", 1]},
+    {"name": "middle", "op": "box", "min": [0, "2 / 3", 0], "max": [2, "4 / 3", 1]},
+    {"name": "back", "op": "box", "min": [0, "4 / 3", 0], "max": [2, 2, 1]},
+    {"name": "thirds", "op": "fuse", "bodies": ["front", "middle", "back"]}
+  ],
+  "result": "whole",
+  "queries": [
+    {"label": "whole against its halves", "interference": {"a": {"step": "whole"}, "b": {"step": "halves"}}, "expect": "overlapping", "expect_volume": 4},
+    {"label": "halves against the whole", "interference": {"a": {"step": "halves"}, "b": {"step": "whole"}}, "expect": "overlapping", "expect_volume": 4},
+    {"label": "whole against its thirds", "interference": {"a": {"step": "whole"}, "b": {"step": "thirds"}}, "expect": "overlapping", "expect_volume": 4},
+    {"label": "halves against thirds", "interference": {"a": {"step": "halves"}, "b": {"step": "thirds"}}, "expect": "overlapping", "expect_volume": 4},
+    {"label": "thirds against halves", "interference": {"a": {"step": "thirds"}, "b": {"step": "halves"}}, "expect": "overlapping", "expect_volume": 4}
+  ]
+}
