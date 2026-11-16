@@ -179,3 +179,31 @@ fn a_non_finite_point_fails_the_call() {
         "{err:?}"
     );
 }
+
+#[test]
+fn a_sheet_is_refused_as_not_a_solid() {
+    use arris_debug::sample;
+    use arris_geom::Surface;
+    use arris_math::{Frame, Interval};
+    let mut m = Model::default();
+    let sphere = Surface::Sphere {
+        frame: Frame::world(),
+        radius: 2.0,
+    };
+    let (u, v) = (
+        Interval::new(0.2, 1.4).unwrap(),
+        Interval::new(-0.5, 0.9).unwrap(),
+    );
+    let sheet = sample::patch(&mut m, sphere, u, v).expect("a patch builds");
+    let err = classify_points(&m, sheet, &[Point3::origin()], &Control::NONE).unwrap_err();
+    assert!(
+        matches!(
+            err,
+            OpError::Degenerate {
+                reason: Reason::Input(InputReason::NotSolid),
+                ..
+            }
+        ),
+        "{err:?}"
+    );
+}

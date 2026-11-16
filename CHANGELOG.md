@@ -11,7 +11,9 @@ into its version (ADR-0027).
 - `query::classify_points` classifies a batch of points against a solid in one
   call: each point gets the answer `classify_point` gives it, in the order given,
   with a `None` where no ray decided the point, so one grazing point never fails
-  the batch. A budget counts points.
+  the batch. A budget counts points. A non-finite point fails the whole call
+  (`OpDegenerateError` in Python) before any point is classified, and a body
+  that is not a solid (a sheet, a wire, a general body) is refused as `NotSolid`.
 - Python's `Model.classify_points(body, points)` returns one byte per point: `0`
   outside, `1` inside, `2` on the boundary, `3` undecided. `points` is a sequence
   of `(x, y, z)`, or the bytes of little-endian `f64` triples (`bytes`,

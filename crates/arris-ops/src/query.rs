@@ -23,6 +23,7 @@ use arris_geom::{
 use arris_math::{
     Control, Frame, Interval, Meter, Point2, Point3, Tolerance, UnitVec3, Vec2, Vec3, wrap_angle,
 };
+use arris_topo::entity::BodyKind;
 use arris_topo::{Body, EdgeId, EntityId, Face, FaceId, Model, Orientation, Shape, VertexId};
 
 use crate::error::{Fault, InputReason, OpError, QueryReason, Reason};
@@ -504,7 +505,11 @@ pub fn ray_fire(m: &Model, body: Body, ray: &Ray, which: RayHits) -> Result<Vec<
 /// The control's budget counts points: one step per point, and
 /// [`OpError::Interrupted`] reports how many were done.
 ///
-/// Errors: `InputReason::NonFinite` for a non-finite point, checked before
+/// A body that is not a solid has no inside to classify against, so a
+/// sheet, a wire or a general body is refused, as `distance` refuses it.
+///
+/// Errors: `InputReason::NotSolid` for a body that is not a solid;
+/// `InputReason::NonFinite` for a non-finite point, checked before
 /// any point is classified; `OpError::Internal` with `Fault::Classify` for
 /// a body that does not resolve or a ray whose surface fails;
 /// [`OpError::Interrupted`] when the control stops it.
@@ -536,6 +541,12 @@ pub fn classify_points(
     points: &[Point3],
     control: &Control<'_>,
 ) -> Result<Vec<Option<Classification>>, OpError> {
+    if m.body(body.id)?.kind() != BodyKind::Solid {
+        return Err(OpError::Degenerate {
+            entities: vec![Shape::new(body.id, body.orientation)],
+            reason: Reason::Input(InputReason::NotSolid),
+        });
+    }
     if points
         .iter()
         .any(|p| !p.coords.iter().all(|c| c.is_finite()))

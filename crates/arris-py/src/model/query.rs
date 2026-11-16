@@ -458,9 +458,11 @@ impl Model {
     ///
     /// Raises `ValueError` for a byte length that is not a multiple of 24,
     /// `OpDegenerateError` for a point that is not finite (checked before any
-    /// point is classified), what `classify_point` raises for a body it cannot
-    /// classify against, and `Interrupted` when `cancel` or `budget` stops it;
-    /// a budget counts points.
+    /// point is classified) and for a body that is not a solid (reason
+    /// `NotSolid`: a sheet, a wire or a general body has no inside),
+    /// `OpInternalError` for a body the classifier cannot read, and
+    /// `Interrupted` when `cancel` or `budget` stops it; a budget counts
+    /// points.
     ///
     /// ```python
     /// import arris
