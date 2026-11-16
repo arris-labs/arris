@@ -202,7 +202,12 @@ impl Curve2 {
 
     /// `P(t)` alone.
     pub fn point(&self, t: f64) -> Point2 {
-        self.eval(t).point
+        match self {
+            Curve2::Nurbs(c) => c.point(t),
+            Curve2::Line { .. } | Curve2::Circle { .. } | Curve2::Ellipse { .. } => {
+                self.eval(t).point
+            }
+        }
     }
 
     /// The parametric domain: [`Interval::REAL`] for a line, `[0, 2π]`

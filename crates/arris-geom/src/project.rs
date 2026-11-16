@@ -47,6 +47,32 @@ fn local_noise_scale(frame: &Frame, p: Point3) -> f64 {
 }
 
 impl Surface {
+    /// Whether the surface may come within `distance` of `p`: `false` only
+    /// when it provably does not, so a caller that wants the projection
+    /// only where it is that near skips it elsewhere. An analytic surface
+    /// answers `true` (its projection is closed form and cheap); a NURBS
+    /// surface is rejected by its Bézier patches' bounds, without the
+    /// global search of [`Surface::project`].
+    ///
+    /// ```
+    /// use arris_geom::Surface;
+    /// use arris_math::{Frame, Point3};
+    ///
+    /// let plane = Surface::Plane { frame: Frame::world() };
+    /// assert!(plane.may_reach(Point3::new(0.0, 0.0, 9.0), 1e-6));
+    /// ```
+    pub fn may_reach(&self, p: Point3, distance: f64) -> bool {
+        match self {
+            Surface::Nurbs(s) => s.may_reach(p, distance),
+            Surface::Plane { .. }
+            | Surface::Cylinder { .. }
+            | Surface::EllipticCylinder { .. }
+            | Surface::Cone { .. }
+            | Surface::Sphere { .. }
+            | Surface::Torus { .. } => true,
+        }
+    }
+
     /// The nearest point of the surface to `p` with its `(u, v)`, by the
     /// closed form of each variant: the point is exact to rounding, never
     /// the result of an iteration, and the parameters are the

@@ -48,6 +48,10 @@ const LEAF_FRACTION: f64 = 1.0 / 64.0;
 /// `f64` parameters resolve, a bound on the search and not a resolution.
 const MAX_DEPTH: usize = 60;
 
+/// How deep [`NurbsSurface::may_reach`] subdivides before it stops
+/// rejecting: past it the answer is "may", which is always sound.
+const REJECT_DEPTH: usize = 40;
+
 /// How many nodes the search may take from its queue, beyond
 /// [`NODES_PER_PATCH`] for each Bézier patch the surface starts with. A
 /// structural bound: a query with more nodes as near as the best one is a
@@ -520,6 +524,37 @@ impl NurbsSurface {
             point,
             distance: (point - p).norm(),
         })
+    }
+
+    /// Whether the surface may come within `distance` of `p`: `false` only
+    /// when every Bézier patch, subdivided as far as its bound needs, is
+    /// provably farther than `distance` (plus the rounding of the
+    /// coordinates), so a `false` is a rejection no projection could
+    /// contradict. `true` is "not shown to be far", never a claim of being
+    /// near. It reads the patches' bounds alone, without the global search
+    /// of [`NurbsSurface::project`], which is what a query asking only
+    /// "is this point on the surface, within a tolerance" wants first.
+    pub(crate) fn may_reach(&self, p: Point3, distance: f64) -> bool {
+        if !p.coords.iter().all(|c| c.is_finite()) || !distance.is_finite() {
+            return true;
+        }
+        let reach = self
+            .control_points()
+            .iter()
+            .map(|x| x.coords.norm())
+            .fold(p.coords.norm(), f64::max);
+        let within = distance + RELATIVE_ROUNDING * reach;
+        let mut stack = self.patches();
+        while let Some(patch) = stack.pop() {
+            if patch.lower_bound(p) > within {
+                continue;
+            }
+            if patch.depth >= REJECT_DEPTH || patch.diagonal() <= distance {
+                return true;
+            }
+            stack.extend(patch.halves(patch.longer()));
+        }
+        false
     }
 
     /// The local minimum of the distance to `p` that Newton's iteration

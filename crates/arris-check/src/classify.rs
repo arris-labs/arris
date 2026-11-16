@@ -12,7 +12,7 @@ use std::fmt;
 
 use arris_geom::region2::Side;
 use arris_geom::{Curve, CurveSurfaceIntersection, GeomError, intersect_curve_surface};
-use arris_math::{Point3, Precision, Tolerance, UnitVec3, Vec3};
+use arris_math::{Aabb, Point3, Precision, Tolerance, UnitVec3, Vec3};
 use arris_topo::{Body, FaceId, Model, NotFound, Orientation, Shape};
 
 use crate::domain::{FaceDomain, boundary_entity};
@@ -153,6 +153,9 @@ pub struct Classifier<'m> {
     /// The largest face tolerance: how far behind its origin a ray still
     /// starts on a face.
     reach: f64,
+    /// The largest vertex tolerance among the faces' vertices: how far a
+    /// point may be from every face box and still be on a vertex.
+    vertex_reach: f64,
 }
 
 impl<'m> Classifier<'m> {
@@ -219,6 +222,14 @@ impl<'m> Classifier<'m> {
             .iter()
             .filter_map(|&id| Some(model.face(id).ok()?.tolerance()))
             .fold(0.0, f64::max);
+        let vertex_reach = faces
+            .iter()
+            .filter_map(|&id| model.face(id).ok())
+            .flat_map(|face| face.loops().iter().flat_map(|l| l.coedges()))
+            .filter_map(|c| model.edge(c.edge()).ok())
+            .flat_map(|edge| [edge.start(), edge.end()])
+            .filter_map(|v| Some(model.vertex(v).ok()?.tolerance()))
+            .fold(0.0, f64::max);
         Classifier {
             model,
             precision,
@@ -227,6 +238,7 @@ impl<'m> Classifier<'m> {
             domains,
             tree,
             reach,
+            vertex_reach,
         }
     }
 
@@ -241,9 +253,25 @@ impl<'m> Classifier<'m> {
     /// The entity `point` is on, most specific first, or `None`: a vertex
     /// or edge of any of the faces ([`boundary_entity`]), else a face.
     pub(crate) fn on(&self, point: Point3) -> Result<Option<Shape>, ClassifyError> {
+        // Only the faces whose boxes hold the point can have it on their
+        // boundary or surface: a box holds its face's edges and surface
+        // inflated by their tolerances, and the region adds the largest
+        // vertex tolerance. `near` answers in `FaceId` order, the order
+        // of `self.faces`, so the first face found is the same one.
+        let region = Aabb::of_point(point).inflated(self.vertex_reach.max(self.reach));
+        self.on_among(&self.tree.near(&region), point)
+    }
+
+    /// [`Classifier::on`] over every face, with no box rejecting any: the
+    /// answer the hierarchy must reproduce.
+    fn on_linear(&self, point: Point3) -> Result<Option<Shape>, ClassifyError> {
+        self.on_among(&self.faces, point)
+    }
+
+    /// The entity `point` is on among `faces`, in the order given.
+    fn on_among(&self, faces: &[FaceId], point: Point3) -> Result<Option<Shape>, ClassifyError> {
         let model = self.model;
-        let edges: Vec<_> = self
-            .faces
+        let edges: Vec<_> = faces
             .iter()
             .filter_map(|&id| model.face(id).ok())
             .flat_map(|face| face.loops().iter().flat_map(|l| l.coedges()))
@@ -252,9 +280,14 @@ impl<'m> Classifier<'m> {
         if let Some(shape) = boundary_entity(model, edges, point)? {
             return Ok(Some(shape));
         }
-        for &id in &self.faces {
+        for &id in faces {
             let face = model.face(id)?;
             let surface = model.surface(face.surface())?;
+            // A surface provably farther than the tolerance is not
+            // projected onto: the same answer, without the global search.
+            if !surface.may_reach(point, face.tolerance()) {
+                continue;
+            }
             let Ok(projection) = surface.project(point) else {
                 continue;
             };
@@ -283,7 +316,7 @@ impl<'m> Classifier<'m> {
     /// hold the two together.
     #[doc(hidden)]
     pub fn classify_linear(&self, point: Point3) -> Result<Classification, ClassifyError> {
-        if let Some(shape) = self.on(point)? {
+        if let Some(shape) = self.on_linear(point)? {
             return Ok(Classification::On(shape));
         }
         match self.cast(point, false)? {

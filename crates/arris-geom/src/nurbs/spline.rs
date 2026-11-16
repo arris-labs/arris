@@ -188,6 +188,23 @@ impl<const D: usize> Spline<D> {
         (a, w)
     }
 
+    /// The point at `t` alone, as [`Self::eval`]'s `point` to the bit,
+    /// without the derivative tables.
+    pub(crate) fn point(&self, t: f64) -> OPoint<f64, Const<D>> {
+        let t = self.wrap(t);
+        let span = basis::span(self.degree, &self.knots, self.points.len(), t);
+        let n = basis::values(self.degree, &self.knots, span, t);
+        let mut a = SVector::<f64, D>::zeros();
+        let mut w = 0.0;
+        let first = span - self.degree;
+        for (j, nj) in n.iter().enumerate().take(self.degree + 1) {
+            let i = first + j;
+            a += *nj * (self.weights[i] * self.points[i].coords);
+            w += *nj * self.weights[i];
+        }
+        OPoint::from(a / w)
+    }
+
     /// The point and its derivatives at `t`: a periodic spline wraps `t`
     /// first, any other evaluates the polynomial piece nearest `t`.
     pub(crate) fn eval(&self, t: f64) -> Derivatives<D> {

@@ -120,6 +120,31 @@ pub(crate) fn resolvable_spans(degree: usize, knots: &[f64], n: usize) -> Vec<us
     valid
 }
 
+/// The `degree + 1` basis functions active on `span` at `t` alone:
+/// `out[j]` is `N_{span − degree + j}` (A2.2). The same recurrence, in the
+/// same order, as `derivatives`' zeroth row, so the values are equal
+/// bit for bit; it skips the derivative tables, which is what a caller
+/// sampling points by the thousand is spared.
+pub(crate) fn values(degree: usize, knots: &[f64], span: usize, t: f64) -> Row {
+    let p = degree;
+    let mut out: Row = [0.0; MAX_DEGREE + 1];
+    let mut left: Row = [0.0; MAX_DEGREE + 1];
+    let mut right: Row = [0.0; MAX_DEGREE + 1];
+    out[0] = 1.0;
+    for j in 1..=p {
+        left[j] = t - knots[span + 1 - j];
+        right[j] = knots[span + j] - t;
+        let mut saved = 0.0;
+        for r in 0..j {
+            let temp = out[r] / (right[r + 1] + left[j - r]);
+            out[r] = saved + right[r + 1] * temp;
+            saved = left[j - r] * temp;
+        }
+        out[j] = saved;
+    }
+    out
+}
+
 /// The `degree + 1` basis functions active on `span` at `t`, with their
 /// first and second derivatives: `out[k][j]` is the `k`-th derivative of
 /// `N_{span − degree + j}` (A2.3). Derivatives of order above the degree

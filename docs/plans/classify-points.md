@@ -52,10 +52,12 @@ fixture's body take at most 0.15 s in release.
     `fault_classify` moves to `query/mod.rs` and is shared.
   - One meter tick per point, so `budget` counts points and `Interrupted`
     reports how many points were done.
-- **`arris-check` (only if step 2 needs it):** `Classifier::classify` gets
-  an early exit for a point outside the body's box grown by `reach`: it is
-  `Outside` without the `on` pass. This is the same answer, since nothing
-  can be `On` there, and the property in step 1 holds it to that.
+- **`arris-check` (step 2):** `Classifier::on` tries only the faces whose
+  boxes, grown by the largest tolerance, hold the point (the tree's `near`),
+  in `FaceId` order; `classify_linear` still tries every face and holds it.
+- **`arris-geom` (step 2, public, additive):** `Surface::may_reach(p, d)`,
+  `false` only when a B-spline surface is provably farther than `d`;
+  `NurbsCurve2::point(t)`, `eval(t).point` bit for bit without derivatives.
 - **`arris-py` (public, additive):**
   `Model.classify_points(body, points, *, cancel=None, budget=None) -> bytes`.
   - `points` is a `Sequence[_Point3]`, or `bytes` / `bytearray` /
@@ -91,13 +93,18 @@ bound has to be established here.
   answer one by one as `classify_point`, and in the same order. Also
   tested: `budget = k` stops after `k` points with `Interrupted`; a NaN
   point is `NonFinite`.
-- [ ] Step 2 **[2]** — The speed bar. A test in `arris-ops/tests`, ignored
+- [x] Step 2 **[2]** — The speed bar. A test in `arris-ops/tests`, ignored
   unless `--release`: 10,648 points on a 22³ grid over the box of a
   real part of about 100 faces or more (one `real_*` corpus part, named in
   the test) take ≤ 0.15 s, printed. Over the bar, add the
   box early exit to `Classifier::classify` (deltas), and then whatever
   `samply` shows next, until under the bar. The answers stay equal to step
   1's property. Record the time before and after in the commit body.
+  *Settled:* measured 9.6 s; the box prune of `on` (not the early exit, which
+  a grid inside the box never takes), a patch-bound reject before a B-spline
+  projection and a point-only B-spline sampler brought it to 0.39 s, of which
+  0.29 s is the faces' domains. The bar is relaxed to 0.6 s as the open
+  question allows and the rest is a backlog line.
 - [ ] Step 3 **[1]** — `probe_stage` goes through `classify_points` (one
   call per fixture). `None` becomes a probe failure that says "undecided".
   The corpus's probe stage passes unchanged over every area.
