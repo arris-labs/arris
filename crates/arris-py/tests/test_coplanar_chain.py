@@ -1,5 +1,5 @@
 """The four programs of the training harness that the flat-edge plan made
-build (`docs/plans/flat-edge-read-as-tangent-contact.md`): the chain of three
+build (a flat edge read as a tangent contact, C12): the chain of three
 cylinders on one plane, three slots through a cylinder, the interference of
 a box against its own halves, and a bore cut with a counterbore as two
 tools. Each is its fixture's recipe (`tests/fixtures/boolean/` and

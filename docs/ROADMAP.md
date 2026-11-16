@@ -944,8 +944,16 @@ the named cycle next in line.*
   and a speed bar of 0.6 s for 10,648 points on a 269-face part.
 - A flat internal edge read as a tangent contact: a chained fuse on a
   shared end plane, a third slot across a cylinder, `interference` of one
-  part split two ways, a bore over a bore of its width
-  (`docs/plans/flat-edge-read-as-tangent-contact.md`).
+  part split two ways, a bore over a bore of its width. **Done**: an edge
+  piece is placed on a face once, a section block along a third operand's
+  edge is that edge, and an operand that shares entities with an earlier
+  one is decomposed as its copy (ADR-0087); the five fixtures build to
+  Open CASCADE's values, and a curve entered twice is a named kernel fault,
+  never `TangentContact`. The chain property of its random boxes and
+  cylinders waits on three refusals of another family (a flush top's edge
+  asked against a plane: `regression/two-boxes-on-one-plane-fuse-unsupported`,
+  `chained-fuse-three-boxes-and-cylinder-unsupported`,
+  `fuse-many-three-boxes-plane-against-plane-unsupported`).
 - Tangency faults: an operand tangent inside another, a tool tangent
   to a bore, two chamfers that use up a face, contacts that end in an
   internal error. Each one builds, or at the least is a typed refusal

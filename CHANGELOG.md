@@ -8,6 +8,18 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- Booleans that put several pieces of one flat face on a plane no longer refuse
+  as `TangentContact`: a chained fuse of cylinders or boxes standing on a shared
+  end plane, a third slot cut across a cylinder, and a bore cut over a bore of its
+  width (as two tools of one `cut_many`) now build to their closed forms. A curve
+  that one face would hold twice is reported as `OpInternalError`, a fault of the
+  kernel, and `TangentContact` is again said only of two faces that touch along a
+  curve.
+- `fuse`, `cut`, `common`, their n-ary forms and `interference` accept a body
+  and a body derived from it (its split side, or the sides fused back) as
+  operands. The later operand's untouched entities come back with new ids,
+  recorded as `Modified` from the ones it was given.
+
 - `query::classify_points` classifies a batch of points against a solid in one
   call: each point gets the answer `classify_point` gives it, in the order given,
   with a `None` where no ray decided the point, so one grazing point never fails

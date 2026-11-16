@@ -73,7 +73,7 @@ closed form exists where the issue is really a contact.
 
 ## Recommendation
 
-A, after `tangency-faults` and `flat-edge-read-as-tangent-contact`, which
+A, after `tangency-faults` (and the flat-edge item, done), which
 fix wrong outcomes rather than refusals. C first, as one step, if A slips
 past C12.
 
