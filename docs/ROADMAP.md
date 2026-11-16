@@ -940,8 +940,8 @@ the named cycle next in line.*
 **In**, in the order planned:
 
 - Exact point classification in the binding: `classify_points`, a batch
-  of points in, in/out/on per point
-  (`plans/classify-points`).
+  of points in, in/out/on per point. **Done**, with its pruned `on` pass
+  and a speed bar of 0.6 s for 10,648 points on a 269-face part.
 - A flat internal edge read as a tangent contact: a chained fuse on a
   shared end plane, a third slot across a cylinder, `interference` of one
   part split two ways, a bore over a bore of its width

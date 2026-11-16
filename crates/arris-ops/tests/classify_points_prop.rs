@@ -1,4 +1,4 @@
-//! `query::classify_points` (C12, classify-points step 1): the batch
+//! `query::classify_points` (C12): the batch
 //! answers each point as `classify_point` does, in the order given, over
 //! random boxes and cylinders in random poses. The probes are interior,
 //! exterior, and on faces, edges and vertices of the body (a box's

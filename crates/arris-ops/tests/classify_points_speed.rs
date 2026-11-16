@@ -1,4 +1,4 @@
-//! The speed bar of `query::classify_points` (C12, classify-points step 2):
+//! The speed bar of `query::classify_points` (C12):
 //! 10,648 points (a 22 x 22 x 22 grid over the body's box, the training
 //! harness's per-pair sample) against NIST FTC-07's first solid, a real part
 //! of 269 faces, take at most `BAR` seconds, printed. The batch builds its

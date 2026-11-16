@@ -25,6 +25,7 @@ not the latest.
 | Shell and offset | Yes, including on NURBS | Offset faces and shell on analytic faces (refuses elliptic cylinder and NURBS for offset and shell) |
 | Sweep, loft, pipe | Yes | Sweep along a path (lines, arcs, helix arcs, B-spline curves, ADR-0063); loft across sections by arc-length matching (ruled and smooth polynomial, ADR-0065) |
 | Distance, interference, clash | Yes (`BRepExtrema`, `BRepAlgoAPI`) | Yes, with a typed refusal for pairs without a formula |
+| Point classification | Yes (`BRepClass3d_SolidClassifier`) | Yes, a batch of points against a solid, exact, in order; a point no ray decides is reported as undecided |
 | Ray fire | Yes | Yes, on every face kind including NURBS |
 | Healing | `ShapeFix` and sewing, on by default when reading | Two repairs, on by default when reading and each named on the body: a gap up to 5e-4 of the part's size closed by growing that entity's tolerance, and a face the file walks against all its neighbours turned back. Faces that share no edge are not sewn: refused, naming why |
 | Sheet and non-manifold bodies | Yes | Sheet bodies (open shells): from a planar profile, a planar section and STEP surface models, which read and write; measured by area and surface inertia; moved, mirrored and tessellated; booleans, blends and shells refuse one. A surface model whose faces do not meet is refused until sewing lands. Non-manifold is refused |

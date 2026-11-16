@@ -88,7 +88,7 @@ scores stay sampled.
 A. It fixes the classification where it goes wrong and leaves the topology
 alone. B is a cycle of its own (same-domain merging is out of C12). If
 case 3 does not share the cause, it falls back to exact point
-classification (`plans/classify-points`) and becomes a backlog line.
+classification (`query::classify_points`, done) and becomes a backlog line.
 
 ## Decision for the human
 

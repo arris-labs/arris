@@ -47,7 +47,9 @@ ADR-0020's amendment): the programs a consumer that scores generated
 code-CAD runs, and Open CASCADE builds, built or refused by name; draft,
 thicken and `region2` wait as the next named cycle. Per-face surface
 properties shipped beside it as 0.11.0, then 0.11.1 (2026-11-16), the first
-release on PyPI. **Next:** `/work classify-points`.
+release on PyPI. Exact point classification in a batch
+(`classify_points`, Rust and Python) is the cycle's first item, done.
+**Next:** `/work flat-edge-read-as-tangent-contact`.
 
 ## Rules that are not derivable from the code
 
