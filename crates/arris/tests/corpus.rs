@@ -2095,6 +2095,12 @@ corpus_tests! {
     /// edge on the end plane shared by two coplanar pieces of the first fuse,
     /// imaged on its coincident face once, not once per piece.
     boolean_chained_fuse_coplanar_cylinders => run "boolean/chained-fuse-coplanar-cylinders";
+    /// A bore of a hole's own width and a wider counterbore, the tools' tops
+    /// inside the part, cut in one call: an annular chamber round the hole.
+    /// The counterbore's top crosses the hole wall along the bore's rim, an
+    /// edge of a third operand imaged on both: that piece, never a section
+    /// edge beside it.
+    boolean_cut_many_bore_over_bore_of_its_width => run "boolean/cut-many-bore-over-bore-of-its-width";
     /// Three boxes in an L on one plane fused as a chain: the same cause as
     /// the cylinders'.
     boolean_chained_fuse_coplanar_boxes_l => run "boolean/chained-fuse-coplanar-boxes-l";
@@ -2128,10 +2134,6 @@ corpus_tests! {
     /// where Open CASCADE builds it.
     #[ignore = "OpError::Degenerate: the corner at the end of a ruling blend whose neighbour in line is another ruling blend of a different face pair is not covered (docs/BACKLOG.md, the ruling chain over a ledge)"]
     regression_ogive_bar_step_chain_fillet => run "regression/ogive-bar-step-chain-fillet";
-    /// A bore of a hole's own width and a wider counterbore, the tools' tops
-    /// inside the part, cut in one call: an annular chamber round the hole.
-    #[ignore = "OpError::Degenerate (TangentContact): one curve on the hole wall is entered twice, as the bore's rim image and as the counterbore's section edge (plans/flat-edge-read-as-tangent-contact)"]
-    regression_cut_many_bore_over_bore_of_its_width => run "regression/cut-many-bore-over-bore-of-its-width";
 }
 
 /// A variant the recipe does not have fails naming it.

@@ -101,10 +101,16 @@ bound is established here.
   crossing was recorded and `matching_block` found a half-overlap
   (`Fault::CommonBlock`). Two faces with no section (a face beside the edge
   lies on the other face's surface) are no section.
-- [ ] Step 4 **[3]** — The bore over a bore: find the second duplicate,
+- [x] Step 4 **[3]** — The bore over a bore: find the second duplicate,
   extend `along` across operands as the deltas say, and move the fixture
   to `boolean/` green. Cutting the bore and the counterbore as two tools
-  and as one fused tool gives the same measures.
+  and as one fused tool gives the same measures. The guess held: the
+  counterbore top × hole wall section (a circle at z = 0) lies along the
+  bore's rim, imaged on both faces through the bore's own faces; the
+  section edge beside the images doubled the curve on each.
+  `along_third` drops such a block when the third operand's edge lies on
+  both faces' surfaces and each face has a pair with one of its faces,
+  placing the piece there through `along` (held once).
 - [ ] Step 5 **[2]** — The guard in `Arrangement::sorted`, with a unit
   test that enters one section twice on a face and expects the fault
   named. Rerun every fixture that expects `TangentContact`; none may flip.
@@ -147,9 +153,9 @@ bound is established here.
 
 ## Open questions
 
-- ⚠ OPEN: is case 4's cause the cross-operand `along` gap? The agent
-  decides by step 4. If it is something else, step 4 is rewritten around
-  what it finds and keeps its fixture.
+- Settled (step 4): case 4's cause is the cross-operand `along` gap, as
+  guessed; the section block along a third operand's edge imaged on both
+  faces is that edge. The edge keeps its own operand, so no ADR-0087.
 - Decided (agent): the guard is a `Fault::Invariant`, an `OpInternalError`
   in Python. C12 forbids that error for harness programs, but the guard
   fires only on a kernel bug. Reporting such a bug as a contact sent four

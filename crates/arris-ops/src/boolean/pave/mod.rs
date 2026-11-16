@@ -156,6 +156,7 @@ enum End {
 
 /// A piece of an operand edge between consecutive paves, as the result
 /// will cut it: the same enumeration `result::Build::sub_edges` makes.
+#[derive(Clone)]
 struct Block {
     index: usize,
     range: Interval,

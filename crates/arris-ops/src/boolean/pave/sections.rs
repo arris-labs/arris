@@ -388,6 +388,12 @@ impl<'m, 'c> Build<'m, 'c> {
             let Some(uv) = Self::inside_both(fa, fb, curve.point(range.midpoint())) else {
                 continue;
             };
+            // Along an edge of a third operand lying in both faces, it is
+            // that edge's piece on each, as along an edge of either.
+            if let Some(placed) = self.along_third(pi, fa, fb, curve, range, start, end) {
+                self.along.extend(placed);
+                continue;
+            }
             // A section edge another pair already made on a face this one
             // holds: that edge, given its pcurve on this pair's other face.
             if let Some((k, shared, tolerance)) =
@@ -638,32 +644,117 @@ impl<'m, 'c> Build<'m, 'c> {
         start: usize,
         end: usize,
     ) -> Option<(EdgeId, Block)> {
-        let (start, end) = (End::Section(start), End::Section(end));
         let points: Vec<Point3> = samples(range, self.precision.check_samples)
             .into_iter()
             .map(|t| curve.point(t))
             .collect();
-        for &eid in f.edges() {
-            let Some(e) = self.edge_info(side, eid) else {
-                continue;
-            };
-            let within = e.tolerance.max(fa.tolerance.max(fb.tolerance));
-            for block in self.blocks_of(e) {
-                let ends = (self.canonical(block.start), self.canonical(block.end));
-                if ends != (start, end) && ends != (end, start) {
-                    continue;
-                }
-                let lies_along = points.iter().all(|&p| {
+        f.edges().iter().find_map(|&eid| {
+            let e = self.edge_info(side, eid)?;
+            let block = self.piece_along(e, fa, fb, &points, start, end)?;
+            Some((eid, block))
+        })
+    }
+
+    /// The piece of `e` between section vertices `start` and `end`, in
+    /// either order, that every one of `points` — a block of a section
+    /// curve of the pair `fa`, `fb`, at the model's check parameters —
+    /// lies within the tolerance of, inside the piece's own range.
+    fn piece_along(
+        &self,
+        e: &EdgeInfo<'m>,
+        fa: &FaceInfo<'m>,
+        fb: &FaceInfo<'m>,
+        points: &[Point3],
+        start: usize,
+        end: usize,
+    ) -> Option<Block> {
+        let (start, end) = (End::Section(start), End::Section(end));
+        let within = e.tolerance.max(fa.tolerance.max(fb.tolerance));
+        self.blocks_of(e).into_iter().find(|block| {
+            let ends = (self.canonical(block.start), self.canonical(block.end));
+            (ends == (start, end) || ends == (end, start))
+                && points.iter().all(|&p| {
                     e.curve.project(p).is_ok_and(|on| {
                         on.distance <= within
                             && e.in_range(on.t)
                                 .is_some_and(|t| Self::within_block(e, block.range, t))
                     })
-                });
-                if lies_along {
-                    return Some((eid, block));
-                }
+                })
+        })
+    }
+
+    /// The piece of an edge of a third operand — neither of pair `pi`'s —
+    /// that the block `range` of `curve` of the pair `fa`, `fb`, from
+    /// section vertex `start` to `end`, lies along, where the edge lies on
+    /// both faces' surfaces: the piece placed on each face as an image,
+    /// each under a pair of that face and a face of the edge's own, in
+    /// place of a section edge on both. A bore's rim on the hole wall of
+    /// its width, crossed there by a counterbore's top: the rim is imaged
+    /// on the wall and on the top through the bore's faces coincident
+    /// with them, and a section edge beside it would enter one curve
+    /// twice on each. `None` when no such piece is along the block, or
+    /// when a face has no pair to place it under.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn along_third(
+        &self,
+        pi: usize,
+        fa: &FaceInfo<'m>,
+        fb: &FaceInfo<'m>,
+        curve: &Curve,
+        range: Interval,
+        start: usize,
+        end: usize,
+    ) -> Option<[Along; 2]> {
+        let [oa, ob] = self.pairs[pi].operands;
+        let mut points: Vec<Point3> = Vec::new();
+        for &(eid, face) in &self.coincident {
+            if face != fa.id || !self.coincident.contains(&(eid, fb.id)) {
+                continue;
             }
+            let Some(side) = self.operand_of_edge(eid) else {
+                continue;
+            };
+            if side == oa || side == ob {
+                continue;
+            }
+            let Some(e) = self.edge_info(side, eid) else {
+                continue;
+            };
+            if points.is_empty() {
+                points = samples(range, self.precision.check_samples)
+                    .into_iter()
+                    .map(|t| curve.point(t))
+                    .collect();
+            }
+            let Some(block) = self.piece_along(e, fa, fb, &points, start, end) else {
+                continue;
+            };
+            // A pair of `target` and a face of the edge's own operand
+            // that uses it: the image's pair, as a coincident neighbour's.
+            let under = |target: FaceId| {
+                self.pairs.iter().position(|p| {
+                    let g = if p.a == target {
+                        p.b
+                    } else if p.b == target {
+                        p.a
+                    } else {
+                        return false;
+                    };
+                    self.faces[side]
+                        .iter()
+                        .any(|h| h.id == g && h.edges().contains(&eid))
+                })
+            };
+            let (Some(pa), Some(pb)) = (under(fa.id), under(fb.id)) else {
+                continue;
+            };
+            let along = |pair: usize, block: Block| Along {
+                pair,
+                operand: side,
+                edge: eid,
+                block,
+            };
+            return Some([along(pa, block.clone()), along(pb, block)]);
         }
         None
     }

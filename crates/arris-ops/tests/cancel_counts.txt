@@ -36,6 +36,7 @@ boolean/cross-cylinders-common: 6056
 boolean/cross-cylinders-cut: refused
 boolean/cross-cylinders-fuse: 6056
 boolean/crossing-pockets-cut-many: 139
+boolean/cut-many-bore-over-bore-of-its-width: 68
 boolean/cut-many-tools-miss-target: 24
 boolean/cylinder-prism-common-chamfer-cut-loops-intersect: 1476
 boolean/cylinder-revolve-common-fillet-box-fuse: 35164
