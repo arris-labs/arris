@@ -60,7 +60,9 @@ Deletion is the "done" signal; anything worth keeping moves first.
 5. `docs/ROADMAP.md`: update the status line; if the plan completes a
    milestone, say so and remind the human to tag it.
 6. `AGENTS.md` "Current state": one milestone-level sentence, under ~15
-   lines.
+   lines. Its `**Next:**` line names
+   `/plan <slug>` while the slug has no file under `docs/plans/`, and
+   `/work <slug>` only once it does.
 7. `CHANGELOG.md` `## Unreleased`: the plan's bullets if a consumer would
    notice (`.agents/rules/git.md` §The changelog). Every public type or
    signature the commit bodies name goes under `### Breaking` with its fix;

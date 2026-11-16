@@ -49,7 +49,7 @@ thicken and `region2` wait as the next named cycle. Per-face surface
 properties shipped beside it as 0.11.0, then 0.11.1 (2026-11-16), the first
 release on PyPI. Exact point classification in a batch
 (`classify_points`, Rust and Python) is the cycle's first item, done.
-**Next:** `/work flat-edge-read-as-tangent-contact`.
+**Next:** `/plan flat-edge-read-as-tangent-contact` (an idea, no plan yet).
 
 ## Rules that are not derivable from the code
 
