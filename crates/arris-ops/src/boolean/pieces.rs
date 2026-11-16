@@ -9,7 +9,8 @@
 //! section edge. At each node the half-edges leaving it are ordered by
 //! the angle of their pcurve's tangent, ties within the model's angular
 //! tolerance by the signed curvature, and a tie of both is
-//! [`BooleanReason::TangentContact`]. A region is walked by taking, at the end
+//! [`BooleanReason::TangentContact`], unless the two are one curve
+//! entered twice, which is a kernel fault. A region is walked by taking, at the end
 //! of each half-edge, the next half-edge clockwise from the direction
 //! one came from; a cycle turning once counter-clockwise bounds a region
 //! and one turning clockwise is a hole, assigned to the innermost
@@ -177,6 +178,9 @@ struct Arrangement<'m> {
     surface: &'m Surface,
     chord: f64,
     angular: f64,
+    /// The smallest distance the model distinguishes: two curves closer
+    /// than this at their middles are one.
+    distinct: f64,
     nodes: Vec<Node>,
     halves: Vec<Half>,
     /// The nodes standing for each vertex.
@@ -454,6 +458,11 @@ impl<'m> Arrangement<'m> {
                         self.entry_dir(w[1]).curvature,
                     );
                     if is_negligible((ka - kb).abs(), ka.abs().max(kb.abs())) {
+                        if self.same_curve(w[0], w[1])? {
+                            return Err(OpError::Internal(Fault::Invariant {
+                                what: "one curve entered twice on a face",
+                            }));
+                        }
                         return Err(OpError::Degenerate {
                             entities: vec![
                                 Shape::new(self.face, Orientation::Forward),
@@ -468,6 +477,31 @@ impl<'m> Arrangement<'m> {
             i = j;
         }
         Ok(list)
+    }
+
+    /// `true` when two entries of one node tied in direction and
+    /// curvature are one curve: both are section edges or images, run
+    /// between the same two nodes and pass within the model's smallest
+    /// distance of each other at the middle of their ranges. A section
+    /// along a loop piece of the face is the face's boundary touched, and
+    /// two curves a thin sliver apart are two faces touching along a
+    /// curve: both are the contact. The same curve entered twice is a
+    /// section or an image placed on the face two times, a fault of the
+    /// operation and not of the input.
+    fn same_curve(&self, a: Entry, b: Entry) -> Result<bool, OpError> {
+        let ends = |e: Entry| match e {
+            Entry::Out(h) => (self.halves[h].from, self.halves[h].to),
+            Entry::Stub(h) => (self.halves[h].to, self.halves[h].from),
+        };
+        if ends(a) != ends(b) {
+            return Ok(false);
+        }
+        let (Entry::Out(x) | Entry::Stub(x), Entry::Out(y) | Entry::Stub(y)) = (a, b);
+        if self.halves[x].twin.is_none() || self.halves[y].twin.is_none() {
+            return Ok(false);
+        }
+        let mid = |h: usize| self.uv(self.halves[h].pcurve, self.halves[h].range.lerp(0.5));
+        Ok((mid(x)? - mid(y)?).norm() <= self.distinct)
     }
 
     /// `true` when two entries' angles are within the angular tolerance.
@@ -671,8 +705,9 @@ fn a_key(e: Entry) -> (usize, usize) {
 /// interior point.
 ///
 /// Errors: [`OpError::Degenerate`] with [`BooleanReason::TangentContact`] for a
-/// tie at a node; [`OpError::Internal`] with a [`SplitFault`] for an
-/// arrangement that is not a subdivision; [`OpError::NotFound`] for an id
+/// tie at a node between two curves; [`OpError::Internal`] with
+/// [`Fault::Invariant`] for a tie between one curve entered twice, and
+/// with a [`SplitFault`] for an arrangement that is not a subdivision; [`OpError::NotFound`] for an id
 /// that does not resolve.
 pub(super) fn split_face(
     m: &Model,
@@ -697,6 +732,7 @@ pub(super) fn split_face(
         surface,
         chord: chord(m, entity, surface, entity.tolerance()),
         angular: precision.angular_tolerance,
+        distinct: precision.min_tolerance,
         nodes: Vec::new(),
         halves: Vec::new(),
         images: BTreeMap::new(),
@@ -707,4 +743,88 @@ pub(super) fn split_face(
     a.order()?;
     let pieces = a.regions()?;
     Ok(SplitFace { untouched, pieces })
+}
+
+#[cfg(test)]
+mod tests {
+    use arris_geom::Curve2;
+    use arris_math::{Control, Interval, Point3, Precision, UnitVec2};
+    use arris_topo::Model;
+
+    use super::*;
+    use crate::primitive_box;
+
+    /// The first face of a box, its four corners in loop order, and the
+    /// `split_face` of it with `diagonals` section edges, each the same
+    /// diagonal from the first corner to the third.
+    fn split_with_diagonals(diagonals: usize) -> Result<SplitFace, OpError> {
+        let n = &Control::NONE;
+        let mut m = Model::default();
+        let (body, _) =
+            primitive_box(&mut m, Point3::origin(), Point3::new(2.0, 3.0, 4.0), n).unwrap();
+        let face = m.faces(body).unwrap()[0].id;
+        let coedges = m.face(face).unwrap().loops()[0].coedges().to_vec();
+        assert_eq!(coedges.len(), 4);
+        let mut sub_edges = BTreeMap::new();
+        let mut corner = Vec::new();
+        for c in &coedges {
+            let e = *m.edge(c.edge()).unwrap();
+            let reversed = c.orientation().is_reversed();
+            let (at, vertex) = if reversed {
+                (e.range().hi(), e.end())
+            } else {
+                (e.range().lo(), e.start())
+            };
+            corner.push((m.curve2(c.pcurve()).unwrap().point(at), vertex));
+            sub_edges.insert(
+                c.edge(),
+                vec![SubEdge {
+                    range: e.range(),
+                    start: VRef::Existing(e.start()),
+                    end: VRef::Existing(e.end()),
+                }],
+            );
+        }
+        let (from, to) = (corner[0], corner[2]);
+        let span = to.0 - from.0;
+        let length = span.norm();
+        let pcurve = m.add_curve2(Curve2::Line {
+            origin: from.0,
+            direction: UnitVec2::new_normalize(span),
+        });
+        let sections: Vec<EdgeOnFace> = (0..diagonals)
+            .map(|k| EdgeOnFace {
+                edge: ERef::Section(k),
+                range: Interval::new(0.0, length).unwrap(),
+                start: VRef::Existing(from.1),
+                end: VRef::Existing(to.1),
+                pcurve,
+                other: face,
+            })
+            .collect();
+        split_face(
+            &m,
+            &Precision::default(),
+            face,
+            &sub_edges,
+            &BTreeSet::new(),
+            &sections,
+            &BTreeMap::new(),
+        )
+    }
+
+    /// One section across a face splits it in two; the same section
+    /// entered twice is a fault of the operation naming that, never the
+    /// contact of two faces along a curve.
+    #[test]
+    fn one_curve_entered_twice_is_a_fault_not_a_contact() {
+        assert_eq!(split_with_diagonals(1).unwrap().pieces.len(), 2);
+        match split_with_diagonals(2) {
+            Err(OpError::Internal(Fault::Invariant { what })) => {
+                assert_eq!(what, "one curve entered twice on a face");
+            }
+            Err(e) => panic!("expected the invariant fault, found {e}"),
+            Ok(_) => panic!("a doubled section was split"),
+        }
+    }
 }

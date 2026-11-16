@@ -688,15 +688,20 @@ already made on a face both hold — two tools' walls cutting one face along
 one curve — the block is that edge (`SectionEdge::shared`), given its
 pcurve on the later pair's other face, and generated from all three faces;
 an image of a tool's edge piece that is a common block of another tool's
-piece imaged on the same face is held once, as that piece. A contact
+piece imaged on the same face is held once, as that piece. An image is
+placed on a face once, whichever pair of faces meets it (two coplanar faces
+of one operand share an edge inside one face of the other), and a section
+block along an edge already imaged there, of any operand, is that edge. A contact
 between two tools is read against every other operand along its length,
 so two tools touching inside a cut's target are `TangentContact`. Every
 face of both operands is split in its own (u, v): the pieces of its
 loops between consecutive paves and the section edges on it make a
 planar arrangement — half-edges ordered around each node by the pcurves'
 tangent angle, a tie within the angular tolerance by the signed
-curvature, a tie of both `BooleanReason::TangentContact` — whose regions are
-walked by taking the next half-edge clockwise from the direction one
+curvature, a tie of both `BooleanReason::TangentContact` — unless the two
+are section edges or images running between the same two nodes along one
+curve, which is one section or image entered twice and the invariant fault (`Fault::Invariant`),
+never the contact — whose regions are walked by taking the next half-edge clockwise from the direction one
 arrived from; a cycle turning once counter-clockwise bounds a piece, one
 turning clockwise is a hole, assigned by winding to the innermost piece
 around it. A cusp, where the walk leaves back the way it arrived within

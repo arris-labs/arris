@@ -111,7 +111,7 @@ bound is established here.
   `along_third` drops such a block when the third operand's edge lies on
   both faces' surfaces and each face has a pair with one of its faces,
   placing the piece there through `along` (held once).
-- [ ] Step 5 **[2]** — The guard in `Arrangement::sorted`, with a unit
+- [x] Step 5 **[2]** — The guard in `Arrangement::sorted`, with a unit
   test that enters one section twice on a face and expects the fault
   named. Rerun every fixture that expects `TangentContact`; none may flip.
 - [ ] Step 6 **[2]** — Property test (`arris-debug/src/prop`): n random
@@ -156,6 +156,14 @@ bound is established here.
 - Settled (step 4): case 4's cause is the cross-operand `along` gap, as
   guessed; the section block along a third operand's edge imaged on both
   faces is that edge. The edge keeps its own operand, so no ADR-0087.
+- Settled (step 5): `Fault::Invariant` holds a static string, so the guard
+  names the fault and not the two edges (a new `SplitFault` variant would be
+  a public change the plan rules out). "One curve" is two section edges or
+  images with the same two end nodes and midpoints within `min_tolerance`.
+  A section along a loop piece of the face, a thin sliver's two sides and
+  two circles tangent at one node stay the contact: the band test
+  (`tolerance_band`'s edge-on-edge cut) found the first two, which a looser
+  guard turned into the fault.
 - Decided (agent): the guard is a `Fault::Invariant`, an `OpInternalError`
   in Python. C12 forbids that error for harness programs, but the guard
   fires only on a kernel bug. Reporting such a bug as a contact sent four
