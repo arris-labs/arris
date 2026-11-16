@@ -156,7 +156,7 @@ A piece of edge two operands share within tolerance, kept as one edge.
 
 **Image**:
 A piece of an operand's edge that lies inside a face of the other operand,
-placed on that face so it splits it (`Interferences::coincident`). A piece
+placed on that face so it splits it (`Interferences::images`). A piece
 is imaged on a face once, whichever pair of faces meets it.
 
 **Stripe**:
