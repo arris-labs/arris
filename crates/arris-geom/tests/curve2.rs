@@ -214,3 +214,62 @@ fn a_fitted_curve_is_a_curve2_that_projects() {
     assert!((e.point - p).dot(&e.d1).abs() <= 1e-9 * (e.point - p).norm() * e.d1.norm());
     assert!(c.domain().contains(proj.t));
 }
+
+/// A NURBS pcurve of degree 2 to 4: clamped or periodic, rational, over
+/// random control points.
+fn nurbs_curve2() -> impl Strategy<Value = arris_geom::NurbsCurve2> {
+    use arris_geom::NurbsCurve2;
+    (
+        2usize..=4,
+        1usize..=3,
+        any::<bool>(),
+        proptest::collection::vec(
+            (
+                finite_f64(-10.0..=10.0),
+                finite_f64(-10.0..=10.0),
+                finite_f64(0.2..=3.0),
+            ),
+            7,
+        ),
+    )
+        .prop_map(|(degree, extra, periodic, raw)| {
+            let k = degree + extra;
+            let at = |i: usize| raw[i % raw.len()];
+            let (points, weights, knots) = if periodic {
+                // k distinct control points wrapped by `degree`, over
+                // uniform knots: period k.
+                let n = k + degree;
+                (
+                    (0..n)
+                        .map(|i| Point2::new(at(i % k).0, at(i % k).1))
+                        .collect::<Vec<_>>(),
+                    (0..n).map(|i| at(i % k).2).collect::<Vec<_>>(),
+                    (0..n + degree + 1).map(|i| i as f64).collect::<Vec<_>>(),
+                )
+            } else {
+                let mut knots = vec![0.0; degree + 1];
+                knots.extend((1..k - degree).map(|i| i as f64));
+                knots.extend(vec![(k - degree) as f64; degree + 1]);
+                (
+                    (0..k).map(|i| Point2::new(at(i).0, at(i).1)).collect(),
+                    (0..k).map(|i| at(i).2).collect(),
+                    knots,
+                )
+            };
+            NurbsCurve2::new(degree, knots, points, weights).expect("a valid NURBS pcurve")
+        })
+}
+
+#[test]
+fn a_nurbs_pcurves_point_is_its_evaluations_bit_for_bit() {
+    check(
+        (nurbs_curve2(), finite_f64(-1.0..=2.0)),
+        |(curve, fraction)| {
+            let domain = curve.domain();
+            let t = domain.lo() + fraction * domain.length();
+            let pcurve = Curve2::Nurbs(curve);
+            prop_assert_eq!(pcurve.point(t), pcurve.eval(t).point, "t = {}", t);
+            Ok(())
+        },
+    );
+}

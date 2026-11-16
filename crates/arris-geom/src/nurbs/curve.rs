@@ -418,21 +418,8 @@ impl NurbsCurve2 {
     }
 
     /// The point at `t` alone: `eval(t).point` bit for bit, without the
-    /// derivatives.
-    ///
-    /// ```
-    /// use arris_geom::NurbsCurve2;
-    /// use arris_math::Point2;
-    ///
-    /// let c = NurbsCurve2::new(
-    ///     1,
-    ///     vec![0.0, 0.0, 1.0, 1.0],
-    ///     vec![Point2::new(0.0, 0.0), Point2::new(4.0, 2.0)],
-    ///     vec![1.0; 2],
-    /// ).unwrap();
-    /// assert_eq!(c.point(0.5), c.eval(0.5).point);
-    /// ```
-    pub fn point(&self, t: f64) -> Point2 {
+    /// derivatives. Reached through `Curve2::point`.
+    pub(crate) fn point(&self, t: f64) -> Point2 {
         self.spline.point(t)
     }
 

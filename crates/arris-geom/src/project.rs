@@ -61,6 +61,7 @@ impl Surface {
     /// let plane = Surface::Plane { frame: Frame::world() };
     /// assert!(plane.may_reach(Point3::new(0.0, 0.0, 9.0), 1e-6));
     /// ```
+    #[doc(hidden)]
     pub fn may_reach(&self, p: Point3, distance: f64) -> bool {
         match self {
             Surface::Nurbs(s) => s.may_reach(p, distance),

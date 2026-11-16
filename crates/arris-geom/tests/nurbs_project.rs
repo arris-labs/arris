@@ -580,3 +580,48 @@ fn a_point_on_a_kinked_bspline_projects_onto_itself() {
         found.distance
     );
 }
+
+#[test]
+fn a_refusal_to_reach_is_never_contradicted_by_the_projection() {
+    // `may_reach` is `false` only when the surface is provably farther
+    // than the distance: so wherever it says so, the nearest point is.
+    // Queries are near the surface (a sample of it, moved a little) and
+    // far from it, the distances from well inside the gap to well past it.
+    check(
+        (
+            nurbs_surface(),
+            point_in_box(150.0),
+            finite_f64(0.0..=1.0),
+            finite_f64(0.0..=1.0),
+            unit_vec3(),
+            finite_f64(0.0..=5.0),
+            finite_f64(1e-6..=40.0),
+            any::<bool>(),
+        ),
+        |(s, far, fu, fv, away, gap, distance, near)| {
+            let [du, dv] = s.domain();
+            let on = s.eval(du.lerp(fu), dv.lerp(fv)).point;
+            let query = if near {
+                on + away.into_inner() * gap
+            } else {
+                far
+            };
+            let surface = Surface::Nurbs(s);
+            if surface.may_reach(query, distance) {
+                return Ok(());
+            }
+            match surface.project(query) {
+                Ok(found) => prop_assert!(
+                    found.distance > distance,
+                    "{} is not beyond {distance}",
+                    found.distance
+                ),
+                // No nearest point is a failure of the projection, not of
+                // the rejection.
+                Err(GeomError::Ambiguous { .. }) => {}
+                Err(e) => return Err(TestCaseError::fail(format!("{e}"))),
+            }
+            Ok(())
+        },
+    );
+}
