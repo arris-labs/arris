@@ -124,6 +124,16 @@ bound is established here.
   cylinders' chain, three slots, the interference of the box against its
   halves, and `cut` with a bore and a counterbore. Each matches its closed
   form.
+- [ ] Step 8 **[3]** — `fuse-many-coaxial-cylinders-and-box-curve-entered-twice`
+  (found by step 6): `fuse_many` of two coaxial cylinders of one radius and
+  a box reaches step 5's guard where the chain builds. Find which image or
+  section enters the curve twice, fix it as steps 2–4 did, and move the
+  fixture to `boolean/` green.
+- [ ] Step 9 **[3]** — `interference-box-against-its-split-and-fused-sides`
+  (found by step 6): a box split by a plane and fused back fails
+  `interference` against the original with `Builder Closure EdgeUses`.
+  Find why the fused body breaks the common, fix it, and move the fixture
+  to `query/` green.
 
 ## Acceptance
 
@@ -174,6 +184,10 @@ bound is established here.
   1000 cases in CI" waits on their fixes; `docs/BACKLOG.md` §Findings
   holds them. Not weakened: the draws exclude tangency (the tangency-faults
   idea's) and poses (the tolerance band's).
+- Settled (conductor, after step 6): faults 3 and 4 are this plan's and
+  get steps 8 and 9. Faults 1 and 2 (plane against line `Unsupported`) are
+  not: they stay backlog. Whether the acceptance's property line is met by
+  narrowing the draws or waits on them is the human's, asked at retirement.
 - Decided (agent): the guard is a `Fault::Invariant`, an `OpInternalError`
   in Python. C12 forbids that error for harness programs, but the guard
   fires only on a kernel bug. Reporting such a bug as a contact sent four
