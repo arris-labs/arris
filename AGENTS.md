@@ -41,13 +41,13 @@ the NURBS cycle (NURBS blocks 0 of 38 parts). ADR-0001 to ADR-0068; PyPI
 as 0.10.0, 2026-11-04): the real parts' blend row **0 of 38** and the script corpus's
 `fillet` refusals 0, a second oracle's records (ADR-0073) holding what Open
 CASCADE cannot; closed with five nightly findings open, two of them panics
-(`docs/BACKLOG.md` §Findings). **C12, the plugin CAD's remaining asks**
-(opened 2026-11-04): draft and thicken, then `region2`; every kernel row of
-the histogram is 0, so ADR-0020's consumer amendment picked it.
-The nightly's two panics (the posed slot chain and elbow, a NURBS curve
-called `Coincident`) are fixed. The refactor review's remaining census and
-test work is done. Per-face surface properties landed beside C12 and shipped as
-0.11.0 (2026-11-14), then 0.11.1 (2026-11-16), the first release on PyPI. **Next:** C12's first `/idea` or `/plan`.
+(`docs/BACKLOG.md` §Findings). **C12, the training harness's refusals**
+(opened 2026-11-04 as the plugin CAD's asks, re-scoped 2026-11-16 by
+ADR-0020's amendment): the programs a consumer that scores generated
+code-CAD runs, and Open CASCADE builds, built or refused by name; draft,
+thicken and `region2` wait as the next named cycle. Per-face surface
+properties shipped beside it as 0.11.0, then 0.11.1 (2026-11-16), the first
+release on PyPI. **Next:** `/work classify-points`.
 
 ## Rules that are not derivable from the code
 

@@ -237,3 +237,34 @@ not applied. And the histogram keeps its weight for the cycle after.
 So C5 is the consumer's API (A1–A4 and A11 of that idea), and the blend
 network, first by the histogram, stays a named cycle next in line
 (§3: it takes its number when it opens).
+
+## Amendment (2026-11-16, re-scoping C12)
+
+C12 opened at C11's close as the plugin CAD's remaining asks (draft,
+thicken, `region2`), picked by the amendment above because every kernel
+row of the histogram was 0 and no consumer had reported a regression.
+Since then a second consumer has: the **training harness**, which runs
+generated code-CAD programs through the binding and scores each body
+against its target by exact measures. Over its benchmark corpus it filed
+eleven refusals against 0.10.0, each a program Open CASCADE builds, each
+held on its side as a fixture with a closed form, together reaching about
+1,100 of the corpus's programs. Three kinds are worse than a refusal: an
+`OpInternalError` ("kernel bug"), and an `Ok` body the checker refuses,
+which `.agents/rules/kernel.md` forbids outright. The plugin CAD has
+reported nothing, and its asks block none of its own cycles.
+
+**Between consumers, measured refusals of programs a consumer runs today
+rank before API a consumer has not called yet.** The reason is §2's: a
+refusal of what Open CASCADE builds is a regression of what the kernel
+claims, counted over a corpus as the histogram is, while an ask is a
+design input. **A cycle opened under one ranking may be re-scoped under a
+later one before its first plan starts**; it keeps its number (so
+`Cn → 0.n.0` holds), and its section's goal says it was re-scoped and why.
+
+So C12 becomes the training harness's refusals, and the plugin CAD's
+remaining asks return to the named cycles, next in line by the amendment
+above unless the harness's next refusals outrank them at C12's close.
+
+Rejected: the harness's fixes in the second plan slot beside the original
+C12. They are a cycle's worth (six ideas, about four plans), and the
+second slot belongs to the nightly's findings.

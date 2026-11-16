@@ -407,6 +407,11 @@ An application that builds on Arris; **the first consumer** is the
 parametric CAD whose kernel facade Arris replaces.
 _Avoid_: client, user (a user is the consumer's)
 
+**Training harness**:
+A consumer that runs generated code-CAD programs through the binding and
+scores each body against a target by exact measures; its refusals over
+its benchmark corpus picked C12 (ADR-0020, amendment of 2026-11-16).
+
 **Facade**:
 The consumer's own interface over its kernel, behind which Arris is
 swapped in.
