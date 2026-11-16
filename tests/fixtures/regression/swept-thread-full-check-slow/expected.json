@@ -1,0 +1,80 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "edcb4ba236f5312c064c216fdc1d666df87c87c6b36c7d389fddcaf0db897b2b",
+  "results": {
+    "default": {
+      "area": 1391.8920338826938,
+      "centroid": [
+        8.744626953469368e-15,
+        1.7119070170161275,
+        5.750000000000002
+      ],
+      "counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          39803.705509355466,
+          1.635592059597604e-10,
+          351.8482074332384
+        ],
+        [
+          1.635592059597604e-10,
+          41065.225574176126,
+          9.094947017729282e-13
+        ],
+        [
+          351.8482074332384,
+          9.094947017729282e-13,
+          76623.25138097806
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "tooth_body",
+          "point": [
+            0.0,
+            13.0,
+            2.75
+          ]
+        },
+        {
+          "class": "out",
+          "label": "between_turns",
+          "point": [
+            0.0,
+            13.0,
+            4.25
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_the_crest",
+          "point": [
+            0.0,
+            12.0,
+            2.75
+          ]
+        }
+      ],
+      "volume": 430.4610079819359
+    }
+  }
+}

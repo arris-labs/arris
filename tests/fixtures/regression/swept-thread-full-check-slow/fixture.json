@@ -1,0 +1,41 @@
+{
+  "description": "the script corpus's bottle-cap thread alone: a triangle (base 2.4 buried half a millimetre in the wall at radius 13.5, crest 1.2 inward toward the axis) in the axial plane at (13.5, 0, 2), carried 2.5 turns along a right-handed helix of pitch 3 about z under the fixed binormal z. The sweep builds in a fraction of a second; the checker's Full S5 on its NURBS faces against each other (the marched NURBS x NURBS section, `spline_nurbs::isolate` under `Marcher::boundary_seeds`) takes minutes, 464 s at 0.9.0's measure, since the marcher was routed NURBS x NURBS pairs (docs/BACKLOG.md, check-full-of-a-swept-thread-takes-minutes). Desired: the same green verdict in about a second. Volume the angle times the profile's first moment about the axis, 2 pi * turns * 2.04 * (R - 0.2 / 3), as sweep/sweep-thread's.",
+  "tolerances": {"volume_rel": 1e-06, "area_rel": 1e-06, "inertia_rel": 3e-06},
+  "params": {"R": 13.5, "p": 3, "turns": 2.5, "z0": 2},
+  "steps": [
+    {
+      "name": "sketch",
+      "op": "profile",
+      "plane": {"origin": ["R", 0, "z0"], "x": [1, 0, 0], "y": [0, 0, 1]},
+      "outer": {
+        "start": [0.5, -1.2],
+        "segments": [
+          {"line_to": [-1.2, 0]},
+          {"line_to": [0.5, 1.2]},
+          {"line_to": [0.5, -1.2]}
+        ]
+      },
+      "holes": []
+    },
+    {
+      "name": "result",
+      "op": "sweep",
+      "profile": "sketch",
+      "path": {
+        "start": ["R", 0, "z0"],
+        "segments": [{"helix": {"axis": {"origin": [0, 0, "z0"], "direction": [0, 0, 1]}, "pitch": "p", "angle_deg": "360 * turns"}}]
+      },
+      "law": {"binormal": [0, 0, 1]}
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "tooth_body", "point": [0, "R - 0.5", "z0 + p / 4"], "expect": "in"},
+    {"label": "between_turns", "point": [0, "R - 0.5", "z0 + p / 4 + 1.5"], "expect": "out"},
+    {"label": "past_the_crest", "point": [0, "R - 1.5", "z0 + p / 4"], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "2 * pi * turns * 2.04 * (R - 0.2 / 3)",
+    "genus": 0
+  }
+}

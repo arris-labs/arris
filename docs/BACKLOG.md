@@ -432,8 +432,10 @@ above when it wants a fix; the block moves or is deleted then.
 - Seen: the 0.9.0 release's local run, commit 52b039f5; bisected over 751524ca..52b039f5 to ef6371e6 (`feat(geom): dispatch and fit the marched section`, which routed NURBS × NURBS pairs to the marcher), 8621d107 before it fast. Deterministic, no seed.
 - Reproduce: `tools/py-test.sh tests/test_script_corpus.py -k bottle-cap --durations=1`.
 - Evidence: the time is the checker's S5 on the 2.5-turn helical sweep's faces against each other; sweep, fuse and fillet each take a second or less.
-- State: measured.
-- The fix is: find why the march takes hundreds of seconds on long helical spans (the seed search or the step count), then a regression fixture holding the thread's Full check to a time budget, and `SLOW` in `test_script_corpus.py` loses `bottle-cap`.
+- Seen again 2026-11-17 at flat-edge-read-as-tangent-contact's retirement: a run killed at 25 min read as a hang; the same at the plan's parent b4186b63, so not the plan's. A stack at the `thread` stage's `check(…, "full")`: `Checker::s5_face_pairs` → `nurbs_pair_meets` → `section::trace_nurbs_nurbs` → `Marcher::boundary_seeds` → `spline_nurbs::isolate` (Bernstein subdivision).
+- Fixture: `regression/swept-thread-full-check-slow` (`regression_swept_thread_full_check_slow`, ignored), the thread stage alone with Open CASCADE's values.
+- State: measured, fixture committed.
+- The fix is: find why the march takes hundreds of seconds on long helical spans (the seed search in `isolate` or the step count), un-ignore the fixture, and `SLOW` in `test_script_corpus.py` loses `bottle-cap`.
 
 ### cusp-corner-complement-fillets-no-closed-form-torus-pair
 

@@ -458,6 +458,12 @@ corpus_tests! {
     /// top circle at one point.
     #[ignore = "kernel bug: Internal, the face arrangement is not a subdivision, a section edge ends at a node nothing else reaches where the plane touches the rim at a point; the planar section faults with it (docs/BACKLOG.md, a plane touching a body's rim at a point)"]
     regression_cylinder_rim_touching_split => run "regression/cylinder-rim-touching-split";
+    /// The script corpus's bottle-cap thread alone: a triangle 2.5 turns
+    /// along a helix of pitch 3. The sweep builds in a fraction of a
+    /// second; the checker at `Full` takes minutes on its NURBS faces
+    /// against each other. The desired run checks it green in seconds.
+    #[ignore = "slow: the checker's Full S5 marches the swept thread's NURBS x NURBS face pairs for minutes (spline_nurbs::isolate under Marcher::boundary_seeds), past the fast profile's 8 min on a shared machine (docs/BACKLOG.md, check-full-of-a-swept-thread-takes-minutes)"]
+    regression_swept_thread_full_check_slow => run "regression/swept-thread-full-check-slow";
     /// flush-union's second box a tolerance off the shared face: moved away, into the first, or turned about the face's middle line.
     #[ignore = "Fault::Split EmptySubEdge, Fault::CommonBlock, Fault::Split Turn, and plane against plane Unsupported a hair off parallel (docs/BACKLOG.md, ADR-0022)"]
     regression_flush_union_a_tolerance_off => run "regression/flush-union-a-tolerance-off";
