@@ -1,7 +1,65 @@
 //! `Model`'s queries: properties, geometry, frames, rays, distance,
-//! interference, the checker and tessellation.
+//! interference, point classification, the checker and tessellation.
+
+use arris::check::classify::Classification;
+use pyo3::exceptions::PyValueError;
+use pyo3::types::{PyByteArray, PyBytes};
 
 use super::*;
+
+/// The byte code `Model.classify_points` returns for one point's answer.
+fn code_of(answer: Option<&Classification>) -> u8 {
+    match answer {
+        Some(Classification::Outside) => 0,
+        Some(Classification::Inside) => 1,
+        Some(Classification::On(_)) => 2,
+        None => 3,
+    }
+}
+
+/// The bytes `points` holds, when it is bytes-like: `bytes`, `bytearray` or
+/// a `memoryview`; `None` for anything else.
+fn raw_bytes(points: &Bound<'_, PyAny>) -> PyResult<Option<Vec<u8>>> {
+    if let Ok(bytes) = points.cast::<PyBytes>() {
+        return Ok(Some(bytes.as_bytes().to_vec()));
+    }
+    if let Ok(bytes) = points.cast::<PyByteArray>() {
+        return Ok(Some(bytes.to_vec()));
+    }
+    let memoryview = points.py().import("builtins")?.getattr("memoryview")?;
+    if points.is_instance(&memoryview)? {
+        let bytes = points.call_method0("tobytes")?;
+        return Ok(Some(bytes.cast::<PyBytes>()?.as_bytes().to_vec()));
+    }
+    Ok(None)
+}
+
+/// The points a batch classifies: little-endian `f64` triples as bytes, or a
+/// sequence of `(x, y, z)`.
+fn points_of(points: &Bound<'_, PyAny>) -> PyResult<Vec<Point3>> {
+    let Some(bytes) = raw_bytes(points)? else {
+        let triples: Vec<[f64; 3]> = points.extract()?;
+        return Ok(triples.into_iter().map(Point3::from).collect());
+    };
+    if bytes.len() % 24 != 0 {
+        return Err(PyValueError::new_err(format!(
+            "the points' bytes are {} long, not a multiple of 24 (three little-endian f64 per point)",
+            bytes.len()
+        )));
+    }
+    let coords: Vec<f64> = bytes
+        .chunks_exact(8)
+        .map(|chunk| {
+            let mut eight = [0u8; 8];
+            eight.copy_from_slice(chunk);
+            f64::from_le_bytes(eight)
+        })
+        .collect();
+    Ok(coords
+        .chunks_exact(3)
+        .map(|p| Point3::new(p[0], p[1], p[2]))
+        .collect())
+}
 
 /// What `Model.surface_properties` measures: a body or one face.
 #[derive(FromPyObject)]
@@ -386,6 +444,52 @@ impl Model {
             arris::ops::query::interference_many(m, &bodies, control)
         })?;
         Ok(kernel.into_iter().map(|c| Clash::new(self, c)).collect())
+    }
+
+    /// The exact classification of each point of `points` against the solid
+    /// `body`, in the order given, as bytes with one code per point: `0`
+    /// outside, `1` inside, `2` on the boundary and `3` undecided (no ray
+    /// decided the point). `numpy.frombuffer(out, dtype="i1")` reads them.
+    ///
+    /// `points` is a sequence of `(x, y, z)`, or the bytes of the points as
+    /// little-endian `f64` triples (`bytes`, `bytearray` or `memoryview`): the
+    /// layout of `Mesh.positions`, and `a.astype("<f8").tobytes()` for a numpy
+    /// array `a`. The answers do not depend on the machine.
+    ///
+    /// Raises `ValueError` for a byte length that is not a multiple of 24,
+    /// `OpDegenerateError` for a point that is not finite (checked before any
+    /// point is classified), what `classify_point` raises for a body it cannot
+    /// classify against, and `Interrupted` when `cancel` or `budget` stops it;
+    /// a budget counts points.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// body, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+    /// codes = model.classify_points(body, [(1, 1, 1), (3, 1, 1), (2, 1, 1)])
+    /// assert list(codes) == [1, 0, 2]
+    /// ```
+    #[pyo3(signature = (body, points, *, cancel=None, budget=None))]
+    fn classify_points<'py>(
+        &self,
+        py: Python<'py>,
+        body: &Body,
+        points: &Bound<'py, PyAny>,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Bound<'py, PyBytes>> {
+        let body = body.resolve(&self.shared)?;
+        let points = points_of(points)?;
+        let limits = Limits::new(cancel, budget);
+        let codes = self.run(py, &limits, move |m, control| {
+            let answers = arris::ops::query::classify_points(m, body, &points, control)?;
+            Ok(answers
+                .iter()
+                .map(|a| code_of(a.as_ref()))
+                .collect::<Vec<u8>>())
+        })?;
+        Ok(PyBytes::new(py, &codes))
     }
 
     /// The checker's report on `body`: `level` is `"fast"` (linear in the

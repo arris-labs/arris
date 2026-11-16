@@ -8,6 +8,17 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `query::classify_points` classifies a batch of points against a solid in one
+  call: each point gets the answer `classify_point` gives it, in the order given,
+  with a `None` where no ray decided the point, so one grazing point never fails
+  the batch. A budget counts points.
+- Python's `Model.classify_points(body, points)` returns one byte per point: `0`
+  outside, `1` inside, `2` on the boundary, `3` undecided. `points` is a sequence
+  of `(x, y, z)`, or the bytes of little-endian `f64` triples (`bytes`,
+  `bytearray` or `memoryview`), so a numpy array goes in as
+  `a.astype("<f8").tobytes()` and the codes read back with
+  `numpy.frombuffer(out, dtype="i1")`.
+
 ## 0.11.1 — 2026-11-16
 
 - The Python package `arris` is now on PyPI. 0.11.0's wheels never published, so

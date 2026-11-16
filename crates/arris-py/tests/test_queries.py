@@ -360,3 +360,58 @@ def test_interference_takes_a_budget_and_refuses_a_foreign_body():
         model.interference(a, foreign)
     with pytest.raises(arris.Interrupted):
         model.interference(a, b, budget=0)
+
+
+def test_classify_points_gives_the_codes_of_a_box_and_a_cylinder():
+    model = arris.Model()
+    box, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+    points = [(1, 1, 1), (3, 1, 1), (2, 1, 1), (2, 2, 2)]
+    assert list(model.classify_points(box, points)) == [1, 0, 2, 2]
+    cylinder, _ = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 2, 5)
+    codes = model.classify_points(cylinder, [(0, 0, 2.5), (2, 0, 2.5), (3, 0, 2.5), (0, 0, 0)])
+    assert list(codes) == [1, 2, 0, 2]
+
+
+def test_points_as_a_sequence_or_as_bytes_give_equal_codes():
+    import struct
+
+    model = arris.Model()
+    box, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+    points = [(1, 1, 1), (3, 1, 1), (2, 1, 1), (0.5, 0.5, -1)]
+    flat = struct.pack(f"<{3 * len(points)}d", *(c for p in points for c in p))
+    codes = model.classify_points(box, points)
+    assert isinstance(codes, bytes) and list(codes) == [1, 0, 2, 0]
+    assert model.classify_points(box, flat) == codes
+    assert model.classify_points(box, bytearray(flat)) == codes
+    assert model.classify_points(box, memoryview(flat)) == codes
+
+
+def test_the_positions_of_a_body_are_all_on_it():
+    model = arris.Model()
+    cylinder, _ = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 2, 5)
+    mesh = model.tessellate(cylinder, 0.1)
+    codes = model.classify_points(cylinder, mesh.positions)
+    assert len(codes) == mesh.n_positions
+    assert set(codes) == {2}
+
+
+def test_classify_points_takes_numpy_points_as_bytes():
+    numpy = pytest.importorskip("numpy")
+    model = arris.Model()
+    box, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+    points = numpy.array([[1, 1, 1], [3, 1, 1], [2, 1, 1]], dtype=float)
+    codes = model.classify_points(box, points.astype("<f8").tobytes())
+    assert numpy.frombuffer(codes, dtype="i1").tolist() == [1, 0, 2]
+
+
+def test_classify_points_refuses_a_bad_length_a_nan_and_a_budget():
+    model, other = arris.Model(), arris.Model()
+    box, _ = model.primitive_box((0, 0, 0), (2, 2, 2))
+    with pytest.raises(ValueError):
+        model.classify_points(box, bytes(23))
+    with pytest.raises(arris.OpDegenerateError):
+        model.classify_points(box, [(float("nan"), 0, 0)])
+    with pytest.raises(arris.Interrupted):
+        model.classify_points(box, [(1, 1, 1)] * 3, budget=1)
+    with pytest.raises(arris.ForeignHandleError):
+        other.classify_points(box, [(1, 1, 1)])

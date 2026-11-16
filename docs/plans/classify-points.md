@@ -68,7 +68,9 @@ fixture's body take at most 0.15 s in release.
   - The result is one `int8` per point: `0` outside, `1` inside, `2` on,
     `3` undecided. `numpy.frombuffer(out, dtype="i1")` reads it.
   - `ValueError` for a byte length that is not a multiple of 24.
-  - `OpInvalidInputError` for a non-finite point, `Interrupted` at the
+  - `OpDegenerateError` for a non-finite point, as `distance` gives it:
+    the kernel's `Reason::Input(NonFinite)` maps to that class, not to
+    `OpInvalidInputError` (step 4 corrects this). `Interrupted` at the
     budget or cancel. Both classes already exist.
   - The stub goes in `_arris.pyi`, with a docstring example.
 - **`arris-debug`:** `corpus::stages::probe_stage` classifies a fixture's
@@ -108,13 +110,13 @@ bound has to be established here.
 - [x] Step 3 **[1]** — `probe_stage` goes through `classify_points` (one
   call per fixture). `None` becomes a probe failure that says "undecided".
   The corpus's probe stage passes unchanged over every area.
-- [ ] Step 4 **[1]** — `Model.classify_points` in `arris-py`, with its stub
+- [x] Step 4 **[1]** — `Model.classify_points` in `arris-py`, with its stub
   and docstring example. Tests in `tests/test_queries.py`:
   - a box and a cylinder, giving the codes `0/1/2`;
   - sequence and bytes inputs giving equal bytes;
   - `Mesh.positions` of the body itself, all `2`;
   - a numpy round trip, skipped without numpy;
-  - `ValueError` for 23 bytes, `OpInvalidInputError` for NaN,
+  - `ValueError` for 23 bytes, `OpDegenerateError` for NaN,
     `Interrupted` at `budget=1` with three points.
 
   `tools/py-test.sh tests/test_queries.py tests/test_stubs.py` passes. The

@@ -728,6 +728,14 @@ class Model:
         cancel: Cancel | None = None,
         budget: int | None = None,
     ) -> list[Clash]: ...
+    def classify_points(
+        self,
+        body: Body,
+        points: Sequence[_Point3] | bytes | bytearray | memoryview,
+        *,
+        cancel: Cancel | None = None,
+        budget: int | None = None,
+    ) -> bytes: ...
     def check(self, body: Body, level: str = "fast") -> Report: ...
     def tessellate(
         self, body: Body, chord: float, *, cancel: Cancel | None = None, budget: int | None = None
