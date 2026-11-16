@@ -2104,6 +2104,11 @@ corpus_tests! {
     /// Three boxes in an L on one plane fused as a chain: the same cause as
     /// the cylinders'.
     boolean_chained_fuse_coplanar_boxes_l => run "boolean/chained-fuse-coplanar-boxes-l";
+    /// Two coaxial cylinders of one radius and a box across them, fused in one
+    /// call: the low cylinder's top rim, imaged on the slab's top and the tall
+    /// wall, is that edge along its last block too, which ends at the rim's
+    /// own vertex, never a section edge beside it.
+    boolean_fuse_many_coaxial_cylinders_and_box => run "boolean/fuse-many-coaxial-cylinders-and-box";
     /// A cylinder cut by three slots through its axis, 60 degrees apart, one
     /// cut each: the third slot's floor is coincident with the pieces the
     /// second one split. Genus 5.
@@ -2142,10 +2147,10 @@ corpus_tests! {
     /// and the n-ary call build, the chain's last step is refused.
     #[ignore = "OpError::Unsupported: plane against line at the chain's last step, where the n-ary call builds (plans/flat-edge-read-as-tangent-contact step 6)"]
     regression_chained_fuse_three_boxes_and_cylinder_unsupported => run "regression/chained-fuse-three-boxes-and-cylinder-unsupported";
-    /// Two coaxial cylinders of one radius and a box across them, fused in one
-    /// call: the arrangement meets one curve twice and says so.
-    #[ignore = "Fault::Invariant: one curve entered twice on a face, where the chain of fuses builds (plans/flat-edge-read-as-tangent-contact step 6)"]
-    regression_fuse_many_coaxial_cylinders_and_box_curve_entered_twice => run "regression/fuse-many-coaxial-cylinders-and-box-curve-entered-twice";
+    /// Three boxes on one plane fused in one call, two of them with one top
+    /// plane and the third's wall across both: every pair and the chain build.
+    #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (plans/flat-edge-read-as-tangent-contact step 8)"]
+    regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
     /// A box against itself split by a plane and fused back: overlap 4, each
     /// inside the other.
     #[ignore = "Fault::Builder Closure EdgeUses: the common's builder meets an edge used by no coedge, for any box split across and fused back (plans/flat-edge-read-as-tangent-contact step 6)"]

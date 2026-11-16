@@ -8,7 +8,7 @@ use arris_math::{
 };
 use arris_topo::{EdgeId, FaceId};
 
-use arris_check::domain::bands;
+use arris_check::domain::{bands, shifts};
 
 use super::{Along, Block, Build, End, VertexBuild, geometry, samples, tolerance_of};
 use crate::boolean::faces::{EdgeInfo, FaceInfo};
@@ -677,7 +677,7 @@ impl<'m, 'c> Build<'m, 'c> {
                     e.curve.project(p).is_ok_and(|on| {
                         on.distance <= within
                             && e.in_range(on.t)
-                                .is_some_and(|t| Self::within_block(e, block.range, t))
+                                .is_some_and(|t| Self::within_period_of_block(e, block.range, t))
                     })
                 })
         })
@@ -804,6 +804,15 @@ impl<'m, 'c> Build<'m, 'c> {
             0.0
         };
         t >= range.lo() - slack && t <= range.hi() + slack
+    }
+
+    /// [`Self::within_block`] for `t` or a period from it: on a closed
+    /// edge the point where it closes is both ends of its range, and a
+    /// projection names it at the start whatever block it ends. A low
+    /// cylinder's top rim, crossed by a box's wall, ends its last block
+    /// at its own vertex, which the rim's projection reads as `t` = 0.
+    fn within_period_of_block(e: &EdgeInfo<'m>, range: Interval, t: f64) -> bool {
+        shifts(e.curve.period()).any(|d| Self::within_block(e, range, t + d))
     }
 
     /// A kept block as a section edge: the pcurve on each face, placed

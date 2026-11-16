@@ -75,11 +75,10 @@ fn chain(m: &mut Model, bodies: &[Body]) -> Made {
 /// Ignored: at 1000 cases it finds what the fixtures
 /// `regression/two-boxes-on-one-plane-fuse-unsupported`,
 /// `regression/chained-fuse-three-boxes-and-cylinder-unsupported` and
-/// `regression/fuse-many-coaxial-cylinders-and-box-curve-entered-twice` hold
-/// (it passes at 16). The fix of the last of them turns this into
-/// `prop_shards!` shards, as the first two do.
+/// `regression/fuse-many-three-boxes-plane-against-plane-unsupported` hold
+/// (it passes at 16). Their fix turns this into `prop_shards!` shards.
 #[test]
-#[ignore = "finds regression/two-boxes-on-one-plane-fuse-unsupported, chained-fuse-three-boxes-and-cylinder-unsupported and fuse-many-coaxial-cylinders-and-box-curve-entered-twice"]
+#[ignore = "finds regression/two-boxes-on-one-plane-fuse-unsupported, chained-fuse-three-boxes-and-cylinder-unsupported and fuse-many-three-boxes-plane-against-plane-unsupported"]
 fn the_chained_fuse_on_a_shared_plane_is_fuse_many() {
     prop::check(prop::body::standing(), |case| {
         let mut m = Model::default();

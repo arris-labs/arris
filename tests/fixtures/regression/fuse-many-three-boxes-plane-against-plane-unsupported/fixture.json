@@ -1,0 +1,105 @@
+{
+  "description": "three boxes standing on the plane z = 0, two 1 high and one 2.598 high, their footprints overlapping (the shrunk draw of the chained-fuse property at 1000 cases once plans/flat-edge-read-as-tangent-contact step 8 fixed the draw it stopped at first; the refusal is there before that fix too). The tops of the two low boxes are the one plane z = 1, and the tall box's wall y = -1.947 crosses both. Every pair fuses and so does the chain; the n-ary call refuses, plane against plane Unsupported, the first box's top against the tall box's wall, two planes at a right angle. Open CASCADE builds it. The desired answer is the union",
+  "steps": [
+    {
+      "name": "a",
+      "op": "box",
+      "min": [
+        -1.9557988561251234,
+        -3.4263163236905747,
+        0
+      ],
+      "max": [
+        0.044201143874876725,
+        1.6145369798378661,
+        1.0
+      ]
+    },
+    {
+      "name": "b",
+      "op": "box",
+      "min": [
+        -2.3731118717249364,
+        -3.801646835830868,
+        0
+      ],
+      "max": [
+        2.3731118717249364,
+        -1.1402023590289798,
+        1.0
+      ]
+    },
+    {
+      "name": "c",
+      "op": "box",
+      "min": [
+        -1.682190272809151,
+        -1.9471815832401569,
+        0
+      ],
+      "max": [
+        2.964592449178981,
+        1.9471815832401569,
+        2.597805722962964
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "bodies": [
+        "a",
+        "b",
+        "c"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [
+    {
+      "label": "in_a_only",
+      "point": [
+        -1.8,
+        1.0,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_b_only",
+      "point": [
+        -2.2,
+        -3.6,
+        0.5
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "in_c_above",
+      "point": [
+        1.0,
+        0.0,
+        2.0
+      ],
+      "expect": "in"
+    },
+    {
+      "label": "above_a",
+      "point": [
+        -1.8,
+        1.0,
+        1.5
+      ],
+      "expect": "out"
+    },
+    {
+      "label": "above_c",
+      "point": [
+        1.0,
+        0.0,
+        2.7
+      ],
+      "expect": "out"
+    }
+  ],
+  "analytic": {}
+}

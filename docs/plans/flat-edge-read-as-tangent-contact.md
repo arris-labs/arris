@@ -124,11 +124,16 @@ bound is established here.
   cylinders' chain, three slots, the interference of the box against its
   halves, and `cut` with a bore and a counterbore. Each matches its closed
   form.
-- [ ] Step 8 **[3]** — `fuse-many-coaxial-cylinders-and-box-curve-entered-twice`
+- [x] Step 8 **[3]** — `fuse-many-coaxial-cylinders-and-box-curve-entered-twice`
   (found by step 6): `fuse_many` of two coaxial cylinders of one radius and
   a box reaches step 5's guard where the chain builds. Find which image or
   section enters the curve twice, fix it as steps 2–4 did, and move the
-  fixture to `boolean/` green.
+  fixture to `boolean/` green. It was `along_third` missing the low
+  cylinder's top rim along the slab-top × tall-wall circle's last block:
+  that block ends at the rim's own vertex, which a projection names at
+  t = 0, so `piece_along` read it as off the block. A closed edge's point
+  is now within a block a period from its projection
+  (`boolean/fuse-many-coaxial-cylinders-and-box`).
 - [ ] Step 9 **[3]** — `interference-box-against-its-split-and-fused-sides`
   (found by step 6): a box split by a plane and fused back fails
   `interference` against the original with `Builder Closure EdgeUses`.
@@ -182,7 +187,12 @@ bound is established here.
   inside this plan's domain (the guard fires on a coincident cylinder wall;
   a split-and-fused body breaks the common). The acceptance's "passes at
   1000 cases in CI" waits on their fixes; `docs/BACKLOG.md` §Findings
-  holds them. Not weakened: the draws exclude tangency (the tangency-faults
+  holds them. Step 8 fixed the third (`boolean/fuse-many-coaxial-cylinders-and-box`);
+  the chain property at 1000 cases then stops at a fifth, outside this
+  plan's domain like the first two:
+  `regression/fuse-many-three-boxes-plane-against-plane-unsupported`
+  (plane against plane `Unsupported` in the n-ary call, before step 8
+  too), so it stays ignored. Not weakened: the draws exclude tangency (the tangency-faults
   idea's) and poses (the tolerance band's).
 - Settled (conductor, after step 6): faults 3 and 4 are this plan's and
   get steps 8 and 9. Faults 1 and 2 (plane against line `Unsupported`) are

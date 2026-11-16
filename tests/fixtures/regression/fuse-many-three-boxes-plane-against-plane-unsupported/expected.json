@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "e8e661b27224f9e1b3d98fcc20ec553cab034b2ce4d8de58d2e1c55824a25fbb",
+  "results": {
+    "default": {
+      "area": 105.8857414268477,
+      "centroid": [
+        0.48389282147405294,
+        -0.4548332935408927,
+        1.1574674363119535
+      ],
+      "counts": {
+        "edges": 53,
+        "faces": 21,
+        "loops": 21,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 34
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          157.3113603446566,
+          -13.992394758980625,
+          -5.908007072896101
+        ],
+        [
+          -13.992394758980625,
+          144.47062942592024,
+          -17.08211762429056
+        ],
+        [
+          -5.908007072896101,
+          -17.08211762429056,
+          236.59687093394706
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 53,
+        "faces": 21,
+        "loops": 21,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 34
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in_a_only",
+          "point": [
+            -1.8,
+            1.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_b_only",
+          "point": [
+            -2.2,
+            -3.6,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_c_above",
+          "point": [
+            1.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_a",
+          "point": [
+            -1.8,
+            1.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_c",
+          "point": [
+            1.0,
+            0.0,
+            2.7
+          ]
+        }
+      ],
+      "volume": 57.12355314580623
+    }
+  }
+}
