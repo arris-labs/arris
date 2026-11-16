@@ -2040,8 +2040,40 @@ fn operands_that_share_entities_build_with_their_own_ids() {
             "{name}: not clean at Full"
         );
         audit(&m, &[a, b], r, &p).unwrap_or_else(|e| panic!("{name}: {e}"));
+        // A shared entity the result holds by id is kept: the copy's
+        // reading of it is no record of it.
+        let (ca, cb, cr) = (
+            m.closure(a).unwrap(),
+            m.closure(b).unwrap(),
+            m.closure(r).unwrap(),
+        );
+        let shared: Vec<Shape> = (ca.vertices.iter())
+            .filter(|v| cb.vertices.contains(v) && cr.vertices.contains(v))
+            .map(|&v| Shape::new(v, Orientation::Forward))
+            .chain(
+                (ca.edges.iter())
+                    .filter(|e| cb.edges.contains(e) && cr.edges.contains(e))
+                    .map(|&e| Shape::new(e, Orientation::Forward)),
+            )
+            .chain(
+                (ca.faces.iter())
+                    .filter(|f| cb.faces.contains(f) && cr.faces.contains(f))
+                    .map(|&f| Shape::new(f, Orientation::Forward)),
+            )
+            .collect();
+        for s in shared {
+            assert!(p.is_kept(s, &m, r), "{name}: shared {s:?} not kept");
+        }
         let v = mass_properties(&m, r).unwrap().volume;
         assert!((v - volume).abs() < 1e-9 * volume, "{name}: volume {v}");
+        // The copy the boolean ran on is discarded: its body's slot,
+        // below the result's, is the next one a body takes.
+        let (next, _) =
+            primitive_box(&mut m, Point3::origin(), Point3::new(1.0, 1.0, 1.0)).unwrap();
+        assert!(
+            next.id.index() < r.id.index(),
+            "{name}: the copy was left in the model"
+        );
     }
     // A refusal names the caller's bodies, not the copy it was decomposed
     // on.

@@ -156,13 +156,19 @@ fn halved() -> impl Strategy<Value = Halved> {
         })
 }
 
-/// A box split by a plane and its sides fused back is the same solid:
-/// `interference` with the whole box answers its volume, each inside the
-/// other. The fused body keeps the box's untouched faces by id, so the two
-/// operands share entities (`query/interference-box-against-its-split-and-fused-sides`).
+/// A box split by a plane and its two sides fused back is the same solid:
+/// `interference` of the box against the fused body, both ways, answers
+/// the box's volume, each inside the other. The fused body keeps the box's
+/// untouched faces by id, so the two operands share entities
+/// (`query/interference-box-against-its-split-and-fused-sides`). A draw
+/// whose split or fuse is refused by name asks no `interference`; at
+/// least half the draws must reach it.
 #[test]
-fn a_box_against_itself_split_another_way_overlaps_in_its_volume() {
+fn a_box_split_and_fused_back_overlaps_the_box_in_its_volume() {
+    use std::cell::Cell;
+    let (drawn, asked) = (Cell::new(0_usize), Cell::new(0_usize));
     prop::check(halved(), |case| {
+        drawn.set(drawn.get() + 1);
         let mut m = Model::default();
         let e = case.extent;
         let (whole, _) =
@@ -186,6 +192,7 @@ fn a_box_against_itself_split_another_way_overlaps_in_its_volume() {
         else {
             return Ok(());
         };
+        asked.set(asked.get() + 1);
         let volume = mass_properties(&m, whole).map_err(fail)?.volume;
         for (name, a, b) in [
             ("whole against back", whole, back),
@@ -212,6 +219,12 @@ fn a_box_against_itself_split_another_way_overlaps_in_its_volume() {
         }
         Ok(())
     });
+    assert!(
+        2 * asked.get() >= drawn.get(),
+        "{} of {} draws reached interference",
+        asked.get(),
+        drawn.get()
+    );
 }
 
 /// The draws build clean bodies, none has a wall tangent to another, and

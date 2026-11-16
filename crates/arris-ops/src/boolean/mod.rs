@@ -660,8 +660,10 @@ pub fn interferences_many(
 /// and fused back do: the tool is then decomposed as its copy, so an
 /// entity of it the result keeps is `Modified` from the tool's own, and a
 /// shared entity the result keeps by id is the target's, untouched
-/// (`docs/DATA-MODEL.md` §Provenance). Every boolean reads shared
-/// operands so.
+/// (`docs/DATA-MODEL.md` §Provenance). [`fuse`], [`common`], their n-ary
+/// forms and the `interference` query read shared operands so;
+/// [`interferences`] and [`interferences_many`] decompose the operands as
+/// given, and two that share a face fault there (`docs/BACKLOG.md`).
 ///
 /// A face of the target coincident with a face of the tool is the
 /// flush case, a named one: the two faces' edges split each other on
@@ -892,7 +894,9 @@ fn many(
         let made = pave::build(m, &apart.operands, &mut meter)
             .and_then(|i| result::boolean(m, &i, op, &mut meter))
             .and_then(|(body, made)| Ok((body, apart.restore(m, body, made)?)));
-        made.map_err(|e| apart.error(e))
+        let (body, made) = made.map_err(|e| apart.error(e))?;
+        apart.discard(m, body, operands)?;
+        Ok((body, made))
     })
 }
 
@@ -1010,7 +1014,9 @@ pub fn common(
         let made = pave::build(m, &apart.operands, &mut meter)
             .and_then(|i| result::boolean(m, &i, result::Op::Common, &mut meter))
             .and_then(|(body, made)| Ok((body, apart.restore(m, body, made)?)));
-        made.map_err(|e| apart.error(e))
+        let (body, made) = made.map_err(|e| apart.error(e))?;
+        apart.discard(m, body, &[a, b])?;
+        Ok((body, made))
     })
 }
 
@@ -1040,8 +1046,9 @@ pub(crate) fn common_probe(
     crate::verify_solid(m, a)?;
     crate::verify_solid(m, b)?;
     // The caller's model is a scratch copy and the record is not kept, so
-    // the copy `apart` appends needs no transaction and no restore; an
-    // error still names the caller's entities.
+    // the copy `apart` appends needs no transaction, no restore and no
+    // discard (the probe's pave model names it, and the scratch model is
+    // dropped with it); an error still names the caller's entities.
     let apart = shared::apart(m, &[a, b], control)?;
     let mut meter = Meter::new(control);
     let i = pave::build(m, &apart.operands, &mut meter).map_err(|e| apart.error(e))?;

@@ -2391,18 +2391,20 @@ faces of its pair, and a triple point's vertex — where a section of two
 operands crosses a face of a third — from the three faces. Split order runs
 operands in the caller's order and then as above, so the ids are a function
 of the tool order while the geometry (volume, area, counts) is not; an
-entity no tool touched keeps its id (`is_kept`). A tool that misses the
-target is `Deleted` whole.
+entity no tool touched keeps its id (`is_kept`), except in an operand
+copied because it shares entities with an earlier one (below). A tool that
+misses the target is `Deleted` whole.
 
 **Operands that share entities** (one body split from the other and fused
-back) are decomposed with the later one copied (architecture §Operations),
-and the record is written against the caller's ids: an origin in the copy
-is its original; an entity of the copy the result keeps is `Modified` from
-its original, which the result no longer holds by id; a shared entity is
-one input, so when the result keeps it by id (the earlier operand's,
-untouched) what the copy's reading made of it is `Generated` from it and
-it is not `Deleted`, and otherwise the pieces of both readings are its
-pieces, `Deleted` only when neither left one.
+back) are decomposed with the later one copied (architecture §Operations,
+ADR-0087), and the record is written against the caller's ids: an origin in
+the copy is its original; an entity of the copy the result keeps is
+`Modified` from its original, which the result no longer holds by id — the
+one case where an untouched entity does not keep its id. A shared entity is
+one input: when the result keeps it by id (the earlier operand's,
+untouched) it is kept with no record (`is_kept`), the copy's reading of it
+dropped as the stand-in it was; otherwise the pieces of both readings are
+its pieces, `Deleted` only when neither left one.
 
 ## Native format
 

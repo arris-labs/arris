@@ -6,7 +6,8 @@
 //! operand's, so an operand that shares one with an earlier operand is
 //! copied first, entity for entity on the same geometry, and the boolean
 //! runs on the copy. Its record is then written back against the
-//! operands' own ids ([`Apart::restore`]).
+//! operands' own ids ([`Apart::restore`]), and on success the copy is
+//! discarded ([`Apart::discard`], ADR-0087).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -28,6 +29,8 @@ pub(super) struct Apart {
     /// The entities an operand shares with an earlier one: one input
     /// entity, read by the boolean once per operand.
     shared: BTreeSet<EntityId>,
+    /// The copies among [`Apart::operands`], in the caller's order.
+    copies: Vec<Body>,
 }
 
 /// Every vertex, edge, face, shell and the body of `body`.
@@ -58,6 +61,7 @@ pub(super) fn apart(
         operands: Vec::with_capacity(operands.len()),
         original: BTreeMap::new(),
         shared: BTreeSet::new(),
+        copies: Vec::new(),
     };
     for &body in operands {
         let own = entities(m, body)?;
@@ -75,10 +79,12 @@ pub(super) fn apart(
                 }
             }
             out.shared.extend(common);
-            out.operands.push(Body {
+            let copy = Body {
                 id: copy.id,
                 orientation: body.orientation,
-            });
+            };
+            out.copies.push(copy);
+            out.operands.push(copy);
         }
         seen.extend(own);
     }
@@ -86,6 +92,27 @@ pub(super) fn apart(
 }
 
 impl Apart {
+    /// Frees each copy's entities that `result` and `operands` do not
+    /// reach, once the boolean has succeeded: the copy was the boolean's
+    /// scratch, as `split`'s box beyond the plane is (ADR-0051,
+    /// [`Model::discard`]), so the caller's model holds no body it did not
+    /// ask for. The copy's geometry is its original's, which `operands`
+    /// keep. Nothing is freed when no operand was copied.
+    pub(super) fn discard(
+        &self,
+        m: &mut Model,
+        result: Body,
+        operands: &[Body],
+    ) -> Result<(), OpError> {
+        let mut keep: Vec<Body> = Vec::with_capacity(operands.len() + 1);
+        keep.push(result);
+        keep.extend_from_slice(operands);
+        for &copy in &self.copies {
+            m.discard(copy, &keep)?;
+        }
+        Ok(())
+    }
+
     /// `true` when no operand was copied: the boolean's record is already
     /// written against the operands.
     fn untouched(&self) -> bool {
@@ -101,8 +128,8 @@ impl Apart {
     }
 
     /// `e` naming the caller's operands: an entity of a copy in a refusal
-    /// is its original, since the copy is rolled back with the boolean.
-    /// A kernel fault keeps the ids it was raised on.
+    /// or an invalid input is its original, since the copy is rolled back
+    /// with the boolean. A kernel fault keeps the ids it was raised on.
     pub(super) fn error(&self, e: OpError) -> OpError {
         match e {
             OpError::Unsupported { a, b } => OpError::Unsupported {
@@ -117,7 +144,32 @@ impl Apart {
                 entity: self.back(entity),
                 wanted,
             },
-            other => other,
+            OpError::InvalidInput { body, report } => {
+                let back = self.back(Shape::new(body.id, body.orientation));
+                match back.id {
+                    EntityId::Body(id) => OpError::InvalidInput {
+                        body: Body {
+                            id,
+                            orientation: body.orientation,
+                        },
+                        report,
+                    },
+                    EntityId::Vertex(_)
+                    | EntityId::Edge(_)
+                    | EntityId::Face(_)
+                    | EntityId::Shell(_) => OpError::InvalidInput { body, report },
+                }
+            }
+            // A kernel fault and an id that does not resolve keep the ids
+            // they were raised on; the rest name no entity of an operand.
+            e @ (OpError::Internal(_)
+            | OpError::NotFound(_)
+            | OpError::Profile(_)
+            | OpError::Path(_)
+            | OpError::Loft(_)
+            | OpError::Unkeyed { .. }
+            | OpError::Rejected(_)
+            | OpError::Interrupted(_)) => e,
         }
     }
 
@@ -127,10 +179,12 @@ impl Apart {
     /// original. A copy's entity kept in the result is `Modified` from
     /// its original, which the result no longer holds by id. A shared
     /// entity is one input read twice: when the result keeps it by id
-    /// (the earlier operand's, untouched), what the boolean made of the
-    /// copy is `Generated` from it and it is not deleted; otherwise its
-    /// pieces from both readings are its pieces, and it is deleted only
-    /// when neither reading left one.
+    /// (the earlier operand's, untouched), it is kept with no record
+    /// (`is_kept`): the copy's reading of it stood in for it and is
+    /// dropped, and a piece of that reading other than the entity itself
+    /// is an invariant fault (it would cover what the kept entity covers).
+    /// Otherwise its pieces from both readings are its pieces, and it is
+    /// deleted only when neither reading left one (ADR-0087).
     pub(super) fn restore(
         &self,
         m: &Model,
@@ -153,18 +207,28 @@ impl Apart {
                 ),
                 Origin::Role(r) => (Origin::Role(r), false),
             };
-            for &y in made.generated_from(origin) {
-                out.add_generated(back, y);
-            }
-            let generated_instead = match back {
-                Origin::Entity(s) => from_copy && kept_shared(s.id),
-                Origin::Role(_) => false,
+            // The copy's reading of a shared entity the result keeps by id:
+            // the copy's entity stood in for it (the flush case's one edge
+            // of the result, the earlier operand's), so the entity is kept,
+            // with no record (`is_kept`).
+            let kept = match back {
+                Origin::Entity(s) if from_copy && kept_shared(s.id) => Some(s.id),
+                Origin::Entity(_) | Origin::Role(_) => None,
             };
-            for &y in made.modified_from(origin) {
-                if generated_instead {
+            for &y in made.generated_from(origin) {
+                if kept != Some(y.id) {
                     out.add_generated(back, y);
-                } else {
-                    out.add_modified(back, y);
+                }
+            }
+            for &y in made.modified_from(origin) {
+                match kept {
+                    Some(id) if id == y.id => {}
+                    Some(_) => {
+                        return Err(OpError::Internal(crate::Fault::Invariant {
+                            what: "a shared entity kept by id as the only piece of its copy",
+                        }));
+                    }
+                    None => out.add_modified(back, y),
                 }
             }
         }

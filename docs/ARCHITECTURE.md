@@ -795,9 +795,10 @@ the model and reading `arris_check::lumps` of that body, so the order is
 B1's own; a split target, a disjoint `fuse` and a cavity are each one
 solid. The shells are then assembled through
 `Builder::assemble` with every untouched entity of a kept-by-id operand
-`Keep`: a face whose loops changed at all, even only by a split edge or
-a re-tolerated vertex, is a new face `Modified` from the old; the tool
-of a `cut` keeps nothing, every entity of it `Deleted` and each
+`Keep` (for an operand copied because it shares entities, the copy's, so
+not the caller's ids: below): a face whose loops changed at all, even
+only by a split edge or a re-tolerated vertex, is a new face `Modified`
+from the old; the tool of a `cut` keeps nothing, every entity of it `Deleted` and each
 surviving piece `Generated` from its parent (data-model §Provenance).
 A `fuse` and a `common` have no tool: both operands are kept by id, so
 an untouched face of either keeps it, and the result's body is `Modified`
@@ -814,8 +815,13 @@ entity as one operand's, so `boolean/shared.rs` replaces an operand that
 shares any vertex, edge, face or shell with an earlier operand by its copy
 (`transform`'s `copy_body` on the same geometry) inside the boolean's
 transaction, and writes the result's record and a refusal's entities back
-against the caller's ids (data-model §Provenance). Operands that share
-nothing are read as given.
+against the caller's ids (data-model §Provenance, ADR-0087). An untouched
+entity of the copied operand that the result keeps is therefore a new id,
+`Modified` from the caller's: the one exception to "an untouched entity
+keeps its id". Once the boolean succeeds the copy's entities the result
+does not reach are discarded (`Model::discard`). Operands that share
+nothing are read as given. `interferences` and `interferences_many` read
+every operand as given.
 
 The keep-by-id assembly and the provenance writer above are
 `arris-ops`'s own `rebuild` module (ADR-0004), not the boolean's: a
