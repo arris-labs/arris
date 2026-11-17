@@ -538,20 +538,20 @@ CoaxialBore Tilt cut -4: flush
 CoaxialBore Tilt cut +4: flush
 CoaxialBore Tilt cut -16: flush
 CoaxialBore Tilt cut +16: flush
-TangentCylinders Offset fuse +0: refused TangentContact
+TangentCylinders Offset fuse +0: body
 TangentCylinders Offset fuse -0.25: flush
 TangentCylinders Offset fuse +0.25: flush
 TangentCylinders Offset fuse -0.5: flush
 TangentCylinders Offset fuse +0.5: flush
 TangentCylinders Offset fuse -1: flush
 TangentCylinders Offset fuse +1: INTERNAL Split(Dangling)
-TangentCylinders Offset fuse -1.5: generic
+TangentCylinders Offset fuse -1.5: flush
 TangentCylinders Offset fuse +1.5: INTERNAL Split(Dangling)
-TangentCylinders Offset fuse -2: generic
+TangentCylinders Offset fuse -2: flush
 TangentCylinders Offset fuse +2: generic
-TangentCylinders Offset fuse -4: generic
+TangentCylinders Offset fuse -4: flush
 TangentCylinders Offset fuse +4: generic
-TangentCylinders Offset fuse -16: generic
+TangentCylinders Offset fuse -16: flush
 TangentCylinders Offset fuse +16: generic
 TangentCylinders Offset common +0: refused Empty
 TangentCylinders Offset common -0.25: flush
@@ -583,13 +583,13 @@ TangentCylinders Offset cut -4: flush
 TangentCylinders Offset cut +4: generic
 TangentCylinders Offset cut -16: flush
 TangentCylinders Offset cut +16: generic
-TangentCylinders Tilt fuse +0: refused TangentContact
-TangentCylinders Tilt fuse -0.25: generic
-TangentCylinders Tilt fuse +0.25: generic
-TangentCylinders Tilt fuse -0.5: generic
-TangentCylinders Tilt fuse +0.5: generic
+TangentCylinders Tilt fuse +0: body
+TangentCylinders Tilt fuse -0.25: flush
+TangentCylinders Tilt fuse +0.25: flush
+TangentCylinders Tilt fuse -0.5: flush
+TangentCylinders Tilt fuse +0.5: flush
 TangentCylinders Tilt fuse -1: generic
-TangentCylinders Tilt fuse +1: generic
+TangentCylinders Tilt fuse +1: flush
 TangentCylinders Tilt fuse -1.5: INTERNAL Lumps(Nesting
 TangentCylinders Tilt fuse +1.5: INTERNAL Lumps(Nesting
 TangentCylinders Tilt fuse -2: INTERNAL Split(Dangling)
@@ -628,20 +628,20 @@ TangentCylinders Tilt cut -4: INTERNAL Split(Dangling)
 TangentCylinders Tilt cut +4: INTERNAL Split(Dangling)
 TangentCylinders Tilt cut -16: INTERNAL Split(Dangling)
 TangentCylinders Tilt cut +16: INTERNAL Split(Dangling)
-TangentCylinders Radius fuse +0: refused TangentContact
+TangentCylinders Radius fuse +0: body
 TangentCylinders Radius fuse -0.25: flush
 TangentCylinders Radius fuse +0.25: flush
 TangentCylinders Radius fuse -0.5: flush
 TangentCylinders Radius fuse +0.5: flush
 TangentCylinders Radius fuse -1: flush
 TangentCylinders Radius fuse +1: INTERNAL Split(Dangling)
-TangentCylinders Radius fuse -1.5: generic
+TangentCylinders Radius fuse -1.5: flush
 TangentCylinders Radius fuse +1.5: INTERNAL Split(Dangling)
-TangentCylinders Radius fuse -2: generic
+TangentCylinders Radius fuse -2: flush
 TangentCylinders Radius fuse +2: generic
-TangentCylinders Radius fuse -4: generic
+TangentCylinders Radius fuse -4: flush
 TangentCylinders Radius fuse +4: generic
-TangentCylinders Radius fuse -16: generic
+TangentCylinders Radius fuse -16: flush
 TangentCylinders Radius fuse +16: generic
 TangentCylinders Radius common +0: refused Empty
 TangentCylinders Radius common -0.25: flush
@@ -808,20 +808,20 @@ TangentHole Radius cut -4: generic
 TangentHole Radius cut +4: generic
 TangentHole Radius cut -16: generic
 TangentHole Radius cut +16: generic
-TangentOutside Offset fuse +0: refused TangentContact
+TangentOutside Offset fuse +0: body
 TangentOutside Offset fuse -0.25: flush
 TangentOutside Offset fuse +0.25: flush
 TangentOutside Offset fuse -0.5: flush
 TangentOutside Offset fuse +0.5: flush
-TangentOutside Offset fuse -1: generic
+TangentOutside Offset fuse -1: flush
 TangentOutside Offset fuse +1: INTERNAL Split(NoInterior)
-TangentOutside Offset fuse -1.5: generic
+TangentOutside Offset fuse -1.5: flush
 TangentOutside Offset fuse +1.5: INTERNAL Split(NoInterior)
-TangentOutside Offset fuse -2: generic
+TangentOutside Offset fuse -2: flush
 TangentOutside Offset fuse +2: INTERNAL Split(NoInterior)
-TangentOutside Offset fuse -4: generic
+TangentOutside Offset fuse -4: flush
 TangentOutside Offset fuse +4: generic
-TangentOutside Offset fuse -16: generic
+TangentOutside Offset fuse -16: flush
 TangentOutside Offset fuse +16: generic
 TangentOutside Offset common +0: refused Empty
 TangentOutside Offset common -0.25: flush
@@ -853,7 +853,7 @@ TangentOutside Offset cut -4: flush
 TangentOutside Offset cut +4: generic
 TangentOutside Offset cut -16: flush
 TangentOutside Offset cut +16: generic
-TangentOutside Tilt fuse +0: refused TangentContact
+TangentOutside Tilt fuse +0: body
 TangentOutside Tilt fuse -0.25: INTERNAL Geometry(fit: the fit still deviates by)
 TangentOutside Tilt fuse +0.25: INTERNAL Geometry(fit: the fit still deviates by)
 TangentOutside Tilt fuse -0.5: generic
@@ -898,20 +898,20 @@ TangentOutside Tilt cut -4: generic
 TangentOutside Tilt cut +4: generic
 TangentOutside Tilt cut -16: generic
 TangentOutside Tilt cut +16: generic
-TangentOutside Radius fuse +0: refused TangentContact
+TangentOutside Radius fuse +0: body
 TangentOutside Radius fuse -0.25: flush
 TangentOutside Radius fuse +0.25: flush
 TangentOutside Radius fuse -0.5: flush
 TangentOutside Radius fuse +0.5: flush
 TangentOutside Radius fuse -1: flush
 TangentOutside Radius fuse +1: INTERNAL Split(NoInterior)
-TangentOutside Radius fuse -1.5: generic
+TangentOutside Radius fuse -1.5: flush
 TangentOutside Radius fuse +1.5: INTERNAL Split(NoInterior)
-TangentOutside Radius fuse -2: generic
+TangentOutside Radius fuse -2: flush
 TangentOutside Radius fuse +2: INTERNAL Split(NoInterior)
-TangentOutside Radius fuse -4: generic
+TangentOutside Radius fuse -4: flush
 TangentOutside Radius fuse +4: generic
-TangentOutside Radius fuse -16: generic
+TangentOutside Radius fuse -16: flush
 TangentOutside Radius fuse +16: generic
 TangentOutside Radius common +0: refused Empty
 TangentOutside Radius common -0.25: flush

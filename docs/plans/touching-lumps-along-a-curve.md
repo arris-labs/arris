@@ -113,7 +113,7 @@ here.
   a clean `Full` report and the box's faces by id. Remove the external
   touch exception in `coplanar_prop.rs` and keep the same-lump refusals
   in `multi_tool.rs`.
-- [ ] Step 5 **[2]** — Re-bless `tolerance_band.txt`. Each `fuse` outcome
+- [x] Step 5 **[2]** — Re-bless `tolerance_band.txt`. Each `fuse` outcome
   that flips from `TangentContact` is checked built, additive and
   checker-green. A flip to anything else is a finding, which becomes a
   regression fixture and a backlog line.
@@ -164,6 +164,9 @@ here.
   `TangentContact`; only two shells of different lumps are touching lumps.
   A face with pieces in a lump the other face's are in is refused too (the
   contact cannot be placed among them without a region test).
-- ⚠ OPEN 2 (agent, step 5): if `tolerance_band` flips more than a handful
-  of `FlushBoxes` outcomes, read whether they are true curve touches or
-  flush faces read as touches, before blessing them.
+- **Settled (step 5)**: the six `TangentContact` outcomes that build are
+  the exact `TangentCylinders` and `TangentOutside` contacts, each
+  repeated at zero perturbation for all three motions. Both build to
+  two lumps with additive volume and area and a clean `Full` report.
+  The 22 other changes are built outcomes whose counts now match the
+  exact contact. No `FlushBoxes` outcomes changed.

@@ -65,9 +65,9 @@
 //! numbers where it reproduces there and at the survey's where it does
 //! not; the report prints every failure as the recipe it came from.
 
-use arris_check::{Level, check};
+use arris_check::{Level, check, lumps};
 use arris_debug::prop::body::{BAND_STEPS, BandContact, BandMotion, BandPair};
-use arris_debug::testing::REL;
+use arris_debug::testing::{REL, close};
 use arris_debug::unmetered::mass_properties;
 use arris_debug::unmetered::{common, cut, fuse};
 use arris_debug::{dump, prop};
@@ -769,11 +769,10 @@ const DESIGNED: [&str; 6] = [
     "Tolerance",
 ];
 
-/// Whether a class is held: the flush body, another clean body, or a
+/// Whether a class is held: a clean body at or off the contact, or a
 /// designed refusal.
 fn is_held(class: &str) -> bool {
-    class == "flush"
-        || class == "generic"
+    matches!(class, "body" | "flush" | "generic")
         || class
             .strip_prefix("refused ")
             .is_some_and(|r| DESIGNED.contains(&r))
@@ -873,6 +872,46 @@ fn record_path() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/tolerance_band.txt")
 }
 
+/// The two exact curve touches in the band fuse to touching lumps
+/// (ADR-0088). At zero perturbation all three motions give the same pair.
+fn assert_curve_touch_fuses() {
+    for pair in fixture_pairs().into_iter().filter(|pair| {
+        pair.motion == BandMotion::Offset
+            && matches!(
+                pair.contact,
+                BandContact::TangentCylinders | BandContact::TangentOutside
+            )
+    }) {
+        let mut m = Model::default();
+        let (a, b) = pair.build(&mut m, 0.0).expect("the band operands");
+        let pa = mass_properties(&m, a).expect("the fixed operand measures");
+        let pb = mass_properties(&m, b).expect("the moving operand measures");
+        let (body, _) = fuse(&mut m, a, b).unwrap_or_else(|e| panic!("{:?}: {e}", pair.contact));
+        let report = check(&m, body, Level::Full);
+        assert!(
+            report.is_ok() && report.unchecked().is_empty(),
+            "{:?}: {report}",
+            pair.contact
+        );
+        assert_eq!(lumps(&m, body).expect("the result's lumps").len(), 2);
+        let p = mass_properties(&m, body).expect("the result measures");
+        let volume = pa.volume + pb.volume;
+        let area = pa.area + pb.area;
+        assert!(
+            close(p.volume, volume),
+            "{:?}: volume {} vs {volume}",
+            pair.contact,
+            p.volume
+        );
+        assert!(
+            close(p.area, area),
+            "{:?}: area {} vs {area}",
+            pair.contact,
+            p.area
+        );
+    }
+}
+
 /// Each contact at its fixture's own numbers, unposed, under every motion
 /// that moves it ([`fixture_pairs`]), off it by every step both ways —
 /// where the survey's failures were shrunk to — held to its record,
@@ -887,6 +926,7 @@ fn record_path() -> std::path::PathBuf {
 /// (ADR-0022).
 #[test]
 fn the_band_at_the_fixtures_numbers() {
+    assert_curve_touch_fuses();
     std::panic::set_hook(Box::new(|_| {}));
     let rows = at_the_fixtures_numbers();
     let _ = std::panic::take_hook();
