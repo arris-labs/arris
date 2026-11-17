@@ -83,9 +83,15 @@ impl Tally {
 }
 
 /// The named exclusion of the first property: the touching ruling within
-/// 0.01 rad of the seams but not on them, which faults for the angles up
-/// to about 0.003 (`regression/fuse-cylinder-tangent-inside-near-seam`).
-/// Lifted by its fix.
+/// 0.01 rad of the seams but not on them. Its faults are fixed
+/// ([`a_ruling_a_hair_off_the_seams_matches_its_closed_forms`]), and it
+/// keeps out two findings: where the inner seam crosses a cap one to about
+/// sixty tolerances inside the rim, at angles up to about 0.009 as the
+/// radii come together, the crescent's polygons cross near the touch and
+/// `Full` refuses L5 (`regression/fuse-cylinder-tangent-inside-seam-cusp`,
+/// docs/BACKLOG.md, a loop with a cusp at a coarse chord); and from 1e-12
+/// to 1e-7 the touch merged into the seam's vertex faults
+/// (`regression/fuse-cylinder-tangent-inside-seam-hair`).
 fn near_the_seam(case: &TangentInside) -> bool {
     let turn = case.angle.rem_euclid(core::f64::consts::TAU);
     let off = turn.min(core::f64::consts::TAU - turn);
@@ -115,6 +121,55 @@ fn a_cylinder_tangent_inside_another_matches_its_closed_forms() {
         Ok(())
     });
     tally.enough("tangent inside");
+}
+
+/// The fixture's cylinders, radius 0.3 tangent inside radius 1.5 and
+/// standing out of both its ends, with the touching ruling a hair off both
+/// seams on either side, where it faulted (plans/tangency-faults step 10):
+/// the inner seam's crossing of each cap on the rim within its tolerance
+/// (to about 5e-4 rad) or inside it past the polygons' band (from about
+/// 2e-3). `fuse`, `common` and both cuts are the closed forms or refused by
+/// a modelled reason.
+#[test]
+fn a_ruling_a_hair_off_the_seams_matches_its_closed_forms() {
+    let tally = Tally::default();
+    for angle in [1e-6, 1e-5, 1e-4, 3e-4, 5e-4, 2e-3, 3e-3, 5e-3] {
+        for angle in [angle, -angle] {
+            let case = TangentInside {
+                outer: 1.5,
+                inner: 0.3,
+                angle,
+                outer_z: (0.0, 1.0),
+                inner_z: (-1.0, 2.0),
+                pose: arris_math::Isometry::identity(),
+            };
+            let mut m = Model::default();
+            let (outer, inner) = case.build(&mut m).expect("two cylinders");
+            let (vo, vi, shared) = case.volumes();
+            let both = [outer, inner];
+            let at = |op: &str| format!("{op} at {angle:e} rad");
+            let r = fuse(&mut m, outer, inner);
+            let built = tally.settle(&m, &at("fuse"), &both, r, vo + vi - shared);
+            assert!(
+                built.expect("closed form or refusal"),
+                "{} refused",
+                at("fuse")
+            );
+            let r = common(&mut m, outer, inner);
+            tally
+                .settle(&m, &at("common"), &both, r, shared)
+                .expect("closed form or refusal");
+            let r = cut(&mut m, outer, inner);
+            tally
+                .settle(&m, &at("cut(outer, inner)"), &both, r, vo - shared)
+                .expect("closed form or refusal");
+            let r = cut(&mut m, inner, outer);
+            tally
+                .settle(&m, &at("cut(inner, outer)"), &both, r, vi - shared)
+                .expect("closed form or refusal");
+        }
+    }
+    tally.enough("a hair off the seams");
 }
 
 /// A bar with a boss tangent to an end, or to each end: the fuse, the chain

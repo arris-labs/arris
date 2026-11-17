@@ -265,6 +265,11 @@ corpus_tests! {
     /// crescent, one loop through the vertex where its rim touches the
     /// section circle, twice.
     boolean_fuse_cylinder_tangent_inside => run "boolean/fuse-cylinder-tangent-inside";
+    /// A radius-1.5 cylinder fused with a radius-0.3 one tangent inside it
+    /// along a ruling 1e-4 rad off both seams: V = 2.43 pi, A = 8.7 pi. The
+    /// inner seam's crossing of each cap lies on the rim within its
+    /// tolerance, beside the touch, and is a vertex of the rim too.
+    boolean_fuse_cylinder_tangent_inside_near_seam => run "boolean/fuse-cylinder-tangent-inside-near-seam";
     /// A 30 x 5 x 1 bar with a radius-3 boss tangent to each end face,
     /// fused one boss then the other: V = 154.50155561268. Each rim
     /// touches the end edges from inside the bar's top and bottom, a
@@ -2008,9 +2013,15 @@ corpus_tests! {
     /// read as a part: two `VERTEX_POINT`s at the touch on the end rim.
     #[ignore = "reader: #15: loop 0 of f0 is open at junction 2, the file's two VERTEX_POINTs at one point, (6, 0, 2), where the loop arrives at one and leaves at the other (docs/BACKLOG.md, the reader's coincident VERTEX_POINTs)"]
     regression_fuse_end_disc_tangent_to_wall_occt_step => run "regression/fuse-end-disc-tangent-to-wall-occt-step";
-    /// A radius-1.5 cylinder fused with a radius-0.3 one, tangent inside it along a ruling 1e-4 rad off the seams: V = 2.43 pi, A = 8.7 pi.
-    #[ignore = "kernel bug: the face arrangement is not a subdivision (a section edge of the outer cap ends at a node nothing else reaches), for a tangent ruling within about 0.003 rad of the seams (plans/tangency-faults step 8)"]
-    regression_fuse_cylinder_tangent_inside_near_seam => run "regression/fuse-cylinder-tangent-inside-near-seam";
+    /// `boolean/fuse-cylinder-tangent-inside-near-seam` with the ruling 1.4e-3
+    /// rad off the seams: the inner seam's crossing 2.35e-7 inside the rim,
+    /// the section's piece from it to the touch hugging the rim.
+    #[ignore = "checker: L5 f6 loop 0 intersects itself, the rim's chord from the touch crossing the short section piece's polygon near the cusp; the mesher refuses the face too (docs/BACKLOG.md, a loop with a cusp at a coarse chord)"]
+    regression_fuse_cylinder_tangent_inside_seam_cusp => run "regression/fuse-cylinder-tangent-inside-seam-cusp";
+    /// `boolean/fuse-cylinder-tangent-inside-near-seam` with the ruling 1e-9
+    /// rad off the seams, the touch merged into the outer seam's vertex.
+    #[ignore = "kernel bug: a cycle of the outer cap's arrangement does not turn once, the section leaving the merged vertex 4e-9 rad off the rim's direction, past the angular tie (docs/BACKLOG.md, a touch merged into a vertex)"]
+    regression_fuse_cylinder_tangent_inside_seam_hair => run "regression/fuse-cylinder-tangent-inside-seam-hair";
     /// Open CASCADE's STEP of a cylinder capped by a spherical dome, converted
     /// to B-splines: the cap's pole a vertex the reader finds no singular row
     /// for.

@@ -1,0 +1,20 @@
+{
+  "description": "boolean/fuse-cylinder-tangent-inside-near-seam with the touching ruling 1.4e-3 rad off both seams: the inner seam crosses each outer cap 2.35e-7 inside the rim, past its tolerance, 4.2e-4 along it from the touch, and the section circle's piece between the two hugs the rim. The fuse builds the closed form, V = 2.43 pi, but the crescent cap's polygons cross near the touch: the rim's chord from the touch sags past that short piece's sample, so Full refuses L5 (loop 0 intersects itself) and the mesher refuses the face at every chord, the cusp's polygons of docs/BACKLOG.md's loop with a cusp at a coarse chord at the checker's own chord. Between one and about sixty tolerances off the rim, depending on the radii, some angles do this; nearer, the crossing is on the rim and builds green (plans/tangency-faults step 10 finding). The desired assertion: it builds Full-green to the closed form",
+  "steps": [
+    {"name": "outer", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": 1.5, "height": 1},
+    {"name": "inner", "op": "cylinder", "base": [1.199998824000192, 0.0016799994512000538, -1], "axis": [0, 0, 1], "radius": 0.3, "height": 3},
+    {"name": "result", "op": "fuse", "a": "outer", "b": "inner"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "outer cap, away from the inner", "point": [-1, 0, 0.5], "expect": "in"},
+    {"label": "inner, above the outer", "point": [1.2, 0, 1.5], "expect": "in"},
+    {"label": "inner, below the outer", "point": [1.2, 0, -0.5], "expect": "in"},
+    {"label": "past the inner, above the outer", "point": [1.55, 0, 1.5], "expect": "out"},
+    {"label": "above the outer, off the inner", "point": [-1, 0, 1.5], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "2.43 * pi",
+    "area": "8.7 * pi"
+  }
+}

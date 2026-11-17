@@ -426,7 +426,14 @@ an edge of one operand pierces a face of the other, kept when the
 parameter is in the edge's range and the (u, v) is on the face
 (`region2::point_side` on the face's loops, a `Boundary` verdict
 resolved to the edge or vertex of the face within its own tolerance,
-the edge's own end vertex when the hit is within its ball); those hits
+the edge's own end vertex when the hit is within its ball; an edge that
+lies in the face, which pierces it nowhere, is hit at an end vertex on
+the face that no other hit there names, where a section curve of the face
+and a face holding the vertex runs through it and no edge of that face
+ending there runs along the curve — the outer seam's ends of a cap whose
+rim a wall inside touches a hair off the seam, the seam within the
+tolerance of that wall and the rim only touching it, so the section
+circle is paved there); those hits
 merged into section vertices by *closure*, not by arrival — every
 candidate point (the hits, the edge–edge crossings, the section
 crossings and singular vertices below, the operand vertices they name)
@@ -497,7 +504,11 @@ only touches it, so no block has the point inside it; a section that
 passes beside the point, nearer than the face's (u, v) polygons resolve,
 is refused by name (`BooleanReason::BesideSingularity`, ADR-0021);
 the paves each vertex puts on the edge that hit or touched it — none
-where the vertex holds one of that edge's own ends — and on
+where the vertex holds one of that edge's own ends — and on the face's
+edge a hit landed on, at the hit's projection, which that edge's own
+hits do not pave where it only touches the other operand's face (a cap's
+rim tangent inside a wall whose seam crosses the cap beside the touch);
+on
 every section curve it projects onto within its tolerance — at the
 parameter of its own section crossing on a curve that crossing names,
 so two section curves end on the point where they cross whatever the
@@ -505,7 +516,10 @@ vertex's point is; an open
 section curve at each of its ends a vertex lies on, both ends of a
 traced branch that leaves a singular point and comes back to it; and the
 section edges — the blocks between consecutive paves whose midpoint is
-inside both faces, a closed curve with no pave seeded at the start of
+inside both faces, or, where a face's polygons put the midpoint on its
+boundary, whose end off that boundary is inside it, since a block
+crosses no boundary between its paves (a section circle tangent inside a
+rim hugs it from the touch to the other operand's seam), a closed curve with no pave seeded at the start of
 its domain when it is interior to both, and a periodic one's last block
 wrapping round to its first pave, one period on — a traced loop's
 period being its own length, not a turn — each with a pcurve on each

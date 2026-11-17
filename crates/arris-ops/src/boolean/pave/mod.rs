@@ -568,6 +568,64 @@ impl<'m, 'c> Build<'m, 'c> {
         Some(out)
     }
 
+    /// The block of a section curve between section vertices `ends`,
+    /// whose midpoint is `point`, inside both faces: as
+    /// [`Self::inside_both`] at the midpoint, except where a face's
+    /// polygons put the midpoint on its boundary. A block crosses no
+    /// boundary between its paves, so its side of that face is the side
+    /// of any of its points the boundary does not hold, and an end the
+    /// face's edges and vertices do not claim is such a point: the
+    /// stretch of a section circle tangent inside a rim, from the touch
+    /// to the other operand's seam, lies within the polygons' band of the
+    /// rim along its whole length while its far end is inside the face.
+    /// An end within the band and claimed by nothing is decided by the
+    /// winding number, as a hit's landing is.
+    fn inside_block(
+        &self,
+        fa: &FaceInfo<'m>,
+        fb: &FaceInfo<'m>,
+        point: Point3,
+        ends: [usize; 2],
+    ) -> Result<Option<[Point2; 2]>, OpError> {
+        let mut out = [Point2::origin(); 2];
+        for (i, f) in [fa, fb].into_iter().enumerate() {
+            let Ok(projection) = f.surface.project(point) else {
+                return Ok(None);
+            };
+            let (side, shift) = f.domain.side(projection.uv);
+            match side {
+                Side::Inside => {}
+                Side::Outside => return Ok(None),
+                Side::Boundary => {
+                    let mut decided = None;
+                    for &k in &ends {
+                        let at = self.vertices[k].point(self.m);
+                        let Ok(on) = f.surface.project(at) else {
+                            continue;
+                        };
+                        match f.domain.side(on.uv).0 {
+                            Side::Inside => decided = Some(true),
+                            Side::Outside => decided = Some(false),
+                            Side::Boundary => {
+                                if f.domain.boundary_entity(self.m, at)?.is_none() {
+                                    decided = Some(f.domain.winds_around(on.uv));
+                                }
+                            }
+                        }
+                        if decided.is_some() {
+                            break;
+                        }
+                    }
+                    if decided != Some(true) {
+                        return Ok(None);
+                    }
+                }
+            }
+            out[i] = projection.uv + shift;
+        }
+        Ok(Some(out))
+    }
+
     /// `point` on face `f` of operand `side` with the face on every side
     /// of it in 3D: inside its loops, or on a seam the face uses twice,
     /// inside that edge's range, which the (u, v) cut puts on the

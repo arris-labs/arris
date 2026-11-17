@@ -385,7 +385,11 @@ impl<'m, 'c> Build<'m, 'c> {
                 }
                 continue;
             }
-            let Some(uv) = Self::inside_both(fa, fb, curve.point(range.midpoint())) else {
+            // Inside both faces, the ends deciding where the polygons put
+            // the midpoint on a face's boundary.
+            let Some(uv) =
+                self.inside_block(fa, fb, curve.point(range.midpoint()), [start, end])?
+            else {
                 continue;
             };
             // Along an edge of a third operand lying in both faces, it is
