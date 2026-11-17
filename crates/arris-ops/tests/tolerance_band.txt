@@ -54,7 +54,7 @@ FlushBoxes Tilt fuse -1.5: refused TangentContact
 FlushBoxes Tilt fuse +1.5: refused TangentContact
 FlushBoxes Tilt fuse -2: refused TangentContact
 FlushBoxes Tilt fuse +2: refused TangentContact
-FlushBoxes Tilt fuse -4: INTERNAL Split(Turn)
+FlushBoxes Tilt fuse -4: refused TangentContact
 FlushBoxes Tilt fuse +4: refused TangentContact
 FlushBoxes Tilt fuse -16: INTERNAL Split(Turn)
 FlushBoxes Tilt fuse +16: INTERNAL Split(Turn)
@@ -69,7 +69,7 @@ FlushBoxes Tilt common -1.5: refused TangentContact
 FlushBoxes Tilt common +1.5: refused TangentContact
 FlushBoxes Tilt common -2: refused TangentContact
 FlushBoxes Tilt common +2: refused TangentContact
-FlushBoxes Tilt common -4: INTERNAL Split(Turn)
+FlushBoxes Tilt common -4: refused TangentContact
 FlushBoxes Tilt common +4: refused TangentContact
 FlushBoxes Tilt common -16: INTERNAL Split(Turn)
 FlushBoxes Tilt common +16: INTERNAL Split(Turn)
@@ -84,7 +84,7 @@ FlushBoxes Tilt cut -1.5: refused TangentContact
 FlushBoxes Tilt cut +1.5: refused TangentContact
 FlushBoxes Tilt cut -2: refused TangentContact
 FlushBoxes Tilt cut +2: refused TangentContact
-FlushBoxes Tilt cut -4: INTERNAL Split(Turn)
+FlushBoxes Tilt cut -4: refused TangentContact
 FlushBoxes Tilt cut +4: refused TangentContact
 FlushBoxes Tilt cut -16: INTERNAL Split(Turn)
 FlushBoxes Tilt cut +16: INTERNAL Split(Turn)
@@ -359,12 +359,12 @@ CoaxialRod Offset cut +4: generic
 CoaxialRod Offset cut -16: generic
 CoaxialRod Offset cut +16: generic
 CoaxialRod Tilt fuse +0: body
-CoaxialRod Tilt fuse -0.25: INTERNAL Split(NoInterior)
-CoaxialRod Tilt fuse +0.25: INTERNAL Split(NoInterior)
-CoaxialRod Tilt fuse -0.5: INTERNAL Split(NoInterior)
-CoaxialRod Tilt fuse +0.5: INTERNAL Split(NoInterior)
-CoaxialRod Tilt fuse -1: INTERNAL Split(Dangling)
-CoaxialRod Tilt fuse +1: INTERNAL Split(Dangling)
+CoaxialRod Tilt fuse -0.25: refused TangentContact
+CoaxialRod Tilt fuse +0.25: refused TangentContact
+CoaxialRod Tilt fuse -0.5: refused TangentContact
+CoaxialRod Tilt fuse +0.5: refused TangentContact
+CoaxialRod Tilt fuse -1: refused NonManifold
+CoaxialRod Tilt fuse +1: refused NonManifold
 CoaxialRod Tilt fuse -1.5: refused NonManifold
 CoaxialRod Tilt fuse +1.5: refused NonManifold
 CoaxialRod Tilt fuse -2: refused NonManifold
@@ -374,12 +374,12 @@ CoaxialRod Tilt fuse +4: INTERNAL Builder(EdgeUses)
 CoaxialRod Tilt fuse -16: refused NonManifold
 CoaxialRod Tilt fuse +16: refused NonManifold
 CoaxialRod Tilt common +0: refused ZeroThickness
-CoaxialRod Tilt common -0.25: INTERNAL Split(NoInterior)
-CoaxialRod Tilt common +0.25: INTERNAL Split(NoInterior)
-CoaxialRod Tilt common -0.5: INTERNAL Split(NoInterior)
-CoaxialRod Tilt common +0.5: INTERNAL Split(NoInterior)
-CoaxialRod Tilt common -1: INTERNAL Split(Dangling)
-CoaxialRod Tilt common +1: INTERNAL Split(Dangling)
+CoaxialRod Tilt common -0.25: refused TangentContact
+CoaxialRod Tilt common +0.25: refused TangentContact
+CoaxialRod Tilt common -0.5: refused TangentContact
+CoaxialRod Tilt common +0.5: refused TangentContact
+CoaxialRod Tilt common -1: refused NonManifold
+CoaxialRod Tilt common +1: refused NonManifold
 CoaxialRod Tilt common -1.5: INTERNAL Builder(EdgeUses)
 CoaxialRod Tilt common +1.5: refused NonManifold
 CoaxialRod Tilt common -2: refused NonManifold
@@ -389,12 +389,12 @@ CoaxialRod Tilt common +4: refused NonManifold
 CoaxialRod Tilt common -16: refused NonManifold
 CoaxialRod Tilt common +16: refused NonManifold
 CoaxialRod Tilt cut +0: body
-CoaxialRod Tilt cut -0.25: INTERNAL Split(NoInterior)
-CoaxialRod Tilt cut +0.25: INTERNAL Split(NoInterior)
-CoaxialRod Tilt cut -0.5: INTERNAL Split(NoInterior)
-CoaxialRod Tilt cut +0.5: INTERNAL Split(NoInterior)
-CoaxialRod Tilt cut -1: INTERNAL Split(Dangling)
-CoaxialRod Tilt cut +1: INTERNAL Split(Dangling)
+CoaxialRod Tilt cut -0.25: refused TangentContact
+CoaxialRod Tilt cut +0.25: refused TangentContact
+CoaxialRod Tilt cut -0.5: refused TangentContact
+CoaxialRod Tilt cut +0.5: refused TangentContact
+CoaxialRod Tilt cut -1: refused NonManifold
+CoaxialRod Tilt cut +1: refused NonManifold
 CoaxialRod Tilt cut -1.5: INTERNAL Builder(EdgeUses)
 CoaxialRod Tilt cut +1.5: refused NonManifold
 CoaxialRod Tilt cut -2: INTERNAL Builder(EdgeUses)
@@ -673,13 +673,13 @@ TangentCylinders Radius cut -4: flush
 TangentCylinders Radius cut +4: generic
 TangentCylinders Radius cut -16: flush
 TangentCylinders Radius cut +16: generic
-TangentHole Offset fuse +0: INTERNAL Builder(EdgeUses)
-TangentHole Offset fuse -0.25: INTERNAL Builder(EdgeUses)
-TangentHole Offset fuse +0.25: INTERNAL Builder(EdgeUses)
-TangentHole Offset fuse -0.5: INTERNAL Builder(EdgeUses)
-TangentHole Offset fuse +0.5: INTERNAL Builder(EdgeUses)
-TangentHole Offset fuse -1: INTERNAL Builder(EdgeUses)
-TangentHole Offset fuse +1: INTERNAL Builder(EdgeUses)
+TangentHole Offset fuse +0: body
+TangentHole Offset fuse -0.25: flush
+TangentHole Offset fuse +0.25: flush
+TangentHole Offset fuse -0.5: flush
+TangentHole Offset fuse +0.5: flush
+TangentHole Offset fuse -1: flush
+TangentHole Offset fuse +1: flush
 TangentHole Offset fuse -1.5: generic
 TangentHole Offset fuse +1.5: INTERNAL Split(NoInterior)
 TangentHole Offset fuse -2: generic
@@ -688,13 +688,13 @@ TangentHole Offset fuse -4: generic
 TangentHole Offset fuse +4: generic
 TangentHole Offset fuse -16: generic
 TangentHole Offset fuse +16: generic
-TangentHole Offset common +0: INTERNAL Builder(EdgeUses)
-TangentHole Offset common -0.25: INTERNAL Builder(EdgeUses)
-TangentHole Offset common +0.25: INTERNAL Builder(EdgeUses)
-TangentHole Offset common -0.5: INTERNAL Builder(EdgeUses)
-TangentHole Offset common +0.5: INTERNAL Builder(EdgeUses)
-TangentHole Offset common -1: INTERNAL Builder(EdgeUses)
-TangentHole Offset common +1: INTERNAL Builder(EdgeUses)
+TangentHole Offset common +0: body
+TangentHole Offset common -0.25: flush
+TangentHole Offset common +0.25: flush
+TangentHole Offset common -0.5: flush
+TangentHole Offset common +0.5: flush
+TangentHole Offset common -1: flush
+TangentHole Offset common +1: flush
 TangentHole Offset common -1.5: generic
 TangentHole Offset common +1.5: INTERNAL Split(NoInterior)
 TangentHole Offset common -2: generic
@@ -718,7 +718,7 @@ TangentHole Offset cut -4: generic
 TangentHole Offset cut +4: generic
 TangentHole Offset cut -16: generic
 TangentHole Offset cut +16: generic
-TangentHole Tilt fuse +0: INTERNAL Builder(EdgeUses)
+TangentHole Tilt fuse +0: body
 TangentHole Tilt fuse -0.25: generic
 TangentHole Tilt fuse +0.25: UNSUPPORTED(PLANE SURFACE AGAINST CYLINDER SURFACE)
 TangentHole Tilt fuse -0.5: generic
@@ -733,7 +733,7 @@ TangentHole Tilt fuse -4: generic
 TangentHole Tilt fuse +4: generic
 TangentHole Tilt fuse -16: generic
 TangentHole Tilt fuse +16: generic
-TangentHole Tilt common +0: INTERNAL Builder(EdgeUses)
+TangentHole Tilt common +0: body
 TangentHole Tilt common -0.25: generic
 TangentHole Tilt common +0.25: UNSUPPORTED(PLANE SURFACE AGAINST CYLINDER SURFACE)
 TangentHole Tilt common -0.5: generic
@@ -763,13 +763,13 @@ TangentHole Tilt cut -4: generic
 TangentHole Tilt cut +4: generic
 TangentHole Tilt cut -16: generic
 TangentHole Tilt cut +16: generic
-TangentHole Radius fuse +0: INTERNAL Builder(EdgeUses)
-TangentHole Radius fuse -0.25: INTERNAL Builder(EdgeUses)
-TangentHole Radius fuse +0.25: INTERNAL Builder(EdgeUses)
-TangentHole Radius fuse -0.5: INTERNAL Builder(EdgeUses)
-TangentHole Radius fuse +0.5: INTERNAL Builder(EdgeUses)
-TangentHole Radius fuse -1: INTERNAL Builder(EdgeUses)
-TangentHole Radius fuse +1: INTERNAL Builder(EdgeUses)
+TangentHole Radius fuse +0: body
+TangentHole Radius fuse -0.25: flush
+TangentHole Radius fuse +0.25: flush
+TangentHole Radius fuse -0.5: flush
+TangentHole Radius fuse +0.5: flush
+TangentHole Radius fuse -1: flush
+TangentHole Radius fuse +1: flush
 TangentHole Radius fuse -1.5: generic
 TangentHole Radius fuse +1.5: INTERNAL Split(NoInterior)
 TangentHole Radius fuse -2: generic
@@ -778,13 +778,13 @@ TangentHole Radius fuse -4: generic
 TangentHole Radius fuse +4: generic
 TangentHole Radius fuse -16: generic
 TangentHole Radius fuse +16: generic
-TangentHole Radius common +0: INTERNAL Builder(EdgeUses)
-TangentHole Radius common -0.25: INTERNAL Builder(EdgeUses)
-TangentHole Radius common +0.25: INTERNAL Builder(EdgeUses)
-TangentHole Radius common -0.5: INTERNAL Builder(EdgeUses)
-TangentHole Radius common +0.5: INTERNAL Builder(EdgeUses)
-TangentHole Radius common -1: INTERNAL Builder(EdgeUses)
-TangentHole Radius common +1: INTERNAL Builder(EdgeUses)
+TangentHole Radius common +0: body
+TangentHole Radius common -0.25: flush
+TangentHole Radius common +0.25: flush
+TangentHole Radius common -0.5: flush
+TangentHole Radius common +0.5: flush
+TangentHole Radius common -1: flush
+TangentHole Radius common +1: flush
 TangentHole Radius common -1.5: generic
 TangentHole Radius common +1.5: INTERNAL Split(NoInterior)
 TangentHole Radius common -2: generic
@@ -991,7 +991,7 @@ PipeElbow Offset cut +16: refused NonManifold
 PipeElbow Tilt fuse +0: body
 PipeElbow Tilt fuse -0.25: UNSUPPORTED(TORUS SURFACE AGAINST CIRCLE CURVE)
 PipeElbow Tilt fuse +0.25: INTERNAL Split(Turn)
-PipeElbow Tilt fuse -0.5: INTERNAL Split(Turn)
+PipeElbow Tilt fuse -0.5: UNSUPPORTED(PLANE SURFACE AGAINST PLANE SURFACE)
 PipeElbow Tilt fuse +0.5: INTERNAL Split(Turn)
 PipeElbow Tilt fuse -1: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Tilt fuse +1: INTERNAL Geometry(the section of the torus surface and the plane s)
@@ -1006,7 +1006,7 @@ PipeElbow Tilt fuse +16: generic
 PipeElbow Tilt common +0: refused ZeroThickness
 PipeElbow Tilt common -0.25: UNSUPPORTED(TORUS SURFACE AGAINST CIRCLE CURVE)
 PipeElbow Tilt common +0.25: INTERNAL Split(Turn)
-PipeElbow Tilt common -0.5: INTERNAL Split(Turn)
+PipeElbow Tilt common -0.5: UNSUPPORTED(PLANE SURFACE AGAINST PLANE SURFACE)
 PipeElbow Tilt common +0.5: INTERNAL Split(Turn)
 PipeElbow Tilt common -1: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Tilt common +1: INTERNAL Geometry(the section of the torus surface and the plane s)
@@ -1021,7 +1021,7 @@ PipeElbow Tilt common +16: generic
 PipeElbow Tilt cut +0: body
 PipeElbow Tilt cut -0.25: UNSUPPORTED(TORUS SURFACE AGAINST CIRCLE CURVE)
 PipeElbow Tilt cut +0.25: INTERNAL Split(Turn)
-PipeElbow Tilt cut -0.5: INTERNAL Split(Turn)
+PipeElbow Tilt cut -0.5: UNSUPPORTED(PLANE SURFACE AGAINST PLANE SURFACE)
 PipeElbow Tilt cut +0.5: INTERNAL Split(Turn)
 PipeElbow Tilt cut -1: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Tilt cut +1: INTERNAL Geometry(the section of the torus surface and the plane s)

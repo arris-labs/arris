@@ -585,7 +585,7 @@ fn fixture_pairs() -> Vec<BandPair> {
     let s = core::f64::consts::FRAC_1_SQRT_2;
     let pi = core::f64::consts::PI;
     let all = [BandMotion::Offset, BandMotion::Tilt, BandMotion::Radius];
-    let pair = |contact, fixed, moving, normal, pivot, hinge, lever, area, line| BandPair {
+    let pair = |contact, fixed, moving, normal, pivot, hinge, lever, area, line, sweep| BandPair {
         contact,
         motion: BandMotion::Offset,
         fixed,
@@ -596,6 +596,7 @@ fn fixture_pairs() -> Vec<BandPair> {
         lever,
         area,
         line,
+        sweep,
         pose: Isometry::identity(),
     };
     let plate = block(p(0.0, 0.0, 0.0), p(40.0, 30.0, 10.0));
@@ -610,6 +611,7 @@ fn fixture_pairs() -> Vec<BandPair> {
             10.0,
             300.0,
             None,
+            0.0,
         ),
         pair(
             BandContact::FlushBoss,
@@ -621,6 +623,7 @@ fn fixture_pairs() -> Vec<BandPair> {
             8.0,
             16.0 * pi,
             None,
+            0.0,
         ),
         pair(
             BandContact::PinInBore,
@@ -632,6 +635,7 @@ fn fixture_pairs() -> Vec<BandPair> {
             2.0,
             0.0,
             Some((2.0, 2.0)),
+            0.0,
         ),
         pair(
             BandContact::CoaxialRod,
@@ -648,6 +652,7 @@ fn fixture_pairs() -> Vec<BandPair> {
             2.0,
             4.0 * pi,
             None,
+            0.0,
         ),
         pair(
             BandContact::CoaxialBore,
@@ -659,6 +664,7 @@ fn fixture_pairs() -> Vec<BandPair> {
             2.0,
             0.0,
             None,
+            0.0,
         ),
         pair(
             BandContact::TangentCylinders,
@@ -670,6 +676,7 @@ fn fixture_pairs() -> Vec<BandPair> {
             2.0,
             0.0,
             Some((2.0, 0.5)),
+            0.0,
         ),
         pair(
             BandContact::TangentHole,
@@ -681,6 +688,8 @@ fn fixture_pairs() -> Vec<BandPair> {
             6.0,
             0.0,
             Some((6.0, 3.0)),
+            // The bottom cap, 3 off the hinge, sweeps π·3²·3 per radian.
+            27.0 * pi,
         ),
         pair(
             BandContact::TangentOutside,
@@ -692,6 +701,7 @@ fn fixture_pairs() -> Vec<BandPair> {
             10.0,
             0.0,
             Some((10.0, 4.0)),
+            0.0,
         ),
         pair(
             BandContact::PipeElbow,
@@ -706,6 +716,7 @@ fn fixture_pairs() -> Vec<BandPair> {
             2.0,
             pi,
             None,
+            0.0,
         ),
         pair(
             BandContact::EdgeOnEdge,
@@ -717,6 +728,7 @@ fn fixture_pairs() -> Vec<BandPair> {
             10.0,
             0.0,
             Some((10.0, 0.0)),
+            0.0,
         ),
     ];
     let mut out = Vec::new();
@@ -797,7 +809,7 @@ arris_debug::prop_shards! {
     /// under every boolean the cell holds — never a kernel fault, a body
     /// the checker refuses or a panic — and every body's volume is the
     /// contact's own within the contact's area, or its line's lens, times
-    /// the offset (`BandPair::volume_bound`).
+    /// the offset, and what a tilt sweeps (`BandPair::volume_bound`).
     the_band_is_held_where_it_holds
         [shard_0 shard_1 shard_2 shard_3 shard_4 shard_5 shard_6 shard_7]
         (pair) = prop::body::band_pair_of(&HELD_CELLS) => {
