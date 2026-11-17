@@ -147,16 +147,17 @@ pub enum InputReason {
     /// The result has no thickness: a common of flush bodies, a sweep of
     /// zero length.
     ZeroThickness,
-    /// The result's shells would touch along an edge or at a vertex — an
-    /// edge used by four faces, a vertex two lumps share, a shell touching
-    /// itself at a vertex where its faces close into more than one fan, a
-    /// full revolve's profile touching its axis at a vertex with no
-    /// segment along it — which a manifold `Solid`'s shells never do
-    /// (ADR-0006); the error's entities are the shared edges or vertices —
-    /// a section vertex named by the edges and faces whose hits and
-    /// crossings made it — none for a sweep. A body
-    /// that touches itself so is a `General` one, which no operation builds
-    /// yet.
+    /// The result's shells would *share* an edge or a vertex — an edge
+    /// used by four faces, a vertex two lumps both reach — or one shell
+    /// would touch itself at a vertex where its faces close into more than
+    /// one fan, or a full revolve's profile would touch its axis at a vertex
+    /// with no segment along it: which a manifold `Solid`'s shells never do
+    /// (ADR-0006, ADR-0088); the error's entities are the shared edges or
+    /// vertices — a section vertex named by the edges and faces whose hits
+    /// and crossings made it — none for a sweep. Lumps that merely touch,
+    /// along a curve or at a point, each with its own edges and vertices,
+    /// are built (touching lumps, ADR-0088). A body that shares an edge or a
+    /// vertex so is a `General` one, which no operation builds yet.
     NonManifold,
     /// The query needs an enclosed volume and the body is not a solid:
     /// a sheet, a wire, a general body.
@@ -186,7 +187,7 @@ impl core::fmt::Display for InputReason {
             }
             InputReason::ZeroThickness => f.write_str("the result has no thickness"),
             InputReason::NonManifold => f.write_str(
-                "the result's shells would touch along an edge or at a vertex, which a solid does not hold",
+                "the result's shells would share an edge or a vertex, or a shell touch itself at one, which a solid does not hold",
             ),
             InputReason::NotSolid => f.write_str("the body is not a solid"),
         }
@@ -306,10 +307,15 @@ pub enum BooleanReason {
     /// A boolean selected no material: a `common` of disjoint operands,
     /// a target swallowed by its tool.
     Empty,
-    /// Two faces touch along a curve that would be interior to both
-    /// result faces — a hole wall tangent to a side face along a ruling,
-    /// a section curve tangent to a loop edge at a vertex — which a
-    /// manifold `Solid` cannot represent (ADR-0004, plan `⚠ OPEN` 1).
+    /// Two faces of *one lump* of the result touch along a curve that
+    /// would be interior to both — a hole wall tangent to a side face along
+    /// a ruling, a ball in a bore of its radius (the cavity touching the
+    /// wall round it), a section curve tangent to a loop edge at a vertex —
+    /// so that the lump's material would touch itself, which a manifold
+    /// `Solid` cannot represent (ADR-0004). Two faces that lie in different
+    /// lumps are touching lumps, and are built (ADR-0088). A pair the
+    /// grouping cannot place — a face with pieces in a lump that the other
+    /// face's pieces are in — is refused likewise.
     TangentContact,
     /// A section curve passes a face's singular point — a cone's apex, a
     /// sphere's pole — without running through it, nearer than the face's
@@ -349,7 +355,7 @@ impl core::fmt::Display for BooleanReason {
         match self {
             BooleanReason::Empty => f.write_str("the result has no material"),
             BooleanReason::TangentContact => {
-                f.write_str("the faces touch along a curve interior to both result faces")
+                f.write_str("two faces of one lump of the result touch along a curve interior to both")
             }
             BooleanReason::BesideSingularity => f.write_str(
                 "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves",
@@ -1050,7 +1056,7 @@ mod tests {
             (
                 Reason::Input(InputReason::NonManifold),
                 "NonManifold",
-                "the result's shells would touch along an edge or at a vertex, which a solid does not hold",
+                "the result's shells would share an edge or a vertex, or a shell touch itself at one, which a solid does not hold",
             ),
             (
                 Reason::Input(InputReason::NotSolid),
@@ -1085,7 +1091,7 @@ mod tests {
             (
                 Reason::Boolean(BooleanReason::TangentContact),
                 "TangentContact",
-                "the faces touch along a curve interior to both result faces",
+                "two faces of one lump of the result touch along a curve interior to both",
             ),
             (
                 Reason::Boolean(BooleanReason::BesideSingularity),

@@ -217,8 +217,8 @@ def test_a_frustum_and_a_box_touching_at_a_rim_point_are_non_manifold(lo, hi):
     lug = model.primitive_box(lo, hi)[0]
     with pytest.raises(arris.OpDegenerateError) as raised:
         model.fuse(body, lug)
-    # NonManifold's text, not TangentContact's ("the faces touch along a curve").
-    assert "shells would touch" in raised.value.reason
+    # NonManifold's text, not TangentContact's ("... touch along a curve ...").
+    assert "shells would share" in raised.value.reason
 
 
 def ring(model):

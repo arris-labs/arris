@@ -92,7 +92,7 @@ here.
   - a cylinder tangent inside another as a second outer shell: nesting
     violation;
   - a seam vertex on the contact line: decided, not unchecked.
-- [ ] Step 2 **[3]** — The slit decided by shells (deltas). The fixture
+- [x] Step 2 **[3]** — The slit decided by shells (deltas). The fixture
   `boolean/tangent-cylinders-fuse` builds `Full`-green to its closed form,
   with Open CASCADE's values re-taken. `tangent-hole` and
   `ball-in-bore-cut` still refuse `TangentContact` (one shell). The error
@@ -108,7 +108,7 @@ here.
   Whatever their contact-end paves need goes in here (⚠ OPEN 1). Python
   tests in `test_tangency.py` drive both through `arris.build`: two shells,
   V and A.
-- [ ] Step 4 **[2]** — Rewrite the property
+- [ ] Step 4 **[2]** — (its `fuse` arm landed with step 2, which would otherwise have left `main` red; the rename and the reviews remain) Rewrite the property
   `a_cylinder_tangent_to_a_box_face_leaves_the_box_and_shares_nothing`
   (`boolean_prop.rs`) so its `fuse` arm checks touching lumps: two shells,
   V and A additive, checker-green, the box's faces kept by id. Review
@@ -160,6 +160,12 @@ here.
   stops building that vertex rather than copying it per lump. Copying is
   the third plan's mechanism and comes forward only if stopping it proves
   wrong. Record the decision in ADR-0088.
+- **Settled (step 2)**: a slit is decided by *lump*, not shell. A cavity
+  touching the wall round it (`ball-in-bore-cut`, `pin-in-bore-cut`) is two
+  shells of one lump, its material touching itself, and stays
+  `TangentContact`; only two shells of different lumps are touching lumps.
+  A face with pieces in a lump the other face's are in is refused too (the
+  contact cannot be placed among them without a region test).
 - ⚠ OPEN 2 (agent, step 5): if `tolerance_band` flips more than a handful
   of `FlushBoxes` outcomes, read whether they are true curve touches or
   flush faces read as touches, before blessing them.

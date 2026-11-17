@@ -483,6 +483,7 @@ pub fn blocks_reason_named(
             } else if r.contains("not a solid") || r == "NotSolid" {
                 Cycle::Healing
             } else if r.contains("touch along an edge")
+                || r.contains("share an edge or a vertex")
                 || r.contains("touch along a curve")
                 || r == "NonManifold"
                 || r == "TangentContact"
@@ -1257,7 +1258,7 @@ mod tests {
                 "cut",
                 "OpDegenerateError",
                 Some(
-                    "the result's shells would touch along an edge or at a vertex, which a solid does not hold"
+                    "the result's shells would share an edge or a vertex, or a shell touch itself at one, which a solid does not hold"
                 ),
                 None,
                 None

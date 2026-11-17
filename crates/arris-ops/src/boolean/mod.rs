@@ -346,9 +346,11 @@ pub struct SharedSection {
 /// first pave, and a closed curve with none is one block of a whole
 /// period. A contact contributes no section edge and splits
 /// nothing; the boolean decides at its midpoint, by the curvature rule,
-/// whether the piece of each face through it would survive, and refuses
-/// with [`crate::BooleanReason::TangentContact`] when both would — the slit no
-/// manifold `Solid` can carry (ADR-0004).
+/// whether the piece of each face through it would survive. When both
+/// would, the two result faces touch along the curve: touching lumps
+/// where they lie in different lumps (ADR-0088), and where they lie in
+/// one it refuses with [`crate::BooleanReason::TangentContact`] — the slit
+/// no manifold lump can carry (ADR-0004).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Contact {
     /// The pair, an index into [`Interferences::pairs`].
@@ -697,12 +699,13 @@ pub fn interferences_many(
 /// tool), [`crate::InputReason::ZeroThickness`] when nothing survives and
 /// what was dropped lay on the other operand (two solids touching along
 /// a face), [`crate::InputReason::NonManifold`] naming the shared edges or
-/// vertices when two shells of the result would touch along an edge or at
-/// a vertex, [`crate::BooleanReason::TangentContact`] when two faces touch along a
-/// curve interior to both and both pieces through it would survive —
-/// a hole wall tangent to a side face, a ball in a bore of its radius —
-/// or a section edge is tangent to
-/// a loop edge at a vertex;
+/// vertices when two shells of the result would share an edge or a
+/// vertex, [`crate::BooleanReason::TangentContact`] when two faces of
+/// one lump touch along a curve interior to both and both pieces through
+/// it would survive — a hole wall tangent to a side face, a ball in a bore
+/// of its radius — or a section edge is tangent to
+/// a loop edge at a vertex (faces of two lumps that touch so are touching
+/// lumps, and built, ADR-0088);
 /// [`OpError::Tolerance`] when a section vertex or edge would exceed the
 /// model's maximum; [`OpError::Internal`] for a kernel bug the operation
 /// caught — an arrangement that is not a subdivision, a point that

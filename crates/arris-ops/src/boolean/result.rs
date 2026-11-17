@@ -226,6 +226,17 @@ pub(super) fn classify_fault(m: &Model, face: FaceId, body: Body, e: ClassifyErr
     OpError::Internal(Fault::Classify(e))
 }
 
+/// A contact both of whose pieces survive: the two faces of the pair, as
+/// their operands use them. Two lumps touching along it where the faces'
+/// kept pieces lie in shells of different lumps, a lump touching itself —
+/// the refusal `TangentContact` — where they do not (ADR-0088).
+struct Slit {
+    /// The two faces, for the refusal that names them.
+    faces: [Shape; 2],
+    /// The same two faces' ids.
+    ids: [FaceId; 2],
+}
+
 /// The whole build, over the pave model.
 struct Build<'m> {
     m: &'m Model,
@@ -269,6 +280,10 @@ struct Build<'m> {
     /// Per operand face, whether it was untouched and which of `kept` are
     /// its pieces.
     face_pieces: BTreeMap<FaceId, (bool, Vec<usize>)>,
+    /// The contacts both of whose pieces survive: where two result faces
+    /// touch along a curve interior to both ([`Build::contacts`]), decided
+    /// once the kept pieces are grouped into shells ([`Build::shells`]).
+    slits: Vec<Slit>,
     /// `true` once a piece lying on the other operand was dropped: what
     /// distinguishes a result with no thickness from one with no
     /// material.
@@ -863,8 +878,12 @@ impl<'m> Build<'m> {
     /// through it lies inside or outside the other operand by the
     /// curvature rule, and the selection table says whether it survives.
     /// A contact both pieces survive is two result faces touching along
-    /// a curve interior to both, the slit refused by name (ADR-0004).
-    fn contacts(&self) -> Result<(), OpError> {
+    /// a curve interior to both, a slit: returned for [`Build::shells`] to
+    /// decide, since two faces in different shells are touching lumps
+    /// (ADR-0088) and two in one shell the slit no manifold shell can
+    /// carry, refused by name (ADR-0004).
+    fn contacts(&self) -> Result<Vec<Slit>, OpError> {
+        let mut slits = Vec::new();
         for c in &self.i.contacts {
             let pair = self
                 .i
@@ -967,16 +986,16 @@ impl<'m> Build<'m> {
                 ));
             }
             if slit {
-                return Err(OpError::Degenerate {
-                    entities: vec![
+                slits.push(Slit {
+                    faces: [
                         Shape::new(fa.id, fa.orientation),
                         Shape::new(fb.id, fb.orientation),
                     ],
-                    reason: Reason::Boolean(BooleanReason::TangentContact),
+                    ids: [fa.id, fb.id],
                 });
             }
         }
-        Ok(())
+        Ok(slits)
     }
 
     /// Every face of both operands split, each piece classified against
@@ -1326,6 +1345,37 @@ impl<'m> Build<'m> {
         Ok(shells)
     }
 
+    /// The slits refused: a contact both of whose pieces survive is
+    /// touching lumps (ADR-0088) where its two faces' kept pieces lie in
+    /// shells of different lumps — `lump_of[k]` the lump of shell `k` of
+    /// `shells` — and the slit no manifold lump can carry, `TangentContact`
+    /// naming the pair, where they lie in one: a shell touching itself, a
+    /// cavity touching the wall round it (a ball in a bore of its radius),
+    /// or a face with pieces in a lump the other face's pieces are in,
+    /// which the contact cannot be placed among from here. A face with no
+    /// kept piece is refused likewise.
+    fn slits(&self, shells: &[Vec<usize>], lump_of: &[usize]) -> Result<(), OpError> {
+        let of = |face: FaceId| -> BTreeSet<usize> {
+            self.face_pieces
+                .get(&face)
+                .into_iter()
+                .flat_map(|(_, pieces)| pieces)
+                .filter_map(|k| shells.iter().position(|s| s.binary_search(k).is_ok()))
+                .filter_map(|shell| lump_of.get(shell).copied())
+                .collect()
+        };
+        for slit in &self.slits {
+            let [a, b] = slit.ids.map(of);
+            if a.is_empty() || b.is_empty() || !a.is_disjoint(&b) {
+                return Err(OpError::Degenerate {
+                    entities: slit.faces.to_vec(),
+                    reason: Reason::Boolean(BooleanReason::TangentContact),
+                });
+            }
+        }
+        Ok(())
+    }
+
     /// The first vertex, in `VRef` order, whose kept face uses close into
     /// more than one fan: the corners there — a use arriving at the
     /// vertex and the next leaving it, in one loop of one piece — joined
@@ -1627,6 +1677,7 @@ impl<'m> Build<'m> {
             edge_tolerance: BTreeMap::new(),
             kept: Vec::new(),
             face_pieces: BTreeMap::new(),
+            slits: Vec::new(),
             dropped_on: false,
             outside: vec![false; operands.bodies.len()],
         }
@@ -1642,12 +1693,14 @@ impl<'m> Build<'m> {
         self.sub_edges()?;
         self.aliases();
         self.raise_tolerances()?;
-        self.contacts()?;
+        self.slits = self.contacts()?;
         self.select(meter)?;
         let mut shells = self.shells()?;
+        let mut lump_of = vec![0; shells.len()];
         if shells.len() > 1 {
-            shells = self.lump_order(shells)?;
+            (shells, lump_of) = self.lump_order(shells)?;
         }
+        self.slits(&shells, &lump_of)?;
         let plan = self.assembly(&shells)?;
         Ok((shells, plan))
     }
@@ -1839,8 +1892,11 @@ impl Build<'_> {
     /// real model would need `&mut` where `Build` lends `&'m` borrows of it
     /// to its other methods). Errors: the builder's refusal,
     /// and [`Fault::Lumps`] when the shells do not nest or the nesting is
-    /// undecided.
-    fn lump_order(&self, shells: Vec<Vec<usize>>) -> Result<Vec<Vec<usize>>, OpError> {
+    /// undecided. Also the lump of each shell of the reordered result.
+    fn lump_order(
+        &self,
+        shells: Vec<Vec<usize>>,
+    ) -> Result<(Vec<Vec<usize>>, Vec<usize>), OpError> {
         let plan = self.assembly(&shells)?;
         let mut scratch = self.m.clone();
         let built = Builder::assemble(&scratch, self.precision.default_tolerance, plan.assembly)?
@@ -1856,12 +1912,20 @@ impl Build<'_> {
         let mut shells: Vec<Option<Vec<usize>>> = shells.into_iter().map(Some).collect();
         // `lumps` names every shell once, as an outer shell or a void of
         // one, so every shell is taken.
-        Ok(found
-            .iter()
-            .flat_map(|lump| core::iter::once(&lump.outer).chain(&lump.voids))
-            .filter_map(|s| index.get(&s.id))
-            .filter_map(|&i| shells.get_mut(i).and_then(Option::take))
-            .collect())
+        let mut ordered = Vec::with_capacity(shells.len());
+        let mut lump_of = Vec::with_capacity(shells.len());
+        for (lump, found) in found.iter().enumerate() {
+            for s in core::iter::once(&found.outer).chain(&found.voids) {
+                let taken = index
+                    .get(&s.id)
+                    .and_then(|&i| shells.get_mut(i).and_then(Option::take));
+                if let Some(pieces) = taken {
+                    ordered.push(pieces);
+                    lump_of.push(lump);
+                }
+            }
+        }
+        Ok((ordered, lump_of))
     }
 
     /// The assembly of the kept pieces: a vertex spec for every new

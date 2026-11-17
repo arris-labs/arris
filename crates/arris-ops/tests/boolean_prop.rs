@@ -214,9 +214,9 @@ prop_shards! {
 /// ruling through the face's interior (plan step 11): `box − cylinder`
 /// is the box — the same faces, edges and vertices by id, the same mass
 /// properties — `common` is the designed `Empty`, and `fuse`, which
-/// would keep the face and the wall touching along the contact, is the
-/// designed `TangentContact`; the model is as it was after each
-/// refusal. The touches land in both places — a box edge on the wall
+/// keeps the face and the wall touching along the contact, is two lumps
+/// of one solid (ADR-0088), the box's faces kept by id and volume and
+/// area added; the model's operands are as they were. The touches land in both places — a box edge on the wall
 /// where the ruling crosses the face's rim, a rim circle on the face
 /// where the cylinder ends inside it — and neither paves anything.
 #[test]
@@ -327,18 +327,31 @@ fn a_tangent_cylinder_leaves_the_box(pair: &TangentPair) -> Result<(), TestCaseE
         Ok(_) => return Err(fail("common(box, cylinder): a touch shares no material")),
         Err(e) => return Err(fail(format!("common(box, cylinder): {e}"))),
     }
-    match fuse(&mut m, a, b) {
-        Err(OpError::Degenerate {
-            reason: Reason::Boolean(BooleanReason::TangentContact),
-            ..
-        }) => {}
-        Ok(_) => {
-            return Err(fail(
-                "fuse(box, cylinder): the face and the wall would share a slit",
-            ));
-        }
-        Err(e) => return Err(fail(format!("fuse(box, cylinder): {e}"))),
-    }
+    // The face and the wall touch along the contact: two lumps of one
+    // solid (ADR-0088), the box's faces kept by id, volume and area added.
+    let pb = mass_properties(&m, b).map_err(fail)?;
+    let (fused, _) = run(&mut m, "fuse(box, cylinder)", fuse, a, b)?;
+    let report = check(&m, fused, Level::Full);
+    prop_assert!(
+        report.is_ok() && report.unchecked().is_empty(),
+        "fuse(box, cylinder): {report}"
+    );
+    prop_assert_eq!(m.shells(fused).map_err(fail)?.len(), 2, "two lumps");
+    let ids = |body: Body| -> Result<Vec<_>, TestCaseError> {
+        Ok(m.faces(body).map_err(fail)?.iter().map(|f| f.id).collect())
+    };
+    let kept = ids(fused)?;
+    prop_assert!(
+        ids(a)?.iter().all(|f| kept.contains(f)),
+        "the box's faces are kept by id"
+    );
+    let total = mass_properties(&m, fused).map_err(fail)?;
+    prop_assert!(close(
+        total.volume,
+        pa.volume + pb.volume,
+        pa.volume + pb.volume
+    ));
+    prop_assert!(close(total.area, pa.area + pb.area, pa.area + pb.area));
     prop_assert_eq!(
         dump_text(&m, a).map_err(fail)?,
         before,

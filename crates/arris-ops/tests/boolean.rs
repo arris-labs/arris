@@ -1956,12 +1956,13 @@ fn a_posed_through_hole_is_the_through_hole_moved() {
 /// ruling, classified `On` the wall, and the curvature rule puts the
 /// face outside the rod; `common` selects nothing, `BooleanReason::Empty` and
 /// not `ZeroThickness`, since no piece lay *on* the other operand in the
-/// coincident sense; `fuse` would keep the face and the wall touching
-/// along the contact, the designed refusal naming the pair. And the
-/// blind hole whose wall touches a side face from inside refuses the
-/// same way through `cut`, before any face is split.
+/// coincident sense; `fuse` keeps the face and the wall touching along
+/// the contact, two lumps of one solid that touch (ADR-0088), each keeping
+/// its own faces. And the blind hole whose wall touches a side face from
+/// inside refuses with `TangentContact` through `cut`, before any face is
+/// split: one shell would touch itself.
 #[test]
-fn a_touch_from_outside_is_the_plate_and_a_slit_is_refused_by_name() {
+fn a_touch_from_outside_is_the_plate_and_a_touch_in_one_shell_is_refused_by_name() {
     let (mut m, plate, post) = inputs("boolean/tangent-outside-cut");
     let before = arris_debug::dump_text(&m, plate).unwrap();
     let (body, p) = cut(&mut m, plate, post).unwrap();
@@ -1988,19 +1989,25 @@ fn a_touch_from_outside_is_the_plate_and_a_slit_is_refused_by_name() {
         }) => {}
         other => panic!("common: {other:?}"),
     }
-    match fuse(&mut m, plate, post) {
-        Err(OpError::Degenerate {
-            reason: Reason::Boolean(BooleanReason::TangentContact),
-            entities,
-        }) => {
-            let plate_faces: Vec<_> = m.faces(plate).unwrap().iter().map(|f| f.id).collect();
-            let post_faces: Vec<_> = m.faces(post).unwrap().iter().map(|f| f.id).collect();
-            assert_eq!(entities.len(), 2, "{entities:?}");
-            assert!(matches!(entities[0].id, EntityId::Face(f) if plate_faces.contains(&f)));
-            assert!(matches!(entities[1].id, EntityId::Face(f) if post_faces.contains(&f)));
-        }
-        other => panic!("fuse: {other:?}"),
-    }
+    let (plate_volume, post_volume) = (
+        mass_properties(&m, plate).unwrap().volume,
+        mass_properties(&m, post).unwrap().volume,
+    );
+    let (fused, _) = fuse(&mut m, plate, post).unwrap();
+    let report = check(&m, fused, Level::Full);
+    assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+    assert_eq!(m.shells(fused).unwrap().len(), 2, "two lumps that touch");
+    let volume = mass_properties(&m, fused).unwrap().volume;
+    assert!(
+        (volume - plate_volume - post_volume).abs() <= 1e-9 * volume,
+        "the volumes add: {volume} vs {plate_volume} + {post_volume}"
+    );
+    let plate_faces: Vec<_> = m.faces(plate).unwrap().iter().map(|f| f.id).collect();
+    let kept: Vec<_> = m.faces(fused).unwrap().iter().map(|f| f.id).collect();
+    assert!(
+        plate_faces.iter().all(|f| kept.contains(f)),
+        "every face of the plate is kept by id"
+    );
 
     let (mut m, plate, hole) = inputs("boolean/tangent-hole");
     let before = arris_debug::dump_text(&m, plate).unwrap();

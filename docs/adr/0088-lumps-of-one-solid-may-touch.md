@@ -68,10 +68,15 @@ checker passes them.
    is an outer shell: `OuterInOuter`, placed by an interior point since
    its vertices may be on the contact. Touching from inside a cavity is a
    void in a void's or a lump in a void's nesting, decided the same way.
-5. **The boolean builds what B1 admits** (the plan's steps 2 onwards): the
-   result's pieces are grouped into shells, and a contact between pieces
-   of two shells is touching lumps, where the contact's two faces lie in
-   one shell it stays `TangentContact`. `InputReason::NonManifold` is then
+5. **The boolean builds what B1 admits, between lumps** (the plan's steps 2
+   onwards): the result's pieces are grouped into shells and the shells
+   into lumps, and a contact whose two faces' pieces lie in different
+   lumps is touching lumps. Where they lie in one lump — one shell
+   touching itself, or a cavity touching the wall round it, a ball in a
+   bore of its radius — the lump's material would touch itself and it stays
+   `TangentContact`. B1 itself still admits a void touching its outer
+   shell (it judges shells, not material); only the boolean refuses to
+   make one. `InputReason::NonManifold` is then
    an edge or vertex two shells would *share*, no longer any touch.
 6. **Contacts that share topology** (an edge of four faces, a vertex two
    shells reach) are admitted by this rule too and are built by a later

@@ -141,7 +141,7 @@ boolean/swallow-cut: refused
 boolean/tangent-cylinders-a-quarter-off: 19
 boolean/tangent-cylinders-cut: 19
 boolean/tangent-cylinders-cut-band-ends: 23
-boolean/tangent-cylinders-fuse: refused
+boolean/tangent-cylinders-fuse: 19
 boolean/tangent-hole: refused
 boolean/tangent-hole-a-quarter-off: refused
 boolean/tangent-hole-band-ends: 30
