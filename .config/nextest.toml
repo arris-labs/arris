@@ -76,6 +76,7 @@ not (
   or test(=boolean_ball_pole_drill_cut)
   or test(=boolean_ball_pole_slice_cut)
   or test(=boolean_fixtures_read_back)
+  or test(=boolean_fuse_arc_plate_tangent_inside_cylinder)
   or test(=boolean_nist_ctc_04_face_arrangement_turn)
   or test(=boolean_nist_ctc_05_ap242_box_cut_nurbs_plane)
   or test(=boolean_pipe_elbow_fuse)

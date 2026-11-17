@@ -304,9 +304,10 @@ of the step that made the fixture pass, and a later change to it is a
   against the oracle's relative to its largest component.
   `occt_odd_euler: "why"` says Open CASCADE's shape of a result Arris
   builds has an odd Euler characteristic, a touching ruling carried as an
-  edge of four faces (`regression/fuse-end-disc-tangent-to-wall`): the
+  edge of four faces (`boolean/fuse-arc-plate-tangent-inside-cylinder`): the
   oracle records no genus for it and the lint asks none, `analytic.genus`
-  being Arris's.
+  being Arris's; nor `nurbs_counts`, so its NURBS read-back is held to
+  counts only where `occt_step_counts_differ` does not leave them out.
   `measure_differs: "why"` says Open CASCADE's *measurements* of the
   result are wrong and the closed forms right (ADR-0015): `volume`,
   `area`, `centroid` and `inertia` are then all required and are what
@@ -382,7 +383,10 @@ of the step that made the fixture pass, and a later change to it is a
   oracle's counts and genus, where the file carries topology the
   oracle's shape does not (`boolean/fuse-cylinder-tangent-inside`: two
   `VERTEX_POINT`s at each touch of a crescent's bounds, which Open
-  CASCADE's own reader heals into one). The runner holds a `measure_differs` fixture's
+  CASCADE's own reader heals into one). Arris's own STEP of such a
+  crescent, one loop through the touch twice, Open CASCADE's reader heals
+  into two wires; `compare.py` joins them again before it holds the Euler
+  characteristic even. The runner holds a `measure_differs` fixture's
   read-back to the oracle's own measurements: all but one blame Open
   CASCADE's boolean, whose shape its file carries. `occt_file_measure_differs:
   "why"` (needs `measure_differs`) is that one: Open CASCADE's measurement

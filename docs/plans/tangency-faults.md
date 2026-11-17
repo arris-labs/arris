@@ -108,9 +108,17 @@ bound is established here.
   covers it: a touch where either edge runs inside the other face is a
   vertex of both. Open CASCADE imprints the ruling on each end face,
   under `counts_differ`.
-- [ ] Step 4 **[3]** — Cases 3 and 4, the dangling ruling. Apply the
+- [x] Step 4 **[3]** — Cases 3 and 4, the dangling ruling. Apply the
   material-side rule on both faces. Both fixtures move green. Bores of
   0.45, 0.5 and 0.55 each match their closed forms in a unit test.
+  *Settled*: steps 2–3 already fixed both. The ruling's ends at the rims
+  are now vertices of both, so it no longer dangles. It stays a contact,
+  dropped from both faces. Open CASCADE writes case 3's cap as two loops
+  and imprints case 4's rulings, so both fixtures use `counts_differ`.
+  Case 3's single crescent needed tooling work. `compare.py` now holds
+  the Euler parity after joining the healed wires. The NURBS read-back
+  takes the plain counts under `occt_step_counts_differ`, since
+  `occt_odd_euler` records no `nurbs_counts`.
 - [ ] Step 5 **[3]** — Case 5. The end disc's arrangement turns once and
   the fixture moves green. Lengths 12, 12.5 and 14 match their closed
   forms.
@@ -164,9 +172,8 @@ bound is established here.
 
 ## Open questions
 
-- ⚠ OPEN 1: at a touching ruling, drop it from both faces or enter it on
-  both. The agent decides at step 4, keeping whichever leaves the walls
-  `Full`-green. The pick goes in the commit, and in ADR-0088 if ownership
-  changes.
+- *Settled* (step 4), was OPEN 1: a touching ruling is dropped from both
+  faces. It stays the contact it was (ADR-0004, ADR-0050), and the walls
+  are `Full`-green. Ownership does not change, so no ADR-0088.
 - ⚠ OPEN 2: step 8 may find a family no step covers. The agent adds steps
   up to the ~10 limit; past that, one backlog line with its fixtures.

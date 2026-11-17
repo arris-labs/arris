@@ -269,6 +269,14 @@ corpus_tests! {
     /// vertex of both, at the boss's seam at x = 15 and inside both edges
     /// at x = -15.
     boolean_fuse_bar_end_bosses_tangent => run "boolean/fuse-bar-end-bosses-tangent";
+    /// A plate whose arc is tangent inside a unit cylinder's wall, fused
+    /// with the cylinder: V = 2 pi + (1/2 + pi/8)/4. The touching ruling
+    /// has the cylinder's material on both its sides on the arc and the
+    /// plate's on both on the wall, so it is no section on either face.
+    boolean_fuse_arc_plate_tangent_inside_cylinder => run "boolean/fuse-arc-plate-tangent-inside-cylinder";
+    /// A bored box with a 1 x 1 column cut through the bore it is tangent
+    /// to along four lines: V = 184, genus 1, each column wall whole.
+    boolean_cut_bore_tangent_column => run "boolean/cut-bore-tangent-column";
     boolean_boss => run "boolean/boss";
     /// A plate cut by a 2×2 grid of four disjoint holes in one call.
     boolean_plate_2x2_holes_cut_many => run "boolean/plate-2x2-holes-cut-many";
@@ -2174,12 +2182,6 @@ corpus_tests! {
     /// plane and the third's wall across both: every pair and the chain build.
     #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (the retired flat-edge-read-as-tangent-contact plan, step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
-    /// A plate whose arc is tangent inside a unit cylinder's wall, fused with the cylinder.
-    #[ignore = "Fault::Split Dangling: a section edge ends at a node nothing else reaches, a ruling where the plate's arc touches the wall from inside (plans/tangency-faults step 4)"]
-    regression_fuse_arc_plate_tangent_inside_cylinder => run "regression/fuse-arc-plate-tangent-inside-cylinder";
-    /// A bored box with a 1 x 1 column cut through the bore it is tangent to along four lines: V = 184, genus 1.
-    #[ignore = "Fault::Split Dangling: a section edge ends at a node nothing else reaches, a ruling where a face touches the bore's wall from inside (plans/tangency-faults step 4)"]
-    regression_cut_bore_tangent_column => run "regression/cut-bore-tangent-column";
     /// A horizontal cylinder whose end disc is tangent to a vertical cylinder's wall along a line: V = 15 pi - 8/3.
     #[ignore = "Fault::Split Turn: a cycle of the end disc's arrangement does not turn once (plans/tangency-faults step 5)"]
     regression_fuse_end_disc_tangent_to_wall => run "regression/fuse-end-disc-tangent-to-wall";

@@ -36,6 +36,7 @@ boolean/cross-cylinders-common: 6056
 boolean/cross-cylinders-cut: refused
 boolean/cross-cylinders-fuse: 6056
 boolean/crossing-pockets-cut-many: 139
+boolean/cut-bore-tangent-column: 81
 boolean/cut-many-bore-over-bore-of-its-width: 68
 boolean/cut-many-tools-miss-target: 24
 boolean/cylinder-prism-common-chamfer-cut-loops-intersect: 1476
@@ -61,6 +62,7 @@ boolean/frustum-cross-drill-cut: 50178
 boolean/frustum-oblique-cut: 3180
 boolean/frustum-slot-cut: 1113
 boolean/frustum-stub-cut-then-fuse: 3390
+boolean/fuse-arc-plate-tangent-inside-cylinder: 53
 boolean/fuse-bar-end-bosses-tangent: 113
 boolean/fuse-cylinder-tangent-inside: 26
 boolean/fuse-frustum-box-rim-point: refused

@@ -362,6 +362,51 @@ fn bosses_tangent_to_both_ends_fuse_alike_in_any_order() {
     }
 }
 
+/// A 4 x 6 x 8 box bored along z by a cylinder of radius `r`, then a 1 x 1
+/// column through the bore cut away (`boolean/cut-bore-tangent-column` at
+/// `r = 0.5`). At 0.5 the bore touches each column wall along a ruling from
+/// inside it: the box's material lies on both sides of the ruling on the
+/// wall and the column's on both sides on the bore, so the ruling is no
+/// section on either face and each wall stays whole. At 0.45 the bore is
+/// inside the column; at 0.55 it reaches past each wall by a circular
+/// segment. Each is clean at `Full`, genus 1, with the closed form's volume.
+#[test]
+fn a_column_through_a_bore_it_touches_cuts_to_the_closed_form() {
+    for r in [0.45_f64, 0.5, 0.55] {
+        let mut m = Model::default();
+        let (bx, _) = primitive_box(&mut m, [-2.0, -3.0, -4.0], [2.0, 3.0, 4.0]).unwrap();
+        let axis = Axis::new(Point3::new(0.0, 0.0, 4.0), -Vec3::z()).unwrap();
+        let (bore, _) = primitive_cylinder(&mut m, axis, r, 20.0).unwrap();
+        let (bored, _) = cut(&mut m, bx, bore).unwrap();
+        let (column, _) = primitive_box(&mut m, [-0.5, -0.5, -10.0], [0.5, 0.5, 10.0]).unwrap();
+        let (body, _) = cut(&mut m, bored, column).unwrap();
+        let report = check(&m, body, Level::Full);
+        assert!(
+            report.is_ok() && report.unchecked().is_empty(),
+            "r = {r}: {report}"
+        );
+        assert_eq!(
+            report.euler().map(|e| e.genus),
+            Some(1),
+            "r = {r}: {report}"
+        );
+        // The hole's section is the unit square and, past each of its
+        // sides, the bore's segment beyond it.
+        let d = 0.5_f64;
+        let segment = if r > d {
+            r * r * real::acos(d / r) - d * (r * r - d * d).sqrt()
+        } else {
+            0.0
+        };
+        let exact = 4.0 * 6.0 * 8.0 - 8.0 * (1.0 + 4.0 * segment);
+        let volume = mass_properties(&m, body).unwrap().volume;
+        assert!(
+            (volume - exact).abs() < 1e-9 * exact,
+            "r = {r}: {volume} against {exact}"
+        );
+    }
+}
+
 #[test]
 fn a_boss_has_one_section_circle_and_swallows_its_bottom_cap() {
     let (m, _, _, i) = interferences_of("boolean/boss");

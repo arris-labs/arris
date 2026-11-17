@@ -104,18 +104,28 @@ pub fn read_back_stage(
 /// `analytic.occt_nurbs_refused` names a refusal of this file alone, which
 /// passes on it and fails on a read. Errors: as [`read_back_stage`], and
 /// [`CorpusError::ReadBack`] where `expected.json` records no
-/// `nurbs_counts`.
+/// `nurbs_counts` and the counts are held, as they are unless
+/// `analytic.occt_step_counts_differ` leaves them out (`expected.py`
+/// records none for a shape of odd Euler characteristic,
+/// `analytic.occt_odd_euler`).
 pub fn read_back_nurbs_stage(
     fixture: &Fixture,
     variant: &str,
     text: &str,
     expected: &Measured,
 ) -> Result<(), CorpusError> {
-    let counts = expected.nurbs_counts.ok_or_else(|| CorpusError::ReadBack {
-        fixture: fixture.name.clone(),
-        file: "NURBS",
-        what: "against no nurbs_counts in expected.json: rerun expected.py".into(),
-    })?;
+    let unheld = fixture.recipe.analytic.occt_step_counts_differ.is_some();
+    let counts = match expected.nurbs_counts {
+        Some(counts) => counts,
+        None if unheld => expected.counts,
+        None => {
+            return Err(CorpusError::ReadBack {
+                fixture: fixture.name.clone(),
+                file: "NURBS",
+                what: "against no nurbs_counts in expected.json: rerun expected.py".into(),
+            });
+        }
+    };
     let converted = Measured {
         counts,
         ..expected.clone()

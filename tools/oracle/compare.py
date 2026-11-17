@@ -41,15 +41,20 @@ def compare_step(directory: Path, step_file: Path, variant: str = "default") -> 
     if result.get("sheet"):
         actual = {"sheet": True, **measure_sheet(shape)}
     else:
-        actual = measure(shape, probes(fixture, variant), tol["probe"])
         # The file is Arris's: a loop it writes through a vertex twice is
-        # one loop, which the reader healed into two wires.
+        # one loop, which the reader healed into two wires. One such loop
+        # makes the reading's Euler characteristic odd, so the parity is
+        # held after the healing is undone, not before.
+        actual = measure(shape, probes(fixture, variant), tol["probe"], manifold=False)
         pinches = split_pinches(shape)
         if pinches and not actual["degenerate"]:
             counts = {**actual["counts"], "loops": actual["counts"]["loops"] - pinches}
             chi = actual["euler_characteristic"] + pinches
             genus = counts["shells"] - chi // 2 if chi % 2 == 0 else None
             actual = {**actual, "counts": counts, "euler_characteristic": chi, "genus": genus}
+        if not actual["degenerate"] and actual["euler_characteristic"] % 2 != 0:
+            chi = actual["euler_characteristic"]
+            raise OracleError(f"Euler characteristic {chi} is odd: the shape is not a closed surface")
     analytic = fixture.get("analytic", {})
     if analytic.get("counts_differ") and "counts" in analytic:
         # The recipe states a convention Arris does not follow and gives

@@ -1,0 +1,33 @@
+{
+  "description": "a unit cylinder (radius 1, z -1..1) fused with a plate, z -1.25..-0.25, whose outline is the rectangle [-0.5, 0.5] x [0, 0.5] under a half disc of radius 0.5 about (0, 0.5): the arc is tangent inside the cylinder's wall along x = 0, y = 1. The plate is inside the cylinder for z in -1..-0.25 and stands 0.25 out below it, so V = 2 pi + (1/2 + pi / 8) / 4 and A = 6 pi + 1/2 + pi / 8 (the cylinder's 4 pi side, its top, and its bottom whole as the plate covers the rest of it from below, plus the plate's rim 2 + pi / 2 over 0.25). The touching ruling, x = 0, y = 1 for z in -1..-0.25, has the cylinder's material on both its sides on the plate's arc and the plate's on both on the cylinder's wall, so it is a contact and no section on either face: the wall stays whole, and the bottom cap is a crescent, one loop through the vertex where the arc touches the rim at (0, 1, -1) twice",
+  "steps": [
+    {"name": "c", "op": "cylinder", "base": [0, 0, -1], "axis": [0, 0, 1], "radius": 1, "height": 2},
+    {"name": "outline", "op": "profile",
+     "plane": {"origin": [0, 0, -1.25], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0.5, 0], "segments": [
+       {"line_to": [0.5, 0.5]},
+       {"arc_to": [-0.5, 0.5], "via": [0, 1]},
+       {"line_to": [-0.5, 0]},
+       {"line_to": [0.5, 0]}
+     ]}},
+    {"name": "plate", "op": "extrude", "profile": "outline", "direction": [0, 0, 1], "length": 1},
+    {"name": "result", "op": "fuse", "a": "c", "b": "plate"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "cylinder's middle", "point": [0, 0, 0.5], "expect": "in"},
+    {"label": "plate, under the cylinder", "point": [0.2, 0.2, -1.1], "expect": "in"},
+    {"label": "plate's half disc, under the cylinder", "point": [0, 0.9, -1.1], "expect": "in"},
+    {"label": "beside the plate, under the cylinder", "point": [0.9, 0.1, -1.1], "expect": "out"},
+    {"label": "under the plate", "point": [0.2, 0.2, -1.4], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "2 * pi + (0.5 + pi / 8) / 4",
+    "area": "6 * pi + 0.5 + pi / 8",
+    "genus": 0,
+    "counts": {"vertices": 11, "edges": 17, "faces": 8, "loops": 8, "shells": 1},
+    "counts_differ": "Open CASCADE writes the bottom cap, where the plate's outline touches the cylinder's rim at (0, 1, -1), as an outer bound and a hole meeting at the touch vertex (11/17/8/9); Arris writes it as one loop through the touch vertex twice, and drops the touching ruling from both walls: the cylinder's material lies on both sides of it on the plate's arc, and the plate's on both sides on the cylinder's wall",
+    "occt_step_counts_differ": "Open CASCADE's own STEP writes two VERTEX_POINTs at the point where the bottom cap's outer bound and hole touch, (0, 1, -1), where its shape has one (12 vertices for 11), and its own reader heals them into one; Arris's reader keeps one vertex per VERTEX_POINT, so its reading, valid and measuring as the shape does, has one more vertex (docs/BACKLOG.md)",
+    "occt_odd_euler":"Open CASCADE carries the touching ruling as an edge of four faces, so its shape has an odd Euler characteristic"
+  }
+}
