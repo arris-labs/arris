@@ -119,9 +119,22 @@ bound is established here.
   the Euler parity after joining the healed wires. The NURBS read-back
   takes the plain counts under `occt_step_counts_differ`, since
   `occt_odd_euler` records no `nurbs_counts`.
-- [ ] Step 5 **[3]** — Case 5. The end disc's arrangement turns once and
+- [x] Step 5 **[3]** — Case 5. The end disc's arrangement turns once and
   the fixture moves green. Lengths 12, 12.5 and 14 match their closed
   forms.
+  *Settled*: steps 2–4 did not fix it, and the face was the horizontal
+  wall, not the end disc. The section ellipse touches the wall's end rim
+  at (6, 0, 2), and its fitted pcurve leaves there 8.5e-8 rad off the
+  rim, so the node ordered by angle and not by curvature. Node directions
+  now come from an analytic 3D curve through the surface's derivatives.
+  A NURBS curve is fitted too, and a pole is singular at the surface's
+  scale, so both keep the pcurve's (the cusp chamfers and the pole cuts
+  went red without that). The end
+  disc's interior point is then the vertical cylinder's seam vertex, where
+  the contact ends; the curvature rule decides it, as it does a seam.
+  Open CASCADE's own file has two `VERTEX_POINT`s in one loop at the
+  touch, which Arris's reader refuses. `occt_step_unread` names a new
+  regression fixture for that, and the backlog line grows.
 - [ ] Step 6 **[2]** — Case 6's far side. A coplanar touch at a point
   inside an edge becomes the vertex contact the seam side already finds,
   refused `NonManifold` with that vertex named. Both sides and a lug turned

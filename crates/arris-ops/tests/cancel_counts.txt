@@ -65,6 +65,7 @@ boolean/frustum-stub-cut-then-fuse: 3390
 boolean/fuse-arc-plate-tangent-inside-cylinder: 53
 boolean/fuse-bar-end-bosses-tangent: 113
 boolean/fuse-cylinder-tangent-inside: 26
+boolean/fuse-end-disc-tangent-to-wall: 3512
 boolean/fuse-frustum-box-rim-point: refused
 boolean/fuse-many-coaxial-cylinders-and-box: 131
 boolean/grazing-ball-bar-cut: 17441

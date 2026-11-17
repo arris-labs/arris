@@ -375,8 +375,10 @@ of the step that made the fixture pass, and a later change to it is a
   conversion, held by a regression fixture of its own.
   `occt_step_unread: "why"` skips both read-backs of Open CASCADE's own
   STEP where reading it measures the reader on a walked blend rather than
-  the operation — minutes of fitting, then a refusal — and names the
-  regression fixture that holds that reading instead; Arris's own STEP is
+  the operation — minutes of fitting, then a refusal — or on a quirk of
+  the file (`boolean/fuse-end-disc-tangent-to-wall`: two `VERTEX_POINT`s
+  at one point of one loop), and names the regression fixture that holds
+  that reading instead; Arris's own STEP is
   still read back by Open CASCADE and compared.
   `occt_step_counts_differ: "why"` holds Arris's reading of Open
   CASCADE's own STEP to the checker and the measures but not to the

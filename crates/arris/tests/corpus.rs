@@ -277,6 +277,10 @@ corpus_tests! {
     /// A bored box with a 1 x 1 column cut through the bore it is tangent
     /// to along four lines: V = 184, genus 1, each column wall whole.
     boolean_cut_bore_tangent_column => run "boolean/cut-bore-tangent-column";
+    /// A horizontal cylinder whose end disc is tangent to a vertical
+    /// cylinder's wall along a line: V = 15 pi - 8/3, the horizontal wall
+    /// a crescent through the touch on its end rim, the end disc whole.
+    boolean_fuse_end_disc_tangent_to_wall => run "boolean/fuse-end-disc-tangent-to-wall";
     boolean_boss => run "boolean/boss";
     /// A plate cut by a 2×2 grid of four disjoint holes in one call.
     boolean_plate_2x2_holes_cut_many => run "boolean/plate-2x2-holes-cut-many";
@@ -1994,6 +1998,10 @@ corpus_tests! {
     /// as a part: its blend walked round the rim as a B-spline surface.
     #[ignore = "reader: not finished after 11 minutes on Open CASCADE's walked blend surface (docs/BACKLOG.md, a walked blend's file)"]
     regression_nurbs_cap_cylinder_rim_fillet_occt_step => run "regression/nurbs-cap-cylinder-rim-fillet-occt-step";
+    /// Open CASCADE's own STEP of `boolean/fuse-end-disc-tangent-to-wall`,
+    /// read as a part: two `VERTEX_POINT`s at the touch on the end rim.
+    #[ignore = "reader: #15: loop 0 of f0 is open at junction 2, the file's two VERTEX_POINTs at one point, (6, 0, 2), where the loop arrives at one and leaves at the other (docs/BACKLOG.md, the reader's coincident VERTEX_POINTs)"]
+    regression_fuse_end_disc_tangent_to_wall_occt_step => run "regression/fuse-end-disc-tangent-to-wall-occt-step";
     /// Open CASCADE's STEP of a cylinder capped by a spherical dome, converted
     /// to B-splines: the cap's pole a vertex the reader finds no singular row
     /// for.
@@ -2182,9 +2190,6 @@ corpus_tests! {
     /// plane and the third's wall across both: every pair and the chain build.
     #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (the retired flat-edge-read-as-tangent-contact plan, step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
-    /// A horizontal cylinder whose end disc is tangent to a vertical cylinder's wall along a line: V = 15 pi - 8/3.
-    #[ignore = "Fault::Split Turn: a cycle of the end disc's arrangement does not turn once (plans/tangency-faults step 5)"]
-    regression_fuse_end_disc_tangent_to_wall => run "regression/fuse-end-disc-tangent-to-wall";
     /// A frustum and a box touching its top rim at the point opposite the revolve's seam, inside the rim edge.
     #[ignore = "an Ok body where the seam side is refused (the cap's arrangement places the coplanar box face as a hole of no region); the desired result is the refusal NonManifold naming the touch vertex, as at the seam (plans/tangency-faults step 6)"]
     regression_fuse_frustum_box_rim_point_far_side => run "regression/fuse-frustum-box-rim-point-far-side";

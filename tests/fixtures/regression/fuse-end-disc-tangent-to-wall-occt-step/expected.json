@@ -1,0 +1,81 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "f2c98f109ff8cbd4e7035b5729ab155366b5d0ba82f9d2caa6cc8c272f87952f",
+  "results": {
+    "default": {
+      "area": 95.6725575755492,
+      "centroid": [
+        0.7600689853884173,
+        -2.6396395000551002e-14,
+        2.708504742723888
+      ],
+      "counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 1,
+      "genus": null,
+      "inertia": [
+        [
+          44.458132496147755,
+          4.972661478393973e-12,
+          54.94556152917333
+        ],
+        [
+          4.972661478393973e-12,
+          630.5145473174769,
+          -9.947019730295287e-14
+        ],
+        [
+          54.94556152917333,
+          -9.947019730295287e-14,
+          608.5516930585644
+        ]
+      ],
+      "probes": [
+        {
+          "class": "in",
+          "label": "vertical cylinder's foot",
+          "point": [
+            5.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "horizontal cylinder's far end",
+          "point": [
+            -5.0,
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above the horizontal cylinder",
+          "point": [
+            5.0,
+            0.0,
+            4.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past the end disc",
+          "point": [
+            6.5,
+            0.0,
+            3.0
+          ]
+        }
+      ],
+      "volume": 44.45722314013088
+    }
+  }
+}

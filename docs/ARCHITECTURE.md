@@ -714,8 +714,8 @@ between two tools is read against every other operand along its length,
 so two tools touching inside a cut's target are `TangentContact`. Every
 face of both operands is split in its own (u, v): the pieces of its
 loops between consecutive paves and the section edges on it make a
-planar arrangement — half-edges ordered around each node by the pcurves'
-tangent angle, a tie within the angular tolerance by the signed
+planar arrangement — half-edges ordered around each node by their
+tangent angle in (u, v), a tie within the angular tolerance by the signed
 curvature, a tie of both `BooleanReason::TangentContact` — unless the two
 are section edges or images running between the same two nodes along one
 curve, which is one section or image entered twice and the invariant fault (`Fault::Invariant`),
@@ -726,7 +726,14 @@ around it. A cusp, where the walk leaves back the way it arrived within
 the angular tolerance, as a blend leaving a line tangent to it does, turns
 by ±π as the node's order decided it by curvature: `+π` round a spike when
 the leaving curve bends right of the arriving one walked back, never by
-rounding. Each piece is classified at `region2::interior_point`
+rounding. The tangent and the curvature at a node are the edge's 3D
+curve's, carried into (u, v) through the surface's first and second
+derivatives there, and the pcurve's own where the surface is singular or
+the 3D curve is a NURBS, fitted itself: a fitted pcurve is held to its curve in position, not in
+direction, and a section ellipse fitted on a cylinder leaves the point
+where it touches the face's rim about 1e-7 rad off the rim's direction,
+which the angular tolerance reads as a crossing
+(`boolean/fuse-end-disc-tangent-to-wall`). Each piece is classified at `region2::interior_point`
 carried to 3D by `classify_point` against the other operand, and the
 table decides. A ray crosses a NURBS face as it crosses an analytic one
 (data-model §Curves, a line against a `Nurbs` surface); were a piece's
@@ -752,7 +759,9 @@ piece, and every use of B's piece is rewritten to it with a pcurve
 fitted to A's curve in that use's translate of the domain (a seam's two
 uses get two), B's piece `Modified` into A's. A piece classified `On` a
 face its own face is tangent to has its interior point on the ruling
-and lies to one side of the other operand everywhere else; which side is
+and lies to one side of the other operand everywhere else, as does one
+classified `On` a seam of that face or a vertex of it on the contact
+curve, where the contact ends at a rim; which side is
 the *curvature rule*. With `n` the other face's effective outward normal
 at the contact, each surface leaves the shared tangent plane across the
 contact curve as `κ s² / 2` along `n`, `κ` its normal curvature across

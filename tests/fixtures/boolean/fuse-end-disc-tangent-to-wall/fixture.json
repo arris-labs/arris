@@ -1,0 +1,27 @@
+{
+  "description": "a vertical cylinder (radius 1, z 0..3, on x = 5) fused with a horizontal one (radius 1, axis along x from -6 to 6 at z = 3) whose end disc, in x = 6, is tangent to the vertical wall along x = 6, y = 0, z in 2..3. The vertical cylinder's part inside the horizontal one has height sqrt(1 - y^2) over its disc, so the overlap is the integral over y of 2 (1 - y^2), 8/3: V = 3 pi + 12 pi - 8/3 = 15 pi - 8/3, A = 33 pi - 8. The ellipse x - 5 = 3 - z touches the horizontal wall's end rim at (6, 0, 2), so the wall is a crescent, one loop through that vertex twice; the touching ruling has the vertical cylinder's material on neither of its sides on the end disc, and the horizontal one's on both on the vertical wall, so it is a contact and no section on either face: the end disc stays whole, and the vertical wall loses its seam above (6, 0, 2) to the horizontal cylinder",
+  "params": {"len": 12},
+  "steps": [
+    {"name": "v", "op": "cylinder", "base": [5, 0, 0], "axis": [0, 0, 1], "radius": 1, "height": 3},
+    {"name": "h", "op": "cylinder", "base": [-6, 0, 3], "axis": [1, 0, 0], "radius": 1, "height": "len"},
+    {"name": "result", "op": "fuse", "a": "v", "b": "h"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "vertical cylinder's foot", "point": [5, 0, 1], "expect": "in"},
+    {"label": "vertical cylinder, off the axis", "point": [5.9, 0.2, 1], "expect": "in"},
+    {"label": "horizontal cylinder's far end", "point": [-5, 0, 3], "expect": "in"},
+    {"label": "horizontal cylinder over the vertical one", "point": [5, 0, 3.5], "expect": "in"},
+    {"label": "above the horizontal cylinder", "point": [5, 0, 4.5], "expect": "out"},
+    {"label": "past the end disc", "point": [6.5, 0, 3], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "15 * pi - 8 / 3",
+    "area": "33 * pi - 8",
+    "genus": 0,
+    "counts": {"vertices": 6, "edges": 9, "faces": 5, "loops": 5, "shells": 1},
+    "counts_differ": "Open CASCADE writes the horizontal wall, which the section ellipse touches at its end rim at (6, 0, 2), as an outer bound and a hole meeting at the touch vertex, and carries the touching ruling as an edge (6/9/5/6); Arris writes the wall as one loop through the touch vertex twice, and drops the touching ruling from both faces: the vertical cylinder's material lies on neither side of it on the end disc, and the horizontal cylinder's on both sides on the vertical wall",
+    "occt_step_unread": "Open CASCADE's own STEP writes two VERTEX_POINTs at the touch on the horizontal wall's end rim, (6, 0, 2), where its shape has one, and the vertical wall's loop arrives there at one and leaves at the other; Arris's reader keeps a vertex per VERTEX_POINT and refuses the open loop, which measures the reader on the file's duplicate, not the fuse: regression/fuse-end-disc-tangent-to-wall-occt-step holds that reading",
+    "occt_odd_euler": "Open CASCADE carries the touching ruling as an edge of four faces, so its shape has an odd Euler characteristic"
+  }
+}

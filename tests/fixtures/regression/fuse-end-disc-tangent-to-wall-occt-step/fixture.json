@@ -1,0 +1,24 @@
+{
+  "description": "Open CASCADE's own STEP of boolean/fuse-end-disc-tangent-to-wall (a vertical cylinder fused with a horizontal one whose end disc touches its wall along a ruling), read as a part. Its file writes two VERTEX_POINTs at (6, 0, 2), where the section ellipse touches the horizontal wall's end rim, where its shape has one: the vertical wall's loop arrives there on the ellipse at #80 and leaves on the seam at #116. Its own reader heals them into one; Arris's reader keeps a vertex per VERTEX_POINT, so the loop is open at that junction and the solid is refused: '#15: loop 0 of f0 is open at junction 2' (plans/tangency-faults step 5, found by the read-back stage; docs/BACKLOG.md, the reader's coincident VERTEX_POINTs). The desired assertion: it reads, with one vertex at the touch, and matches Open CASCADE's reading.",
+  "steps": [
+    {
+      "name": "part",
+      "op": "step",
+      "file": "operand.step",
+      "sha256": "26d42a5f8ee6359dd75c847998151ea3e08df2792b42ac80de3530885e989e71",
+      "id": 15
+    }
+  ],
+  "result": "part",
+  "probes": [
+    {"label": "vertical cylinder's foot", "point": [5, 0, 1], "expect": "in"},
+    {"label": "horizontal cylinder's far end", "point": [-5, 0, 3], "expect": "in"},
+    {"label": "above the horizontal cylinder", "point": [5, 0, 4.5], "expect": "out"},
+    {"label": "past the end disc", "point": [6.5, 0, 3], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "15 * pi - 8 / 3",
+    "area": "33 * pi - 8",
+    "occt_odd_euler": "Open CASCADE carries the touching ruling as an edge of four faces, so its shape has an odd Euler characteristic"
+  }
+}

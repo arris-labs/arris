@@ -407,6 +407,53 @@ fn a_column_through_a_bore_it_touches_cuts_to_the_closed_form() {
     }
 }
 
+/// A vertical unit cylinder, z 0..3 on x = 5, fused with a horizontal
+/// one of length `len` along x from −6 at z = 3
+/// (`boolean/fuse-end-disc-tangent-to-wall` at `len = 12`). At 12 its end
+/// disc, in x = 6, touches the vertical wall along a ruling, and the
+/// section ellipse through (6, 0, 2) touches the horizontal wall's end
+/// rim there: the order at that node is decided by the ellipse's own
+/// tangent, which its fitted pcurve misses by about a tenth of a
+/// micro-radian. At 12.5 and 14 the end disc stands clear. The vertical
+/// cylinder's part inside the horizontal one is 8/3 for every length
+/// from 12, and each wall loses 4 of its area to the other: V = 3π + lenπ
+/// − 8/3, A = 9π + 2π len − 8, clean at `Full` and genus 0.
+#[test]
+fn a_cylinder_whose_end_disc_touches_a_wall_fuses_to_the_closed_form() {
+    for len in [12.0_f64, 12.5, 14.0] {
+        let mut m = Model::default();
+        let up = Axis::new(Point3::new(5.0, 0.0, 0.0), Vec3::z()).unwrap();
+        let (vertical, _) = primitive_cylinder(&mut m, up, 1.0, 3.0).unwrap();
+        let along = Axis::new(Point3::new(-6.0, 0.0, 3.0), Vec3::x()).unwrap();
+        let (horizontal, _) = primitive_cylinder(&mut m, along, 1.0, len).unwrap();
+        let (body, _) = fuse(&mut m, vertical, horizontal).unwrap();
+        let report = check(&m, body, Level::Full);
+        assert!(
+            report.is_ok() && report.unchecked().is_empty(),
+            "len = {len}: {report}"
+        );
+        assert_eq!(
+            report.euler().map(|e| e.genus),
+            Some(0),
+            "len = {len}: {report}"
+        );
+        let pi = core::f64::consts::PI;
+        let measured = mass_properties(&m, body).unwrap();
+        let volume = 3.0 * pi + len * pi - 8.0 / 3.0;
+        let area = 9.0 * pi + 2.0 * pi * len - 8.0;
+        assert!(
+            (measured.volume - volume).abs() < 1e-9 * volume,
+            "len = {len}: {} against {volume}",
+            measured.volume
+        );
+        assert!(
+            (measured.area - area).abs() < 1e-9 * area,
+            "len = {len}: {} against {area}",
+            measured.area
+        );
+    }
+}
+
 #[test]
 fn a_boss_has_one_section_circle_and_swallows_its_bottom_cap() {
     let (m, _, _, i) = interferences_of("boolean/boss");

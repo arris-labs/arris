@@ -10,7 +10,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::{Classification, Classifier, ClassifyError, lumps};
-use arris_geom::{GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
+use arris_geom::{Curve, GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
 use arris_math::{Aabb, DisjointSets, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
 use arris_topo::builder::Builder;
 use arris_topo::entity::BodyKind;
@@ -590,9 +590,15 @@ impl<'m> Build<'m> {
     /// The face of the other operand that `on` names, when face `f` of
     /// operand `side` is tangent to it.
     /// `on` may also be a seam of that face, which the face lies on both
-    /// sides of: a cylinder lying on a plane by its seam.
+    /// sides of: a cylinder lying on a plane by its seam. Or a vertex of
+    /// that face lying on a curve the two touch along, within the
+    /// vertex's tolerance: the end of a contact, where a cylinder's seam
+    /// lying on a plane meets its rim ([`Self::touch_ending_at`]).
     fn tangent_partner(&self, side: usize, f: FaceId, on: Shape) -> Option<FaceHandle> {
         let touches = |i: &SurfaceIntersection| meet_curves(i, MeetKind::Touch).next().is_some();
+        if let EntityId::Vertex(v) = on.id {
+            return self.touch_ending_at(side, f, v);
+        }
         let EntityId::Edge(e) = on.id else {
             return self.partner(side, f, on, touches);
         };
@@ -613,6 +619,39 @@ impl<'m> Build<'m> {
                             && ((p.a == f && p.b == h.id) || (p.a == h.id && p.b == f))
                     })
             })
+    }
+
+    /// The first face of an operand other than `side`, in operand and
+    /// face order, that vertex `v` bounds and that face `f` touches along
+    /// a curve passing within `v`'s tolerance of it. A point strictly
+    /// inside a piece of `f` crosses no face of the other operand, which
+    /// would have cut the piece there, so a piece whose interior point is
+    /// such a vertex lies on one side of that operand beside it, as it
+    /// does beside the rest of the contact.
+    fn touch_ending_at(&self, side: usize, f: FaceId, v: VertexId) -> Option<FaceHandle> {
+        let vertex = self.m.vertex(v).ok()?;
+        let (point, tolerance) = (vertex.point(), vertex.tolerance());
+        let bounds = |h: FaceId| {
+            self.m.face(h).is_ok_and(|g| {
+                g.loops().iter().flat_map(|l| l.coedges()).any(|c| {
+                    self.m
+                        .edge(c.edge())
+                        .is_ok_and(|e| e.start() == v || e.end() == v)
+                })
+            })
+        };
+        let through = |h: FaceId| {
+            self.i
+                .pairs
+                .iter()
+                .filter(|p| (p.a == f && p.b == h) || (p.a == h && p.b == f))
+                .flat_map(|p| meet_curves(&p.intersection, MeetKind::Touch))
+                .any(|(_, c)| c.project(point).is_ok_and(|on| on.distance <= tolerance))
+        };
+        (0..self.faces.len())
+            .filter(|&o| o != side)
+            .flat_map(|o| self.faces[o].iter().copied())
+            .find(|h| through(h.id) && bounds(h.id))
     }
 
     fn surface_of(&self, h: FaceHandle) -> Result<&'m Surface, OpError> {
@@ -1160,6 +1199,12 @@ impl<'m> Build<'m> {
         on: &BTreeMap<FaceId, Vec<EdgeOnFace>>,
         meter: &mut Meter<'_>,
     ) -> Result<Vec<SplitFace>, OpError> {
+        let curves: Vec<&Curve> = self
+            .i
+            .sections
+            .iter()
+            .map(|s| &self.i.curves[s.curve].curve)
+            .collect();
         pass(work, meter, |f, mt| {
             mt.tick()?;
             split_face(
@@ -1169,6 +1214,7 @@ impl<'m> Build<'m> {
                 &self.sub_edges,
                 &self.touched,
                 on.get(&f.id).map_or(&[][..], Vec::as_slice),
+                &curves,
                 &self.alias_uses,
             )
         })
