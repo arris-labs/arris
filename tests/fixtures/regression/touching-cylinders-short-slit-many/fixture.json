@@ -1,0 +1,65 @@
+{
+  "description": "One General Fuse of tangent unit cylinders and a bridge box whose top is at z = 1.99. The bridge joins the cylinders and leaves the ruling at x = 0, y = 1, z = 1.99..2 as a slit in the joined shell. Arris refuses TangentContact naming the two walls.",
+  "steps": [
+    {
+      "name": "a",
+      "op": "cylinder",
+      "base": [
+        0,
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1,
+      "height": 2
+    },
+    {
+      "name": "b",
+      "op": "cylinder",
+      "base": [
+        0,
+        2,
+        -1
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "radius": 1,
+      "height": 4
+    },
+    {
+      "name": "plate",
+      "op": "box",
+      "min": [
+        -0.25,
+        0.5,
+        -2
+      ],
+      "max": [
+        0.25,
+        1.5,
+        1.99
+      ]
+    },
+    {
+      "name": "result",
+      "op": "fuse",
+      "bodies": [
+        "a",
+        "b",
+        "plate"
+      ]
+    }
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "tangent-contact"
+  }
+}
