@@ -735,11 +735,9 @@ corpus_tests! {
     /// in two lumps of one solid (ADR-0088).
     boolean_tangent_cylinders_fuse => run "boolean/tangent-cylinders-fuse";
     /// A bridge between two touching lumps leaves a short slit above it.
-    #[ignore = "the inherited contact falls between the checker samples, where the desired result is TangentContact"]
-    regression_touching_cylinders_short_slit => run "regression/touching-cylinders-short-slit";
+    boolean_touching_cylinders_short_slit => run "boolean/touching-cylinders-short-slit";
     /// The same short slit from a single fuse of the three solids.
-    #[ignore = "the surviving contact falls between the selection samples, where the desired result is TangentContact"]
-    regression_touching_cylinders_short_slit_many => run "regression/touching-cylinders-short-slit-many";
+    boolean_touching_cylinders_short_slit_many => run "boolean/touching-cylinders-short-slit-many";
     /// Two tangent cylinders with flush caps, whose rims touch at both ends.
     boolean_fuse_cylinders_tangent_equal_height => run "boolean/fuse-cylinders-tangent-equal-height";
     /// A centred box whose side touches a cylinder between two box edges.

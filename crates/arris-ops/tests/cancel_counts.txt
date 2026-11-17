@@ -162,6 +162,8 @@ boolean/three-bores-one-point-cut-many: 16145
 boolean/three-slots-through-cylinder: 412
 boolean/through-hole: 26
 boolean/tilted-cylinder-slot-cut: 1547
+boolean/touching-cylinders-short-slit: refused
+boolean/touching-cylinders-short-slit-many: refused
 boolean/tripod-fuse-many: 16109
 sweep/extrude-downward: 20
 sweep/extrude-ellipse: 4

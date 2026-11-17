@@ -1,7 +1,8 @@
 //! The section curves of the face pairs, cut into blocks and kept as section edges with their pcurves, or laid along an operand edge as an image.
 
 use arris_geom::{
-    Curve, Curve2, MeetKind, SurfaceIntersection, curves_coincide, pcurve_ending_on, pcurve_on,
+    Curve, Curve2, CurveSurfaceIntersection, MeetKind, SurfaceIntersection, curves_coincide,
+    intersect_curve_surface, pcurve_ending_on, pcurve_on,
 };
 use arris_math::{
     Interval, Point2, Point3, RELATIVE_ROUNDING, Tolerance, Vec2, period_end, wrap_into,
@@ -70,7 +71,9 @@ impl<'m, 'c> Build<'m, 'c> {
     /// closed curve — a ball in a bore of its radius, along the circle
     /// they share — the last block wraps round to the first pave, as a
     /// section loop's does, and a curve no edge reaches is one block, a
-    /// contact when it is interior to both faces.
+    /// contact when it is interior to both faces. Where a third operand's
+    /// boundary crosses the curve, a pave separates blocks whose pieces
+    /// can have different selections.
     pub(super) fn contact_curve(
         &mut self,
         pi: usize,
@@ -96,7 +99,18 @@ impl<'m, 'c> Build<'m, 'c> {
                 }));
             }
         }
+        if self.operands.len() > 2 {
+            let range = curve.period().map(|_| curve.domain()).or_else(|| {
+                let lo = paves.iter().copied().reduce(f64::min)?;
+                let hi = paves.iter().copied().reduce(f64::max)?;
+                Interval::new(lo, hi).ok().filter(|r| r.length() > 0.0)
+            });
+            if let Some(range) = range {
+                paves.extend(self.contact_cuts(pi, curve, range)?);
+            }
+        }
         paves.sort_by(f64::total_cmp);
+        paves.dedup();
         let mut blocks: Vec<(f64, f64)> = paves.windows(2).map(|w| (w[0], w[1])).collect();
         if let Some(period) = curve.period() {
             match (paves.first(), paves.last()) {
@@ -136,6 +150,55 @@ impl<'m, 'c> Build<'m, 'c> {
             });
         }
         Ok(())
+    }
+
+    /// Parameters where a third operand's faces meet the contact curve.
+    /// They divide the contact for selection and make no section vertex.
+    fn contact_cuts(
+        &self,
+        pair: usize,
+        curve: &Curve,
+        range: Interval,
+    ) -> Result<Vec<f64>, OpError> {
+        let [oa, ob] = self.pairs[pair].operands;
+        let (fa, fb) = self.pair_infos(pair);
+        let bounds = curve.bounds(range);
+        let mut cuts = Vec::new();
+        for (side, faces) in self.faces.iter().enumerate() {
+            if side == oa || side == ob {
+                continue;
+            }
+            for fc in faces {
+                if !fc.bounds.intersects(&fa.bounds) || !fc.bounds.intersects(&fb.bounds) {
+                    continue;
+                }
+                let tol = tolerance_of(
+                    &self.precision,
+                    fa.tolerance.max(fb.tolerance),
+                    fc.tolerance,
+                );
+                if let Some(bounds) = bounds
+                    && !bounds.inflated(tol.linear).intersects(&fc.bounds)
+                {
+                    continue;
+                }
+                self.tick()?;
+                let hits = self
+                    .metered(|mt| intersect_curve_surface(curve, fc.surface, tol, mt))
+                    .map_err(|e| geometry(e, fa.shape(), fc.shape()))?;
+                if let CurveSurfaceIntersection::Points(hits) = hits {
+                    for hit in hits {
+                        let t = curve
+                            .period()
+                            .map_or(hit.t, |p| wrap_into(hit.t, range.lo(), p));
+                        if range.contains(t) && self.on_face(fc, hit.point)?.is_some() {
+                            cuts.push(t);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(cuts)
     }
 
     /// One section curve: its paves from the vertices on it, a seed

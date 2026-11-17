@@ -344,9 +344,10 @@ pub struct SharedSection {
 /// block between consecutive paves whose midpoint is inside both faces
 /// is a contact; on a closed curve the last block wraps round to the
 /// first pave, and a closed curve with none is one block of a whole
-/// period. A contact contributes no section edge and splits
-/// nothing; the boolean decides at its midpoint, by the curvature rule,
-/// whether the piece of each face through it would survive. When both
+/// period. A third operand's boundary can add paves for selection.
+/// A contact contributes no section edge. The boolean applies the
+/// curvature rule at the midpoint to decide whether each face piece
+/// there would survive. When both
 /// would, the two result faces touch along the curve: touching lumps
 /// where they lie in different lumps (ADR-0088), and where they lie in
 /// one it refuses with [`crate::BooleanReason::TangentContact`] — the slit
@@ -933,8 +934,11 @@ fn refusal(body: Body, reason: BooleanReason) -> OpError {
 /// the face of every hit it merges, a section edge from both faces of
 /// its pair; the result's body is `Modified` from both operands', and
 /// each result shell from the operand shells its pieces came from — two
-/// operands that do not meet are two lumps of one solid (ADR-0006,
-/// `docs/DATA-MODEL.md` §Provenance). Tolerances follow
+/// disjoint operands are two lumps of one solid (ADR-0006,
+/// `docs/DATA-MODEL.md` §Provenance). A supported tangent contact along a
+/// curve between separate lumps preserves both, each with its own edges
+/// and vertices (ADR-0088). A contact that survives within one lump is
+/// refused as [`crate::BooleanReason::TangentContact`]. Tolerances follow
 /// the growth rule, as [`cut`]. Two faces on one surface are the flush
 /// case: a piece of `a`'s face lying on `b`'s is kept, once and in `a`'s
 /// orientation, exactly when the two effective normals agree, and

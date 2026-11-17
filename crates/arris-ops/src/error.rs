@@ -154,10 +154,11 @@ pub enum InputReason {
     /// with no segment along it: which a manifold `Solid`'s shells never do
     /// (ADR-0006, ADR-0088); the error's entities are the shared edges or
     /// vertices — a section vertex named by the edges and faces whose hits
-    /// and crossings made it — none for a sweep. Lumps that merely touch,
-    /// along a curve or at a point, each with its own edges and vertices,
-    /// are built (touching lumps, ADR-0088). A body that shares an edge or a
-    /// vertex so is a `General` one, which no operation builds yet.
+    /// and crossings made it — none for a sweep. A `Solid` can represent
+    /// lumps that touch along a curve or at a point when each retains its
+    /// own edges and vertices. Supported curve-contact fuses build
+    /// touching lumps (ADR-0088). Shells that share an edge or vertex
+    /// require a `General` body, which no operation builds yet.
     NonManifold,
     /// The query needs an enclosed volume and the body is not a solid:
     /// a sheet, a wire, a general body.

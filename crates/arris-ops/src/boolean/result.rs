@@ -878,10 +878,10 @@ impl<'m> Build<'m> {
     /// through it lies inside or outside the other operand by the
     /// curvature rule, and the selection table says whether it survives.
     /// A contact both pieces survive is two result faces touching along
-    /// a curve interior to both, a slit: returned for [`Build::shells`] to
-    /// decide, since two faces in different shells are touching lumps
-    /// (ADR-0088) and two in one shell the slit no manifold shell can
-    /// carry, refused by name (ADR-0004).
+    /// a curve interior to both, returned for [`Build::slits`] to decide.
+    /// Faces in different lumps are touching lumps (ADR-0088). Faces in
+    /// the same lump form a slit, including a cavity touching its outer
+    /// shell, and are refused by name (ADR-0004).
     fn contacts(&self) -> Result<Vec<Slit>, OpError> {
         let mut slits = Vec::new();
         for c in &self.i.contacts {
@@ -925,10 +925,11 @@ impl<'m> Build<'m> {
             // Every operand but the pair's two, read along the contact:
             // two tools touching inside a cut's target both survive
             // there. The contact may run out of a third operand — two
-            // blind bores touching up through a plate's top — so it is
-            // read at the model's check points, a point on the third
-            // operand's boundary deciding nothing, and both pieces
-            // surviving at any one is the slit.
+            // blind bores touching up through a plate's top. The pave
+            // splits it where another operand's faces cross it. Within
+            // each block a point on another operand's tolerance band
+            // decides nothing, and both pieces surviving at any check
+            // point is the slit.
             let operands = self.bodies.len();
             let mut slit = false;
             let mut decided = false;

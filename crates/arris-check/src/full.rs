@@ -17,9 +17,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::Side;
 use arris_geom::{
-    Curve, MeetKind, Surface, SurfaceIntersection, SurfaceKind, intersect_surfaces, trace_section,
+    Curve, CurveIntersection, MeetKind, Surface, SurfaceIntersection, SurfaceKind,
+    intersect_curves, intersect_surfaces, trace_section,
 };
-use arris_math::{Aabb, Interval, Point2, Point3, Tolerance, Vec3};
+use arris_math::{Aabb, Interval, Meter, Point2, Point3, Tolerance, Vec3, wrap_into};
 use arris_topo::entity::BodyKind;
 use arris_topo::{Body, EdgeId, EntityId, FaceId, Model, NotFound, Orientation, ShellId, VertexId};
 
@@ -376,7 +377,7 @@ impl<'m> Checker<'m> {
                     curves.iter().any(|c| {
                         meeting.holds_curve(c.kind)
                             && self.curve_is_interior_to_both(
-                                a, sa, b, sb, &c.curve, tolerance, meeting,
+                                a, sa, b, sb, &c.curve, query, meeting, c.kind,
                             )
                     }) || (meeting != Meeting::TouchingCurves
                         && points.iter().any(|p| {
@@ -446,7 +447,8 @@ impl<'m> Checker<'m> {
         let trace = trace_section(sa, sb, within, query, &mut arris_math::Meter::default())
             .map_err(|_| kinds)?;
         let interior = |range: Interval, at: &dyn Fn(f64) -> Point3| {
-            self.section_is_interior_to_both(a, sa, b, sb, range, at, tolerance, meeting)
+            let samples = range.samples(self.precision.check_samples.max(2));
+            self.section_is_interior_to_both(a, sa, b, sb, samples, at, tolerance, meeting)
         };
         // A tangent isoline and an isolated singular point are the touches
         // the intersector would name `MeetKind::Touch`; a branch crosses.
@@ -458,8 +460,9 @@ impl<'m> Checker<'m> {
             }
         };
         Ok(trace.circles().iter().any(|c| {
-            meeting.holds_curve(kind(c.tangent))
-                && self.curve_is_interior_to_both(a, sa, b, sb, &c.circle, tolerance, meeting)
+            let kind = kind(c.tangent);
+            meeting.holds_curve(kind)
+                && self.curve_is_interior_to_both(a, sa, b, sb, &c.circle, query, meeting, kind)
         }) || (meeting != Meeting::TouchingCurves
             && (trace
                 .branches()
@@ -635,9 +638,9 @@ impl<'m> Checker<'m> {
 
     /// `true` when the surfaces' intersection curve has a point interior
     /// to both faces, within `tolerance` of both surfaces, that is not on
-    /// an edge or vertex they share. The curve is sampled over the
-    /// parameters both faces' boundaries reach — its whole domain when
-    /// that is bounded ([`Checker::curve_range`]).
+    /// an edge or vertex they share. Touching curves also have a witness
+    /// tested between consecutive trim hits, where a slit can survive
+    /// between the samples over the full range.
     #[allow(clippy::too_many_arguments)]
     fn curve_is_interior_to_both(
         &self,
@@ -646,26 +649,97 @@ impl<'m> Checker<'m> {
         b: FaceId,
         sb: &Surface,
         curve: &Curve,
-        tolerance: f64,
+        tolerance: Tolerance,
         meeting: Meeting,
+        kind: MeetKind,
     ) -> bool {
         let Some(range) = self.curve_range(a, sa, b, sb, curve) else {
             return false;
         };
+        let samples = range.samples(self.precision.check_samples.max(2));
+        let midpoints = std::iter::once_with(|| {
+            if kind == MeetKind::Touch {
+                self.trimmed_section_midpoints([a, b], curve, range, tolerance)
+            } else {
+                Vec::new()
+            }
+        })
+        .flatten();
         self.section_is_interior_to_both(
             a,
             sa,
             b,
             sb,
-            range,
+            samples.into_iter().chain(midpoints),
             &|t| curve.point(t),
-            tolerance,
+            tolerance.linear,
             meeting,
         )
     }
 
-    /// [`Checker::curve_is_interior_to_both`] for a section known only by
-    /// its points: `at` over `range`, sampled the same way.
+    /// The midpoints between a contact curve's intersections with the
+    /// trimmed boundary edges. Vertices also mark the ends of edges that
+    /// lie along the contact itself, such as a seam.
+    fn trimmed_section_midpoints(
+        &self,
+        faces: [FaceId; 2],
+        curve: &Curve,
+        range: Interval,
+        tolerance: Tolerance,
+    ) -> Vec<f64> {
+        let in_range = |t: f64, curve: &Curve, range: Interval| {
+            let t = curve.period().map_or(t, |p| wrap_into(t, range.lo(), p));
+            range.contains(t).then_some(t)
+        };
+        let edges: BTreeSet<_> = faces
+            .iter()
+            .filter_map(|face| self.domains.get(face))
+            .flat_map(FaceDomain::edges)
+            .copied()
+            .collect();
+        let mut cuts = vec![range.lo(), range.hi()];
+        let bounds = curve.bounds(range);
+        for id in edges {
+            let Ok(edge) = self.model.edge(id) else {
+                continue;
+            };
+            for id in [edge.start(), edge.end()] {
+                if let Ok(vertex) = self.model.vertex(id)
+                    && let Ok(hit) = curve.project(vertex.point())
+                    && hit.distance <= tolerance.linear.max(vertex.tolerance())
+                    && let Some(t) = in_range(hit.t, curve, range)
+                {
+                    cuts.push(t);
+                }
+            }
+            let Some((id, edge_range)) = edge.curve() else {
+                continue;
+            };
+            let Ok(edge_curve) = self.model.curve(id) else {
+                continue;
+            };
+            let tol = Tolerance::new(tolerance.linear.max(edge.tolerance()), tolerance.angular);
+            if let (Some(bounds), Some(edge_bounds)) = (bounds, edge_curve.bounds(edge_range))
+                && !bounds.inflated(tol.linear).intersects(&edge_bounds)
+            {
+                continue;
+            }
+            if let Ok(CurveIntersection::Points(hits)) =
+                intersect_curves(curve, edge_curve, tol, &mut Meter::default())
+            {
+                cuts.extend(hits.into_iter().filter_map(|hit| {
+                    in_range(hit.tb, edge_curve, edge_range)?;
+                    in_range(hit.ta, curve, range)
+                }));
+            }
+        }
+        cuts.sort_by(f64::total_cmp);
+        cuts.dedup();
+        cuts.windows(2).map(|w| w[0].midpoint(w[1])).collect()
+    }
+
+    /// Test the supplied section parameters against both trimmed faces.
+    /// The section can be a curve or a branch known only by its points.
     #[allow(clippy::too_many_arguments)]
     fn section_is_interior_to_both(
         &self,
@@ -673,7 +747,7 @@ impl<'m> Checker<'m> {
         sa: &Surface,
         b: FaceId,
         sb: &Surface,
-        range: Interval,
+        samples: impl IntoIterator<Item = f64>,
         at: &dyn Fn(f64) -> Point3,
         tolerance: f64,
         meeting: Meeting,
@@ -705,7 +779,7 @@ impl<'m> Checker<'m> {
                 Side::Boundary | Side::Outside => false,
             }
         };
-        for t in range.samples(self.precision.check_samples.max(2)) {
+        for t in samples {
             let point = at(t);
             // On an edge or vertex the two faces share, where the
             // surfaces are allowed to meet.
