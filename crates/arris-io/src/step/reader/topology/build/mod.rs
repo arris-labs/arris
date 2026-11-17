@@ -196,6 +196,14 @@ impl<'a, 'm> Build<'a, 'm> {
                     (c, id)
                 }
             };
+            // A closed edge on a closed B-spline runs once round from its
+            // one vertex, which need not be at the curve's seam (Autodesk
+            // writes cope curves on pipes so): restart the curve there.
+            let (curve, curve_id) = if e.start == e.end {
+                self.restart_at_vertex(curve, curve_id, self.points[e.start])
+            } else {
+                (curve, curve_id)
+            };
             // The Arris edge runs along its curve.
             let along = e.same_sense != e.curve.reversed;
             let (start, end) = if along {
@@ -234,6 +242,42 @@ impl<'a, 'm> Build<'a, 'm> {
             }
         };
         Ok(())
+    }
+
+    /// A closed edge's curve, restarted at its one vertex where the curve
+    /// is a closed B-spline that is not periodic and the vertex is not at
+    /// its seam; otherwise the curve as it was. The restarted curve is a
+    /// curve of its own in the model (another edge may use the file's
+    /// curve as it is). Where the vertex does not project inside the
+    /// domain or the curve does not close, it is left as it was, and the
+    /// edge's range and gaps are judged as before.
+    fn restart_at_vertex(
+        &mut self,
+        curve: arris_geom::Curve,
+        curve_id: CurveId,
+        vertex: Point3,
+    ) -> (arris_geom::Curve, CurveId) {
+        let arris_geom::Curve::Nurbs(nurbs) = &curve else {
+            return (curve, curve_id);
+        };
+        if nurbs.period().is_some() {
+            return (curve, curve_id);
+        }
+        let domain = nurbs.domain();
+        if (curve.point(domain.lo()) - vertex).norm() <= self.tolerance {
+            return (curve, curve_id);
+        }
+        let Ok(t) = curve.project(vertex).map(|p| p.t) else {
+            return (curve, curve_id);
+        };
+        match nurbs.restarted(t, self.precision.max_tolerance) {
+            Ok(restarted) => {
+                let c = arris_geom::Curve::Nurbs(restarted);
+                let id = self.model.add_curve(c.clone());
+                (c, id)
+            }
+            Err(_) => (curve, curve_id),
+        }
     }
 
     /// An edge whose curve runs through a singular point of a face it

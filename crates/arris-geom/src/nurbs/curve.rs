@@ -308,6 +308,87 @@ impl NurbsCurve {
             .map_err(degenerate(GeomKind::Curve(CurveKind::Nurbs)))
     }
 
+    /// A closed curve that is not periodic — its first and last control
+    /// points one point, its knots clamped — restarted at `t`: the same
+    /// loop, run once round from `curve(t)` back to it, over
+    /// `[t, t + hi − lo]`. The piece `[t, hi]` comes first, then `[lo, t]`
+    /// moved on by the domain's length, joined at the old seam with a
+    /// knot of multiplicity `p` (continuity C⁰ there, as the seam had).
+    /// What a reader needs of a closed edge whose one vertex is not at its
+    /// curve's seam: STEP allows such an edge, and it runs round the
+    /// whole curve from its vertex.
+    ///
+    /// `piece.eval(s).point == self.eval(s).point` to rounding for `s` in
+    /// `[t, hi]`, and `== self.eval(s − (hi − lo)).point` past `hi`.
+    ///
+    /// Errors: [`GeomError::Degenerate`] when `t` is not strictly inside
+    /// the domain, the curve is periodic, or its ends are not one point
+    /// (within `closure`, a length).
+    ///
+    /// ```
+    /// use arris_geom::NurbsCurve;
+    /// use arris_math::Point3;
+    ///
+    /// // A closed quadratic loop: first and last control points equal.
+    /// let c = NurbsCurve::new(
+    ///     2,
+    ///     vec![0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 3.0, 3.0],
+    ///     vec![
+    ///         Point3::new(0.0, 0.0, 0.0), Point3::new(2.0, 0.0, 0.0), Point3::new(2.0, 2.0, 0.0),
+    ///         Point3::new(0.0, 2.0, 0.0), Point3::new(0.0, 0.0, 0.0),
+    ///     ],
+    ///     vec![1.0; 5],
+    /// ).unwrap();
+    /// let r = c.restarted(1.25, 1e-12).unwrap();
+    /// assert_eq!((r.domain().lo(), r.domain().hi()), (1.25, 4.25));
+    /// assert!((r.eval(1.25).point - c.eval(1.25).point).norm() < 1e-14);
+    /// assert!((r.eval(4.25).point - c.eval(1.25).point).norm() < 1e-14);
+    /// assert!((r.eval(3.5).point - c.eval(0.5).point).norm() < 1e-14);
+    /// ```
+    pub fn restarted(&self, t: f64, closure: f64) -> Result<Self, GeomError> {
+        let fail = degenerate(GeomKind::Curve(CurveKind::Nurbs));
+        if self.period().is_some() {
+            return Err(fail(SplineFault::RestartPeriodic));
+        }
+        let d = self.domain();
+        let (lo, hi) = (d.lo(), d.hi());
+        if !(t > lo && t < hi) {
+            return Err(fail(SplineFault::KnotOutsideDomain { knot: t, lo, hi }));
+        }
+        let length = hi - lo;
+        let range = |a: f64, b: f64| {
+            Interval::new(a, b).map_err(|_| fail(SplineFault::NoRange { lo: a, hi: b }))
+        };
+        let tail = self.segment(range(t, hi)?)?;
+        let head = self.segment(range(lo, t)?)?;
+        let p = self.degree();
+        let (tp, hp) = (tail.control_points(), head.control_points());
+        let (tw, hw) = (tail.weights(), head.weights());
+        // `segment` keeps the curve's ends as the pieces' outer ends, so the
+        // seam is the tail's last control point and the head's first.
+        let (Some(&seam_end), Some(&seam_start)) = (tp.last(), hp.first()) else {
+            return Err(fail(SplineFault::InsertedKnotMissing));
+        };
+        let gap = (seam_end - seam_start).norm();
+        if !(gap <= closure) {
+            return Err(fail(SplineFault::NotClosed { gap }));
+        }
+        // A rational curve is unchanged by scaling all its weights: scale
+        // the head's so the two weights at the shared control point agree.
+        let scale = tw[tw.len() - 1] / hw[0];
+
+        let tk = tail.knots();
+        let hk = head.knots();
+        let mut knots = Vec::with_capacity(tk.len() + hk.len() - p - 2);
+        knots.extend_from_slice(&tk[..tk.len() - 1]); // `hi` kept p times
+        knots.extend(hk[p + 1..].iter().map(|k| k + length));
+        let mut points = tp.to_vec();
+        points.extend_from_slice(&hp[1..]);
+        let mut weights = tw.to_vec();
+        weights.extend(hw[1..].iter().map(|w| w * scale));
+        NurbsCurve::new(p, knots, points, weights)
+    }
+
     /// The curve's polynomial pieces in Bernstein form, one per
     /// non-empty span, ascending: what a curve substituted into an
     /// implicit surface is built from (`crate::intersect_spline`).
