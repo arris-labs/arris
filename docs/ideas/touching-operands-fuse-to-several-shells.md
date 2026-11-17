@@ -1,7 +1,7 @@
 # Idea: touching-operands-fuse-to-several-shells
 
 - Status: Accepted (A); the ADR and the curve touches (cases 1 and 2's
-  `fuse`) absorbed by plans/touching-lumps-along-a-curve. Still to plan:
+  `fuse`) done under ADR-0088. Still to plan:
   point touches (`touching-lumps-at-a-point`), then shared-topology
   contacts (Q2). Rewritten 2026-11-17 after reproducing the four cases on
   `0.12.0-dev`: they are three different failures, not one, and two of them
@@ -111,7 +111,7 @@ checker's silent pass in (c) becomes a valid body.
 
 Cost: two milestone plans of about five steps each.
 
-- **Plan 1** (absorbed by plans/touching-lumps-along-a-curve): the ADR,
+- **Plan 1** (done): the ADR,
   B1, and touches along a curve (cases 1 and 2's fuse).
   `tangent-cylinders-fuse` flips.
 - **Plan 2:** point touches in all three operations (cases 3 and 4, case 2's

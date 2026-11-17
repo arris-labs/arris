@@ -1,7 +1,6 @@
 # ADR-0088 — Lumps of one solid may touch
 
 - Status: accepted (2026-11-18)
-- Plan: `touching-lumps-along-a-curve` step 1
 - Amends: ADR-0006 (the sentence "Two lumps meeting at a point or along a
   line are a non-manifold body, C7's `General`, not a `Solid` with a
   special case", and B1's "no two shells of the body meet")
@@ -68,10 +67,9 @@ checker passes them.
    is an outer shell: `OuterInOuter`, placed by an interior point since
    its vertices may be on the contact. Touching from inside a cavity is a
    void in a void's or a lump in a void's nesting, decided the same way.
-5. **The boolean builds what B1 admits, between lumps** (the plan's steps 2
-   onwards): the result's pieces are grouped into shells and the shells
-   into lumps, and a contact whose two faces' pieces lie in different
-   lumps is touching lumps. Where they lie in one lump — one shell
+5. **A fuse can build a curve contact between lumps.** The result's pieces
+   are grouped into shells and the shells into lumps. A curve contact whose
+   two faces' pieces lie in different lumps is touching lumps. Where they lie in one lump — one shell
    touching itself, or a cavity touching the wall round it, a ball in a
    bore of its radius — the lump's material would touch itself and it stays
    `TangentContact`. B1 itself still admits a void touching its outer
@@ -84,7 +82,7 @@ checker passes them.
    stay `NonManifold` until then; this ADR draws no arbitrary line between
    the two kinds of touch.
 
-### Contact ends at coincident caps (step 3)
+### Contact ends at coincident caps
 
 Two externally tangent walls with flush caps can meet at a rim tangency
 on a wall's seam. The seam crosses the opposite cap plane at its own
@@ -103,15 +101,14 @@ whole.
   the same code and follows.
 - A test body of two shells touching is built from `sample::cylinder_in`
   (a placed cylinder, added to `arris-debug`'s samples for the purpose).
-- The cost of a pair whose surfaces touch is the cost it had: the
-  intersector decides the pair either way, and the extra placing points
-  are tried only when a vertex is on the other shell.
+- The intersector supplies the same surface verdict to B1 and S5. The
+  checker tries extra placing points when the first point leaves nesting
+  undecided. For S5, trim intersections subdivide touching curves so a
+  short interior contact still has a test point.
 - A solid of touching lumps is a consumer's single shape where Open CASCADE
   has a compound: STEP writes a `MANIFOLD_SOLID_BREP` per lump, which the
-  oracle reads as that many solids (checked on a disjoint fuse), and the
-  native format changes nothing.
-- `Unsupported` and `TangentContact` stay what they are until the plan's
-  later steps move them; nothing in this ADR builds a body.
+  oracle reads as that many solids. The native format round-trips the
+  touching lumps as one solid.
 
 ## Alternatives considered
 

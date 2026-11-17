@@ -51,9 +51,9 @@ release on PyPI. Exact point classification in a batch
 (`classify_points`, Rust and Python) is the cycle's first item, done; the
 flat edge read as a tangent contact is its second, done, and the tangency
 faults its third, done (2026-11-17): five tangent cases build, the rim point
-and two chamfers that use up a face are refused by name.
-**Next:** `/idea` or `/plan` for the cycle's next item (`docs/ROADMAP.md` §C12
-**In**), the `touching-operands-fuse-to-several-shells` idea first.
+and two chamfers that use up a face are refused by name. Solids touching
+along a curve now fuse to one solid of touching lumps.
+**Next:** `/plan touching-lumps-at-a-point` (`docs/ROADMAP.md` §C12 **In**).
 
 ## Rules that are not derivable from the code
 

@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- Solids touching from the outside along a curve can fuse to one solid
+  with two lumps. Each lump keeps its own edges and vertices. A fuse that
+  joins the lumps while leaving their contact exposed returns `TangentContact`.
+
 - Booleans of operands tangent to each other now build where they returned a
   body the checker refuses, or failed with `OpInternalError`: a cylinder
   tangent inside a wider one, a bar with a boss tangent to each end, a plate

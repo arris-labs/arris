@@ -808,9 +808,10 @@ equal, since equal radii touching inside share their axis and are
 `Coincident`. Equal curvatures, compared exactly, are a touch of higher
 order the rule cannot decide, `OpError::Unsupported` naming the pair.
 Before any face is split, the same rule and the table decide each contact
-between operands at its midpoint. A contact whose two pieces would both
-survive is two result faces
-touching along a curve interior to both, a slit. Once the kept pieces are
+between operands at the midpoint of each span. Intersections with a third
+operand's faces subdivide the contact before this test. A contact whose
+two pieces would both survive is a slit: two result faces touching along
+a curve interior to both. Once the kept pieces are
 grouped into shells and the shells into lumps, the slit is looked up by the
 lumps of the pair's two faces' kept pieces: in two different lumps, the
 lumps touch and the result is built — a `fuse` of two solids that touch
@@ -822,7 +823,8 @@ side face, a ball in a bore of its radius, whose cavity touches the wall
 round it — because the lump's material would touch itself, which no manifold
 `Solid` carries (ADR-0004). If two shells from one operand contribute faces
 to the same result shell, the surviving face regions are checked for an
-inherited curve touch. The same refusal names the two operand faces when
+inherited curve touch, using its intersections with the face trims to
+subdivide the curve. The same refusal names the two operand faces when
 the result still contains the slit. A joining piece that covers the contact
 can fuse the shells. A touch from outside in a `cut` or a `common` passes:
 the tool's piece is dropped, the target's kept whole, and the ruling is no
@@ -2553,7 +2555,7 @@ refusal histogram, what picks the cycle after the reader's.
 | Primitives (box, cylinder) | `ops::primitive_box`, `ops::primitive_cylinder` |
 | Extrude / revolve of a sketched profile with holes | `ops::extrude`, `ops::revolve` over `Profile` (lines, arcs and elliptic arcs; a revolve refuses an elliptic segment, ADR-0014) |
 | Boolean union / intersect / cut | `ops::fuse`, `ops::common`, `ops::cut` |
-| Cut or fuse many tools at once (a pattern of holes or bosses) | `ops::cut_many`, `ops::fuse_many` (ADR-0050): one decomposition over the body and every tool, provenance naming each tool; tools that overlap one another and the triple points where three operands' sections cross included, tools flush with one another and with the target, a tool repeated by value; tools touching along a ruling or an edge refused (`TangentContact`, `NonManifold`) |
+| Cut or fuse many tools at once (a pattern of holes or bosses) | `ops::cut_many`, `ops::fuse_many` (ADR-0050): one decomposition over the body and every tool, provenance naming each tool; tools that overlap one another and the triple points where three operands' sections cross included, tools flush with one another and with the target, a tool repeated by value; tools touching along a ruling can fuse as touching lumps (ADR-0088), while a ruling contact within one lump or a shared topological edge is refused (`TangentContact`, `NonManifold`) |
 | Transform (geometry only, topology and index order preserved) | `ops::transform` — new ids, provenance `Modified` one-to-one in iteration order |
 | Mirror a body in a plane | `ops::mirror` — new ids, provenance `Modified` one-to-one, the image a solid with its material inside (ADR-0031) |
 | Fillet / chamfer of named edges, one call for all edges | `ops::fillet`, `ops::chamfer` (ADR-0007) |

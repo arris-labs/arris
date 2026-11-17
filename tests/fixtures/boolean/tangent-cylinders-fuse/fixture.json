@@ -1,5 +1,5 @@
 {
-  "description": "tangent-cylinders-cut's operands, fused: the two walls touch from outside along the ruling x = 0, y = R interior to both, and both survive a fuse, so the result is two lumps of one solid touching along that line (ADR-0088). Open CASCADE builds a compound of two solids and imprints the ruling on both walls, a convention Arris does not follow, stated in counts_differ as tangent-cylinders-cut's (plans/touching-lumps-along-a-curve step 2)",
+  "description": "tangent-cylinders-cut's operands, fused: the two walls touch from outside along the ruling x = 0, y = R interior to both, and both survive a fuse, so the result is two lumps of one solid touching along that line (ADR-0088). Open CASCADE builds a compound of two solids and imprints the ruling on both walls, a convention Arris does not follow, stated in counts_differ as tangent-cylinders-cut's",
   "params": {"R": 1, "h": 2},
   "steps": [
     {"name": "a", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": "R", "height": "h"},
