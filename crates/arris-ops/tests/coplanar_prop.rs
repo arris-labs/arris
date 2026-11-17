@@ -1,4 +1,4 @@
-//! Solids that share a plane (`plans/flat-edge-read-as-tangent-contact`):
+//! Solids that share a plane (the retired flat-edge-read-as-tangent-contact plan):
 //! three to five boxes and cylinders standing on the plane z = 0, half of
 //! them on whole numbers so bases, tops and walls come out flush.
 //! `fuse_many` and the chain of `fuse`s agree in volume and area, or both

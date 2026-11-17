@@ -1,0 +1,23 @@
+{
+  "description": "a 4 x 6 x 8 box bored through along z by a cylinder of radius 0.5, then a 1 x 1 column through the same place cut away: the bore is tangent to the column along the four lines x = +-0.5, y = 0 and y = +-0.5, x = 0, so the second cut removes the four corner pieces. V = 192 - 8 = 184, A = 208 - 2 + 4 * 8 = 238, genus 1. Arris faults with a section edge ending at a node nothing else reaches, a ruling where a face touches the bore's wall from inside (SplitFault::Dangling); bores of 0.45 and 0.55 build. The desired result is the box with a square hole, Full-green (plans/tangency-faults step 4)",
+  "steps": [
+    {"name": "box", "op": "box", "min": [-2, -3, -4], "max": [2, 3, 4]},
+    {"name": "bore", "op": "cylinder", "base": [0, 0, 4], "axis": [0, 0, -1], "radius": 0.5, "height": 20},
+    {"name": "bored", "op": "cut", "target": "box", "tool": "bore"},
+    {"name": "column", "op": "box", "min": [-0.5, -0.5, -10], "max": [0.5, 0.5, 10]},
+    {"name": "result", "op": "cut", "target": "bored", "tool": "column"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in the box, past the hole", "point": [1, 1, 0], "expect": "in"},
+    {"label": "just outside the hole's side", "point": [0.55, 0, 0], "expect": "in"},
+    {"label": "in the hole's middle", "point": [0, 0, 0], "expect": "out"},
+    {"label": "in the hole's corner", "point": [0.45, 0.45, 0], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "4 * 6 * 8 - 8",
+    "area": "238",
+    "centroid": [0, 0, 0],
+    "genus": 1
+  }
+}

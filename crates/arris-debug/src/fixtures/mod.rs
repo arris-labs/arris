@@ -1050,6 +1050,13 @@ pub struct Analytic {
     /// Euler line with `genus`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub counts_differ: Option<String>,
+    /// Why Open CASCADE's shape of a result Arris builds has an odd Euler
+    /// characteristic (a touching ruling carried as an edge of four faces,
+    /// as for a tangent contact, where Arris keeps a manifold body): the
+    /// oracle then records no genus for it, and the lint asks none.
+    /// `analytic.genus` is Arris's.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub occt_odd_euler: Option<String>,
     /// The inertia tensor about the centroid at unit density, as rows, in
     /// `expected.json`'s convention (the products of inertia negated).
     /// Cross-checked against the oracle's like the other closed forms;
@@ -2074,10 +2081,12 @@ fn lint_euler(a: &Analytic, variant: &str, m: &Measured, complete: &mut bool) ->
                     | ExpectError::FrameDoesNotClose
             )
         );
+        let odd_euler = a.occt_odd_euler.is_some();
         let genus = match (m.genus, non_manifold) {
             (Some(genus), _) => Some(genus),
             // Solids sharing an edge or a vertex, or faces sharing a
             // tangent contact as an edge of four, close no Euler line.
+            (None, _) if odd_euler => None,
             (None, true) => {
                 if a.genus.is_some() {
                     problems.push(format!(

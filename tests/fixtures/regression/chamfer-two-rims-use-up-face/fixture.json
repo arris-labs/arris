@@ -1,0 +1,13 @@
+{
+  "description": "a ring of outer radius 10, bore 6 and height 8, both rims of its top face chamfered 2.5 in one call. The face is 4 wide, so the two chamfers together (5) use it up: their contact circles on the face fall at radii 7.5 and 8.5 and swap order. No solid has this shape; Open CASCADE returns a shape its own checker refuses. Arris returns a body that Full refuses (L4 hole loop 0 lies outside every outer loop; L5). The desired result is the refusal Reason::TooLarge naming both edges and the face, before any geometry is cut (plans/tangency-faults step 7)",
+  "steps": [
+    {"name": "section", "op": "profile",
+     "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+     "outer": {"start": [6, 0], "segments": [{"line_to": [10, 0]}, {"line_to": [10, 8]}, {"line_to": [6, 8]}, {"line_to": [6, 0]}]}},
+    {"name": "ring", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "result", "op": "chamfer", "of": "ring", "edges": [[0, 10, 8], [0, 6, 8]], "distance": 2.5}
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {"expect_error": "blend-too-large"}
+}

@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "ad1ae1186f6ac3fa4238c553c6d6a9509c45f71b07ee4f26b7e9904ddd454fe5",
+  "results": {
+    "default": {
+      "area": 43.982297150257104,
+      "centroid": [
+        -1.2722218725854065e-16,
+        -0.8000000000000002,
+        -2.8271597168564587e-17
+      ],
+      "counts": {
+        "edges": 14,
+        "faces": 8,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          18.744836166419127,
+          1.1338152638984416e-15,
+          1.110223024625157e-16
+        ],
+        [
+          1.1338152638984416e-15,
+          16.23156204354726,
+          1.5404344466674054e-16
+        ],
+        [
+          1.110223024625157e-16,
+          1.5404344466674054e-16,
+          29.216811678385092
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 14,
+        "faces": 8,
+        "loops": 10,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "unit cylinder's top",
+          "point": [
+            0.0,
+            0.0,
+            0.9
+          ]
+        },
+        {
+          "class": "in",
+          "label": "big cylinder's far side",
+          "point": [
+            0.0,
+            -2.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "big cylinder's far side, high",
+          "point": [
+            0.0,
+            -2.0,
+            0.4
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above the big cylinder, beside the unit one",
+          "point": [
+            1.5,
+            0.0,
+            0.8
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past the tangent line",
+          "point": [
+            0.0,
+            1.5,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "over the unit cylinder",
+          "point": [
+            0.0,
+            0.0,
+            1.2
+          ]
+        }
+      ],
+      "volume": 15.70796326794897
+    }
+  }
+}

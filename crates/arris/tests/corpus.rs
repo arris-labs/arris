@@ -256,6 +256,8 @@ corpus_tests! {
     /// share it, Arris refuses with `InputReason::NonManifold` — the runner's
     /// expected-error path.
     boolean_edge_touching_fuse => run "boolean/edge-touching-fuse";
+    /// A frustum and a box touching its top rim at the revolve's seam vertex, a point: refused `NonManifold`.
+    boolean_fuse_frustum_box_rim_point => run "boolean/fuse-frustum-box-rim-point";
     boolean_boss => run "boolean/boss";
     /// A plate cut by a 2×2 grid of four disjoint holes in one call.
     boolean_plate_2x2_holes_cut_many => run "boolean/plate-2x2-holes-cut-many";
@@ -2151,16 +2153,40 @@ corpus_tests! {
     regression_ogive_bar_step_chain_fillet => run "regression/ogive-bar-step-chain-fillet";
     /// Two overlapping boxes standing on the plane z = 0, nowhere abutting
     /// (the coplanar-solids property's shrunk draw): the union is one solid.
-    #[ignore = "OpError::Unsupported: plane against line, the bottoms' coplanar edge of one box against the other's face, for these numbers and not for nearly any others (plans/flat-edge-read-as-tangent-contact step 6)"]
+    #[ignore = "OpError::Unsupported: plane against line, the bottoms' coplanar edge of one box against the other's face, for these numbers and not for nearly any others (the retired flat-edge-read-as-tangent-contact plan, step 6)"]
     regression_two_boxes_on_one_plane_fuse_unsupported => run "regression/two-boxes-on-one-plane-fuse-unsupported";
     /// Three boxes and a cylinder on one plane fused as a chain: every pair
     /// and the n-ary call build, the chain's last step is refused.
-    #[ignore = "OpError::Unsupported: plane against line at the chain's last step, where the n-ary call builds (plans/flat-edge-read-as-tangent-contact step 6)"]
+    #[ignore = "OpError::Unsupported: plane against line at the chain's last step, where the n-ary call builds (the retired flat-edge-read-as-tangent-contact plan, step 6)"]
     regression_chained_fuse_three_boxes_and_cylinder_unsupported => run "regression/chained-fuse-three-boxes-and-cylinder-unsupported";
     /// Three boxes on one plane fused in one call, two of them with one top
     /// plane and the third's wall across both: every pair and the chain build.
-    #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (plans/flat-edge-read-as-tangent-contact step 8)"]
+    #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (the retired flat-edge-read-as-tangent-contact plan, step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
+    /// A unit cylinder fused with a radius-2 slab cylinder it is tangent inside along x = 0, y = 1: V = 5 pi, A = 14 pi.
+    #[ignore = "L5 loops 0 and 1 intersect: each outer cap is a crescent whose rim and section circle touch at one vertex, written as an outer loop and a hole that meet at no vertex; the desired body is one loop through the touch vertex twice (plans/tangency-faults step 2)"]
+    regression_fuse_cylinder_tangent_inside => run "regression/fuse-cylinder-tangent-inside";
+    /// A 30 x 5 x 1 bar with a radius-3 boss tangent to each end face: the second fuse.
+    #[ignore = "L5 loop 0 intersects itself on the top and bottom after the second fuse, the first boss's touch at (15, 0, +-0.5) left as the lead (plans/tangency-faults step 3)"]
+    regression_fuse_bar_end_bosses_tangent => run "regression/fuse-bar-end-bosses-tangent";
+    /// A plate whose arc is tangent inside a unit cylinder's wall, fused with the cylinder.
+    #[ignore = "Fault::Split Dangling: a section edge ends at a node nothing else reaches, a ruling where the plate's arc touches the wall from inside (plans/tangency-faults step 4)"]
+    regression_fuse_arc_plate_tangent_inside_cylinder => run "regression/fuse-arc-plate-tangent-inside-cylinder";
+    /// A bored box with a 1 x 1 column cut through the bore it is tangent to along four lines: V = 184, genus 1.
+    #[ignore = "Fault::Split Dangling: a section edge ends at a node nothing else reaches, a ruling where a face touches the bore's wall from inside (plans/tangency-faults step 4)"]
+    regression_cut_bore_tangent_column => run "regression/cut-bore-tangent-column";
+    /// A horizontal cylinder whose end disc is tangent to a vertical cylinder's wall along a line: V = 15 pi - 8/3.
+    #[ignore = "Fault::Split Turn: a cycle of the end disc's arrangement does not turn once (plans/tangency-faults step 5)"]
+    regression_fuse_end_disc_tangent_to_wall => run "regression/fuse-end-disc-tangent-to-wall";
+    /// A frustum and a box touching its top rim at the point opposite the revolve's seam, inside the rim edge.
+    #[ignore = "an Ok body where the seam side is refused (the cap's arrangement places the coplanar box face as a hole of no region); the desired result is the refusal NonManifold naming the touch vertex, as at the seam (plans/tangency-faults step 6)"]
+    regression_fuse_frustum_box_rim_point_far_side => run "regression/fuse-frustum-box-rim-point-far-side";
+    /// A ring whose two top rims are both chamfered 2.5 on a face 4 wide.
+    #[ignore = "an Ok body that Full refuses (L4, S5): the contact circles swap order; the desired result is the refusal BlendTooLarge naming both edges and the face (plans/tangency-faults step 7)"]
+    regression_chamfer_two_rims_use_up_face => run "regression/chamfer-two-rims-use-up-face";
+    /// The same ring chamfered on both rims and cut across by a cylinder.
+    #[ignore = "OpError::Internal on the cut of the invalid chamfered body; the desired result is the chamfer's refusal BlendTooLarge (plans/tangency-faults step 7)"]
+    regression_chamfer_two_rims_use_up_face_then_cut => run "regression/chamfer-two-rims-use-up-face-then-cut";
 }
 
 /// A variant the recipe does not have fails naming it.

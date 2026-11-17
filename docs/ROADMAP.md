@@ -957,7 +957,7 @@ the named cycle next in line.*
 - Tangency faults: an operand tangent inside another, a tool tangent
   to a bore, two chamfers that use up a face, contacts that end in an
   internal error. Each one builds, or at the least is a typed refusal
-  (`docs/ideas/tangency-faults.md`).
+  (`docs/plans/tangency-faults.md`).
 - A revolve whose arc's circle reaches the axis while the arc stays on
   one side: the spindle torus's outer part, and the half horn torus
   (`docs/ideas/revolve-circle-meets-the-axis.md`).

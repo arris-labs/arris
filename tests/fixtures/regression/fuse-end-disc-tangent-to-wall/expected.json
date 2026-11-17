@@ -1,0 +1,99 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "877a97850287bd5b731b1f322dbc798ae8496d117ea81648ef66807e2802f310",
+  "results": {
+    "default": {
+      "area": 95.67255757245313,
+      "centroid": [
+        0.7600689852462268,
+        -1.7279928206407804e-11,
+        2.7085047427121554
+      ],
+      "counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 1,
+      "genus": null,
+      "inertia": [
+        [
+          44.45813249576861,
+          3.430858870218452e-09,
+          54.9455615314715
+        ],
+        [
+          3.430858870218452e-09,
+          630.5145472884395,
+          1.5490072927036187e-10
+        ],
+        [
+          54.9455615314715,
+          1.5490072927036187e-10,
+          608.5516930291681
+        ]
+      ],
+      "probes": [
+        {
+          "class": "in",
+          "label": "vertical cylinder's foot",
+          "point": [
+            5.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "vertical cylinder, off the axis",
+          "point": [
+            5.9,
+            0.2,
+            1.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "horizontal cylinder's far end",
+          "point": [
+            -5.0,
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "horizontal cylinder over the vertical one",
+          "point": [
+            5.0,
+            0.0,
+            3.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above the horizontal cylinder",
+          "point": [
+            5.0,
+            0.0,
+            4.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past the end disc",
+          "point": [
+            6.5,
+            0.0,
+            3.0
+          ]
+        }
+      ],
+      "volume": 44.45722313874059
+    }
+  }
+}

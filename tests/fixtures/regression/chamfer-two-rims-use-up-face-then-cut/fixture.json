@@ -1,0 +1,15 @@
+{
+  "description": "chamfer-two-rims-use-up-face's ring, both rims of its top face chamfered 2.5, then a cylinder of radius 1 cut across it along x at z = 2. Arris returns the invalid chamfered body, and the cut faults on it (OpInternalError); the harness's program raises there. The desired result is the chamfer's refusal, Reason::TooLarge naming both edges and the face, so the cut is never reached (plans/tangency-faults step 7)",
+  "steps": [
+    {"name": "section", "op": "profile",
+     "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+     "outer": {"start": [6, 0], "segments": [{"line_to": [10, 0]}, {"line_to": [10, 8]}, {"line_to": [6, 8]}, {"line_to": [6, 0]}]}},
+    {"name": "ring", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "chamfered", "op": "chamfer", "of": "ring", "edges": [[0, 10, 8], [0, 6, 8]], "distance": 2.5},
+    {"name": "hole", "op": "cylinder", "base": [-12, 0, 2], "axis": [1, 0, 0], "radius": 1, "height": 24},
+    {"name": "result", "op": "cut", "target": "chamfered", "tool": "hole"}
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {"expect_error": "blend-too-large"}
+}

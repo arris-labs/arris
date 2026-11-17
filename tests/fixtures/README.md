@@ -302,6 +302,11 @@ of the step that made the fixture pass, and a later change to it is a
   tensor about the centroid at unit density, rows of expressions in
   `expected.json`'s convention (products of inertia negated), checked
   against the oracle's relative to its largest component.
+  `occt_odd_euler: "why"` says Open CASCADE's shape of a result Arris
+  builds has an odd Euler characteristic, a touching ruling carried as an
+  edge of four faces (`regression/fuse-end-disc-tangent-to-wall`): the
+  oracle records no genus for it and the lint asks none, `analytic.genus`
+  being Arris's.
   `measure_differs: "why"` says Open CASCADE's *measurements* of the
   result are wrong and the closed forms right (ADR-0015): `volume`,
   `area`, `centroid` and `inertia` are then all required and are what

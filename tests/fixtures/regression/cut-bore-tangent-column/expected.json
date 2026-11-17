@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "c87e36e3907326d4100386f6d0330c27b4d61a77a0c42856a8cc5860abc94328",
+  "results": {
+    "default": {
+      "area": 238.0,
+      "centroid": [
+        -3.8616453030440214e-17,
+        7.391430462857697e-18,
+        1.0785454654986232e-17
+      ],
+      "counts": {
+        "edges": 36,
+        "faces": 14,
+        "loops": 16,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          1556.666666666666,
+          -2.6367796834847473e-16,
+          9.462916561453483e-16
+        ],
+        [
+          -2.6367796834847473e-16,
+          1236.6666666666665,
+          -9.973541903376265e-16
+        ],
+        [
+          9.462916561453483e-16,
+          -9.973541903376265e-16,
+          830.6666666666666
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 36,
+        "faces": 14,
+        "loops": 16,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 24
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in the box, past the hole",
+          "point": [
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "just outside the hole's side",
+          "point": [
+            0.55,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in the hole's middle",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "in the hole's corner",
+          "point": [
+            0.45,
+            0.45,
+            0.0
+          ]
+        }
+      ],
+      "volume": 184.00000000000006
+    }
+  }
+}

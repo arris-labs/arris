@@ -79,7 +79,9 @@ def compute_expected(fixture: dict, own: bool = False) -> dict:
     # an odd Euler characteristic. So may a sweep Arris refuses as a frame
     # that does not close: Open CASCADE's pipe joins the last section to the
     # first turned, and the closing face is not a closed surface.
-    manifold = fixture.get("analytic", {}).get("expect_error") not in ("non-manifold", "tangent-contact", "frame-does-not-close")
+    # So may a result that Arris builds and Open CASCADE builds with the
+    # touching ruling carried as an edge of four faces (`analytic.occt_odd_euler`).
+    manifold = fixture.get("analytic", {}).get("expect_error") not in ("non-manifold", "tangent-contact", "frame-does-not-close") and not fixture.get("analytic", {}).get("occt_odd_euler")
     results = {}
     for variant in variant_names(fixture):
         # The edges of a fillet or chamfer that Open CASCADE left out (ADR-0070).

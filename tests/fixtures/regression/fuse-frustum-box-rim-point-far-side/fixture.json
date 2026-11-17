@@ -1,0 +1,18 @@
+{
+  "description": "a cone frustum (radius 3 at z = 0, 2 at z = 4, revolved from a section in the xz plane, its seam at +x) and a 2 x 2 x 2 box standing on its top plane, z in 4..6, x in -4..-2, touching the top rim at the single point (-2, 0, 4), which lies inside the rim edge, opposite the seam vertex. Two lumps joined at a vertex, which a manifold solid does not hold: Open CASCADE builds a compound of two solids. Arris returns a body where the seam side refuses: the touch lies inside the rim edge, and the cap's arrangement places the coplanar box face as a hole of no region. The desired result is the refusal Reason::NonManifold naming the vertex, as at +x (plans/tangency-faults step 6)",
+  "steps": [
+    {"name": "section", "op": "profile",
+     "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [3, 0]}, {"line_to": [2, 4]}, {"line_to": [0, 4]}, {"line_to": [0, 0]}]}},
+    {"name": "frustum", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "lug", "op": "box", "min": [-4, -1, 4], "max": [-2, 1, 6]},
+    {"name": "result", "op": "fuse", "a": "frustum", "b": "lug"}
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "non-manifold",
+    "volume": "76 * pi / 3 + 8",
+    "area": "pi * (5 * sqrt(17) + 13) + 24"
+  }
+}

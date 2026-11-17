@@ -1,0 +1,90 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "38cac7b9c295d7186e9bee7b63e27eb8a63627623e130b907effe8a89eee444a",
+  "results": {
+    "default": {
+      "area": 19.742255003237478,
+      "centroid": [
+        -8.651807788691404e-17,
+        0.015549511145858085,
+        -0.03858864460821747
+      ],
+      "counts": {
+        "edges": 17,
+        "faces": 8,
+        "loops": 9,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 11
+      },
+      "degenerate": false,
+      "euler_characteristic": 1,
+      "genus": null,
+      "inertia": [
+        [
+          3.999477313755748,
+          1.8380120972641594e-16,
+          -1.751688808321214e-16
+        ],
+        [
+          1.8380120972641594e-16,
+          3.9556734430318725,
+          0.1099130174611662
+        ],
+        [
+          -1.751688808321214e-16,
+          0.1099130174611662,
+          3.2185017039500705
+        ]
+      ],
+      "probes": [
+        {
+          "class": "in",
+          "label": "cylinder's middle",
+          "point": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "plate, under the cylinder",
+          "point": [
+            0.2,
+            0.2,
+            -1.1
+          ]
+        },
+        {
+          "class": "in",
+          "label": "plate's half disc, under the cylinder",
+          "point": [
+            0.0,
+            0.9,
+            -1.1
+          ]
+        },
+        {
+          "class": "out",
+          "label": "beside the plate, under the cylinder",
+          "point": [
+            0.9,
+            0.1,
+            -1.1
+          ]
+        },
+        {
+          "class": "out",
+          "label": "under the plate",
+          "point": [
+            0.2,
+            0.2,
+            -1.4
+          ]
+        }
+      ],
+      "volume": 6.506360077604265
+    }
+  }
+}

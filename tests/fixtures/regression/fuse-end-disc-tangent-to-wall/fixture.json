@@ -1,0 +1,24 @@
+{
+  "description": "a vertical cylinder (radius 1, z 0..3, on x = 5) fused with a horizontal one (radius 1, axis along x from -6 to 6 at z = 3) whose end disc, in x = 6, is tangent to the vertical wall along x = 6, y = 0, z in 2..3. The vertical cylinder's part inside the horizontal one has height sqrt(1 - y^2) over its disc, so the overlap is the integral over y of 2 (1 - y^2), 8/3: V = 3 pi + 12 pi - 8/3 = 15 pi - 8/3, A = 33 pi - 8. Arris faults with a cycle of the end disc's arrangement that does not turn once (SplitFault::Turn); a longer cylinder (14) builds. The desired result is Full-green (plans/tangency-faults step 5)",
+  "params": {"len": 12},
+  "steps": [
+    {"name": "v", "op": "cylinder", "base": [5, 0, 0], "axis": [0, 0, 1], "radius": 1, "height": 3},
+    {"name": "h", "op": "cylinder", "base": [-6, 0, 3], "axis": [1, 0, 0], "radius": 1, "height": "len"},
+    {"name": "result", "op": "fuse", "a": "v", "b": "h"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "vertical cylinder's foot", "point": [5, 0, 1], "expect": "in"},
+    {"label": "vertical cylinder, off the axis", "point": [5.9, 0.2, 1], "expect": "in"},
+    {"label": "horizontal cylinder's far end", "point": [-5, 0, 3], "expect": "in"},
+    {"label": "horizontal cylinder over the vertical one", "point": [5, 0, 3.5], "expect": "in"},
+    {"label": "above the horizontal cylinder", "point": [5, 0, 4.5], "expect": "out"},
+    {"label": "past the end disc", "point": [6.5, 0, 3], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "15 * pi - 8 / 3",
+    "area": "33 * pi - 8",
+    "genus": 0,
+    "occt_odd_euler": "Open CASCADE carries the touching ruling as an edge of four faces, so its shape has an odd Euler characteristic"
+  }
+}

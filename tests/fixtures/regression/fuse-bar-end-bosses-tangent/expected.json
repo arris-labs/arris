@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "518bca86c3f85146694b0a3e55d53244141a46c30b6906d6113e7a2bbad30aaa",
+  "results": {
+    "default": {
+      "area": 379.7930651069143,
+      "centroid": [
+        -4.41641553852818e-15,
+        1.3006365318477065e-16,
+        4.446236762877174e-18
+      ],
+      "counts": {
+        "edges": 64,
+        "faces": 36,
+        "loops": 36,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 30
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          358.30542519661753,
+          -9.592326932761361e-14,
+          6.5503158452884204e-15
+        ],
+        [
+          -9.592326932761361e-14,
+          11913.627039511048,
+          -1.3877787807814367e-17
+        ],
+        [
+          6.5503158452884204e-15,
+          -1.3877787807814367e-17,
+          12246.182205438885
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 64,
+        "faces": 36,
+        "loops": 36,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 30
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "first boss's centre",
+          "point": [
+            12.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "first boss past the bar's side",
+          "point": [
+            12.0,
+            2.9,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "second boss past the bar's side",
+          "point": [
+            -12.0,
+            -2.9,
+            0.4
+          ]
+        },
+        {
+          "class": "out",
+          "label": "beside a boss, past its circle",
+          "point": [
+            14.9,
+            2.9,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past the bar's side between the bosses",
+          "point": [
+            0.0,
+            2.9,
+            0.0
+          ]
+        }
+      ],
+      "volume": 154.50155561268127
+    }
+  }
+}
