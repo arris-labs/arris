@@ -389,7 +389,8 @@ pub struct EdgeEdgeHit {
     /// runs inside the other's face beside the touch. Such a touch makes
     /// no vertex and no pave; one where an edge runs inside the other
     /// face — a rim tangent inside a bar's end edge — is a vertex of
-    /// both, recorded as a crossing.
+    /// both, recorded as a crossing, and so is a touch of two faces on
+    /// opposite sides of one plane, the solids touching at that point.
     pub tangent: bool,
     /// The section vertex it was merged into; `None` for a touch.
     pub vertex: Option<usize>,

@@ -314,6 +314,22 @@ impl<'m, 'c> Build<'m, 'c> {
         })
     }
 
+    /// `true` when the effective normals of `f` and `g`, two faces of a
+    /// `Coincident` pair, point opposite ways at `point`: the solids lie
+    /// on the two sides of their shared plane.
+    fn facing_apart(f: &FaceInfo<'m>, g: &FaceInfo<'m>, point: Point3) -> bool {
+        let normal = |face: &FaceInfo<'m>| {
+            let uv = face.surface.project(point).ok()?.uv;
+            let n = face.surface.normal(uv.x, uv.y)?.into_inner();
+            Some(if face.orientation.is_reversed() {
+                -n
+            } else {
+                n
+            })
+        };
+        matches!((normal(f), normal(g)), (Some(a), Some(b)) if a.dot(&b) < 0.0)
+    }
+
     /// `true` when edge `e` runs inside `other` on either side of its
     /// point at `t`, where it touches an edge of `other`'s, the two faces
     /// on one surface: a rim tangent inside a bar's end edge on the face
@@ -439,9 +455,16 @@ impl<'m, 'c> Build<'m, 'c> {
                         // touching a rim from inside is: a boss's rim
                         // tangent inside a bar's end edge, the face's piece
                         // between them pinched to that point.
+                        //
+                        // Two faces on opposite sides of one plane (a
+                        // frustum's cap and the box standing on it) share no
+                        // area, so a touch there is the two solids touching
+                        // at a point, from outside both faces: a vertex of
+                        // both too, which the result names `NonManifold`.
                         let tangent = h.tangent
                             && !Self::edge_runs_inside(ea, ta, fb, tol.linear)
-                            && !Self::edge_runs_inside(eb, tb, fa, tol.linear);
+                            && !Self::edge_runs_inside(eb, tb, fa, tol.linear)
+                            && !Self::facing_apart(fa, fb, point);
                         found.push((
                             EdgeEdgeHit {
                                 pair: pi,

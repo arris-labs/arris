@@ -135,10 +135,18 @@ bound is established here.
   Open CASCADE's own file has two `VERTEX_POINT`s in one loop at the
   touch, which Arris's reader refuses. `occt_step_unread` names a new
   regression fixture for that, and the backlog line grows.
-- [ ] Step 6 **[2]** — Case 6's far side. A coplanar touch at a point
+- [x] Step 6 **[2]** — Case 6's far side. A coplanar touch at a point
   inside an edge becomes the vertex contact the seam side already finds,
   refused `NonManifold` with that vertex named. Both sides and a lug turned
   90° about the axis refuse alike.
+  *Settled*: the touch was a missing vertex, not a missing hole. The
+  rim touches the box's bottom edge from outside both faces, which step
+  3 left no vertex, so the cap and the box's bottom, kept side by side,
+  came out as two shells sharing none. On a coplanar pair whose
+  effective normals oppose, the touch is a vertex of both, and the
+  result names it `NonManifold`; a same-facing pair (a boss on a bar)
+  still splits nothing. The error names the section vertex's two edges
+  and two faces, as for any section vertex.
 - [ ] Step 7 **[2]** — Case 7. The crossing-contacts check refuses
   `BlendTooLarge` for chamfers and fillets, on either pair of rims. A
   chamfer of 1.9 on both rims, or of 3.9 on one rim, still builds green.

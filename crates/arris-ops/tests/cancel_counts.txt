@@ -67,6 +67,7 @@ boolean/fuse-bar-end-bosses-tangent: 113
 boolean/fuse-cylinder-tangent-inside: 26
 boolean/fuse-end-disc-tangent-to-wall: 3512
 boolean/fuse-frustum-box-rim-point: refused
+boolean/fuse-frustum-box-rim-point-far-side: refused
 boolean/fuse-many-coaxial-cylinders-and-box: 131
 boolean/grazing-ball-bar-cut: 17441
 boolean/lump-in-cavity: 36

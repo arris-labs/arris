@@ -258,6 +258,8 @@ corpus_tests! {
     boolean_edge_touching_fuse => run "boolean/edge-touching-fuse";
     /// A frustum and a box touching its top rim at the revolve's seam vertex, a point: refused `NonManifold`.
     boolean_fuse_frustum_box_rim_point => run "boolean/fuse-frustum-box-rim-point";
+    /// The same at the point opposite the seam, inside the rim edge: refused `NonManifold` too.
+    boolean_fuse_frustum_box_rim_point_far_side => run "boolean/fuse-frustum-box-rim-point-far-side";
     /// A unit cylinder fused with a radius-2 slab cylinder it is tangent
     /// inside along x = 0, y = 1: V = 5 pi, A = 14 pi. Each outer cap is a
     /// crescent, one loop through the vertex where its rim touches the
@@ -2190,9 +2192,6 @@ corpus_tests! {
     /// plane and the third's wall across both: every pair and the chain build.
     #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (the retired flat-edge-read-as-tangent-contact plan, step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
-    /// A frustum and a box touching its top rim at the point opposite the revolve's seam, inside the rim edge.
-    #[ignore = "an Ok body where the seam side is refused (the cap's arrangement places the coplanar box face as a hole of no region); the desired result is the refusal NonManifold naming the touch vertex, as at the seam (plans/tangency-faults step 6)"]
-    regression_fuse_frustum_box_rim_point_far_side => run "regression/fuse-frustum-box-rim-point-far-side";
     /// A ring whose two top rims are both chamfered 2.5 on a face 4 wide.
     #[ignore = "an Ok body that Full refuses (L4, S5): the contact circles swap order; the desired result is the refusal BlendTooLarge naming both edges and the face (plans/tangency-faults step 7)"]
     regression_chamfer_two_rims_use_up_face => run "regression/chamfer-two-rims-use-up-face";

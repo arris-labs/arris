@@ -2287,3 +2287,65 @@ fn operands_that_share_entities_build_with_their_own_ids() {
         other => panic!("cut of the box from a side: {other:?}"),
     }
 }
+
+/// A frustum (radius 3 at z = 0, 2 at z = 4) and a 2 x 2 x 2 box standing
+/// on its top plane touch at one point of the top rim, where the rim meets
+/// the box's bottom edge from outside both faces: at the revolve's seam
+/// (+x), inside the rim edge (-x), and at either side of the axis for a lug
+/// turned 90 degrees. Two lumps joined at a vertex are refused
+/// `NonManifold` naming that vertex, whichever operand comes first.
+#[test]
+fn a_frustum_and_a_box_touching_at_a_rim_point_are_refused_non_manifold() {
+    let p = |u, v| Point2::new(u, v);
+    let section = Profile {
+        plane: Frame::new(Point3::origin(), -Vec3::y(), Vec3::x()).unwrap(),
+        outer: ProfileLoop::Path {
+            start: p(0.0, 0.0),
+            segments: vec![
+                ProfileSegment::LineTo(p(3.0, 0.0)),
+                ProfileSegment::LineTo(p(2.0, 4.0)),
+                ProfileSegment::LineTo(p(0.0, 4.0)),
+                ProfileSegment::LineTo(p(0.0, 0.0)),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    for (min, max, touch) in [
+        ([2.0, -1.0, 4.0], [4.0, 1.0, 6.0], [2.0, 0.0, 4.0]),
+        ([-4.0, -1.0, 4.0], [-2.0, 1.0, 6.0], [-2.0, 0.0, 4.0]),
+        ([-1.0, 2.0, 4.0], [1.0, 4.0, 6.0], [0.0, 2.0, 4.0]),
+        ([-1.0, -4.0, 4.0], [1.0, -2.0, 6.0], [0.0, -2.0, 4.0]),
+    ] {
+        for frustum_first in [true, false] {
+            let mut m = Model::default();
+            let (frustum, _) =
+                revolve(&mut m, &section, Axis::z_at(Point3::origin()), TAU).unwrap();
+            let (lug, _) = primitive_box(&mut m, min, max).unwrap();
+            let result = if frustum_first {
+                fuse(&mut m, frustum, lug)
+            } else {
+                fuse(&mut m, lug, frustum)
+            };
+            let entities = match result {
+                Err(OpError::Degenerate {
+                    reason: Reason::Input(InputReason::NonManifold),
+                    entities,
+                }) => entities,
+                other => panic!("{min:?}: {other:?}"),
+            };
+            // The touch is the rim's own vertex at the seam; inside both
+            // edges it is a section vertex, named by the two edges and the
+            // two faces whose touch made it.
+            let touch = Point3::from(touch);
+            let named_vertex = entities.iter().any(|s| {
+                matches!(s.id, EntityId::Vertex(v)
+                    if m.vertex(v).is_ok_and(|v| (v.point() - touch).norm() < 1e-9))
+            });
+            let edges = entities
+                .iter()
+                .filter(|s| matches!(s.id, EntityId::Edge(_)))
+                .count();
+            assert!(named_vertex || edges == 2, "{min:?}: {entities:?}");
+        }
+    }
+}

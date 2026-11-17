@@ -27,6 +27,9 @@ pub(crate) struct Singular<'m> {
 /// A face of an operand, read once.
 pub(crate) struct FaceInfo<'m> {
     pub id: FaceId,
+    /// The face's orientation in its operand: `Reversed` turns the
+    /// surface's normal inward.
+    pub orientation: Orientation,
     pub surface: &'m Surface,
     pub tolerance: f64,
     /// The loops at the face's tolerance.
@@ -49,11 +52,11 @@ impl<'m> FaceInfo<'m> {
     pub(crate) fn of_body(m: &'m Model, body: Body) -> Result<Vec<Self>, NotFound> {
         m.faces(body)?
             .into_iter()
-            .map(|f| Self::of(m, f.id))
+            .map(|f| Self::of(m, f.id, f.orientation))
             .collect()
     }
 
-    fn of(m: &'m Model, id: FaceId) -> Result<Self, NotFound> {
+    fn of(m: &'m Model, id: FaceId, orientation: Orientation) -> Result<Self, NotFound> {
         let face = m.face(id)?;
         let surface = m.surface(face.surface())?;
         let tolerance = face.tolerance();
@@ -89,6 +92,7 @@ impl<'m> FaceInfo<'m> {
         }
         Ok(FaceInfo {
             id,
+            orientation,
             surface,
             tolerance,
             domain,
