@@ -242,8 +242,8 @@ impl<'m> Checker<'m> {
     /// L4's faults for `face`'s loops discretised at `chord`. With
     /// `certain`, `None` when an answer is not sure to be the loops' own:
     /// a loop's area, of which a polygon's shoelace area is within its
-    /// deviation times its perimeter, not clear of zero, or a hole's
-    /// first point (on its curve) within twice the deviation of the
+    /// deviation times its perimeter, not clear of zero, or a hole with
+    /// no point (on its curve) farther than twice the deviation from the
     /// polygon it is asked to be inside — so the answer is also the one
     /// a finer polygon gives. A loop of zero area is never decided
     /// coarse.
@@ -663,25 +663,34 @@ const L4_COARSENING: [f64; 3] = [f64::INFINITY, 1e6, 1e3];
 /// has a non-zero winding number about `outer`. Two rings that cross are
 /// L5's, not this test's.
 fn inside(inner: &Polygon2, outer: &Polygon2) -> bool {
-    inner
-        .points()
-        .first()
-        .is_some_and(|&p| outer.winding_number(p) != 0)
+    clear_point(inner, outer)
+        .or_else(|| inner.points().first().copied())
+        .is_some_and(|p| outer.winding_number(p) != 0)
 }
 
-/// `true` when `inner`'s first vertex, a point of its loop, is farther
-/// than twice `outer`'s deviation from every segment of `outer`: then
+/// `true` when a vertex of `inner`, a point of its loop, is farther than
+/// twice `outer`'s deviation from every segment of `outer`: then
 /// `outer`'s loop and every polygon of it at least as fine wind about it
 /// as `outer` does.
 fn clear_of(inner: &Polygon2, outer: &Polygon2) -> bool {
-    let Some(&p) = inner.points().first() else {
-        return false;
-    };
+    clear_point(inner, outer).is_some()
+}
+
+/// The first vertex of `inner` farther than twice `outer`'s deviation
+/// from every segment of `outer`, the point a hole is asked to be inside
+/// at. Not always the first: a hole may meet its outer loop at a vertex
+/// of both — Open CASCADE's crescent, an outer bound and a hole through
+/// the point where its arcs touch — and starts there.
+fn clear_point(inner: &Polygon2, outer: &Polygon2) -> Option<Point2> {
     let reach = 2.0 * outer.chord_deviation();
-    reach.is_finite()
-        && outer.segments().all(|(a, b)| {
+    if !reach.is_finite() {
+        return None;
+    }
+    inner.points().iter().copied().find(|&p| {
+        outer.segments().all(|(a, b)| {
             let ab = b - a;
             let t = ((p - a).dot(&ab) / ab.norm_squared()).clamp(0.0, 1.0);
             (p - (a + ab * t)).norm() > reach
         })
+    })
 }

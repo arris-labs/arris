@@ -168,6 +168,10 @@ impl<'m> Checker<'m> {
     /// its tolerance, and a pcurve ending a little past the next one's
     /// start — FTC-07's sphere faces, `1e-6` past at a vertex of
     /// `2.7e-5`, `real/loop-crossing-inside-a-vertex` — zigzags there.
+    /// Two loops meeting inside a vertex's ball meet there alike: a hole
+    /// through the vertex where it touches its outer loop, Open
+    /// CASCADE's crescent, which Arris writes as one loop through it
+    /// twice.
     fn l5_loops_intersect(&mut self) {
         let model = self.model;
         let mut found = Vec::new();
@@ -182,11 +186,18 @@ impl<'m> Checker<'m> {
                         .collect()
                 },
             );
-            let at_a_vertex = |polygon: &arris_geom::region2::Polygon2, (i, j): (usize, usize)| {
-                let points = polygon.points();
-                let n = points.len();
-                let lift = |k: usize| Point3::new(points[k % n].x, points[k % n].y, 0.0);
-                let (sa, sb) = ((lift(i), lift(i + 1)), (lift(j), lift(j + 1)));
+            let at_a_vertex = |pa: &arris_geom::region2::Polygon2,
+                               pb: &arris_geom::region2::Polygon2,
+                               (i, j): (usize, usize)| {
+                let lift = |polygon: &arris_geom::region2::Polygon2, k: usize| {
+                    let points = polygon.points();
+                    let p = points[k % points.len()];
+                    Point3::new(p.x, p.y, 0.0)
+                };
+                let (sa, sb) = (
+                    (lift(pa, i), lift(pa, i + 1)),
+                    (lift(pb, j), lift(pb, j + 1)),
+                );
                 let (_, u, _) = segment_distance(sa, sb);
                 let uv = sa.0 + (sa.1 - sa.0) * u;
                 let point = domain.surface().point(uv.x, uv.y);
@@ -200,7 +211,7 @@ impl<'m> Checker<'m> {
                 if !a
                     .self_intersections()
                     .into_iter()
-                    .all(|pair| at_a_vertex(a, pair))
+                    .all(|pair| at_a_vertex(a, a, pair))
                 {
                     found.push(Violation::LoopsIntersect {
                         face: face_id,
@@ -209,7 +220,11 @@ impl<'m> Checker<'m> {
                     });
                 }
                 for (j, b) in polygons.iter().enumerate().skip(i + 1) {
-                    if !a.intersections(b).is_empty() {
+                    if !a
+                        .intersections(b)
+                        .into_iter()
+                        .all(|pair| at_a_vertex(a, b, pair))
+                    {
                         found.push(Violation::LoopsIntersect {
                             face: face_id,
                             loop_a: i,

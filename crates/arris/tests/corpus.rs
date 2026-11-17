@@ -258,6 +258,11 @@ corpus_tests! {
     boolean_edge_touching_fuse => run "boolean/edge-touching-fuse";
     /// A frustum and a box touching its top rim at the revolve's seam vertex, a point: refused `NonManifold`.
     boolean_fuse_frustum_box_rim_point => run "boolean/fuse-frustum-box-rim-point";
+    /// A unit cylinder fused with a radius-2 slab cylinder it is tangent
+    /// inside along x = 0, y = 1: V = 5 pi, A = 14 pi. Each outer cap is a
+    /// crescent, one loop through the vertex where its rim touches the
+    /// section circle, twice.
+    boolean_fuse_cylinder_tangent_inside => run "boolean/fuse-cylinder-tangent-inside";
     boolean_boss => run "boolean/boss";
     /// A plate cut by a 2×2 grid of four disjoint holes in one call.
     boolean_plate_2x2_holes_cut_many => run "boolean/plate-2x2-holes-cut-many";
@@ -2163,9 +2168,6 @@ corpus_tests! {
     /// plane and the third's wall across both: every pair and the chain build.
     #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (the retired flat-edge-read-as-tangent-contact plan, step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
-    /// A unit cylinder fused with a radius-2 slab cylinder it is tangent inside along x = 0, y = 1: V = 5 pi, A = 14 pi.
-    #[ignore = "L5 loops 0 and 1 intersect: each outer cap is a crescent whose rim and section circle touch at one vertex, written as an outer loop and a hole that meet at no vertex; the desired body is one loop through the touch vertex twice (plans/tangency-faults step 2)"]
-    regression_fuse_cylinder_tangent_inside => run "regression/fuse-cylinder-tangent-inside";
     /// A 30 x 5 x 1 bar with a radius-3 boss tangent to each end face: the second fuse.
     #[ignore = "L5 loop 0 intersects itself on the top and bottom after the second fuse, the first boss's touch at (15, 0, +-0.5) left as the lead (plans/tangency-faults step 3)"]
     regression_fuse_bar_end_bosses_tangent => run "regression/fuse-bar-end-bosses-tangent";

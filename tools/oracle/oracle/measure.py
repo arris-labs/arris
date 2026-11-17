@@ -357,6 +357,32 @@ def _count_boundary(shape: TopoDS_Shape) -> tuple[int, int, int]:
     return vertices.Extent(), edges.Extent(), wires.Extent()
 
 
+def split_pinches(shape: TopoDS_Shape) -> int:
+    """How many more wires the faces of `shape` hold than loops in Arris's
+    convention: the wires of one face that share a vertex are one loop.
+    Arris writes a loop through a vertex twice — a crescent pinched where
+    its two arcs touch — as one bound, and Open CASCADE's STEP reader heals
+    it into two wires meeting at that vertex; two bounds of one face Arris
+    writes never meet (L5), so this undoes the healing and nothing else."""
+    extra = 0
+    fx = TopExp_Explorer(shape, TopAbs_FACE)
+    while fx.More():
+        groups: list[IndexedMapOfShape] = []
+        wx = TopExp_Explorer(fx.Current(), TopAbs_WIRE)
+        while wx.More():
+            mine = IndexedMapOfShape()
+            TopExp.MapShapes_s(wx.Current(), TopAbs_VERTEX, mine)
+            for g in [g for g in groups if any(g.Contains(mine.FindKey(i)) for i in range(1, mine.Extent() + 1))]:
+                groups.remove(g)
+                for i in range(1, g.Extent() + 1):
+                    mine.Add(g.FindKey(i))
+                extra += 1
+            groups.append(mine)
+            wx.Next()
+        fx.Next()
+    return extra
+
+
 def solids(shape: TopoDS_Shape) -> list:
     out = []
     ex = TopExp_Explorer(shape, TopAbs_SOLID)

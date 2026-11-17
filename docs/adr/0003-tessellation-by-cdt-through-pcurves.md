@@ -145,3 +145,18 @@ The roadmap's `1e-3` at `0.01` is corrected at the plan's retirement.
 - **Unwrapping the periodic parameter** instead of pcurves, as the
   reference tree without pcurves does: guesses the seam and tears the
   face when it guesses wrong; the representation already knows.
+
+## Amendment (2026-11-17, plan `tangency-faults` step 2)
+
+A face's loops may pass through one point twice: a crescent the boolean
+keeps where a section circle touches a cap's rim from inside is one loop
+through the touch vertex twice, and Open CASCADE writes the same crescent
+as an outer bound and a hole meeting there, which the checker's L4 and L5
+now admit. The tessellator gives such a vertex the (u, v) the face's loops
+first gave it, bit for bit, where its pcurves agree within the parametric
+tolerance (a seam vertex, used a period apart, stays two), and the CDT
+takes a polygon point equal to an earlier polygon point as that point: it
+is inserted once, its segments join there, and its triangles name the
+first occurrence. A point given twice is still `CdtError::Duplicate` for
+an interior point; a polygon running along another's segments is
+`Coincident`. Still no tolerance inside the CDT: the equality is exact.

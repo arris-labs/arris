@@ -70,7 +70,9 @@ pub(super) fn sheet_round_trip(
 /// a lump each as the oracle counts them, held to the checker at `Full`
 /// with nothing unchecked, to the oracle's own counts and genus (the file
 /// is Open CASCADE's topology, so `analytic.counts_differ` does not
-/// apply), and to the oracle's own measurements — the file carries Open
+/// apply; `analytic.occt_step_counts_differ` names a file carrying
+/// topology its shape does not, and leaves them out), and to the oracle's
+/// own measurements — the file carries Open
 /// CASCADE's shape, so `analytic.measure_differs`, which blames its
 /// boolean, does not apply either — at the fixture's tolerances, widened
 /// to the read body's own where those are wider (ADR-0023). A fixture
@@ -259,14 +261,17 @@ pub(super) fn read_back(
         shells: line.shells,
         solids: bodies.len(),
     };
-    if found != expected.counts {
+    // A file carrying topology the oracle's shape does not is held to the
+    // checker and the measures alone (`analytic.occt_step_counts_differ`).
+    let counted = fixture.recipe.analytic.occt_step_counts_differ.is_none();
+    if counted && found != expected.counts {
         return Err(CorpusError::Counts {
             fixture: held.name.clone(),
             expected: expected.counts,
             found,
         });
     }
-    if let Some(genus) = expected.genus.filter(|&g| g != line.genus) {
+    if let Some(genus) = expected.genus.filter(|&g| counted && g != line.genus) {
         return Err(CorpusError::Genus {
             fixture: held.name.clone(),
             expected: genus,

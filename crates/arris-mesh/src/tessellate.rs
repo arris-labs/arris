@@ -608,8 +608,9 @@ impl<'a> Tessellation<'a> {
         let face = m.face(f.id)?;
         let mut polygons: Vec<Polygon2> = Vec::with_capacity(face.loops().len());
         let mut rings: Vec<Vec<u32>> = Vec::with_capacity(face.loops().len());
+        let mut first: BTreeMap<u32, Point2> = BTreeMap::new();
         for l in face.loops() {
-            let (polygon, indices) = loop_ring(m, l, samples)?;
+            let (polygon, indices) = loop_ring(m, l, samples, &mut first)?;
             polygons.push(polygon);
             rings.push(indices);
         }
@@ -701,12 +702,20 @@ fn whole_domain(
 
 /// One loop of a face as a polygon in (u, v) and the shared mesh index of
 /// each of its points: the loop's pcurves at the edges' sample parameters,
-/// the junction of two coedges once.
+/// the junction of two coedges once. A face's loops through one vertex
+/// twice — a crescent pinched where its two arcs touch, or a hole meeting
+/// its outer loop there — come back to the (u, v) the face first gave
+/// that vertex, bit for bit, where the two pcurves place it within the
+/// parametric tolerance, so the triangulation sees one point there; a
+/// seam vertex, used a period apart, stays two. `first` holds the (u, v)
+/// of every shared index the face's earlier loops gave.
 fn loop_ring(
     m: &Model,
     l: &Loop,
     samples: &BTreeMap<EdgeId, EdgeSamples>,
+    first: &mut BTreeMap<u32, Point2>,
 ) -> Result<(Polygon2, Vec<u32>), MeshError> {
+    let parametric = m.precision().parametric_tolerance;
     let mut points: Vec<Point2> = Vec::new();
     let mut indices: Vec<u32> = Vec::new();
     for coedge in l.coedges() {
@@ -723,8 +732,14 @@ fn loop_ring(
             (1..=n).rev().collect()
         };
         for i in order {
-            let uv = pcurve.point(s.params[i]);
+            let mut uv = pcurve.point(s.params[i]);
+            if let Some(&earlier) = first.get(&s.indices[i]) {
+                if (earlier - uv).norm() <= parametric {
+                    uv = earlier;
+                }
+            }
             if points.last() != Some(&uv) {
+                first.entry(s.indices[i]).or_insert(uv);
                 points.push(uv);
                 indices.push(s.indices[i]);
             }

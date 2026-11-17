@@ -15,7 +15,7 @@ require_ocp()
 
 from oracle import step  # noqa: E402
 from oracle.fixture import load_expected, load_fixture  # noqa: E402
-from oracle.measure import DEFAULT_TOLERANCES, compare, format_table, measure  # noqa: E402
+from oracle.measure import DEFAULT_TOLERANCES, compare, format_table, measure, split_pinches  # noqa: E402
 from oracle.measure import sheet as measure_sheet  # noqa: E402
 from oracle.recipe import fixture_kind, number, probes, recipe_hash, resolve_params  # noqa: E402
 from oracle.second import MEASURES, held_result  # noqa: E402
@@ -42,6 +42,14 @@ def compare_step(directory: Path, step_file: Path, variant: str = "default") -> 
         actual = {"sheet": True, **measure_sheet(shape)}
     else:
         actual = measure(shape, probes(fixture, variant), tol["probe"])
+        # The file is Arris's: a loop it writes through a vertex twice is
+        # one loop, which the reader healed into two wires.
+        pinches = split_pinches(shape)
+        if pinches and not actual["degenerate"]:
+            counts = {**actual["counts"], "loops": actual["counts"]["loops"] - pinches}
+            chi = actual["euler_characteristic"] + pinches
+            genus = counts["shells"] - chi // 2 if chi % 2 == 0 else None
+            actual = {**actual, "counts": counts, "euler_characteristic": chi, "genus": genus}
     analytic = fixture.get("analytic", {})
     if analytic.get("counts_differ") and "counts" in analytic:
         # The recipe states a convention Arris does not follow and gives

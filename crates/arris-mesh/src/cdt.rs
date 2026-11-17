@@ -9,9 +9,9 @@
 //! polygons wind around (non-zero winding number), and the same input
 //! gives the same index lists on every platform. Bad input — a polygon of
 //! fewer than three distinct points, two constraints that cross, a point
-//! on a constraint it does not belong to, a point given twice — is a typed
-//! [`CdtError`] naming the polygons, segments and points involved, never a
-//! panic and never a guess.
+//! on a constraint it does not belong to, an interior point given twice
+//! or on a polygon's — is a typed [`CdtError`] naming the polygons,
+//! segments and points involved, never a panic and never a guess.
 
 mod constraint;
 mod mesh;
@@ -215,7 +215,10 @@ impl Triangulation2 {
 /// Errors: [`CdtError::Polygon`] for a polygon of fewer than three
 /// distinct points; [`CdtError::Duplicate`] when a point is given twice
 /// (a point equal to its predecessor in a polygon is merged first, by
-/// [`Polygon2`]); [`CdtError::Crossing`] and [`CdtError::Coincident`] when
+/// [`Polygon2`], and a polygon that comes back to a point of its own or
+/// of an earlier polygon — a loop through a vertex twice, a hole meeting
+/// its outer loop at a vertex — passes through that one point, whose
+/// triangles name its first occurrence); [`CdtError::Crossing`] and [`CdtError::Coincident`] when
 /// two segments cross or coincide; [`CdtError::OnConstraint`] when a
 /// point lies on a segment it does not end; [`CdtError::NonFinite`] for a
 /// coordinate that is not.
@@ -268,8 +271,15 @@ pub fn triangulate_metered(
     // The points in input order, with the numbering the result keeps.
     let mut points: Vec<Point2> = Vec::new();
     let mut starts: Vec<usize> = Vec::with_capacity(polygons.len() + 1);
+    // A polygon that comes back to a point of its own or of an earlier
+    // polygon — a loop through a vertex twice, the crescent's pinch, or
+    // a hole meeting its outer loop at a vertex — names that point:
+    // `same[i]` is the index the mesh holds for point `i`.
+    let mut same: Vec<usize> = Vec::new();
+    let mut seen: std::collections::BTreeMap<(u64, u64), usize> = std::collections::BTreeMap::new();
     for (k, polygon) in polygons.iter().enumerate() {
-        starts.push(points.len());
+        let start = points.len();
+        starts.push(start);
         let ring = polygon.points();
         for (i, &p) in ring.iter().enumerate() {
             if !(p.x.is_finite() && p.y.is_finite()) {
@@ -278,6 +288,8 @@ pub fn triangulate_metered(
                     vertex: i,
                 }));
             }
+            let key = (canonical(p.x).to_bits(), canonical(p.y).to_bits());
+            same.push(*seen.entry(key).or_insert(start + i));
             points.push(p);
         }
         let distinct = ring
@@ -297,6 +309,7 @@ pub fn triangulate_metered(
         if !(p.x.is_finite() && p.y.is_finite()) {
             return Err(CdtError::NonFinite(VertexRef::Interior(i)));
         }
+        same.push(points.len());
         points.push(p);
     }
     let real = points.len();
@@ -318,8 +331,11 @@ pub fn triangulate_metered(
     // the interior points the same way.
     let interior_start = starts[starts.len() - 1];
     for index in bit_reversal(interior_start) {
+        if same[index] != index {
+            continue;
+        }
         meter.tick().map_err(CdtError::Interrupted)?;
-        mesh.insert(index, parent(index))
+        mesh.insert(index, parent(index).filter(|&p| same[p] == p))
             .map_err(|e| e.named(&name, None))?;
     }
     for k in 0..polygons.len() {
@@ -330,7 +346,7 @@ pub fn triangulate_metered(
                 polygon: k,
                 segment: i,
             };
-            let (a, b) = (start + i, start + (i + 1) % n);
+            let (a, b) = (same[start + i], same[start + (i + 1) % n]);
             meter.tick().map_err(CdtError::Interrupted)?;
             mesh.insert_constraint(a, b, segment)
                 .map_err(|e| e.named(&name, Some(segment)))?;
@@ -482,17 +498,19 @@ mod tests {
                 b: VertexRef::Interior(0)
             })
         );
+        // A second polygon on the first one's points runs along its
+        // segments: they are its points, and the segments coincide.
         let same = Polygon2::from_points([p(0.0, 0.0), p(2.0, 0.0), p(2.0, 2.0), p(0.0, 2.0)]);
         assert_eq!(
             triangulate(&[square.clone(), same], &[]),
-            Err(CdtError::Duplicate {
-                a: VertexRef::Polygon {
+            Err(CdtError::Coincident {
+                a: SegmentRef {
                     polygon: 0,
-                    vertex: 0
+                    segment: 0
                 },
-                b: VertexRef::Polygon {
+                b: SegmentRef {
                     polygon: 1,
-                    vertex: 0
+                    segment: 0
                 }
             })
         );
@@ -512,6 +530,56 @@ mod tests {
                 }
             })
         );
+    }
+
+    /// The area of a triangulation, from its counter-clockwise triangles.
+    fn area(t: &Triangulation2) -> f64 {
+        t.triangles()
+            .iter()
+            .map(|&[a, b, c]| {
+                let (a, b, c) = (t.points()[a], t.points()[b], t.points()[c]);
+                ((b - a).x * (c - a).y - (b - a).y * (c - a).x) / 2.0
+            })
+            .sum()
+    }
+
+    #[test]
+    fn a_polygon_through_its_own_point_twice_is_one_point_there() {
+        // A square with a square notch whose tip touches the outer side
+        // at (2, 0): one loop through that point twice, as a crescent
+        // pinched where its arcs touch. Its area is 16 less the notch, 1.
+        let pinched = Polygon2::from_points([
+            p(0.0, 0.0),
+            p(2.0, 0.0),
+            p(1.0, 1.0),
+            p(3.0, 1.0),
+            p(2.0, 0.0),
+            p(4.0, 0.0),
+            p(4.0, 4.0),
+            p(0.0, 4.0),
+        ]);
+        let t = triangulate(&[pinched], &[]).unwrap();
+        assert_eq!(area(&t), 15.0);
+        // The second visit is never a triangle's corner: the first names
+        // the point.
+        assert!(t.triangles().iter().flatten().all(|&v| v != 4));
+    }
+
+    #[test]
+    fn a_hole_meeting_its_outer_polygon_at_a_point_shares_it() {
+        // A triangle hole touching the square's bottom side at its own
+        // corner (2, 0), as Open CASCADE writes a crescent: an outer bound
+        // and a hole through the point where its arcs touch.
+        let square = Polygon2::from_points([
+            p(0.0, 0.0),
+            p(2.0, 0.0),
+            p(4.0, 0.0),
+            p(4.0, 4.0),
+            p(0.0, 4.0),
+        ]);
+        let hole = Polygon2::from_points([p(2.0, 0.0), p(1.0, 2.0), p(3.0, 2.0)]);
+        let t = triangulate(&[square, hole], &[]).unwrap();
+        assert_eq!(area(&t), 14.0);
     }
 
     #[test]

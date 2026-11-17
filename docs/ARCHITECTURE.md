@@ -478,7 +478,15 @@ crossing twice at a shallow angle, a small circle through a sphere's
 pole 2e-4 of a radian off the seam and back across it 1.8e-4 on, within
 9e-9 of it between — their common points are taken along the line
 their two planes meet in (`conic_crossings`), a quadratic whose double
-root is decided by its own rounding and never by a tolerance;
+root is decided by its own rounding and never by a tolerance. Where the
+edge truly touches a section curve — a section circle tangent inside a
+cap's rim, where a cylinder stands inside a wider one and touches its
+wall — the touch is a vertex of both when the curve runs inside both
+faces on either side of it, decided by stepping along the curve from
+the touch, at distances growing fourfold from the tolerance, to the
+first point the faces' polygons put off their boundary; the crescent
+the cap keeps is then one loop through that vertex twice. A touch where
+the curve runs outside a face splits nothing;
 an operand face's *singular vertex* — a cone's apex, a sphere's pole,
 held by a degenerate edge that has no curve and is hit by nothing — that a
 section curve of one of the face's pairs runs through, within
@@ -1752,7 +1760,10 @@ depends on `check`. The mesh guarantees (ADR-0003):
   indices. A seam edge is discretised once and its indices appear in the
   wall's triangles twice, once from each copy of the pcurve; a
   degenerate edge's (u, v) segment maps to one index and the triangles
-  that collapse are dropped.
+  that collapse are dropped. A vertex a face's loops pass twice at one
+  (u, v) — a crescent's pinch, or a hole meeting its outer loop — is
+  one point of the triangulation, at the (u, v) the face first gave it
+  (ADR-0003, amendment).
 - Triangles are counter-clockwise seen from outside, by the face use's
   effective orientation against the surface normal.
 - Same body, same chord, same mesh on every platform, with the

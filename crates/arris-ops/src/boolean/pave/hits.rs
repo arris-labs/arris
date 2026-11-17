@@ -23,6 +23,15 @@ use crate::boolean::{
 use crate::error::{BooleanReason, Fault, OpError, Reason};
 use crate::pass::pass;
 
+/// How fast [`Build::runs_inside`] steps a section curve away from the
+/// point where it touches an edge: each step this many times the last,
+/// from the tolerance up to the faces' size. The curve leaves the edge to
+/// second order, `κ s² / 2` at a step `s`, so a factor of 4 moves it at
+/// least 16 times as far off the boundary per step and reaches past the
+/// polygons' band within a few steps of where it first could; a ratio,
+/// not a tolerance.
+const TOUCH_STEP_RATIO: f64 = 4.0;
+
 /// A candidate face pair: face `ia` of operand `oa` and face `ib` of
 /// operand `ob`, `oa < ob`.
 #[derive(Clone, Copy)]
@@ -265,7 +274,12 @@ impl<'m, 'c> Build<'m, 'c> {
                     hits
                 };
                 for h in hits {
-                    if h.tangent {
+                    // A touch of the edge and the section curve is a
+                    // vertex of both where the section runs inside both
+                    // faces beside it: a section circle tangent inside a
+                    // cap's rim, whose kept crescent passes through the
+                    // touch. One that runs outside splits nothing.
+                    if h.tangent && !Self::runs_inside(g, f, curve, h.tb, tol.linear) {
                         continue;
                     }
                     let Ok(projection) = f.surface.project(h.point) else {
@@ -287,6 +301,52 @@ impl<'m, 'c> Build<'m, 'c> {
             }
         }
         Ok(found)
+    }
+
+    /// `true` when `curve` runs inside both faces on either side of its
+    /// point at `t`, where it touches an edge of `g`. The touch is a
+    /// double root: the curve leaves the edge only to second order, so
+    /// within a few tolerances of the point both faces' polygons put it
+    /// on their boundary. It is stepped away along its tangent at
+    /// distances growing from `linear` by [`TOUCH_STEP_RATIO`] up to the
+    /// faces' size, and on each side the first point that is not on a
+    /// boundary decides: inside both, or outside one and that side does
+    /// not count. The nearest decisive point is the local one, which a
+    /// face that is not convex cannot mislead.
+    fn runs_inside(g: &FaceInfo<'m>, f: &FaceInfo<'m>, curve: &Curve, t: f64, linear: f64) -> bool {
+        let speed = curve.eval(t).d1.norm();
+        if speed == 0.0 {
+            return false;
+        }
+        let reach = g.bounds.diagonal().max(f.bounds.diagonal());
+        let domain = curve.domain();
+        let periodic = curve.period().is_some();
+        [-1.0, 1.0].into_iter().any(|sign| {
+            let mut step = linear;
+            while step <= reach {
+                step *= TOUCH_STEP_RATIO;
+                let at = t + sign * step / speed;
+                if !periodic && !domain.contains(at) {
+                    return false;
+                }
+                let point = curve.point(at);
+                let mut inside = true;
+                for face in [g, f] {
+                    let Ok(projection) = face.surface.project(point) else {
+                        return false;
+                    };
+                    match face.domain.side(projection.uv).0 {
+                        Side::Outside => return false,
+                        Side::Boundary => inside = false,
+                        Side::Inside => {}
+                    }
+                }
+                if inside {
+                    return true;
+                }
+            }
+            false
+        })
     }
 
     /// The edges of the two faces of every `Coincident` pair against one

@@ -1129,6 +1129,16 @@ pub struct Analytic {
     /// read back by Open CASCADE and compared.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub occt_step_unread: Option<String>,
+    /// Why Arris's reading of Open CASCADE's own STEP of this result has
+    /// other counts than the oracle's shape, where the reading is valid
+    /// and measures as the shape does: the file carries topology its
+    /// shape does not (`boolean/fuse-cylinder-tangent-inside`: two
+    /// `VERTEX_POINT`s at each point where a crescent's bounds touch,
+    /// one in its shape, which Open CASCADE's own reader heals into one).
+    /// Both read-back stages then hold the reading to the checker and
+    /// the measures, not to the oracle's counts and genus.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub occt_step_counts_differ: Option<String>,
     /// Why Open CASCADE's own STEP of this result carries a B-spline face
     /// where Arris's result has an exact one: its blend there is a walked
     /// surface (`blend/turned-shoulder-fillet`). The runner's plain
@@ -2013,6 +2023,10 @@ fn lint_flags(fixture: &Fixture, variant: &str, m: &Measured) -> Vec<String> {
         ("occt_step_refused", a.occt_step_refused.is_some()),
         ("occt_nurbs_refused", a.occt_nurbs_refused.is_some()),
         ("occt_step_unread", a.occt_step_unread.is_some()),
+        (
+            "occt_step_counts_differ",
+            a.occt_step_counts_differ.is_some(),
+        ),
     ] {
         if refused && (a.degenerate || a.expect_error.is_some() || a.step_differs.is_some()) {
             problems.push(format!(

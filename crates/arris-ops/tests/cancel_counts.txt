@@ -61,6 +61,7 @@ boolean/frustum-cross-drill-cut: 50178
 boolean/frustum-oblique-cut: 3180
 boolean/frustum-slot-cut: 1113
 boolean/frustum-stub-cut-then-fuse: 3390
+boolean/fuse-cylinder-tangent-inside: 26
 boolean/fuse-frustum-box-rim-point: refused
 boolean/fuse-many-coaxial-cylinders-and-box: 131
 boolean/grazing-ball-bar-cut: 17441

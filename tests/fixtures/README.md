@@ -376,7 +376,13 @@ of the step that made the fixture pass, and a later change to it is a
   STEP where reading it measures the reader on a walked blend rather than
   the operation — minutes of fitting, then a refusal — and names the
   regression fixture that holds that reading instead; Arris's own STEP is
-  still read back by Open CASCADE and compared. The runner holds a `measure_differs` fixture's
+  still read back by Open CASCADE and compared.
+  `occt_step_counts_differ: "why"` holds Arris's reading of Open
+  CASCADE's own STEP to the checker and the measures but not to the
+  oracle's counts and genus, where the file carries topology the
+  oracle's shape does not (`boolean/fuse-cylinder-tangent-inside`: two
+  `VERTEX_POINT`s at each touch of a crescent's bounds, which Open
+  CASCADE's own reader heals into one). The runner holds a `measure_differs` fixture's
   read-back to the oracle's own measurements: all but one blame Open
   CASCADE's boolean, whose shape its file carries. `occt_file_measure_differs:
   "why"` (needs `measure_differs`) is that one: Open CASCADE's measurement

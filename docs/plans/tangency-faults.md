@@ -89,10 +89,15 @@ bound is established here.
   - `chamfer-two-rims-use-up-face` and `-then-cut` (`BlendTooLarge`).
 
   The near side already passes and goes straight into `boolean/`.
-- [ ] Step 2 **[3]** — Case 1. The section circle's touch on the rim
+- [x] Step 2 **[3]** — Case 1. The section circle's touch on the rim
   becomes a vertex of both, and the crescent becomes one loop through that
   vertex twice. The fixture moves to `boolean/`, `Full`-green. The risk is
   finding the touch: it is a double root, and no crossing marks it.
+  *Settled*: the pinch reached the mesher (the CDT refused the point
+  twice) and Open CASCADE's crescent (outer bound and hole meeting at the
+  touch) reached the checker on read-back; both are admitted (ADR-0003
+  amendment, L4, L5), and the read-back's two extra `VERTEX_POINT`s are a
+  backlog line held by `occt_step_counts_differ`.
 - [ ] Step 3 **[3]** — Case 2. Find what the first fuse leaves at the
   tangent point that the second breaks, and fix it by step 2's rule. Both
   orders and `fuse_many` give the closed form, and the fixture moves green.

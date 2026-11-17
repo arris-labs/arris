@@ -1,0 +1,26 @@
+{
+  "description": "a unit cylinder (radius 1, z -1..1) fused with a cylinder of radius 2 (z -0.5..0.5) centred at y = -1, so the unit cylinder lies inside it and touches its wall along the line x = 0, y = 1. The closed forms: V = 2 pi + (4 pi - pi) = 5 pi; A = unit side 2 pi (the two ends outside the slab) + unit caps 2 pi + the big wall 4 pi (the tangent line has no area) + the big caps 2 (4 pi - pi) = 14 pi; centroid y = 3 pi (-4/3) / 5 pi = -4/5. Arris drops the tangent ruling from the walls, and each outer cap is a crescent, its rim and the section circle touching at (0, 1, +-0.5): the touch is a vertex of both, and the crescent one loop through it twice. Open CASCADE imprints the tangent line, so its shape has genus 1 where the body is genus 0, stated in counts_differ",
+  "steps": [
+    {"name": "c", "op": "cylinder", "base": [0, 0, -1], "axis": [0, 0, 1], "radius": 1, "height": 2},
+    {"name": "d", "op": "cylinder", "base": [0, -1, -0.5], "axis": [0, 0, 1], "radius": 2, "height": 1},
+    {"name": "result", "op": "fuse", "a": "c", "b": "d"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "unit cylinder's top", "point": [0, 0, 0.9], "expect": "in"},
+    {"label": "big cylinder's far side", "point": [0, -2, 0], "expect": "in"},
+    {"label": "big cylinder's far side, high", "point": [0, -2, 0.4], "expect": "in"},
+    {"label": "above the big cylinder, beside the unit one", "point": [1.5, 0, 0.8], "expect": "out"},
+    {"label": "past the tangent line", "point": [0, 1.5, 0], "expect": "out"},
+    {"label": "over the unit cylinder", "point": [0, 0, 1.2], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "5 * pi",
+    "area": "14 * pi",
+    "centroid": [0, -0.8, 0],
+    "counts": {"vertices": 8, "edges": 13, "faces": 7, "loops": 7, "shells": 1},
+    "counts_differ": "Open CASCADE imprints the tangent ruling x = 0, y = 1 on the big wall, which it splits into two faces there, and writes each crescent cap as an outer bound and a hole meeting at the touch vertex (8/14/8/10, genus 1); Arris drops the ruling, a touch from inside that bounds no kept material, and writes each crescent as one loop through the touch vertex twice. Open CASCADE's reader heals that loop into two wires, which its compare joins again",
+    "occt_step_counts_differ": "Open CASCADE's own STEP writes two VERTEX_POINTs at each point where a crescent's outer bound and hole touch, (0, 1, +-0.5), where its shape has one (10 vertices for 8), and its own reader heals them into one; Arris's reader keeps one vertex per VERTEX_POINT, so its reading, valid and measuring as the shape does, has two more vertices (docs/BACKLOG.md)",
+    "genus": 0
+  }
+}
