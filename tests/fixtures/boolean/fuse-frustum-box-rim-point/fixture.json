@@ -1,5 +1,5 @@
 {
-  "description": "a cone frustum (radius 3 at z = 0, 2 at z = 4, revolved from a section in the xz plane, its seam at +x) and a 2 x 2 x 2 box standing on its top plane, z in 4..6, x in 2..4, touching the top rim at the single point (2, 0, 4): the rim's seam vertex. Two lumps joined at a vertex, which a manifold solid does not hold: Arris refuses with OpError::Degenerate and Reason::NonManifold, Open CASCADE builds a compound of two solids. (plans/tangency-faults step 1; the far side, at -x, is regression/fuse-frustum-box-rim-point-far-side)",
+  "description": "a cone frustum (radius 3 at z = 0, 2 at z = 4, revolved from a section in the xz plane, its seam at +x) and a 2 x 2 x 2 box standing on its top plane, z in 4..6, x in 2..4, touching the top rim at the single point (2, 0, 4): the rim's seam vertex. Two lumps joined at a vertex, which a manifold solid does not hold: Arris refuses with OpError::Degenerate and Reason::NonManifold, Open CASCADE builds a compound of two solids. (the retired tangency-faults plan; the far side, at -x, is regression/fuse-frustum-box-rim-point-far-side)",
   "steps": [
     {"name": "section", "op": "profile",
      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},

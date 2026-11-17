@@ -8,6 +8,21 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- Booleans of operands tangent to each other now build where they returned a
+  body the checker refuses, or failed with `OpInternalError`: a cylinder
+  tangent inside a wider one, a bar with a boss tangent to each end, a plate
+  whose arc is tangent inside a cylinder, a column tangent to a bore along
+  four lines, a cylinder whose end disc is tangent to another's side, and a
+  tangent ruling a hair off the seams of its cylinders. Each matches its closed
+  form and passes the checker at `full`.
+- `fuse` of a cone frustum and a box that touch at one point of the frustum's
+  rim refuses with `OpDegenerateError` (the shells would touch) on both sides
+  of the revolve's seam; on the far side it used to return a body.
+- `arris_mesh::cdt` accepts a polygon point given twice, so a face whose loop
+  passes one vertex twice (a crescent) meshes. The checker accepts Open
+  CASCADE's crescent written as an outer bound and a hole that meet at a
+  vertex.
+
 - `fillet` and `chamfer` of two rims of one flat face refuse with
   `BlendTooLarge`, naming both edges and the face, where together they use the
   face up: a ring's top 4 wide chamfered 2.5 on both rims. It used to return a

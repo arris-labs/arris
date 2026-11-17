@@ -2211,7 +2211,7 @@ corpus_tests! {
     #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (the retired flat-edge-read-as-tangent-contact plan, step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
     /// A box, a unit cylinder tangent inside a slab's side and the slab, all on one plane, fused in one call: every pair and the chain build.
-    #[ignore = "OpError::Unsupported: no closed form for the cylinder against the plane, its wall tangent to the slab's side along a line inside the box, where every pair and the chain build (plans/tangency-faults step 8)"]
+    #[ignore = "OpError::Unsupported: no closed form for the cylinder against the plane, its wall tangent to the slab's side along a line inside the box, where every pair and the chain build (the retired tangency-faults plan)"]
     regression_fuse_many_tangent_cylinder_plane_unsupported => run "regression/fuse-many-tangent-cylinder-plane-unsupported";
 }
 

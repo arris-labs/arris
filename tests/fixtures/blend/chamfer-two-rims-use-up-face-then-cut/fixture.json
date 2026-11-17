@@ -1,5 +1,5 @@
 {
-  "description": "chamfer-two-rims-use-up-face's ring, both rims of its top face chamfered 2.5, then a cylinder of radius 1 cut across it along x at z = 2. Arris refuses the chamfer, Reason::TooLarge naming both edges and the face, so the cut is never reached (plans/tangency-faults step 7)",
+  "description": "chamfer-two-rims-use-up-face's ring, both rims of its top face chamfered 2.5, then a cylinder of radius 1 cut across it along x at z = 2. Arris refuses the chamfer, Reason::TooLarge naming both edges and the face, so the cut is never reached (the retired tangency-faults plan)",
   "steps": [
     {"name": "section", "op": "profile",
      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},

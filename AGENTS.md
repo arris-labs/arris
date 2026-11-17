@@ -49,8 +49,11 @@ thicken and `region2` wait as the next named cycle. Per-face surface
 properties shipped beside it as 0.11.0, then 0.11.1 (2026-11-16), the first
 release on PyPI. Exact point classification in a batch
 (`classify_points`, Rust and Python) is the cycle's first item, done; the
-flat edge read as a tangent contact is its second, done (2026-11-17).
-**Next:** `/work tangency-faults`.
+flat edge read as a tangent contact is its second, done, and the tangency
+faults its third, done (2026-11-17): five tangent cases build, the rim point
+and two chamfers that use up a face are refused by name.
+**Next:** `/idea` or `/plan` for the cycle's next item (`docs/ROADMAP.md` §C12
+**In**), the `touching-operands-fuse-to-several-shells` idea first.
 
 ## Rules that are not derivable from the code
 

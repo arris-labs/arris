@@ -956,8 +956,19 @@ the named cycle next in line.*
   `fuse-many-three-boxes-plane-against-plane-unsupported`).
 - Tangency faults: an operand tangent inside another, a tool tangent
   to a bore, two chamfers that use up a face, contacts that end in an
-  internal error. Each one builds, or at the least is a typed refusal
-  (`docs/plans/tangency-faults.md`).
+  internal error. **Done** (2026-11-17): a touch between a section and a
+  rim, or between two edges, is a vertex of both when the curve runs inside
+  both faces beside it, and a crescent is one loop through it twice; a node
+  orders a touch by the analytic curve's tangent. Five cases build
+  `Full`-green to their closed forms (a cylinder tangent inside another, a
+  bar with a boss tangent to each end, a plate whose arc is tangent inside a
+  cylinder, a bore cut by a column tangent along four lines, an end disc
+  tangent to a wall), and a ruling a hair off the seams builds. A frustum
+  and a box that touch at one point of a rim are refused `NonManifold` on
+  both sides of the seam, and two chamfers that use up the face between them
+  are refused `BlendTooLarge`. Open: a seam crossing a cap a few
+  tolerances inside the rim (the cusp), a touch merged into a vertex, and
+  `fuse_many` of a cylinder tangent inside a slab's side (backlog).
 - A revolve whose arc's circle reaches the axis while the arc stays on
   one side: the spindle torus's outer part, and the half horn torus
   (`docs/ideas/revolve-circle-meets-the-axis.md`).

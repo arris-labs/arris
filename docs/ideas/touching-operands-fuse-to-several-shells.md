@@ -1,6 +1,9 @@
 # Idea: touching-operands-fuse-to-several-shells
 
-- Status: Open
+- Status: Open. A cone frustum and a box that touch at one point of the
+  frustum's rim (a lug at the rim's seam vertex, or inside the rim edge) join
+  its cases: they are refused `NonManifold` today, and are built as two
+  shells if this is accepted.
 - Raised: 2026-11-13; consolidated 2026-11-16 from items 1, 2, 4 and 7 of
   the training harness's `fuse-contact-refusals`. Items 3, 5 and 8 went to
   `tangency-faults` and `flat-edge-read-as-tangent-contact`, item 6 to
@@ -73,8 +76,8 @@ closed form exists where the issue is really a contact.
 
 ## Recommendation
 
-A, after `tangency-faults` (and the flat-edge item, done), which
-fix wrong outcomes rather than refusals. C first, as one step, if A slips
+A, now that `tangency-faults` and the flat-edge item are done (they
+fixed wrong outcomes rather than refusals). C first, as one step, if A slips
 past C12.
 
 ## Decision for the human

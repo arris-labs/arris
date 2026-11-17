@@ -1,4 +1,4 @@
-//! Tangent solids in random poses (plans/tangency-faults): three families
+//! Tangent solids in random poses (the retired tangency-faults plan): three families
 //! whose walls touch along a line, each with a closed form for every
 //! boolean. A strategy yields a description (numbers and one rigid
 //! motion) that `build` turns into bodies of a model, so a failing case

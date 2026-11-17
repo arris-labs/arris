@@ -1,4 +1,4 @@
-//! Walls that touch along a line (plans/tangency-faults), each family in a
+//! Walls that touch along a line (the retired tangency-faults plan), each family in a
 //! random rigid pose from `prop::tangent`: a cylinder tangent inside a
 //! larger one, a bar with a boss tangent to each end, and a column tangent
 //! to a bore along four lines. Every boolean of the family either builds a
@@ -125,7 +125,7 @@ fn a_cylinder_tangent_inside_another_matches_its_closed_forms() {
 
 /// The fixture's cylinders, radius 0.3 tangent inside radius 1.5 and
 /// standing out of both its ends, with the touching ruling a hair off both
-/// seams on either side, where it faulted (plans/tangency-faults step 10):
+/// seams on either side, where it faulted (the retired tangency-faults plan):
 /// the inner seam's crossing of each cap on the rim within its tolerance
 /// (to about 5e-4 rad) or inside it past the polygons' band (from about
 /// 2e-3). `fuse`, `common` and both cuts are the closed forms or refused by

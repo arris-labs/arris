@@ -53,6 +53,12 @@
 //! 2.2e-8.
 //! ```
 //!
+//! Those counts are from the survey's last run, before the tangency
+//! faults' fixes; the survey has not been re-run since. A tilt's bound now
+//! counts the volume its faces inside the fixed solid sweep
+//! (`BandPair::sweep`), so the "volume past its bound" figure can only have
+//! fallen.
+//!
 //! At step 1 the same survey failed 4248: 157 under step 2's mechanism,
 //! 1356 under 2/4, 459 under 4, 56 under 5 and 2284 none. Each failure's
 //! distinct kind is a `regression/` fixture, at its contact fixture's own
