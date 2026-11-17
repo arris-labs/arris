@@ -212,6 +212,7 @@ reproduces it.
 - `shared::apart` meters its `copy_body` on a `Meter` of its own, not the boolean's, so a budget set on the call does not count the copy of an operand that shares entities: thread the boolean's meter through (`crates/arris-ops/src/boolean/shared.rs`; plans/flat-edge-read-as-tangent-contact review)
 - `same_curve` in `boolean/pieces.rs` (the arrangement's "one curve entered twice" guard) holds two half-edges' midpoints to a 3D `min_tolerance` measured as a (u, v) distance, at the parameter midpoint: on a cylinder an angle scales by the radius, and two pcurves of one curve parameterised differently miss each other's midpoint, so such a pair falls back to `TangentContact`; convert the tolerance through the face's `bands` (`docs/DATA-MODEL.md` §Pcurves) and compare a point of one against the other curve (plans/flat-edge-read-as-tangent-contact review)
 - `coplanar_prop`'s chained-fuse property accepts "both refuse" when the chain and `fuse_many` both refuse, without comparing the refusals: hold them to the same reason and entities (plans/flat-edge-read-as-tangent-contact review)
+- Two blends on different axes whose bands overlap on one face (adjacent holes in a plate, say) are not compared by the crowded-contacts check (`blend/crowd.rs` reads only coaxial closed edges on a plane, a cylinder or a cone): the overlap reaches the build rather than a refusal naming both edges (tangency-faults review)
 
 ## Findings
 

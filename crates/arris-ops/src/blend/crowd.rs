@@ -19,9 +19,10 @@ struct Reach {
     ring: usize,
     axis_origin: Point3,
     axis: Vec3,
-    /// The span's ends, in the face's meridian coordinate: the radius on a
-    /// plane, the height on a cylinder or a cone.
-    span: [f64; 2],
+    /// The span's ends in space: the edge's start and the contact there. The
+    /// face's meridian coordinate (the radius on a plane, the height on a
+    /// cylinder or a cone) is read from them against one ring's axis.
+    points: [Point3; 2],
 }
 
 /// Refuses two closed edges' blends that take overlapping bands of one
@@ -49,33 +50,42 @@ pub(super) fn crowded_faces(env: &Env<'_>, rings: &[Ring]) -> Result<(), OpError
         let (axis_origin, axis) = (frame.origin(), frame.z().into_inner());
         let at_edge = m.curve(curve)?.point(range.lo());
         for contact in &ring.contacts {
-            let surface = m.surface(m.face(contact.face)?.surface())?;
-            let coordinate = |p: Point3| match surface {
-                Surface::Plane { .. } => {
-                    let w = p - axis_origin;
-                    Some((w - axis * w.dot(&axis)).norm())
-                }
-                Surface::Cylinder { .. } | Surface::Cone { .. } => {
-                    Some((p - axis_origin).dot(&axis))
-                }
+            let kind = m.surface(m.face(contact.face)?.surface())?;
+            if matches!(
+                kind,
                 Surface::Sphere { .. }
-                | Surface::Torus { .. }
-                | Surface::EllipticCylinder { .. }
-                | Surface::Nurbs(_) => None,
-            };
-            let (Some(from), Some(to)) = (coordinate(at_edge), coordinate(contact.points[0]))
-            else {
+                    | Surface::Torus { .. }
+                    | Surface::EllipticCylinder { .. }
+                    | Surface::Nurbs(_)
+            ) {
                 continue;
-            };
+            }
             on_face.entry(contact.face).or_default().push(Reach {
                 ring: i,
                 axis_origin,
                 axis,
-                span: [from.min(to), from.max(to)],
+                points: [at_edge, contact.points[0]],
             });
         }
     }
     for (&face, reaches) in &on_face {
+        let surface = m.surface(m.face(face)?.surface())?;
+        // The face's meridian coordinate of a point, against `a`'s axis and
+        // origin whichever ring the point is of: the two rings' own frames
+        // may point opposite ways, so each is never read by its own.
+        let coordinate = |a: &Reach, p: Point3| match surface {
+            Surface::Plane { .. } => {
+                let w = p - a.axis_origin;
+                Some((w - a.axis * w.dot(&a.axis)).norm())
+            }
+            Surface::Cylinder { .. } | Surface::Cone { .. } => {
+                Some((p - a.axis_origin).dot(&a.axis))
+            }
+            Surface::Sphere { .. }
+            | Surface::Torus { .. }
+            | Surface::EllipticCylinder { .. }
+            | Surface::Nurbs(_) => None,
+        };
         for (k, a) in reaches.iter().enumerate() {
             for b in &reaches[k + 1..] {
                 let w = b.axis_origin - a.axis_origin;
@@ -84,17 +94,14 @@ pub(super) fn crowded_faces(env: &Env<'_>, rings: &[Ring]) -> Result<(), OpError
                 if a.ring == b.ring || !coaxial {
                     continue;
                 }
-                // The coordinate's zero is the ring's own origin on a
-                // cylinder or a cone: shift the second by the offset along
-                // the axis.
-                let shift = match m.surface(m.face(face)?.surface())? {
-                    Surface::Plane { .. } => 0.0,
-                    _ => w.dot(&a.axis),
+                let span = |r: &Reach| {
+                    let (from, to) = (coordinate(a, r.points[0])?, coordinate(a, r.points[1])?);
+                    Some([from.min(to), from.max(to)])
                 };
-                let (lo, hi) = (
-                    a.span[0].max(b.span[0] + shift),
-                    a.span[1].min(b.span[1] + shift),
-                );
+                let (Some(sa), Some(sb)) = (span(a), span(b)) else {
+                    continue;
+                };
+                let (lo, hi) = (sa[0].max(sb[0]), sa[1].min(sb[1]));
                 if hi - lo >= -tol.linear {
                     let edges = [rings[a.ring].edge, rings[b.ring].edge];
                     return Err(degenerate(

@@ -11,7 +11,9 @@ use arris_math::real;
 use std::collections::BTreeSet;
 
 use arris_debug::fixtures::Class;
-use arris_debug::unmetered::{chamfer, extrude, fillet, mass_properties, primitive_box, revolve};
+use arris_debug::unmetered::{
+    chamfer, extrude, fillet, mass_properties, primitive_box, primitive_cylinder, revolve,
+};
 use arris_debug::unmetered::{cut, fuse, transform};
 use arris_debug::{corpus, dump_text, fixtures};
 use arris_geom::{Curve, Profile, ProfileLoop, ProfileSegment, Surface, SurfaceKind};
@@ -2265,5 +2267,34 @@ fn two_rims_blended_across_one_face_are_refused_where_the_contacts_cross() {
         let (built, _) = chamfer(&mut m, ring, &rims[..1], 3.9).unwrap();
         let report = check(&m, built, Level::Full);
         assert!(report.is_ok(), "{report}");
+    }
+}
+
+/// Two rims of one cylindrical wall, a cylinder of radius 5 and height 8
+/// with both its rims blended together. 3.9 on both takes bands of 3.9 of
+/// the 8-tall wall and builds; 4.5 on both makes the bands overlap and is
+/// `TooLarge` on the wall: the cylinder branch of the crowded-contacts check,
+/// whose spans are read against one ring's axis and origin for both rims.
+/// (A pair of rims of one face whose circle frames point opposite ways is
+/// not built by any public operation here: revolve, the cylinder and the
+/// booleans all frame both rims of a wall alike.)
+#[test]
+fn two_rims_blended_along_one_wall_are_refused_where_the_bands_overlap() {
+    let mut m = Model::default();
+    let (cylinder, _) = primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 5.0, 8.0).unwrap();
+    let rims = [
+        rim_at(&m, cylinder, Point3::new(0.0, 0.0, 0.0), 5.0),
+        rim_at(&m, cylinder, Point3::new(0.0, 0.0, 8.0), 5.0),
+    ];
+    for blend in [chamfer, fillet] {
+        let (built, _) = blend(&mut m, cylinder, &rims, 3.9).unwrap();
+        let report = check(&m, built, Level::Full);
+        assert!(report.is_ok(), "{report}");
+        let err = blend(&mut m, cylinder, &rims, 4.5).unwrap_err();
+        assert_eq!(
+            reason(&err),
+            Some(Reason::Blend(BlendReason::TooLarge)),
+            "{err}"
+        );
     }
 }
