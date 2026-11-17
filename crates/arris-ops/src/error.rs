@@ -426,7 +426,7 @@ impl core::fmt::Display for BlendReason {
             BlendReason::RepeatedEdge => f.write_str("an edge is listed twice"),
             BlendReason::EdgeNotInBody => f.write_str("the edge is not an edge of the body"),
             BlendReason::TooLarge => f.write_str(
-                "the blend leaves its face through an edge that is not the corner's own",
+                "the blend does not fit its faces: it leaves its face through an edge that is not the corner's own, or two blends' contacts on one face cross or swap order",
             ),
             BlendReason::TangentChain => f.write_str(
                 "the edge's faces meet at a tangent dihedral, which has no corner to blend",
@@ -1120,7 +1120,7 @@ mod tests {
             (
                 Reason::Blend(BlendReason::TooLarge),
                 "BlendTooLarge",
-                "the blend leaves its face through an edge that is not the corner's own",
+                "the blend does not fit its faces: it leaves its face through an edge that is not the corner's own, or two blends' contacts on one face cross or swap order",
             ),
             (
                 Reason::Blend(BlendReason::TangentChain),

@@ -1204,7 +1204,9 @@ mod tests {
             blocks_reason_named(
                 "fillet",
                 "OpDegenerateError",
-                Some("the blend leaves its face through an edge that is not the corner's own"),
+                Some(
+                    "the blend does not fit its faces: it leaves its face through an edge that is not the corner's own, or two blends' contacts on one face cross or swap order"
+                ),
                 None,
                 None
             ),
