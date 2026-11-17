@@ -351,6 +351,15 @@ impl<'m, 'c> Build<'m, 'c> {
             })
             .collect();
         drop(along);
+        // Each block's ends and midpoint, for a block whose midpoint the
+        // polygons put on a face's boundary to look past its ends.
+        let mids: Vec<(usize, usize, Point3)> = blocks
+            .iter()
+            .map(|&(lo, hi, start, end)| {
+                let mid = Interval::new(lo, hi).map_or(0.5 * (lo + hi), |r| r.midpoint());
+                (start, end, curve.point(mid))
+            })
+            .collect();
         let mut edges = Vec::new();
         for (k, (lo, hi, start, end)) in blocks.into_iter().enumerate() {
             if is_an_edge[k] {
@@ -386,10 +395,8 @@ impl<'m, 'c> Build<'m, 'c> {
                 continue;
             }
             // Inside both faces, the ends deciding where the polygons put
-            // the midpoint on a face's boundary.
-            let Some(uv) =
-                self.inside_block(fa, fb, curve.point(range.midpoint()), [start, end])?
-            else {
+            // the midpoint on one face's boundary.
+            let Some(uv) = self.inside_block(fa, fb, &mids, k)? else {
                 continue;
             };
             // Along an edge of a third operand lying in both faces, it is

@@ -15,7 +15,7 @@ use std::sync::{Mutex, PoisonError};
 
 use arris_geom::region2::Side;
 use arris_geom::{Curve, GeomError, Surface};
-use arris_math::{Aabb, DisjointSets, Interval, Meter, Point2, Point3, Precision, Tolerance};
+use arris_math::{Aabb, DisjointSets, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec2};
 use arris_topo::{Body, EdgeId, FaceId, Model, Shape, VertexId};
 
 use super::faces::{EdgeInfo, FaceInfo};
@@ -568,60 +568,96 @@ impl<'m, 'c> Build<'m, 'c> {
         Some(out)
     }
 
-    /// The block of a section curve between section vertices `ends`,
-    /// whose midpoint is `point`, inside both faces: as
-    /// [`Self::inside_both`] at the midpoint, except where a face's
-    /// polygons put the midpoint on its boundary. A block crosses no
-    /// boundary between its paves, so its side of that face is the side
-    /// of any of its points the boundary does not hold, and an end the
-    /// face's edges and vertices do not claim is such a point: the
-    /// stretch of a section circle tangent inside a rim, from the touch
-    /// to the other operand's seam, lies within the polygons' band of the
-    /// rim along its whole length while its far end is inside the face.
-    /// An end within the band and claimed by nothing is decided by the
-    /// winding number, as a hit's landing is.
+    /// Block `k` of a section curve, inside both faces: as
+    /// [`Self::inside_both`] at its midpoint, except where one face's
+    /// polygons put the midpoint on its boundary. `blocks` are the
+    /// curve's blocks, each its two section vertices and its midpoint.
+    ///
+    /// A block crosses no boundary between its paves, so its side of
+    /// that face is the side of any of its points the boundary does not
+    /// hold, and an end the face's edges and vertices do not claim is
+    /// such a point: the stretch of a section circle tangent inside a
+    /// rim, from the touch to the other operand's seam, lies within the
+    /// polygons' band of the rim along its whole length while its far end
+    /// is inside the face. An end within the band and claimed by nothing
+    /// is decided by the winding number, as a hit's landing is. The end
+    /// decides only where the curve goes on inside the face past it, a
+    /// neighbouring block's midpoint inside: a curve whose blocks there
+    /// all lie in the band bounds nothing but a sliver of the face.
+    ///
+    /// Where both faces put the midpoint on their boundaries, or no
+    /// neighbour leaves the band, the block is dropped, as
+    /// [`Self::inside_both`] drops it. A rod's wall tilted a hair in a
+    /// bore of its radius meets the bore's wall in a circle across both
+    /// seams at once, and the rod's cap plane meets it in an ellipse a
+    /// hair inside the rod's rim from one side of the tilt's hinge to the
+    /// other; kept, the first crosses the seams with no vertex
+    /// (`Fault::Seam`) and the second cuts a sliver of the cap
+    /// (`SplitFault::NoInterior`).
     fn inside_block(
         &self,
         fa: &FaceInfo<'m>,
         fb: &FaceInfo<'m>,
-        point: Point3,
-        ends: [usize; 2],
+        blocks: &[(usize, usize, Point3)],
+        k: usize,
     ) -> Result<Option<[Point2; 2]>, OpError> {
-        let mut out = [Point2::origin(); 2];
+        let Some(&(start, end, point)) = blocks.get(k) else {
+            return Ok(None);
+        };
+        let mut at = [(Point2::origin(), Side::Inside, Vec2::zeros()); 2];
         for (i, f) in [fa, fb].into_iter().enumerate() {
             let Ok(projection) = f.surface.project(point) else {
                 return Ok(None);
             };
             let (side, shift) = f.domain.side(projection.uv);
-            match side {
-                Side::Inside => {}
-                Side::Outside => return Ok(None),
-                Side::Boundary => {
-                    let mut decided = None;
-                    for &k in &ends {
-                        let at = self.vertices[k].point(self.m);
-                        let Ok(on) = f.surface.project(at) else {
-                            continue;
-                        };
-                        match f.domain.side(on.uv).0 {
-                            Side::Inside => decided = Some(true),
-                            Side::Outside => decided = Some(false),
-                            Side::Boundary => {
-                                if f.domain.boundary_entity(self.m, at)?.is_none() {
-                                    decided = Some(f.domain.winds_around(on.uv));
-                                }
+            if side == Side::Outside {
+                return Ok(None);
+            }
+            at[i] = (projection.uv, side, shift);
+        }
+        if at.iter().all(|&(_, side, _)| side == Side::Boundary) {
+            return Ok(None);
+        }
+        let mut out = [Point2::origin(); 2];
+        for (i, f) in [fa, fb].into_iter().enumerate() {
+            let (uv, side, shift) = at[i];
+            if side == Side::Boundary {
+                let mut decided = None;
+                for v in [start, end] {
+                    let p = self.vertices[v].point(self.m);
+                    let Ok(on) = f.surface.project(p) else {
+                        continue;
+                    };
+                    match f.domain.side(on.uv).0 {
+                        Side::Inside => decided = Some(true),
+                        Side::Outside => decided = Some(false),
+                        Side::Boundary => {
+                            if f.domain.boundary_entity(self.m, p)?.is_none() {
+                                decided = Some(f.domain.winds_around(on.uv));
                             }
                         }
-                        if decided.is_some() {
-                            break;
+                    }
+                    if decided == Some(true) {
+                        let goes_on = blocks.iter().enumerate().any(|(j, &(s, e, mid))| {
+                            j != k
+                                && (s == v || e == v)
+                                && f.surface
+                                    .project(mid)
+                                    .is_ok_and(|on| f.domain.side(on.uv).0 == Side::Inside)
+                        });
+                        if !goes_on {
+                            decided = None;
                         }
                     }
-                    if decided != Some(true) {
-                        return Ok(None);
+                    if decided.is_some() {
+                        break;
                     }
                 }
+                if decided != Some(true) {
+                    return Ok(None);
+                }
             }
-            out[i] = projection.uv + shift;
+            out[i] = uv + shift;
         }
         Ok(Some(out))
     }

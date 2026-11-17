@@ -516,10 +516,13 @@ vertex's point is; an open
 section curve at each of its ends a vertex lies on, both ends of a
 traced branch that leaves a singular point and comes back to it; and the
 section edges — the blocks between consecutive paves whose midpoint is
-inside both faces, or, where a face's polygons put the midpoint on its
-boundary, whose end off that boundary is inside it, since a block
-crosses no boundary between its paves (a section circle tangent inside a
-rim hugs it from the touch to the other operand's seam), a closed curve with no pave seeded at the start of
+inside both faces, or, where one face's polygons put the midpoint on its
+boundary, whose end off that boundary is inside it and past which the
+curve goes on inside it, since a block crosses no boundary between its
+paves (a section circle tangent inside a rim hugs it from the touch to
+the other operand's seam) — a block on both faces' boundaries, or one
+whose curve never leaves the band there, would cut only a sliver and is
+dropped — a closed curve with no pave seeded at the start of
 its domain when it is interior to both, and a periodic one's last block
 wrapping round to its first pave, one period on — a traced loop's
 period being its own length, not a turn — each with a pcurve on each
