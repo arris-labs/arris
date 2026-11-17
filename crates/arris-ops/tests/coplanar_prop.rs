@@ -18,8 +18,8 @@ use arris_debug::prop;
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
 use arris_debug::unmetered::{fuse, fuse_many, mass_properties, primitive_box, split, transform};
 use arris_math::{Control, Frame, Isometry, Point3};
+use arris_ops::OpError;
 use arris_ops::query::{Interference, interference};
-use arris_ops::{BooleanReason, OpError, Reason};
 use arris_topo::provenance::audit;
 use arris_topo::{Body, Model, Provenance};
 use proptest::prelude::*;
@@ -70,24 +70,23 @@ fn chain(m: &mut Model, bodies: &[Body]) -> Made {
 }
 
 /// `fuse_many` of solids standing on one plane is the chain of `fuse`s: the
-/// same volume and area, or both refuse; or the chain is refused
-/// `TangentContact` at a step where a cylinder touches a box's face from
-/// outside along a line, which a later solid covers.
+/// same volume and area, or both refuse. An external curve touch can
+/// build touching lumps at an intermediate step (ADR-0088).
 ///
-/// Ignored: at 1000 cases it finds what the fixtures
+/// Ignored: at 16 cases it finds `regression/fuse-many-tangent-cylinder-plane-unsupported`.
+/// The earlier 1000-case runs also found
 /// `regression/two-boxes-on-one-plane-fuse-unsupported`,
 /// `regression/chained-fuse-three-boxes-and-cylinder-unsupported` and
-/// `regression/fuse-many-three-boxes-plane-against-plane-unsupported` hold
-/// (it passes at 16). Their fix turns this into `prop_shards!` shards.
+/// `regression/fuse-many-three-boxes-plane-against-plane-unsupported`.
+/// Their fixes turn this into `prop_shards!` shards.
 #[test]
-#[ignore = "finds regression/two-boxes-on-one-plane-fuse-unsupported, chained-fuse-three-boxes-and-cylinder-unsupported and fuse-many-three-boxes-plane-against-plane-unsupported"]
+#[ignore = "finds regression/fuse-many-tangent-cylinder-plane-unsupported and the plane-against-line and plane-against-plane fixtures (docs/BACKLOG.md)"]
 fn the_chained_fuse_on_a_shared_plane_is_fuse_many() {
     prop::check(prop::body::standing(), |case| {
         let mut m = Model::default();
         let bodies = case.build(&mut m).map_err(fail)?;
         let many = fuse_many(&mut m, &bodies);
         let chained = chain(&mut m, &bodies);
-        let mut order_refusal = false;
         // The chain's record is its last step's, so its result is
         // checked clean and not audited against all the operands.
         let chained = match chained {
@@ -98,16 +97,7 @@ fn the_chained_fuse_on_a_shared_plane_is_fuse_many() {
                 }
                 Some(b)
             }
-            Err(e) if is_refusal(&e) => {
-                order_refusal = matches!(
-                    e,
-                    OpError::Degenerate {
-                        reason: Reason::Boolean(BooleanReason::TangentContact),
-                        ..
-                    }
-                );
-                None
-            }
+            Err(e) if is_refusal(&e) => None,
             Err(e) => return Err(fail(format!("the chain: {e}"))),
         };
         let many = settle(&m, "fuse_many", &bodies, many)?;
@@ -132,10 +122,6 @@ fn the_chained_fuse_on_a_shared_plane_is_fuse_many() {
                 );
             }
             (None, None) => {}
-            // A step of the chain can be a cylinder tangent outside a box's
-            // face, the designed `TangentContact`, which a later solid of
-            // the set covers: the order decides, so `fuse_many` builds.
-            (Some(_), None) if order_refusal => {}
             (Some(_), None) => return Err(fail("fuse_many builds where the chain refuses")),
             (None, Some(_)) => return Err(fail("the chain builds where fuse_many refuses")),
         }

@@ -107,11 +107,12 @@ here.
 
   Python tests in `test_tangency.py` drive both through `arris.build`
   and hold the two shells, volume and area.
-- [ ] Step 4 **[2]** — (its `fuse` arm landed with step 2, which would otherwise have left `main` red; the rename and the reviews remain) Rewrite the property
-  `a_cylinder_tangent_to_a_box_face_leaves_the_box_and_shares_nothing`
-  (`boolean_prop.rs`) so its `fuse` arm checks touching lumps: two shells,
-  V and A additive, checker-green, the box's faces kept by id. Review
-  `coplanar_prop.rs` and `multi_tool.rs`'s held `TangentContact` cases.
+- [x] Step 4 **[2]** — Rename the property to
+  `a_cylinder_tangent_to_a_box_face_fuses_to_touching_lumps`. Its `fuse`
+  arm landed in step 2 and holds two shells, additive volume and area,
+  a clean `Full` report and the box's faces by id. Remove the external
+  touch exception in `coplanar_prop.rs` and keep the same-lump refusals
+  in `multi_tool.rs`.
 - [ ] Step 5 **[2]** — Re-bless `tolerance_band.txt`. Each `fuse` outcome
   that flips from `TangentContact` is checked built, additive and
   checker-green. A flip to anything else is a finding, which becomes a

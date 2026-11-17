@@ -210,20 +210,16 @@ prop_shards! {
         }
 }
 
-/// A cylinder touching a random face of the box from outside along a
-/// ruling through the face's interior (plan step 11): `box − cylinder`
-/// is the box — the same faces, edges and vertices by id, the same mass
-/// properties — `common` is the designed `Empty`, and `fuse`, which
-/// keeps the face and the wall touching along the contact, is two lumps
-/// of one solid (ADR-0088), the box's faces kept by id and volume and
-/// area added; the model's operands are as they were. The touches land in both places — a box edge on the wall
-/// where the ruling crosses the face's rim, a rim circle on the face
-/// where the cylinder ends inside it — and neither paves anything.
+/// A cylinder touches a random box face from outside along a ruling
+/// through the face's interior. `cut` keeps the box's faces and mass
+/// properties, and `common` returns `Empty`. `fuse` builds two touching
+/// lumps (ADR-0088), keeps the box's faces by id and adds the volumes and
+/// areas. The contact can end at a box edge or at a cylinder rim.
 #[test]
-fn a_cylinder_tangent_to_a_box_face_leaves_the_box_and_shares_nothing() {
+fn a_cylinder_tangent_to_a_box_face_fuses_to_touching_lumps() {
     prop::check(prop::body::tangent_pair(), |pair: TangentPair| {
         prop_assume!(!touch_at_the_face_rim(&pair));
-        a_tangent_cylinder_leaves_the_box(&pair)
+        check_tangent_box_and_cylinder(&pair)
     });
 }
 
@@ -300,22 +296,24 @@ fn a_rim_grazing_the_face_edge_keeps_its_ids() {
         face: (2, false),
     };
     assert!(touch_at_the_face_rim(&pair), "the exclusion covers it");
-    if let Err(e) = a_tangent_cylinder_leaves_the_box(&pair) {
+    if let Err(e) = check_tangent_box_and_cylinder(&pair) {
         panic!("{e}");
     }
 }
 
-fn a_tangent_cylinder_leaves_the_box(pair: &TangentPair) -> Result<(), TestCaseError> {
-    let mut m = Model::default();
-    let (a, b) = pair.build(&mut m).map_err(fail)?;
-    let pa = mass_properties(&m, a).map_err(fail)?;
+fn check_tangent_box_and_cylinder(pair: &TangentPair) -> Result<(), TestCaseError> {
+    let (mut m, a, b, pa, pb) = operands_by(|m| pair.build(m))?;
     let before = dump_text(&m, a).map_err(fail)?;
-    let (body, _) = run(&mut m, "cut(box, cylinder)", cut, a, b)?;
-    let faces = |body: Body| -> Result<Vec<_>, TestCaseError> {
+    let (body, after) = run(&mut m, "cut(box, cylinder)", cut, a, b)?;
+    let faces = |m: &Model, body: Body| -> Result<Vec<_>, TestCaseError> {
         Ok(m.faces(body).map_err(fail)?.iter().map(|f| f.id).collect())
     };
-    prop_assert_eq!(faces(body)?, faces(a)?, "every face of the box kept by id");
-    let after = mass_properties(&m, body).map_err(fail)?;
+    let box_faces = faces(&m, a)?;
+    prop_assert_eq!(
+        &faces(&m, body)?,
+        &box_faces,
+        "every face of the box kept by id"
+    );
     prop_assert!(close(after.volume, pa.volume, pa.volume));
     prop_assert!(close(after.area, pa.area, pa.area));
     prop_assert!((after.centroid - pa.centroid).norm() <= REL * pa.area.sqrt());
@@ -327,25 +325,13 @@ fn a_tangent_cylinder_leaves_the_box(pair: &TangentPair) -> Result<(), TestCaseE
         Ok(_) => return Err(fail("common(box, cylinder): a touch shares no material")),
         Err(e) => return Err(fail(format!("common(box, cylinder): {e}"))),
     }
-    // The face and the wall touch along the contact: two lumps of one
-    // solid (ADR-0088), the box's faces kept by id, volume and area added.
-    let pb = mass_properties(&m, b).map_err(fail)?;
-    let (fused, _) = run(&mut m, "fuse(box, cylinder)", fuse, a, b)?;
-    let report = check(&m, fused, Level::Full);
+    let (fused, total) = run(&mut m, "fuse(box, cylinder)", fuse, a, b)?;
+    prop_assert_eq!(m.shells(fused).map_err(fail)?.len(), 2, "two shells");
+    let kept = faces(&m, fused)?;
     prop_assert!(
-        report.is_ok() && report.unchecked().is_empty(),
-        "fuse(box, cylinder): {report}"
-    );
-    prop_assert_eq!(m.shells(fused).map_err(fail)?.len(), 2, "two lumps");
-    let ids = |body: Body| -> Result<Vec<_>, TestCaseError> {
-        Ok(m.faces(body).map_err(fail)?.iter().map(|f| f.id).collect())
-    };
-    let kept = ids(fused)?;
-    prop_assert!(
-        ids(a)?.iter().all(|f| kept.contains(f)),
+        box_faces.iter().all(|f| kept.contains(f)),
         "the box's faces are kept by id"
     );
-    let total = mass_properties(&m, fused).map_err(fail)?;
     prop_assert!(close(
         total.volume,
         pa.volume + pb.volume,
@@ -390,7 +376,7 @@ fn a_touch_at_a_box_corner_keeps_its_ids() {
         face: (0, false),
     };
     assert!(touch_at_the_face_rim(&pair), "the exclusion covers it");
-    if let Err(e) = a_tangent_cylinder_leaves_the_box(&pair) {
+    if let Err(e) = check_tangent_box_and_cylinder(&pair) {
         panic!("{e}");
     }
 }

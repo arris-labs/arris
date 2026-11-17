@@ -541,8 +541,9 @@ fn a_section_two_tools_share_is_generated_from_all_three_faces() {
 fn tools_touching_inside_the_target_are_a_tangent_contact() {
     // Two blind bores whose walls touch along a ruling that runs up out
     // of the plate's top: inside the plate both walls survive, above it
-    // neither, and the contact is read along its length, not at its
-    // midpoint, which lies on the top.
+    // neither. The midpoint lies on the top, so the contact is read
+    // along its length. The surviving walls would touch within the same
+    // lump of the cut plate (ADR-0088).
     let mut m = Model::default();
     let (plate, _) = plate_and_holes(&mut m, 0);
     let bores: Vec<Body> = [40.0, 50.0]
@@ -558,9 +559,8 @@ fn tools_touching_inside_the_target_are_a_tangent_contact() {
 
 #[test]
 fn tools_touching_along_a_seam_are_refused_as_tangent_contact() {
-    // The touch is the first hole's seam: a contact as one off the seam
-    // is, both walls surviving along it, the slit refused as the bores
-    // above are.
+    // The first hole's seam lies along the touch. Both walls would
+    // survive in the same lump of the cut plate (ADR-0088).
     let mut m = Model::default();
     let (plate, _) = plate_and_holes(&mut m, 0);
     let holes: Vec<Body> = [40.0, 50.0]
