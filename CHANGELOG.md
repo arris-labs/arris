@@ -8,6 +8,20 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- The STEP reader reads a closed edge on a closed B-spline curve whose one
+  vertex is not at the curve's seam: the edge runs once round from its
+  vertex, on the curve restarted there (`NurbsCurve::restarted`, new). Such
+  edges (cope curves on pipes, as Autodesk exporters write them) were
+  refused as a gap the length of the chord from the vertex to the seam.
+- A void of a `BREP_WITH_VOIDS` written inside out (its faces already
+  facing into the void, and its `ORIENTED_CLOSED_SHELL` turning them back
+  out) is turned by a healing read and its faces named in
+  `Healing::turned`; a read with `Heal::Off` refuses it as
+  `Refusal::Topology`. It was read with the void's volume added to the
+  solid's rather than taken from it.
+- **Breaking**: `SplineFault` has two new variants, `RestartPeriodic` and
+  `NotClosed`. Fix: a `match` on it that lists every variant adds the two.
+
 ## 0.11.1 — 2026-11-16
 
 - The Python package `arris` is now on PyPI. 0.11.0's wheels never published, so

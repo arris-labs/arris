@@ -100,6 +100,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::f64::consts::TAU;
 
 use arris_check::domain::bands;
+use arris_check::flux::face_flux;
 use arris_geom::{
     Curve, Curve2, GeomError, NurbsCurve2, PCURVE_SAMPLES, PCURVE_SINGULAR_BAND, Singularity,
     Surface, pcurve_ending_on, pcurve_on,
@@ -212,6 +213,74 @@ impl From<Refusal> for Halt {
 /// that returns refusals: [`Geometry::solid`] never returns it, because
 /// it reads the stop from the meter (`Meter::stopped`) and returns
 /// [`Halt::Interrupted`] in its place.
+/// One build of a solid: done, halted, or to be built again with its
+/// inside-out voids turned.
+enum Attempt {
+    Halt(Halt),
+    TurnVoids,
+}
+
+/// The void shells of the solid `body` — every shell but the first, the
+/// file's outer — that enclose positive volume: inside out. Empty when the
+/// body's shells are not the file's `shells` in number, or a face cannot
+/// be integrated (the checker's business, not this guess's).
+fn voids_inside_out(model: &Model, body: Body, shells: usize) -> Vec<usize> {
+    let Ok(entity) = model.body(body.id) else {
+        return Vec::new();
+    };
+    let uses = entity.shells();
+    if uses.len() != shells || shells < 2 {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for (si, shell_use) in uses.iter().enumerate().skip(1) {
+        let orientation = body.orientation.compose(shell_use.orientation);
+        let Ok(shell) = model.shell(shell_use.id) else {
+            return Vec::new();
+        };
+        // `(P − O) / 3` has divergence one: its flux out of a closed shell is
+        // the volume the shell's faces enclose, signed by their orientation.
+        // `O`, any point of the shell, keeps the sum's terms the shell's size.
+        let Some(origin) = shell.faces().first().and_then(|f| face_point(model, f.id)) else {
+            return Vec::new();
+        };
+        let mut volume = 0.0;
+        for face_use in shell.faces() {
+            let sign = orientation.compose(face_use.orientation).sign();
+            match face_flux(model, face_use.id, |p, n| (p - origin).dot(&n) / 3.0) {
+                Ok(flux) => volume += sign * flux,
+                Err(_) => return Vec::new(),
+            }
+        }
+        if volume > 0.0 {
+            out.push(si);
+        }
+    }
+    out
+}
+
+/// A point of the surface of the face `face`, near it for every surface
+/// a closed shell is made of: the parameter origin, or the domain's
+/// nearest point to it.
+fn face_point(model: &Model, face: arris_topo::FaceId) -> Option<Point3> {
+    let surface = model.surface(model.face(face).ok()?.surface()).ok()?;
+    let [u, v] = surface.domain();
+    Some(surface.eval(u.clamp(0.0), v.clamp(0.0)).point)
+}
+
+/// The faces of the body's shells `which`, by their index in its stored
+/// order.
+fn shell_faces(model: &Model, body: Body, which: &[usize]) -> Vec<arris_topo::FaceId> {
+    let Ok(entity) = model.body(body.id) else {
+        return Vec::new();
+    };
+    (entity.shells().iter().enumerate())
+        .filter(|(si, _)| which.contains(si))
+        .filter_map(|(_, s)| model.shell(s.id).ok())
+        .flat_map(|shell| shell.faces().iter().map(|f| f.id).collect::<Vec<_>>())
+        .collect()
+}
+
 fn stopped_in(solid: u64) -> Refusal {
     malformed(solid, "stopped by its caller")
 }
@@ -232,14 +301,60 @@ impl Geometry<'_> {
         heal: Heal,
         meter: &mut Meter<'_>,
     ) -> Result<Solid, Halt> {
-        let file = self.file_solid(solid)?;
-        model.transaction(|m| {
-            let built = self.build(m, solid, instance, heal, &file, meter);
-            match meter.stopped() {
-                Some(stop) => Err(Halt::Interrupted(stop)),
-                None => built.map_err(Halt::Refused),
+        let mut file = self.file_solid(solid)?;
+        // A solid's voids are checked once built: a void shell encloses
+        // negative volume. One that encloses positive volume was written
+        // inside out — its faces already facing into the void and its
+        // `ORIENTED_CLOSED_SHELL` turning them back out, as Autodesk
+        // exporters do. A healing read turns it and builds the solid again,
+        // its faces named in the healing record (ADR-0058); a read that
+        // does not heal refuses it.
+        let mut inside_out: Vec<usize> = Vec::new();
+        loop {
+            let first = inside_out.is_empty();
+            let mut found: Vec<usize> = Vec::new();
+            let attempt = model.transaction(|m| {
+                let built = self.build(m, solid, instance, heal, &file, meter);
+                if let Some(stop) = meter.stopped() {
+                    return Err(Attempt::Halt(Halt::Interrupted(stop)));
+                }
+                let mut built = built.map_err(|r| Attempt::Halt(Halt::Refused(r)))?;
+                if file.kind == BodyKind::Solid && first {
+                    found = voids_inside_out(m, built.body, file.shells.len());
+                    if !found.is_empty() {
+                        if heal == Heal::Off {
+                            // Not healing: refused, never a body whose voids add
+                            // to its volume.
+                            let ids: Vec<String> =
+                                found.iter().map(|&si| format!("#{}", file.shells[si].id)).collect();
+                            return Err(Attempt::Halt(Halt::Refused(Refusal::Topology {
+                                entity: solid,
+                                what: format!(
+                                    "void shell {} encloses positive volume: inside out",
+                                    ids.join(", ")
+                                ),
+                            })));
+                        }
+                        return Err(Attempt::TurnVoids);
+                    }
+                } else if !first {
+                    built.healing.turned.extend(shell_faces(m, built.body, &inside_out));
+                }
+                Ok(built)
+            });
+            match attempt {
+                Ok(built) => return Ok(built),
+                Err(Attempt::Halt(halt)) => return Err(halt),
+                Err(Attempt::TurnVoids) => {
+                    for &si in &found {
+                        for face in &mut file.shells[si].faces {
+                            face.turned = !face.turned;
+                        }
+                    }
+                    inside_out = found;
+                }
             }
-        })
+        }
     }
 
     /// The shells, faces, bounds, edges and vertices of `solid`, with every

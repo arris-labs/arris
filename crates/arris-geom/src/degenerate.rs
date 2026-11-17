@@ -412,6 +412,17 @@ pub enum SplineFault {
     /// A knot the insertion put in is missing from the result.
     #[error("a knot the insertion put in is missing")]
     InsertedKnotMissing,
+    /// A restart asked of a periodic curve, whose range already starts
+    /// anywhere (`NurbsCurve::restarted`).
+    #[error("a periodic curve is not restarted: its range already starts anywhere")]
+    RestartPeriodic,
+    /// A restart asked of a curve whose two ends are `gap` apart, more
+    /// than the closure allowed (`NurbsCurve::restarted`).
+    #[error("the curve's ends are {gap} apart: it does not close")]
+    NotClosed {
+        /// The distance between the curve's first and last points.
+        gap: f64,
+    },
 }
 
 /// A NURBS surface's net is not one.
@@ -989,6 +1000,14 @@ mod tests {
             (
                 SplineFault::InsertedKnotMissing.into(),
                 "a knot the insertion put in is missing".into(),
+            ),
+            (
+                SplineFault::RestartPeriodic.into(),
+                "a periodic curve is not restarted: its range already starts anywhere".into(),
+            ),
+            (
+                SplineFault::NotClosed { gap: 0.5 }.into(),
+                "the curve's ends are 0.5 apart: it does not close".into(),
             ),
             (
                 NetFault::Degree {
