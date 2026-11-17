@@ -807,19 +807,20 @@ def round_trip(name: str, fixture: dict, expected: dict, tmp: Path) -> bool:
     # uses. `boolean/tangent-hole` could not survive one in any case — its
     # slit carries the tangent ruling as an edge of four faces, and Open
     # CASCADE's own reader does not give that back as a closed surface.
-    refused = fixture.get("analytic", {}).get("expect_error")
+    analytic = fixture.get("analytic", {})
+    refused = analytic.get("expect_error")
     # A result the recipe says Open CASCADE measures wrong
     # (`analytic.measure_differs`, ADR-0015) is compared on what the corpus
     # still takes from the oracle — counts, genus, probes: the runner and
     # compare.py hold Arris's measurements to the closed forms, and a body
     # the oracle built wrong need not even measure the same after its own
     # STEP round trip (`boolean/seam-beside-crossing-fuse` does not).
-    measured_wrong = fixture.get("analytic", {}).get("measure_differs")
+    measured_wrong = analytic.get("measure_differs")
     # A result the recipe says Open CASCADE's own STEP loses (ADR-0023):
     # its reader hands back other topology or another solid for its own
     # file, while Arris's STEP of the same result reads back true — which
     # is what the corpus runner's compare.py stage checks, and still does.
-    lossy = fixture.get("analytic", {}).get("step_differs")
+    lossy = analytic.get("step_differs")
     ok_all = True
     for variant in variant_names(fixture):
         shape, _ = build(fixture, variant)
@@ -842,7 +843,9 @@ def round_trip(name: str, fixture: dict, expected: dict, tmp: Path) -> bool:
         step.write(shape, path)
         back = step.read(path)
         try:
-            actual = measure(back, probes(fixture, variant), tol["probe"])
+            actual = measure(
+                back, probes(fixture, variant), tol["probe"], manifold=not analytic.get("occt_odd_euler")
+            )
         except OracleError as e:
             # A result whose own STEP Arris's reader refuses
             # (`analytic.occt_step_refused`) may be one Open CASCADE reads
@@ -857,6 +860,14 @@ def round_trip(name: str, fixture: dict, expected: dict, tmp: Path) -> bool:
         rows = compare(expected["results"][variant], actual, within_own_tolerance(tol, shape, expected["results"][variant]))
         if measured_wrong:
             rows = [r for r in rows if not r[0].startswith(MEASUREMENTS)]
+        if analytic.get("occt_step_counts_differ"):
+            # The file has different boundary topology. Still hold its
+            # shell and solid counts, measures and probes.
+            rows = [
+                r
+                for r in rows
+                if r[0] not in {"counts.vertices", "counts.edges", "counts.faces", "counts.loops", "genus"}
+            ]
         ok = all(r[3] for r in rows)
         ok_all &= ok
         print(f"  {name}[{variant}]: STEP round trip {'ok' if ok else 'MISMATCH'}")

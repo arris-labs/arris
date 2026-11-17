@@ -64,8 +64,10 @@ boolean/frustum-slot-cut: 1113
 boolean/frustum-stub-cut-then-fuse: 3390
 boolean/fuse-arc-plate-tangent-inside-cylinder: 53
 boolean/fuse-bar-end-bosses-tangent: 113
+boolean/fuse-box-cylinder-tangent-side: 35
 boolean/fuse-cylinder-tangent-inside: 26
 boolean/fuse-cylinder-tangent-inside-near-seam: 613
+boolean/fuse-cylinders-tangent-equal-height: 32
 boolean/fuse-end-disc-tangent-to-wall: 3512
 boolean/fuse-frustum-box-rim-point: refused
 boolean/fuse-frustum-box-rim-point-far-side: refused

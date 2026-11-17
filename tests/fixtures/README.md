@@ -385,9 +385,11 @@ of the step that made the fixture pass, and a later change to it is a
   oracle's counts and genus, where the file carries topology the
   oracle's shape does not (`boolean/fuse-cylinder-tangent-inside`: two
   `VERTEX_POINT`s at each touch of a crescent's bounds, which Open
-  CASCADE's own reader heals into one). Arris's own STEP of such a
-  crescent, one loop through the touch twice, Open CASCADE's reader heals
-  into two wires; `compare.py` joins them again before it holds the Euler
+  CASCADE's own reader heals into one). The oracle's self-test still
+  checks shell and solid counts, measures and probes on the round trip.
+  Open CASCADE's reader heals Arris's own STEP of such a crescent into two
+  wires where one loop goes through the touch twice. `compare.py` joins them
+  again before it holds the Euler
   characteristic even. The runner holds a `measure_differs` fixture's
   read-back to the oracle's own measurements: all but one blame Open
   CASCADE's boolean, whose shape its file carries. `occt_file_measure_differs:

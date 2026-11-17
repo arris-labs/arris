@@ -2,12 +2,14 @@
 that build, each held to its closed form, its probes and the checker at
 `full`, and the four refused by name. Each is its fixture's recipe
 (`tests/fixtures/boolean/` and `blend/`, read for the programs and closed
-forms in `fixture.json`) run on the raw binding."""
+forms in `fixture.json`) run on the raw binding. The two touching-lump
+fuses use the build layer."""
 
 import math
 
 import arris
 import pytest
+from arris.build import Solid
 
 from conftest import AREA_REL, CENTROID_ABS, VOLUME_REL
 
@@ -15,8 +17,8 @@ PI = math.pi
 TAU = 2 * PI
 
 # `classify_points` codes (test_queries.py).
-IN, OUT = 1, 0
-CODE = {"in": IN, "out": OUT}
+IN, OUT, ON = 1, 0, 2
+CODE = {"in": IN, "out": OUT, "on": ON}
 
 # The profile plane of a revolve about z: (u, v) is (x, z).
 XZ = dict(origin=(0, 0, 0), normal=(0, -1, 0), x_axis=(1, 0, 0))
@@ -191,6 +193,48 @@ def test_an_end_disc_tangent_to_a_wall_fuses_to_its_closed_form():
             ("horizontal cylinder over the vertical one", (5, 0, 3.5), "in"),
             ("above the horizontal cylinder", (5, 0, 4.5), "out"),
             ("past the end disc", (6.5, 0, 3), "out"),
+        ],
+    )
+
+
+def test_tangent_cylinders_with_flush_caps_fuse_to_two_lumps():
+    """The cotter pin pose: two unit cylinders of height two whose flush
+    rims meet at each end of the contact ruling."""
+    model = arris.Model()
+    right = Solid.cylinder((1, 0, -1), (0, 0, 1), 1, 2, model=model)
+    left = Solid.cylinder((-1, 0, -1), (0, 0, 1), 1, 2, model=model)
+    fused = right.fuse(left)
+    hold(
+        model,
+        fused.body,
+        volume=4 * PI,
+        area=12 * PI,
+        genus=0,
+        counts=(4, 6, 6, 6, 2),
+        probes=[
+            ("contact ruling", (0, 0, 0), "on"),
+            ("flush rims", (0, 0, 1), "on"),
+        ],
+    )
+
+
+def test_a_cylinder_tangent_to_a_centred_box_side_fuses_to_two_lumps():
+    """The hinge pose: the contact along the side ends on the two short
+    edges of the centred plate."""
+    model = arris.Model()
+    plate = Solid.box((-2, -2, -0.5), (2, 2, 0.5), model=model)
+    barrel = Solid.cylinder((3, -3, 0), (0, 1, 0), 1, 6, model=model)
+    fused = plate.fuse(barrel)
+    hold(
+        model,
+        fused.body,
+        volume=16 + 6 * PI,
+        area=48 + 14 * PI,
+        genus=0,
+        counts=(10, 15, 9, 9, 2),
+        probes=[
+            ("contact ruling", (2, 0, 0), "on"),
+            ("contact ends on the box edge", (2, 2, 0), "on"),
         ],
     )
 

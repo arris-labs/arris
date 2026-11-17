@@ -808,6 +808,66 @@ impl<'m, 'c> Build<'m, 'c> {
         Ok(out)
     }
 
+    /// Hits at the ends of a contact whose adjacent coincident faces'
+    /// rims touch from outside and whose walls only touch. A rim's hit
+    /// on the other wall and a seam's hit on the other cap locate the
+    /// contact, but the tangent edge–edge
+    /// verdict says that neither cap is split there. In particular, the
+    /// seam can pierce the other cap's plane at its own vertex even though
+    /// the two rims only touch. Keep those hits out of the vertex merge.
+    fn contact_end_hits(&self) -> BTreeSet<usize> {
+        let mut end_hits = BTreeSet::new();
+        for (i, rim_hit) in self.crossings.iter().enumerate().filter(|(_, x)| x.tangent) {
+            let caps = &self.pairs[rim_hit.pair];
+            let [a, b] = caps.operands;
+            let (Some(rim_a), Some(rim_b)) =
+                (self.edge_info(a, rim_hit.a), self.edge_info(b, rim_hit.b))
+            else {
+                continue;
+            };
+            let point = rim_hit.point;
+            let linear = self.crossing_tolerance[i];
+            for (pi, pair) in self.pairs.iter().enumerate() {
+                if pair.operands != [a, b]
+                    || pair
+                        .intersection
+                        .curves()
+                        .iter()
+                        .any(|c| c.kind == MeetKind::Crossing)
+                    || !meet_curves(&pair.intersection, MeetKind::Touch)
+                        .any(|(_, c)| c.project(point).is_ok_and(|p| p.distance <= linear))
+                {
+                    continue;
+                }
+                let (wall_a, wall_b) = self.pair_infos(pi);
+                if !wall_a.edges().contains(&rim_a.id) || !wall_b.edges().contains(&rim_b.id) {
+                    continue;
+                }
+                for (rim, wall, other_wall, other_cap) in [
+                    (rim_a, wall_a, wall_b, caps.b),
+                    (rim_b, wall_b, wall_a, caps.a),
+                ] {
+                    let rim_vertex = rim.vertex_at(point);
+                    for (j, h) in self.hits.iter().enumerate() {
+                        let rim_touches_wall =
+                            h.tangent && h.edge == rim.id && h.face == other_wall.id;
+                        let seam_reaches_cap = h.face == other_cap
+                            && rim_vertex.is_some()
+                            && h.at_vertex == rim_vertex
+                            && wall.uses.iter().filter(|(edge, _)| *edge == h.edge).count() == 2
+                            && self.coincident.contains(&(h.edge, other_wall.id));
+                        if (rim_touches_wall || seam_reaches_cap)
+                            && (h.point - point).norm() <= linear.max(self.hit_tolerance[j])
+                        {
+                            end_hits.insert(j);
+                        }
+                    }
+                }
+            }
+        }
+        end_hits
+    }
+
     /// Hits, then crossings, then section crossings, then the singular
     /// vertices a crossing curve runs through, as candidate points; the
     /// section vertices are their components under "the same within a
@@ -819,9 +879,10 @@ impl<'m, 'c> Build<'m, 'c> {
     /// is numbered by its first member in that order and carries that
     /// member's source.
     pub(super) fn merge(&mut self) -> Result<(), OpError> {
+        let contact_ends = self.contact_end_hits();
         let mut members: Vec<(Member, Candidate)> = Vec::new();
         for (i, h) in self.hits.iter().enumerate() {
-            if h.tangent {
+            if h.tangent || contact_ends.contains(&i) {
                 continue;
             }
             let mut existing: Vec<VertexId> = Vec::new();
@@ -912,7 +973,7 @@ impl<'m, 'c> Build<'m, 'c> {
             .hits
             .iter()
             .enumerate()
-            .filter(|(_, h)| h.tangent)
+            .filter(|(i, h)| h.tangent && !contact_ends.contains(i))
             .map(|(i, h)| {
                 (
                     Member::Hit(i),

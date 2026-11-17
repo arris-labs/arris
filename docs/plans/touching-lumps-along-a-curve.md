@@ -62,7 +62,7 @@ result's *one* shell would touch itself.
   - pieces in one shell: `TangentContact`, with the same entities as today.
 
   The paves at a contact's ends (a box edge, or a rim circle, touching the
-  other face) make no vertex that two shells share (⚠ OPEN 1).
+  other face) make no vertex that two shells share (ADR-0088).
 - **Public API.** No type or signature changes. These docs change:
   - `BooleanReason::TangentContact`'s doc: one shell touching itself;
   - `InputReason::NonManifold`'s doc and its `Display` text: an edge or
@@ -98,16 +98,15 @@ here.
   `ball-in-bore-cut` still refuse `TangentContact` (one shell). The error
   docs and Display text change in this commit, and `boolean.rs`'s two held
   `TangentContact` asserts are reviewed.
-- [ ] Step 3 **[2]** — The harness's poses as fixtures, with Open CASCADE's
+- [x] Step 3 **[2]** — The harness's poses as fixtures, with Open CASCADE's
   values, built checker-green:
   - `boolean/fuse-cylinders-tangent-equal-height` (`cotter_pin`): the flush
     end discs' rims touch at a point;
   - `boolean/fuse-box-cylinder-tangent-side` (`hinge`, CadQuery-centred):
     the box's edges touch the wall at the ends of the contact.
 
-  Whatever their contact-end paves need goes in here (⚠ OPEN 1). Python
-  tests in `test_tangency.py` drive both through `arris.build`: two shells,
-  V and A.
+  Python tests in `test_tangency.py` drive both through `arris.build`
+  and hold the two shells, volume and area.
 - [ ] Step 4 **[2]** — (its `fuse` arm landed with step 2, which would otherwise have left `main` red; the rename and the reviews remain) Rewrite the property
   `a_cylinder_tangent_to_a_box_face_leaves_the_box_and_shares_nothing`
   (`boolean_prop.rs`) so its `fuse` arm checks touching lumps: two shells,
@@ -153,13 +152,11 @@ here.
 
 ## Open questions
 
-- ⚠ OPEN 1 (agent, step 3): a contact's end pave, where a rim or a box
-  edge touches the other face, or two flush rims touch at a point. The
-  hypothesis is that it makes no vertex, as a touch off every vertex makes
-  none today. If it does make one that two shells would share, the step
-  stops building that vertex rather than copying it per lump. Copying is
-  the third plan's mechanism and comes forward only if stopping it proves
-  wrong. Record the decision in ADR-0088.
+- **Settled (step 3)**: a box edge touching the wall off every vertex
+  already makes no section vertex. Where two flush rims touch from
+  outside at a wall contact's end, a seam crossing the opposite cap
+  plane would make a shared vertex. The hits locate the contact and are
+  left out of the vertex merge (ADR-0088).
 - **Settled (step 2)**: a slit is decided by *lump*, not shell. A cavity
   touching the wall round it (`ball-in-bore-cut`, `pin-in-bore-cut`) is two
   shells of one lump, its material touching itself, and stays

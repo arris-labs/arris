@@ -84,6 +84,17 @@ checker passes them.
    stay `NonManifold` until then; this ADR draws no arbitrary line between
    the two kinds of touch.
 
+### Contact ends at coincident caps (step 3)
+
+Two externally tangent walls with flush caps can meet at a rim tangency
+on a wall's seam. The seam crosses the opposite cap plane at its own
+vertex. The rims touch from outside, so the hit describes an end of the
+wall contact and splits neither cap. The rim-on-wall and seam-on-cap
+hits stay in the pave model for contact detection and are left out of the
+section-vertex merge. A box edge tangent to a wall away from a vertex
+already makes no section vertex. Both results keep each lump's topology
+whole.
+
 ## Consequences
 
 - `arris_check`'s B1 changes with no public type changing; the doc of

@@ -1,0 +1,24 @@
+{
+  "description": "The training harness's hinge union, reduced to a CadQuery-centred 4 x 4 x 1 box and a radius-one cylinder centred parallel to its side: the ruling x = 2, z = 0 ends on the box's edges at y = ±2 (ADR-0088)",
+  "steps": [
+    {"name": "plate", "op": "box", "min": [-2, -2, -0.5], "max": [2, 2, 0.5]},
+    {"name": "barrel", "op": "cylinder", "base": [3, -3, 0], "axis": [0, 1, 0], "radius": 1, "height": 6},
+    {"name": "result", "op": "fuse", "a": "plate", "b": "barrel"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in_plate", "point": [0, 0, 0], "expect": "in"},
+    {"label": "in_barrel", "point": [3, 0, 0], "expect": "in"},
+    {"label": "contact", "point": [2, 0, 0], "expect": "on"},
+    {"label": "edge_touch", "point": [2, 2, 0], "expect": "on"},
+    {"label": "between_wall_and_plate", "point": [2.01, 0, 0.25], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "16 + 6 * pi",
+    "area": "48 + 14 * pi",
+    "centroid": ["18 * pi / (16 + 6 * pi)", 0, 0],
+    "counts": {"vertices": 10, "edges": 15, "faces": 9, "loops": 9, "shells": 2, "solids": 2},
+    "counts_differ": "Open CASCADE imprints the tangent ruling on the operands; Arris keeps both operands whole",
+    "genus": 0
+  }
+}

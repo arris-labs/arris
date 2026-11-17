@@ -1,0 +1,26 @@
+{
+  "description": "The training harness's cotter_pin union, reduced to two equal-height unit cylinders: their walls touch along x = y = 0 and each pair of flush rims touches at the end of the ruling (ADR-0088)",
+  "steps": [
+    {"name": "a", "op": "cylinder", "base": [1, 0, -1], "axis": [0, 0, 1], "radius": 1, "height": 2},
+    {"name": "b", "op": "cylinder", "base": [-1, 0, -1], "axis": [0, 0, 1], "radius": 1, "height": 2},
+    {"name": "result", "op": "fuse", "a": "a", "b": "b"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in_a", "point": [1, 0, 0], "expect": "in"},
+    {"label": "in_b", "point": [-1, 0, 0], "expect": "in"},
+    {"label": "contact", "point": [0, 0, 0], "expect": "on"},
+    {"label": "flush_rims", "point": [0, 0, 1], "expect": "on"},
+    {"label": "between_walls", "point": [0, 0.5, 0], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "4 * pi",
+    "area": "12 * pi",
+    "centroid": [0, 0, 0],
+    "counts": {"vertices": 4, "edges": 6, "faces": 6, "loops": 6, "shells": 2, "solids": 2},
+    "counts_differ": "Open CASCADE imprints the tangent ruling and shares contact topology between the solids; Arris keeps each cylinder whole and uses disjoint topology",
+    "occt_odd_euler": "Open CASCADE shares the imprinted ruling between the cylinders, giving an odd Euler characteristic",
+    "occt_step_counts_differ": "The STEP round trip separates the shared contact topology: 6 vertices and 9 edges in the file, where the in-memory result has 4 vertices and 8 edges",
+    "genus": 0
+  }
+}

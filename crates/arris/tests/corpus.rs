@@ -731,9 +731,13 @@ corpus_tests! {
     /// each outside the other, and the cut is the target with every id kept.
     /// Open CASCADE imprints the ruling (`analytic.counts_differ`).
     boolean_tangent_cylinders_cut => run "boolean/tangent-cylinders-cut";
-    /// The same operands fused: both walls survive through the contact,
-    /// `BooleanReason::TangentContact` through the runner's expected-error path.
+    /// The same operands fused: both walls survive through the contact
+    /// in two lumps of one solid (ADR-0088).
     boolean_tangent_cylinders_fuse => run "boolean/tangent-cylinders-fuse";
+    /// Two tangent cylinders with flush caps, whose rims touch at both ends.
+    boolean_fuse_cylinders_tangent_equal_height => run "boolean/fuse-cylinders-tangent-equal-height";
+    /// A centred box whose side touches a cylinder between two box edges.
+    boolean_fuse_box_cylinder_tangent_side => run "boolean/fuse-box-cylinder-tangent-side";
     /// A pin touching a bore's wall from inside: the pin's wall is inside the
     /// bore, and the fuse is the bore with every id kept.
     boolean_pin_in_bore_fuse => run "boolean/pin-in-bore-fuse";

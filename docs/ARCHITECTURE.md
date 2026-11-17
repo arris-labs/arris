@@ -623,11 +623,14 @@ radius, along a circle — contributes no section edge and no pave on any
 operand edge: it is paved by the *touches*, the hits of either face's
 edges on the other face that lie on it (every curve in a face tangent to
 the other surface is tangent to it there, so these are where the curve
-leaves one face inside the other), and each block between consecutive
-touches whose midpoint is inside both faces — on a seam of either
-counting as inside, the face lying on both sides of it — is a *contact*,
-the segment the two faces share, and a piece whose interior point lands
-on that seam is decided by the curvature rule as one on the contact is; on a closed curve the last block wraps round to the
+leaves one face inside the other). Where two coincident caps' rims touch
+from outside at a contact's end, a rim hit on the opposite wall and a
+seam hit on the opposite cap make no section vertex (ADR-0088). Each
+block between consecutive touches whose midpoint is inside both faces is a
+*contact*. The midpoint counts as inside a face when it lies on a seam of
+that face, since the face lies on both sides of it. The curvature rule
+decides a piece whose interior point lands on a seam the same way as one
+on a contact. On a closed curve the last block wraps round to the
 first touch, and a closed curve no edge reaches is one block
 (`boolean/ball-in-bore-cut`, refused as `BooleanReason::TangentContact`). Every list is in a deterministic order and `Display` prints the
 whole model, which is what the `inspect` skill reads when a boolean is
