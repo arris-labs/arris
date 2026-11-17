@@ -1028,6 +1028,13 @@ pub struct Analytic {
     /// Arris refuses the result the oracle builds, with this error.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expect_error: Option<ExpectError>,
+    /// The step whose refusal `degenerate` or `expect_error` is, where it is
+    /// not the result step: a program a consumer runs stops at the first
+    /// step that fails, so a recipe whose earlier step is the one refused
+    /// names it. Unset, the result step is the one, and a refusal at any
+    /// other step fails the fixture.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refuses_at: Option<String>,
     /// Volume.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub volume: Option<Num>,
@@ -1932,6 +1939,16 @@ fn lint_recipe_names(r: &Recipe) -> Vec<String> {
     }
     if !names.contains(r.result.as_str()) {
         problems.push(format!("result {:?} is not a step", r.result));
+    }
+    if let Some(at) = &r.analytic.refuses_at {
+        if !names.contains(at.as_str()) {
+            problems.push(format!("analytic.refuses_at {at:?} is not a step"));
+        }
+        if !r.analytic.degenerate && r.analytic.expect_error.is_none() {
+            problems.push(
+                "analytic.refuses_at needs analytic.degenerate or analytic.expect_error".into(),
+            );
+        }
     }
 
     problems

@@ -71,7 +71,7 @@ provenance accounting, and diffs the dump against `dump.txt`. A result
 the oracle recorded no solid for (`degenerate` in `expected.json`) must
 fail with `OpError::Degenerate` at its result step, and one whose recipe
 says `analytic.expect_error` must fail with that typed refusal; either
-ends the run there (at the result step, or at an earlier step that fails, which stops the program as a consumer's raises), nothing later compared, no `dump.txt`. Every op of
+ends the run there, nothing later compared, no `dump.txt`. The refusal is the result step's, or the earlier step `analytic.refuses_at` names (the program stops at the first step that fails, as a consumer's raises); a refusal at any other step fails the fixture, and the lint refuses a `refuses_at` that is no step or has no refusal to place. Every op of
 the recipe grammar has its operation; a fixture that does not pass yet —
 a failure shrunk to one — lives under `regression/<slug>/`, outside the
 lint's areas, with its test `regression_<slug>` `#[ignore = "why"]`d in

@@ -11,5 +11,5 @@
   ],
   "result": "result",
   "probes": [],
-  "analytic": {"expect_error": "blend-too-large"}
+  "analytic": {"expect_error": "blend-too-large", "refuses_at": "chamfered"}
 }
