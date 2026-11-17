@@ -217,7 +217,8 @@ def test_a_frustum_and_a_box_touching_at_a_rim_point_are_non_manifold(lo, hi):
     lug = model.primitive_box(lo, hi)[0]
     with pytest.raises(arris.OpDegenerateError) as raised:
         model.fuse(body, lug)
-    assert "touch" in raised.value.reason
+    # NonManifold's text, not TangentContact's ("the faces touch along a curve").
+    assert "shells would touch" in raised.value.reason
 
 
 def ring(model):
@@ -250,6 +251,7 @@ def test_two_chamfers_that_use_up_the_face_between_them_are_too_large():
     rims = top_rims(model, body)
     with pytest.raises(arris.OpDegenerateError) as raised:
         model.chamfer(body, rims, 2.5)
+    assert "does not fit its faces" in raised.value.reason
     entities = raised.value.entities
     assert len(entities) == 3
     assert all(rim in entities for rim in rims)
@@ -257,10 +259,17 @@ def test_two_chamfers_that_use_up_the_face_between_them_are_too_large():
 
 def test_the_chamfer_refuses_before_the_cut_that_follows_it():
     """The fixture `chamfer-two-rims-use-up-face-then-cut`: the same chamfer
-    of the ring, then a cylinder cut across it. The chamfer is refused
-    `BlendTooLarge`, so the cut is never reached."""
+    of the ring, then a cylinder cut across it, run as one program. The
+    chamfer is refused `BlendTooLarge` (the too-large reason, not a cut's),
+    so the cut is never reached."""
     model = arris.Model()
     body = ring(model)
     rims = top_rims(model, body)
-    with pytest.raises(arris.OpDegenerateError):
-        model.chamfer(body, rims, 2.5)
+    hole = model.primitive_cylinder((-12, 0, 2), (1, 0, 0), 1, 24)[0]
+    reached_the_cut = False
+    with pytest.raises(arris.OpDegenerateError) as raised:
+        chamfered = model.chamfer(body, rims, 2.5)[0]
+        reached_the_cut = True
+        model.cut(chamfered, hole)
+    assert not reached_the_cut
+    assert "does not fit its faces" in raised.value.reason
