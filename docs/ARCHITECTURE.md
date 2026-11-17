@@ -922,7 +922,11 @@ has the cylinder's `Z` and its `X` at the edge's vertex, so its `u` seam
 — a tube circle of the torus, a ruling of the cone — runs between the
 two contacts' vertices in the half-plane of the cylinder's own seam,
 which is shortened to the contact on the cylinder; that vertex must
-carry no other edge, else `VertexBlend`. A plane against a cone along a
+carry no other edge, else `VertexBlend`. Two such rims on one face
+(`blend/crowd.rs`) are read first, on the face's meridian from edge to
+contact — the radius on a plane, the height on a cylinder or a cone — and
+bands that overlap or meet, the contacts swapped or one, are `TooLarge`
+naming both edges and the face, before anything is built. A plane against a cone along a
 circle coaxial with it — a frustum's rim, a conical boss's base — is the
 same construction read in the half-plane bounded by the axis (ADR-0036):
 each face's meridian is a line there, the ball's centre is where the two

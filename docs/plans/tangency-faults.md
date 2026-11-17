@@ -147,10 +147,15 @@ bound is established here.
   result names it `NonManifold`; a same-facing pair (a boss on a bar)
   still splits nothing. The error names the section vertex's two edges
   and two faces, as for any section vertex.
-- [ ] Step 7 **[2]** — Case 7. The crossing-contacts check refuses
+- [x] Step 7 **[2]** — Case 7. The crossing-contacts check refuses
   `BlendTooLarge` for chamfers and fillets, on either pair of rims. A
   chamfer of 1.9 on both rims, or of 3.9 on one rim, still builds green.
   Both fixtures move to `blend/`, and `TooLarge`'s doc is extended.
+  *Settled*: the check (`blend/crowd.rs`) covers closed edges' rings, read
+  on the face's meridian (radius on a plane, height on a cylinder or a
+  cone) from edge to contact; open stripes, rolled rings and pairs on
+  different axes are not compared. It runs after the rings are built and
+  before any stripe is.
 - [ ] Step 8 **[2]** — Property tests (`arris-debug/src/prop`), each in a
   random rigid pose: a cylinder tangent inside a larger one, a bar end
   tangent to a boss, and a column tangent to a bore. `fuse`, `cut` and

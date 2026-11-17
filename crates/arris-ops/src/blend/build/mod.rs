@@ -16,6 +16,7 @@ use self::entities::{add_crowded_edges, add_rings, add_stripes, crowded_edges, s
 use self::faces::{add_blend_faces, add_corner_faces, add_ring_faces, rewrite_faces};
 use self::make::{add_corners, add_miters, join_blends, make_blends, make_stripes};
 use super::corner::Corner;
+use super::crowd::crowded_faces;
 use super::ends::{EndKind, Trim};
 use super::junction::pin_kinks;
 use super::miter::Miter;
@@ -342,6 +343,7 @@ pub(super) fn build(
         kinks,
     } = classify(&mut ctx, body, edges)?;
     let meets = vertex_joins(&mut ctx, &open, &arcs, &mut rings, &kinks)?;
+    crowded_faces(&ctx.split().0, &rings)?;
     let stripes = make_stripes(&mut ctx, &open)?;
     let mut joins = join_blends(&mut ctx, &open, &stripes, &rings, &meets, &kinks)?;
     let mut blends = make_blends(&mut ctx, stripes, &joins)?;

@@ -2200,3 +2200,70 @@ fn a_fillet_on_the_band_builds_and_one_at_the_axis_is_too_large() {
         "{err}"
     );
 }
+
+/// A ring of radii 6 and 10, height 8, revolved whole about `z`: its top
+/// face is 4 wide.
+fn wide_ring(m: &mut Model) -> Body {
+    let plane = Frame::new(Point3::origin(), -Vec3::y(), Vec3::x()).unwrap();
+    let profile = Profile {
+        plane,
+        outer: ProfileLoop::Path {
+            start: Point2::new(6.0, 0.0),
+            segments: vec![
+                line_to(10.0, 0.0),
+                line_to(10.0, 8.0),
+                line_to(6.0, 8.0),
+                line_to(6.0, 0.0),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    revolve(
+        m,
+        &profile,
+        Axis::z_at(Point3::origin()),
+        core::f64::consts::TAU,
+    )
+    .unwrap()
+    .0
+}
+
+/// Two rims of one face blended together: a chamfer or fillet of 1.9 on
+/// both leaves a band of the 4-wide face between the contacts (7.9 and
+/// 8.1) and builds `Full`-green; 2.5 on both makes the contacts swap order
+/// (8.5 and 7.5) and is `TooLarge` naming both edges and the face, on the
+/// top face and on the bottom one; 3.9 on one rim alone still builds.
+#[test]
+fn two_rims_blended_across_one_face_are_refused_where_the_contacts_cross() {
+    let mut m = Model::default();
+    let ring = wide_ring(&mut m);
+    for z in [8.0, 0.0] {
+        let rims = [
+            rim_at(&m, ring, Point3::new(0.0, 0.0, z), 6.0),
+            rim_at(&m, ring, Point3::new(0.0, 0.0, z), 10.0),
+        ];
+        for blend in [chamfer, fillet] {
+            let (built, _) = blend(&mut m, ring, &rims, 1.9).unwrap();
+            let report = check(&m, built, Level::Full);
+            assert!(report.is_ok(), "{report}");
+            let err = blend(&mut m, ring, &rims, 2.5).unwrap_err();
+            assert_eq!(
+                reason(&err),
+                Some(Reason::Blend(BlendReason::TooLarge)),
+                "{err}"
+            );
+            let OpError::Degenerate { entities, .. } = &err else {
+                panic!("{err}");
+            };
+            assert_eq!(entities.len(), 3, "both edges and the face: {err}");
+            assert!(
+                rims.iter()
+                    .all(|r| entities.iter().any(|s| s.id == EntityId::from(r.id))),
+                "{err}"
+            );
+        }
+        let (built, _) = chamfer(&mut m, ring, &rims[..1], 3.9).unwrap();
+        let report = check(&m, built, Level::Full);
+        assert!(report.is_ok(), "{report}");
+    }
+}

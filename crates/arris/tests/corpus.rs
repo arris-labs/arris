@@ -1779,6 +1779,10 @@ corpus_tests! {
     /// oracle's measurements, Open CASCADE's corner blends missing the
     /// rolling ball (ADR-0073).
     blend_rounded_block_oblique_top_fillet => run "blend/rounded-block-oblique-top-fillet";
+    /// A ring whose two top rims are both chamfered 2.5 on a face 4 wide: the contacts swap order, refused `BlendTooLarge`.
+    blend_chamfer_two_rims_use_up_face => run "blend/chamfer-two-rims-use-up-face";
+    /// The same ring chamfered on both rims and cut across by a cylinder: the chamfer's refusal ends the run, the cut never reached.
+    blend_chamfer_two_rims_use_up_face_then_cut => run "blend/chamfer-two-rims-use-up-face-then-cut";
     /// A 10-cube's top face pushed out by 2: a 10 × 10 × 12 block.
     offset_box_top_pushed => run "offset/box-top-pushed";
     /// A 10-cube's top face pulled in by 2: a 10 × 10 × 8 block.
@@ -2192,12 +2196,6 @@ corpus_tests! {
     /// plane and the third's wall across both: every pair and the chain build.
     #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (the retired flat-edge-read-as-tangent-contact plan, step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
-    /// A ring whose two top rims are both chamfered 2.5 on a face 4 wide.
-    #[ignore = "an Ok body that Full refuses (L4, S5): the contact circles swap order; the desired result is the refusal BlendTooLarge naming both edges and the face (plans/tangency-faults step 7)"]
-    regression_chamfer_two_rims_use_up_face => run "regression/chamfer-two-rims-use-up-face";
-    /// The same ring chamfered on both rims and cut across by a cylinder.
-    #[ignore = "OpError::Internal on the cut of the invalid chamfered body; the desired result is the chamfer's refusal BlendTooLarge (plans/tangency-faults step 7)"]
-    regression_chamfer_two_rims_use_up_face_then_cut => run "regression/chamfer-two-rims-use-up-face-then-cut";
 }
 
 /// A variant the recipe does not have fails naming it.

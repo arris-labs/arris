@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `fillet` and `chamfer` of two rims of one flat face refuse with
+  `BlendTooLarge`, naming both edges and the face, where together they use the
+  face up: a ring's top 4 wide chamfered 2.5 on both rims. It used to return a
+  body the checker refuses, and a boolean on it failed with `OpInternalError`.
 - Booleans that put several pieces of one flat face on a plane no longer refuse
   as `TangentContact`: a chained fuse of cylinders or boxes standing on a shared
   end plane, a third slot cut across a cylinder, and a bore cut over a bore of its

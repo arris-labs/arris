@@ -30,6 +30,7 @@ use crate::rebuild::forward;
 mod build;
 mod chain;
 mod corner;
+mod crowd;
 mod ends;
 mod junction;
 mod miter;
@@ -257,7 +258,10 @@ struct Blend {
 /// the cylinder misses the other's on the third edge, or a corner of three
 /// blended edges whose faces are not all planes, whose blends are mixed or
 /// none of whose faces is square to the other two — and
-/// [`BlendReason::TooLarge`] where a contact line or an end arc leaves
+/// [`BlendReason::TooLarge`] where two closed edges' blends take overlapping
+/// bands of one face — the rims of a ring's top face blended past half its
+/// width together, whose contacts swap order — naming both edges and the
+/// face, checked before anything is built, or where a contact line or an end arc leaves
 /// its face through an edge that is not the corner's own or a corner
 /// edge is shorter than the trim, a fan's crossing lies past its edge, a trim past the corner's vertex that is
 /// no such lengthening or whose stretch leaves its face, or a closed edge's torus stripe leaves the torus's

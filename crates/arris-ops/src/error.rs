@@ -380,8 +380,10 @@ pub enum BlendReason {
     /// A blend does not fit its faces: a contact curve or an end arc
     /// leaves the face it lies on through an edge that is not one of the
     /// corner's own, or a corner edge is shorter than the trim would cut
-    /// from it (ADR-0007). The error's entities are the blended edge and
-    /// the face or edge the blend runs out of.
+    /// from it (ADR-0007); or two blends' contacts on one face cross or
+    /// swap order, as two rims blended on a face too narrow for both. The
+    /// error's entities are the blended edge and the face or edge the
+    /// blend runs out of, or both edges and the face.
     TooLarge,
     /// The blended edge's two faces meet at a tangent dihedral — the arc
     /// and the line of a slot's wall, a blend face and its neighbour — so

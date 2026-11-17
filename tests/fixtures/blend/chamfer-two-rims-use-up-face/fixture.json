@@ -1,5 +1,5 @@
 {
-  "description": "a ring of outer radius 10, bore 6 and height 8, both rims of its top face chamfered 2.5 in one call. The face is 4 wide, so the two chamfers together (5) use it up: their contact circles on the face fall at radii 7.5 and 8.5 and swap order. No solid has this shape; Open CASCADE returns a shape its own checker refuses. Arris returns a body that Full refuses (L4 hole loop 0 lies outside every outer loop; L5). The desired result is the refusal Reason::TooLarge naming both edges and the face, before any geometry is cut (plans/tangency-faults step 7)",
+  "description": "a ring of outer radius 10, bore 6 and height 8, both rims of its top face chamfered 2.5 in one call. The face is 4 wide, so the two chamfers together (5) use it up: their contact circles on the face fall at radii 7.5 and 8.5 and swap order. No solid has this shape; Open CASCADE returns a shape its own checker refuses. Arris refuses Reason::TooLarge naming both edges and the face, before any geometry is cut: the two rims' contacts cross on the one face (plans/tangency-faults step 7)",
   "steps": [
     {"name": "section", "op": "profile",
      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
