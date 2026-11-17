@@ -1,7 +1,9 @@
 # Idea: touching-operands-fuse-to-several-shells
 
-- Status: Accepted (A; shared-topology contacts in a third plan). Waiting
-  for `/plan`, curve touches first. Rewritten 2026-11-17 after reproducing the four cases on
+- Status: Accepted (A); the ADR and the curve touches (cases 1 and 2's
+  `fuse`) absorbed by plans/touching-lumps-along-a-curve. Still to plan:
+  point touches (`touching-lumps-at-a-point`), then shared-topology
+  contacts (Q2). Rewritten 2026-11-17 after reproducing the four cases on
   `0.12.0-dev`: they are three different failures, not one, and two of them
   hit `cut` and `common` as well as `fuse`.
 - Raised: 2026-11-13; consolidated 2026-11-16 from items 1, 2, 4 and 7 of
@@ -109,8 +111,9 @@ checker's silent pass in (c) becomes a valid body.
 
 Cost: two milestone plans of about five steps each.
 
-- **Plan 1:** the ADR, B1, and touches along a curve (cases 1 and 2's
-  fuse). `tangent-cylinders-fuse` flips.
+- **Plan 1** (absorbed by plans/touching-lumps-along-a-curve): the ADR,
+  B1, and touches along a curve (cases 1 and 2's fuse).
+  `tangent-cylinders-fuse` flips.
 - **Plan 2:** point touches in all three operations (cases 3 and 4, case 2's
   `cut` and `common`, the nesting fault), and a property test that uses a
   touching pair as an operand.

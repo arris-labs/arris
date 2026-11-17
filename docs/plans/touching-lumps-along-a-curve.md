@@ -1,0 +1,165 @@
+# Plan: touching-lumps-along-a-curve
+
+- Started: 2026-11-17
+- Milestone: C12, the training harness's refusals (`docs/ROADMAP.md`)
+- Idea: `docs/ideas/touching-operands-fuse-to-several-shells.md` (the ADR
+  and the curve touches absorbed; point touches and shared-topology
+  contacts stay there for the next two plans)
+
+## Goal
+
+Two solids that touch from outside along a curve fuse to one `Solid` of
+**touching lumps**. Their volumes and areas add up, the full checker
+passes the result, and each lump keeps its own edges and vertices. This
+covers the training harness's `cotter_pin` and `hinge` programs (about 220)
+and the fixture `boolean/tangent-cylinders-fuse`. ADR-0088 amends ADR-0006,
+and B1 admits a touch between shells while still refusing a crossing. A
+body of touching lumps can be measured, meshed, classified, written to
+STEP and used as an operand. `TangentContact` remains only where the
+result's *one* shell would touch itself.
+
+## Non-goals
+
+- Point touches, where two surfaces meet at isolated points: the torus and
+  box, a ball on a disc, the `cut` and `common` of a box edge tangent to a
+  wall, backlog line "`common` refuses solids that touch at one point", and
+  the nesting `OpInternalError` of the off-centre disc. These are the next
+  plan, `touching-lumps-at-a-point`.
+- Contacts that share topology: an edge of four faces, or a vertex two
+  shells reach (`edge-touching-fuse`, `cross-cylinders-cut`,
+  `pockets-touching-edge-cut-many`, the frustum rim-point pair). They stay
+  `NonManifold`; they are the third plan (idea, Q2).
+- A `cut` or `common` whose result splits into lumps that touch along a
+  contact. That needs the contact to split a face, and it stays
+  `TangentContact`.
+- A shell touching itself (the pinch), `General` bodies, and `interference`
+  reporting a touch.
+
+## Design deltas
+
+- **ADR-0088, "Lumps of one solid may touch"** (step 1), amending ADR-0006.
+  The interiors of a `Solid`'s lumps are disjoint. Their boundaries may
+  meet along curves where their surfaces touch (`MeetKind::Touch`) and at
+  isolated points, but never across each other or over an area.
+  "Shells share nothing" stays as it is. The sentence "two lumps meeting
+  at a point or along a line are a `General` body" goes. Its argument (idea
+  §Constraints): the multi-lump `Solid` already plays the role of Open
+  CASCADE's compound.
+- **Checker, B1** (`arris-check/src/full.rs::faces_meet`, `lumps.rs`). A
+  face pair from two different shells is a violation only where it crosses
+  (a `Crossing` curve or point interior to both) or overlaps (`Coincident`
+  regions). A `Touch` curve or point is admitted. S5, inside one shell,
+  keeps its rule. The nesting ray starts at a vertex of the shell clear of
+  the other shell by its tolerance, or else at an interior point of a face.
+  This way a seam vertex lying on the contact never leaves the nesting
+  undecided. Touching from inside is still a nesting violation (an outer
+  shell inside an outer shell).
+- **Boolean, the slit** (`boolean/result.rs::contacts`, `shells`).
+  `contacts()` stops refusing. It records each contact both of whose pieces
+  survive, as a slit. Once the kept pieces are grouped into shells, a slit
+  is looked up by the kept piece of each face that holds its midpoint:
+  - pieces in two different shells: touching lumps, built;
+  - pieces in one shell: `TangentContact`, with the same entities as today.
+
+  The paves at a contact's ends (a box edge, or a rim circle, touching the
+  other face) make no vertex that two shells share (⚠ OPEN 1).
+- **Public API.** No type or signature changes. These docs change:
+  - `BooleanReason::TangentContact`'s doc: one shell touching itself;
+  - `InputReason::NonManifold`'s doc and its `Display` text: an edge or
+    vertex the shells would *share*, no longer just any touch;
+  - `fuse`'s and `cut`'s error paragraphs (`boolean/mod.rs`);
+  - the Python stubs' docstrings where they quote these.
+- **Design docs.**
+  - `docs/DATA-MODEL.md`: §Entities (the body bullet on lumps) and
+    §Invariants (B1).
+  - `docs/ARCHITECTURE.md` §Operations: the contact paragraph ("Before
+    any face is split, every contact is decided…").
+- **Glossary.** Add **Touching lumps**, as worded in the idea.
+
+## Steps
+
+Grades: **[1]** routine, the design says exactly what to write and the
+tests are mechanical; **[2]** careful, a geometric or numeric case within
+the design; **[3]** unproven, an algorithm whose robustness is established
+here.
+
+- [ ] Step 1 **[3]** — ADR-0088, `GLOSSARY.md`, DATA-MODEL B1 and
+  §Entities, and B1 in the checker as the deltas say. Tests in
+  `arris-check` use bodies assembled from two shells:
+  - two cylinders tangent from outside: passes;
+  - a ball on a box face: passes;
+  - two cylinders crossing: B1 violation;
+  - a cylinder tangent inside another as a second outer shell: nesting
+    violation;
+  - a seam vertex on the contact line: decided, not unchecked.
+- [ ] Step 2 **[3]** — The slit decided by shells (deltas). The fixture
+  `boolean/tangent-cylinders-fuse` builds `Full`-green to its closed form,
+  with Open CASCADE's values re-taken. `tangent-hole` and
+  `ball-in-bore-cut` still refuse `TangentContact` (one shell). The error
+  docs and Display text change in this commit, and `boolean.rs`'s two held
+  `TangentContact` asserts are reviewed.
+- [ ] Step 3 **[2]** — The harness's poses as fixtures, with Open CASCADE's
+  values, built checker-green:
+  - `boolean/fuse-cylinders-tangent-equal-height` (`cotter_pin`): the flush
+    end discs' rims touch at a point;
+  - `boolean/fuse-box-cylinder-tangent-side` (`hinge`, CadQuery-centred):
+    the box's edges touch the wall at the ends of the contact.
+
+  Whatever their contact-end paves need goes in here (⚠ OPEN 1). Python
+  tests in `test_tangency.py` drive both through `arris.build`: two shells,
+  V and A.
+- [ ] Step 4 **[2]** — Rewrite the property
+  `a_cylinder_tangent_to_a_box_face_leaves_the_box_and_shares_nothing`
+  (`boolean_prop.rs`) so its `fuse` arm checks touching lumps: two shells,
+  V and A additive, checker-green, the box's faces kept by id. Review
+  `coplanar_prop.rs` and `multi_tool.rs`'s held `TangentContact` cases.
+- [ ] Step 5 **[2]** — Re-bless `tolerance_band.txt`. Each `fuse` outcome
+  that flips from `TangentContact` is checked built, additive and
+  checker-green. A flip to anything else is a finding, which becomes a
+  regression fixture and a backlog line.
+- [ ] Step 6 **[2]** — A touching-lumps body downstream (`arris/tests`):
+  - `mass_properties`, `mesh` (each lump watertight), and
+    `classify_points` (`on` at the contact);
+  - STEP written and read by the oracle as two solids, and the native
+    format round-tripped;
+  - as an operand: a hole cut in one lump builds; a plate fused across both
+    lumps is `TangentContact` (one shell touching itself); `common` with a
+    box over the contact builds.
+
+  Each is checker-green, or the named refusal.
+
+## Acceptance
+
+- `tangent-cylinders-fuse` and the two step-3 fixtures build `Full`-green
+  to Open CASCADE's volume, area and lump count within their tolerances.
+  Every other `TangentContact` fixture keeps its refusal.
+- Step 4's property passes at 256 cases.
+- `tolerance_band` passes against its re-blessed outcomes.
+- The refusal histogram and the script corpus are re-run and printed: the
+  `fuse` `TangentContact` rows go down, no row goes above C11's close, and
+  there is no panic.
+- The full gate is green.
+
+## Docs to update on completion
+
+- `docs/ROADMAP.md` §C12 **In**: the touching-operands line gets "curve
+  touches done", with the next two plans named.
+- `docs/ARCHITECTURE.md` §Operations: confirm step 2's paragraph still
+  reads true after steps 3–6.
+- `CHANGELOG.md` `Unreleased`: solids that touch along a line now fuse to
+  one solid of two lumps, where before they were refused.
+- `AGENTS.md` current state: one clause.
+- `GLOSSARY.md`: **Touching lumps**, already done in step 1.
+
+## Open questions
+
+- ⚠ OPEN 1 (agent, step 3): a contact's end pave, where a rim or a box
+  edge touches the other face, or two flush rims touch at a point. The
+  hypothesis is that it makes no vertex, as a touch off every vertex makes
+  none today. If it does make one that two shells would share, the step
+  stops building that vertex rather than copying it per lump. Copying is
+  the third plan's mechanism and comes forward only if stopping it proves
+  wrong. Record the decision in ADR-0088.
+- ⚠ OPEN 2 (agent, step 5): if `tolerance_band` flips more than a handful
+  of `FlushBoxes` outcomes, read whether they are true curve touches or
+  flush faces read as touches, before blessing them.
