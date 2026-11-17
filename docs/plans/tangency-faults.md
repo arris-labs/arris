@@ -98,9 +98,16 @@ bound is established here.
   touch) reached the checker on read-back; both are admitted (ADR-0003
   amendment, L4, L5), and the read-back's two extra `VERTEX_POINT`s are a
   backlog line held by `occt_step_counts_differ`.
-- [ ] Step 3 **[3]** — Case 2. Find what the first fuse leaves at the
+- [x] Step 3 **[3]** — Case 2. Find what the first fuse leaves at the
   tangent point that the second breaks, and fix it by step 2's rule. Both
   orders and `fuse_many` give the closed form, and the fixture moves green.
+  *Settled*: the lead was wrong. The second boss alone fails the same
+  way: at `x = 15` the touch is the first boss's seam vertex, at
+  `x = −15` it lies inside the rim and the end edge, and the coincident
+  pair's tangent crossing of the two made no vertex. Step 2's rule now
+  covers it: a touch where either edge runs inside the other face is a
+  vertex of both. Open CASCADE imprints the ruling on each end face,
+  under `counts_differ`.
 - [ ] Step 4 **[3]** — Cases 3 and 4, the dangling ruling. Apply the
   material-side rule on both faces. Both fixtures move green. Bores of
   0.45, 0.5 and 0.55 each match their closed forms in a unit test.

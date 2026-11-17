@@ -23,8 +23,8 @@ use crate::boolean::{
 use crate::error::{BooleanReason, Fault, OpError, Reason};
 use crate::pass::pass;
 
-/// How fast [`Build::runs_inside`] steps a section curve away from the
-/// point where it touches an edge: each step this many times the last,
+/// How fast [`Build::inside_beside`] steps a curve away from the point
+/// where it touches a boundary: each step this many times the last,
 /// from the tolerance up to the faces' size. The curve leaves the edge to
 /// second order, `κ s² / 2` at a step `s`, so a factor of 4 moves it at
 /// least 16 times as far off the boundary per step and reaches past the
@@ -304,34 +304,61 @@ impl<'m, 'c> Build<'m, 'c> {
     }
 
     /// `true` when `curve` runs inside both faces on either side of its
-    /// point at `t`, where it touches an edge of `g`. The touch is a
-    /// double root: the curve leaves the edge only to second order, so
-    /// within a few tolerances of the point both faces' polygons put it
-    /// on their boundary. It is stepped away along its tangent at
-    /// distances growing from `linear` by [`TOUCH_STEP_RATIO`] up to the
-    /// faces' size, and on each side the first point that is not on a
-    /// boundary decides: inside both, or outside one and that side does
-    /// not count. The nearest decisive point is the local one, which a
-    /// face that is not convex cannot mislead.
+    /// point at `t`, where it touches an edge of `g`: a section curve,
+    /// over its whole domain ([`Self::inside_beside`]).
     fn runs_inside(g: &FaceInfo<'m>, f: &FaceInfo<'m>, curve: &Curve, t: f64, linear: f64) -> bool {
+        let domain = curve.domain();
+        let periodic = curve.period().is_some();
+        Self::inside_beside(&[g, f], curve, t, linear, |at| {
+            (periodic || domain.contains(at)).then_some(at)
+        })
+    }
+
+    /// `true` when edge `e` runs inside `other` on either side of its
+    /// point at `t`, where it touches an edge of `other`'s, the two faces
+    /// on one surface: a rim tangent inside a bar's end edge on the face
+    /// the rim's disc lies on, whose pieces either side of the touch
+    /// bound what is left of that face there ([`Self::inside_beside`]).
+    fn edge_runs_inside(e: &EdgeInfo<'m>, t: f64, other: &FaceInfo<'m>, linear: f64) -> bool {
+        Self::inside_beside(&[other], e.curve, t, linear, |at| e.in_range(at))
+    }
+
+    /// `true` when `curve` runs inside every face of `faces` on either
+    /// side of its point at `t`, where it touches a boundary. The touch
+    /// is a double root: the curve leaves the boundary only to second
+    /// order, so within a few tolerances of the point the faces' polygons
+    /// put it on their boundary. It is stepped away along its tangent at
+    /// distances growing from `linear` by [`TOUCH_STEP_RATIO`] up to the
+    /// faces' size, while `within` keeps the parameter on the curve's
+    /// stretch, and on each side the first point that is not on a
+    /// boundary decides: inside every face, or outside one and that side
+    /// does not count. The nearest decisive point is the local one, which
+    /// a face that is not convex cannot mislead.
+    fn inside_beside(
+        faces: &[&FaceInfo<'m>],
+        curve: &Curve,
+        t: f64,
+        linear: f64,
+        within: impl Fn(f64) -> Option<f64>,
+    ) -> bool {
         let speed = curve.eval(t).d1.norm();
         if speed == 0.0 {
             return false;
         }
-        let reach = g.bounds.diagonal().max(f.bounds.diagonal());
-        let domain = curve.domain();
-        let periodic = curve.period().is_some();
+        let reach = faces
+            .iter()
+            .map(|f| f.bounds.diagonal())
+            .fold(0.0, f64::max);
         [-1.0, 1.0].into_iter().any(|sign| {
             let mut step = linear;
             while step <= reach {
                 step *= TOUCH_STEP_RATIO;
-                let at = t + sign * step / speed;
-                if !periodic && !domain.contains(at) {
+                let Some(at) = within(t + sign * step / speed) else {
                     return false;
-                }
+                };
                 let point = curve.point(at);
                 let mut inside = true;
-                for face in [g, f] {
+                for face in faces {
                     let Ok(projection) = face.surface.project(point) else {
                         return false;
                     };
@@ -407,6 +434,14 @@ impl<'m, 'c> Build<'m, 'c> {
                         if seen {
                             continue;
                         }
+                        // A touch where either edge runs inside the other
+                        // face beside it is a vertex of both, as a section
+                        // touching a rim from inside is: a boss's rim
+                        // tangent inside a bar's end edge, the face's piece
+                        // between them pinched to that point.
+                        let tangent = h.tangent
+                            && !Self::edge_runs_inside(ea, ta, fb, tol.linear)
+                            && !Self::edge_runs_inside(eb, tb, fa, tol.linear);
                         found.push((
                             EdgeEdgeHit {
                                 pair: pi,
@@ -415,7 +450,7 @@ impl<'m, 'c> Build<'m, 'c> {
                                 b: eb.id,
                                 tb,
                                 point,
-                                tangent: h.tangent,
+                                tangent,
                                 vertex: None,
                             },
                             tol.linear,

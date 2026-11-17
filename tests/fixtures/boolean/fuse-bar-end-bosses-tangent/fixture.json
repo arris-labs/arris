@@ -1,0 +1,27 @@
+{
+  "description": "a 30 x 5 x 1 bar with a boss of radius 3 and height 1 at each end (centres x = +-12), each boss's circle tangent to the end face x = +-15 and standing out past the bar's long sides (y = +-2.5) in two circular segments. With d = 2.5, r = 3 and a half angle t = acos(d / r) = atan(sqrt(11) / 5), one segment's area is s = r^2 t - d sqrt(r^2 - d^2), so V = 150 + 4 s = 154.50155561268. The area is the bar's 370, and per boss four segments on the caps, the two arcs 12 t on the side, less the two chords the bar's long sides lose, 4 sqrt(r^2 - d^2). Each boss's rim touches the bar's end edges at (+-15, 0, +-0.5) from inside the bar's top and bottom: the touch is a vertex of both, and the corner between rim and end on each side of it is a face of its own. At x = 15 the touch is the boss's seam vertex; at x = -15 it lies inside both edges, and the rim's tangent crossing of the end edge on the face its disc lies on makes it",
+  "params": {"d": 2.5, "r": 3},
+  "steps": [
+    {"name": "bar", "op": "box", "min": [-15, -2.5, -0.5], "max": [15, 2.5, 0.5]},
+    {"name": "b1", "op": "cylinder", "base": [12, 0, -0.5], "axis": [0, 0, 1], "radius": "r", "height": 1},
+    {"name": "b2", "op": "cylinder", "base": [-12, 0, -0.5], "axis": [0, 0, 1], "radius": "r", "height": 1},
+    {"name": "one", "op": "fuse", "a": "bar", "b": "b1"},
+    {"name": "result", "op": "fuse", "a": "one", "b": "b2"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "first boss's centre", "point": [12, 0, 0], "expect": "in"},
+    {"label": "first boss past the bar's side", "point": [12, 2.9, 0], "expect": "in"},
+    {"label": "second boss past the bar's side", "point": [-12, -2.9, 0.4], "expect": "in"},
+    {"label": "beside a boss, past its circle", "point": [14.9, 2.9, 0], "expect": "out"},
+    {"label": "past the bar's side between the bosses", "point": [0, 2.9, 0], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "150 + 4 * (r^2 * atan(sqrt(r^2 - d^2) / d) - d * sqrt(r^2 - d^2))",
+    "area": "370 + 2 * (4 * (r^2 * atan(sqrt(r^2 - d^2) / d) - d * sqrt(r^2 - d^2)) + 12 * atan(sqrt(r^2 - d^2) / d) - 4 * sqrt(r^2 - d^2))",
+    "centroid": [0, 0, 0],
+    "genus": 0,
+    "counts": {"vertices": 30, "edges": 62, "faces": 34, "loops": 34, "shells": 1},
+    "counts_differ": "Open CASCADE imprints the tangent ruling x = +-15, y = 0 on each end face, which it splits into two faces there (30/64/36/36); Arris keeps each end face whole, the ruling a touch that bounds no kept material, its ends the vertices the rims' touches make on the end edges"
+  }
+}

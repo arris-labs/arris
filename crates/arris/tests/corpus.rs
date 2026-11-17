@@ -263,6 +263,12 @@ corpus_tests! {
     /// crescent, one loop through the vertex where its rim touches the
     /// section circle, twice.
     boolean_fuse_cylinder_tangent_inside => run "boolean/fuse-cylinder-tangent-inside";
+    /// A 30 x 5 x 1 bar with a radius-3 boss tangent to each end face,
+    /// fused one boss then the other: V = 154.50155561268. Each rim
+    /// touches the end edges from inside the bar's top and bottom, a
+    /// vertex of both, at the boss's seam at x = 15 and inside both edges
+    /// at x = -15.
+    boolean_fuse_bar_end_bosses_tangent => run "boolean/fuse-bar-end-bosses-tangent";
     boolean_boss => run "boolean/boss";
     /// A plate cut by a 2×2 grid of four disjoint holes in one call.
     boolean_plate_2x2_holes_cut_many => run "boolean/plate-2x2-holes-cut-many";
@@ -2168,9 +2174,6 @@ corpus_tests! {
     /// plane and the third's wall across both: every pair and the chain build.
     #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (the retired flat-edge-read-as-tangent-contact plan, step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
-    /// A 30 x 5 x 1 bar with a radius-3 boss tangent to each end face: the second fuse.
-    #[ignore = "L5 loop 0 intersects itself on the top and bottom after the second fuse, the first boss's touch at (15, 0, +-0.5) left as the lead (plans/tangency-faults step 3)"]
-    regression_fuse_bar_end_bosses_tangent => run "regression/fuse-bar-end-bosses-tangent";
     /// A plate whose arc is tangent inside a unit cylinder's wall, fused with the cylinder.
     #[ignore = "Fault::Split Dangling: a section edge ends at a node nothing else reaches, a ruling where the plate's arc touches the wall from inside (plans/tangency-faults step 4)"]
     regression_fuse_arc_plate_tangent_inside_cylinder => run "regression/fuse-arc-plate-tangent-inside-cylinder";

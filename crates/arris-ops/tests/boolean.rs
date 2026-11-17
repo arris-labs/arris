@@ -3,7 +3,7 @@
 //! their paves and the hits that made them — at random poses of a box
 //! and a cylinder, and identical over two runs.
 
-use arris_debug::unmetered::{common, cut, fuse, interferences};
+use arris_debug::unmetered::{common, cut, fuse, fuse_many, interferences};
 use arris_debug::unmetered::{
     mass_properties, primitive_box, primitive_cylinder, revolve, transform,
 };
@@ -250,6 +250,116 @@ fn a_disjoint_pair_and_a_tangent_touch_have_no_section() {
         (c.point - Point3::new(40.0, 15.0, 5.0)).norm() < 1e-9,
         "{i}"
     );
+}
+
+/// A 30 x 5 x 1 bar and a radius-3 boss of its height whose rim is
+/// tangent to the bar's end face `x = 15 * end` from inside, its centre at
+/// `x = 12 * end`, or from outside at `x = 18 * end`.
+fn bar_and_end_boss(end: f64, outside: bool) -> (Model, Body, Body) {
+    let mut m = Model::default();
+    let (bar, _) = primitive_box(&mut m, [-15.0, -2.5, -0.5], [15.0, 2.5, 0.5]).unwrap();
+    let centre = if outside { 18.0 } else { 12.0 } * end;
+    let axis = Axis::new(Point3::new(centre, 0.0, -0.5), Vec3::z()).unwrap();
+    let (boss, _) = primitive_cylinder(&mut m, axis, 3.0, 1.0).unwrap();
+    (m, bar, boss)
+}
+
+/// The boss's rim touches the bar's end edge at `(−15, 0, ±0.5)`, inside
+/// both edges, on the top and the bottom the two share. Where the rim runs
+/// inside the bar's face beside the touch, the touch is a vertex of both
+/// edges, which paves the end edge and the rim, and the end face's touch of
+/// the wall joins it: the bar's face keeps a corner on each side of it. A
+/// rim touching the end edge from outside runs inside neither face and
+/// splits nothing.
+#[test]
+fn a_rim_touching_an_edge_from_inside_its_face_is_a_vertex_of_both() {
+    let (m, bar, boss) = bar_and_end_boss(-1.0, false);
+    let i = interferences(&m, bar, boss).unwrap();
+    let touches: Vec<_> = i
+        .crossings
+        .iter()
+        .filter(|x| (x.point - Point3::new(-15.0, 0.0, x.point.z)).norm() < 1e-9)
+        .collect();
+    assert_eq!(touches.len(), 2, "{i}");
+    for x in touches {
+        let vertex = x.vertex.unwrap_or_else(|| panic!("{i}"));
+        assert!(!x.tangent, "{i}");
+        for edge in [x.a, x.b] {
+            assert!(i.paves[&edge].iter().any(|p| p.vertex == vertex), "{i}");
+        }
+        assert!(
+            i.hits
+                .iter()
+                .filter(|h| h.tangent)
+                .any(|h| h.vertex == Some(vertex)),
+            "{i}"
+        );
+    }
+
+    // At x = 15 from outside, so the rim's seam, at (21, 0), is not there.
+    let (m, bar, boss) = bar_and_end_boss(1.0, true);
+    let i = interferences(&m, bar, boss).unwrap();
+    assert!(!i.crossings.is_empty(), "{i}");
+    assert!(
+        i.crossings.iter().all(|x| x.tangent && x.vertex.is_none()),
+        "{i}"
+    );
+    assert!(i.vertices.is_empty(), "{i}");
+}
+
+/// The bar with a boss tangent to each end (`boolean/fuse-bar-end-bosses-tangent`):
+/// one boss then the other, in either order, either operand first, and
+/// both in one `fuse_many`, give the same body, clean at `Full`, with the
+/// closed form's volume. At `x = 15` the touch is the boss's seam vertex,
+/// at `x = −15` it lies inside both edges.
+#[test]
+fn bosses_tangent_to_both_ends_fuse_alike_in_any_order() {
+    let (d, r) = (2.5_f64, 3.0_f64);
+    let half = (r * r - d * d).sqrt();
+    let segment = r * r * real::atan2(half, d) - d * half;
+    let exact = 150.0 + 4.0 * segment;
+    let build = |order: usize| {
+        let mut m = Model::default();
+        let (bar, _) = primitive_box(&mut m, [-15.0, -2.5, -0.5], [15.0, 2.5, 0.5]).unwrap();
+        let [b1, b2] = [12.0, -12.0].map(|x| {
+            let axis = Axis::new(Point3::new(x, 0.0, -0.5), Vec3::z()).unwrap();
+            primitive_cylinder(&mut m, axis, r, 1.0).unwrap().0
+        });
+        let body = match order {
+            0 => {
+                let (one, _) = fuse(&mut m, bar, b1).unwrap();
+                fuse(&mut m, one, b2).unwrap().0
+            }
+            1 => {
+                let (one, _) = fuse(&mut m, bar, b2).unwrap();
+                fuse(&mut m, one, b1).unwrap().0
+            }
+            2 => {
+                let (one, _) = fuse(&mut m, b2, bar).unwrap();
+                fuse(&mut m, b1, one).unwrap().0
+            }
+            _ => fuse_many(&mut m, &[bar, b1, b2]).unwrap().0,
+        };
+        (m, body)
+    };
+    for order in 0..4 {
+        let (m, body) = build(order);
+        let report = check(&m, body, Level::Full);
+        assert!(
+            report.is_ok() && report.unchecked().is_empty(),
+            "order {order}: {report}"
+        );
+        assert_eq!(
+            arris_debug::dump::euler_line(&m, body).unwrap(),
+            "euler 30/62/34/34/1 g0 = 0",
+            "order {order}"
+        );
+        let volume = mass_properties(&m, body).unwrap().volume;
+        assert!(
+            (volume - exact).abs() < 1e-9 * exact,
+            "order {order}: {volume} against {exact}"
+        );
+    }
 }
 
 #[test]

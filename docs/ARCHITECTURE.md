@@ -538,7 +538,12 @@ edge from the crossing to it: two edges on one surface crossing at a
 shallow angle stay that near over a stretch longer than the tolerance,
 the intersector's point may lie anywhere along it, and where an earlier
 operation made the vertex at that crossing it is that vertex, not a
-second one a hair past its tolerance; every edge of either face is paved by
+second one a hair past its tolerance. Two edges that touch there
+without crossing are a section vertex too where either runs inside the
+other face beside the touch, decided as a section curve's touch of a
+rim is — a boss's rim tangent inside a bar's end edge, the bar's face
+pinched to that point between them; a touch from outside both faces
+splits nothing; every edge of either face is paved by
 every section vertex on it but its own ends — a vertex holding one of
 the edge's end vertices, a crossing merged into it even a hair past
 that end's tolerance, paves nothing there, which would leave a sliver

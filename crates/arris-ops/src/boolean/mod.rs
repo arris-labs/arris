@@ -385,8 +385,11 @@ pub struct EdgeEdgeHit {
     pub tb: f64,
     /// The point, on `a`'s edge.
     pub point: Point3,
-    /// `true` when the curves touch here without crossing. A touch makes
-    /// no vertex and no pave.
+    /// `true` when the curves touch here without crossing and neither
+    /// runs inside the other's face beside the touch. Such a touch makes
+    /// no vertex and no pave; one where an edge runs inside the other
+    /// face — a rim tangent inside a bar's end edge — is a vertex of
+    /// both, recorded as a crossing.
     pub tangent: bool,
     /// The section vertex it was merged into; `None` for a touch.
     pub vertex: Option<usize>,
