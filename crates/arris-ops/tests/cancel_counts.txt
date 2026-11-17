@@ -223,6 +223,8 @@ blend/bspline-rim-fillet: 75689
 blend/chain-through-torus-fillet: 92290
 blend/chamfer-into-a-step: 6
 blend/chamfer-into-a-turned-step: 298
+blend/chamfer-two-rims-use-up-face: refused
+blend/chamfer-two-rims-use-up-face-then-cut: refused
 blend/chamfered-stadium-foot-chamfer: 18
 blend/chamfered-stadium-foot-fillet: 18
 blend/concave-fillet-into-a-step: 6
