@@ -807,9 +807,9 @@ are `−1/R₁` against `+1/R₂` outside and two distinct radii inside, never
 equal, since equal radii touching inside share their axis and are
 `Coincident`. Equal curvatures, compared exactly, are a touch of higher
 order the rule cannot decide, `OpError::Unsupported` naming the pair.
-Before any face is
-split, every contact is decided at its midpoint by the same rule and the
-table: a contact whose two pieces would both survive is two result faces
+Before any face is split, the same rule and the table decide each contact
+between operands at its midpoint. A contact whose two pieces would both
+survive is two result faces
 touching along a curve interior to both, a slit. Once the kept pieces are
 grouped into shells and the shells into lumps, the slit is looked up by the
 lumps of the pair's two faces' kept pieces: in two different lumps, the
@@ -820,9 +820,13 @@ the other's are in, the operation is `Degenerate` with
 `BooleanReason::TangentContact` naming the pair — a hole wall tangent to a
 side face, a ball in a bore of its radius, whose cavity touches the wall
 round it — because the lump's material would touch itself, which no manifold
-`Solid` carries (ADR-0004). A
-touch from outside in a `cut` or a `common` passes: the tool's piece is
-dropped, the target's kept whole, and the ruling is no edge — Open
+`Solid` carries (ADR-0004). If two shells from one operand contribute faces
+to the same result shell, the surviving face regions are checked for an
+inherited curve touch. The same refusal names the two operand faces when
+the result still contains the slit. A joining piece that covers the contact
+can fuse the shells. A touch from outside in a `cut` or a `common` passes:
+the tool's piece is dropped, the target's kept whole, and the ruling is no
+edge — Open
 CASCADE imprints it, and `boolean/tangent-outside-cut` states that
 convention. A piece `On` an edge or a vertex, or on a face its own is
 neither coincident nor tangent with, lies within the tolerance of the

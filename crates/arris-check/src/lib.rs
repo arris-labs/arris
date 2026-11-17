@@ -27,6 +27,7 @@ mod violation;
 pub use arris_topo::euler::EulerLine;
 pub use check::check;
 pub use classify::{Classification, Classifier, ClassifyError, classify_point};
+pub use full::first_touching_face_pair;
 pub use lumps::{Lump, LumpError, lumps};
 pub use report::Report;
 pub use unchecked::Unchecked;

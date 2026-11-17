@@ -21,7 +21,7 @@ use arris_geom::{
 };
 use arris_math::{Aabb, Interval, Point2, Point3, Tolerance, Vec3};
 use arris_topo::entity::BodyKind;
-use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
+use arris_topo::{Body, EdgeId, EntityId, FaceId, Model, NotFound, Orientation, ShellId, VertexId};
 
 use crate::check::{Checker, coedges};
 use crate::classify::Classifier;
@@ -54,6 +54,42 @@ pub(crate) enum Meeting {
     /// of coincident regions are violations: two faces of two shells,
     /// whose lumps may touch (B1, ADR-0088).
     Crossing,
+    /// Only touching curves, for the boolean's inherited contacts.
+    TouchingCurves,
+}
+
+impl Meeting {
+    fn holds_curve(self, kind: MeetKind) -> bool {
+        match self {
+            Self::Any => true,
+            Self::Crossing => kind == MeetKind::Crossing,
+            Self::TouchingCurves => kind == MeetKind::Touch,
+        }
+    }
+}
+
+/// The first supplied pair of faces of `body` that touch along a curve
+/// interior to both, away from shared edges, using S5's geometry test.
+/// Used by booleans when formerly separate shells join. An undecided pair
+/// does not establish a touch. Returns an error if `body` does not resolve.
+#[doc(hidden)]
+pub fn first_touching_face_pair(
+    model: &Model,
+    body: Body,
+    pairs: &[[FaceId; 2]],
+) -> Result<Option<[FaceId; 2]>, NotFound> {
+    let mut checker = Checker::new(model, body)?;
+    let tolerance = checker.precision.parametric_tolerance;
+    for face in pairs.iter().flatten().copied().collect::<BTreeSet<_>>() {
+        if let Ok(domain) = FaceDomain::of(model, face, tolerance) {
+            checker.domains.insert(face, domain);
+        }
+    }
+    let boxes = checker.face_boxes();
+    Ok(pairs
+        .iter()
+        .copied()
+        .find(|&[a, b]| checker.faces_meet(a, b, &boxes, Meeting::TouchingCurves) == Ok(true)))
 }
 
 impl<'m> Checker<'m> {
@@ -331,20 +367,22 @@ impl<'m> Checker<'m> {
                 Err(_) => return Err((sa.kind(), sb.kind())),
                 Ok(SurfaceIntersection::Empty) => false,
                 Ok(SurfaceIntersection::Coincident) => {
-                    self.regions_overlap(a, sa, b, sb, tolerance)
+                    meeting != Meeting::TouchingCurves
+                        && self.regions_overlap(a, sa, b, sb, tolerance)
                 }
                 // Crossing or touching, every curve and every point is held to
                 // the one rule, but for the touches `meeting` admits.
                 Ok(SurfaceIntersection::Meets { curves, points }) => {
-                    let held =
-                        |kind: MeetKind| meeting == Meeting::Any || kind == MeetKind::Crossing;
                     curves.iter().any(|c| {
-                        held(c.kind)
-                            && self.curve_is_interior_to_both(a, sa, b, sb, &c.curve, tolerance)
-                    }) || points.iter().any(|p| {
-                        held(p.kind)
-                            && self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
-                    })
+                        meeting.holds_curve(c.kind)
+                            && self.curve_is_interior_to_both(
+                                a, sa, b, sb, &c.curve, tolerance, meeting,
+                            )
+                    }) || (meeting != Meeting::TouchingCurves
+                        && points.iter().any(|p| {
+                            meeting.holds_curve(p.kind)
+                                && self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
+                        }))
                 }
             },
         )
@@ -408,22 +446,29 @@ impl<'m> Checker<'m> {
         let trace = trace_section(sa, sb, within, query, &mut arris_math::Meter::default())
             .map_err(|_| kinds)?;
         let interior = |range: Interval, at: &dyn Fn(f64) -> Point3| {
-            self.section_is_interior_to_both(a, sa, b, sb, range, at, tolerance)
+            self.section_is_interior_to_both(a, sa, b, sb, range, at, tolerance, meeting)
         };
         // A tangent isoline and an isolated singular point are the touches
         // the intersector would name `MeetKind::Touch`; a branch crosses.
-        let any = meeting == Meeting::Any;
+        let kind = |touch| {
+            if touch {
+                MeetKind::Touch
+            } else {
+                MeetKind::Crossing
+            }
+        };
         Ok(trace.circles().iter().any(|c| {
-            (any || !c.tangent)
-                && self.curve_is_interior_to_both(a, sa, b, sb, &c.circle, tolerance)
-        }) || trace
-            .branches()
-            .iter()
-            .any(|branch| interior(branch.domain(), &|t| branch.point(t)))
-            || trace.points().iter().any(|p| {
-                (any || !p.isolated)
-                    && self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
-            }))
+            meeting.holds_curve(kind(c.tangent))
+                && self.curve_is_interior_to_both(a, sa, b, sb, &c.circle, tolerance, meeting)
+        }) || (meeting != Meeting::TouchingCurves
+            && (trace
+                .branches()
+                .iter()
+                .any(|branch| interior(branch.domain(), &|t| branch.point(t)))
+                || trace.points().iter().any(|p| {
+                    meeting.holds_curve(kind(p.isolated))
+                        && self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
+                }))))
     }
 
     /// `true` when an isolated meeting point of the two surfaces — a
@@ -593,6 +638,7 @@ impl<'m> Checker<'m> {
     /// an edge or vertex they share. The curve is sampled over the
     /// parameters both faces' boundaries reach — its whole domain when
     /// that is bounded ([`Checker::curve_range`]).
+    #[allow(clippy::too_many_arguments)]
     fn curve_is_interior_to_both(
         &self,
         a: FaceId,
@@ -601,11 +647,21 @@ impl<'m> Checker<'m> {
         sb: &Surface,
         curve: &Curve,
         tolerance: f64,
+        meeting: Meeting,
     ) -> bool {
         let Some(range) = self.curve_range(a, sa, b, sb, curve) else {
             return false;
         };
-        self.section_is_interior_to_both(a, sa, b, sb, range, &|t| curve.point(t), tolerance)
+        self.section_is_interior_to_both(
+            a,
+            sa,
+            b,
+            sb,
+            range,
+            &|t| curve.point(t),
+            tolerance,
+            meeting,
+        )
     }
 
     /// [`Checker::curve_is_interior_to_both`] for a section known only by
@@ -620,12 +676,34 @@ impl<'m> Checker<'m> {
         range: Interval,
         at: &dyn Fn(f64) -> Point3,
         tolerance: f64,
+        meeting: Meeting,
     ) -> bool {
         let shared = self.shared_edges(a, b);
-        let inside = |face: FaceId, uv: Point2| {
-            self.domains
-                .get(&face)
-                .is_some_and(|d| d.side(uv).0 == Side::Inside)
+        let inside = |face: FaceId, uv: Point2, point: Point3| {
+            let Some(domain) = self.domains.get(&face) else {
+                return false;
+            };
+            match domain.side(uv).0 {
+                Side::Inside => true,
+                // A seam used twice by this face is interior in 3D. The
+                // boolean's contact test counts it even though the chart
+                // puts it on the boundary.
+                Side::Boundary if meeting == Meeting::TouchingCurves => {
+                    let Ok(Some(on)) = domain.boundary_entity(self.model, point) else {
+                        return false;
+                    };
+                    let EntityId::Edge(edge) = on.id else {
+                        return false;
+                    };
+                    self.model.face(face).is_ok_and(|f| {
+                        coedges(f)
+                            .filter(|(_, _, c)| c.edge() == edge)
+                            .nth(1)
+                            .is_some()
+                    })
+                }
+                Side::Boundary | Side::Outside => false,
+            }
         };
         for t in range.samples(self.precision.check_samples.max(2)) {
             let point = at(t);
@@ -642,7 +720,7 @@ impl<'m> Checker<'m> {
             if pa.distance > tolerance || pb.distance > tolerance {
                 continue;
             }
-            if inside(a, pa.uv) && inside(b, pb.uv) {
+            if inside(a, pa.uv, point) && inside(b, pb.uv, point) {
                 return true;
             }
         }

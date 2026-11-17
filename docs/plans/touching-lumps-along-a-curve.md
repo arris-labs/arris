@@ -117,7 +117,7 @@ here.
   that flips from `TangentContact` is checked built, additive and
   checker-green. A flip to anything else is a finding, which becomes a
   regression fixture and a backlog line.
-- [ ] Step 6 **[2]** — A touching-lumps body downstream (`arris/tests`):
+- [x] Step 6 **[2]** — A touching-lumps body downstream (`arris/tests`):
   - `mass_properties`, `mesh` (each lump watertight), and
     `classify_points` (`on` at the contact);
   - STEP written and read by the oracle as two solids, and the native
@@ -170,3 +170,10 @@ here.
   two lumps with additive volume and area and a clean `Full` report.
   The 22 other changes are built outcomes whose counts now match the
   exact contact. No `FlushBoxes` outcomes changed.
+- **Settled (step 6)**: the pave compares faces across operands, so a
+  contact inherited from two shells of one operand could survive after a
+  plate joined those shells. After assembly, check the surviving face
+  regions from such shells within one result shell for a touching curve,
+  using the checker's face-pair predicate via the doc-hidden
+  `first_touching_face_pair`. The refusal names the original faces.
+  A plate that fills the whole contact builds one lump.

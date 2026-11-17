@@ -9,7 +9,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_check::{Classification, Classifier, ClassifyError, lumps};
+use arris_check::{Classification, Classifier, ClassifyError, first_touching_face_pair, lumps};
 use arris_geom::{Curve, GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
 use arris_math::{Aabb, DisjointSets, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
 use arris_topo::builder::Builder;
@@ -1770,6 +1770,7 @@ fn one_result(
         .copied()
         .zip(slots.faces.iter().flatten().map(|&slot| built.faces[&slot]))
         .collect();
+    inherited_slit(m, built.body, operands, &kept, &shells, &out_faces)?;
     let vertex_id = |v: VRef| -> Option<VertexId> {
         match v {
             VRef::Existing(id) if plan.kept_vertices.contains(&id) => Some(id),
@@ -1813,6 +1814,80 @@ fn one_result(
     generated_sections(&mut p, i, &out_edge);
     crate::verify(m, built.body)?;
     Ok((built.body, p, outside))
+}
+
+/// A contact may lie between two shells of one operand, whose faces
+/// the pave does not compare. When their surviving pieces join into one
+/// shell, test the built face regions: the joining material may have
+/// covered the contact or left a slit in the shell.
+fn inherited_slit(
+    m: &Model,
+    body: Body,
+    operands: &Operands,
+    kept: &[Kept],
+    shells: &[Vec<usize>],
+    out_faces: &BTreeMap<usize, FaceId>,
+) -> Result<(), OpError> {
+    if operands.shells.iter().all(|shells| shells.len() < 2) {
+        return Ok(());
+    }
+    let mut pairs = Vec::new();
+    let mut source = BTreeMap::new();
+    for shell in shells {
+        let mut by_operand = vec![BTreeMap::<ShellId, Vec<FaceId>>::new(); operands.bodies.len()];
+        for &k in shell {
+            let piece = &kept[k];
+            if operands.shells[piece.side].len() < 2 {
+                continue;
+            }
+            let input_shell = operands.shell_of[piece.side]
+                .get(&piece.face.id)
+                .copied()
+                .ok_or(OpError::Internal(Fault::Invariant {
+                    what: "a kept face's operand shell",
+                }))?;
+            let output = out_faces
+                .get(&k)
+                .copied()
+                .ok_or(OpError::Internal(Fault::Invariant {
+                    what: "a kept face's output id",
+                }))?;
+            source.insert(output, piece.face);
+            by_operand[piece.side]
+                .entry(input_shell)
+                .or_default()
+                .push(output);
+        }
+        for groups in &by_operand {
+            for (shell, faces) in groups {
+                for (_, other_faces) in
+                    groups.range((std::ops::Bound::Excluded(shell), std::ops::Bound::Unbounded))
+                {
+                    for &a in faces {
+                        pairs.extend(other_faces.iter().map(|&b| [a, b]));
+                    }
+                }
+            }
+        }
+    }
+    if !pairs.is_empty()
+        && let Some([a, b]) = first_touching_face_pair(m, body, &pairs)?
+    {
+        let input = |face| {
+            source
+                .get(&face)
+                .copied()
+                .map(Shape::from)
+                .ok_or(OpError::Internal(Fault::Invariant {
+                    what: "a touching output face's operand face",
+                }))
+        };
+        return Err(OpError::Degenerate {
+            entities: vec![input(a)?, input(b)?],
+            reason: Reason::Boolean(BooleanReason::TangentContact),
+        });
+    }
+    Ok(())
 }
 
 /// Records what generated each section vertex the result made: the
