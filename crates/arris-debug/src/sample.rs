@@ -367,12 +367,37 @@ fn cuboid_with(
 /// assert_eq!(m.vertices(b).unwrap().len(), 2);
 /// ```
 pub fn cylinder(m: &mut Model, radius: f64, height: f64) -> Result<Body, SampleError> {
+    cylinder_in(m, Frame::world(), radius, height)
+}
+
+/// [`cylinder`] placed by `base`: the base circle in its plane, the axis
+/// along its `Z` and the seam where its `X` points — a cylinder tangent to
+/// another, with its seam vertices on the line of contact or off it, as
+/// the checker's lump tests pose them. Errors as [`cylinder`].
+///
+/// ```
+/// use arris_debug::sample;
+/// use arris_math::{Frame, Point3, Vec3};
+/// use arris_topo::Model;
+///
+/// let mut m = Model::default();
+/// let frame = Frame::new(Point3::new(2.0, 0.0, 0.0), Vec3::z(), Vec3::x()).unwrap();
+/// let b = sample::cylinder_in(&mut m, frame, 1.0, 3.0).unwrap();
+/// assert_eq!(m.faces(b).unwrap().len(), 3);
+/// ```
+pub fn cylinder_in(
+    m: &mut Model,
+    base: Frame,
+    radius: f64,
+    height: f64,
+) -> Result<Body, SampleError> {
     let radius = positive("radius", radius)?;
     let height = positive("height", height)?;
     let tol = m.precision().default_tolerance;
-    let base = Frame::world();
-    let top = base.with_origin(Point3::new(0.0, 0.0, height));
-    let axis = Vec3::z_axis();
+    let axis = base.z();
+    let top = base.with_origin(base.origin() + axis.into_inner() * height);
+    let seam_start = base.origin() + base.x().into_inner() * radius;
+    let seam_end = seam_start + axis.into_inner() * height;
 
     let wall = m.add_surface(Surface::Cylinder {
         frame: base,
@@ -386,17 +411,13 @@ pub fn cylinder(m: &mut Model, radius: f64, height: f64) -> Result<Body, SampleE
         radius,
     });
     let seam_line = m.add_curve(Curve::Line {
-        origin: Point3::new(radius, 0.0, 0.0),
+        origin: seam_start,
         direction: axis,
     });
     let top_circle = m.add_curve(Curve::Circle { frame: top, radius });
 
-    let v0 = m
-        .raw()
-        .add_vertex(Vertex::new(Point3::new(radius, 0.0, 0.0), tol));
-    let v1 = m
-        .raw()
-        .add_vertex(Vertex::new(Point3::new(radius, 0.0, height), tol));
+    let v0 = m.raw().add_vertex(Vertex::new(seam_start, tol));
+    let v1 = m.raw().add_vertex(Vertex::new(seam_end, tol));
 
     let turn = Interval::TURN;
     let rise = Interval::new(0.0, height).map_err(|_| SampleError::Extent {

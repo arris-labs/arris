@@ -1024,6 +1024,99 @@ fn b1_two_overlapping_outer_shells_meet() {
     ));
 }
 
+/// The outer shell of a cylinder of `radius` and `height` whose base
+/// circle is centred at `centre`, its seam pointing along `seam`.
+fn cylinder_shell(
+    m: &mut Model,
+    centre: [f64; 3],
+    seam: Vec3,
+    radius: f64,
+    height: f64,
+) -> ShellId {
+    let frame = Frame::new(
+        Point3::new(centre[0], centre[1], centre[2]),
+        Vec3::z(),
+        seam,
+    )
+    .unwrap();
+    let body = sample::cylinder_in(m, frame, radius, height).unwrap();
+    m.shells(body).unwrap()[0].id
+}
+
+/// B1 admits a touch between lumps (ADR-0088): two unit cylinders tangent
+/// from outside along a ruling are two lumps, whether the seam of the
+/// second is off the contact (the first's two vertices are on it) or both
+/// seams are on it, every vertex of each on the line the other touches.
+/// Every pair is decided: no row is left unchecked.
+#[test]
+fn b1_two_cylinders_tangent_from_outside_are_two_lumps() {
+    for (name, seam) in [
+        ("seam off the contact", Vec3::x()),
+        ("both on it", -Vec3::x()),
+    ] {
+        let mut m = Model::default();
+        let a = cylinder_shell(&mut m, [0.0; 3], Vec3::x(), 1.0, 4.0);
+        let b = cylinder_shell(&mut m, [2.0, 0.0, 0.0], seam, 1.0, 4.0);
+        let body = solid_of(&mut m, vec![a, b]);
+        let report = check(&m, body, Level::Full);
+        assert!(report.is_ok(), "{name}: {report}");
+        assert!(report.unchecked().is_empty(), "{name}: {report}");
+        let found = lumps(&m, body).unwrap();
+        assert_eq!(found.len(), 2, "{name}");
+        assert!(found.iter().all(|l| l.voids.is_empty()), "{name}");
+    }
+}
+
+/// B1 admits a touch at a point: a ball resting on a box's face, its south
+/// pole (a vertex of the ball) on the face's plane.
+#[test]
+fn b1_a_ball_on_a_box_face_is_two_lumps() {
+    let mut m = Model::default();
+    let block = cuboid_shell(&mut m, [0.0; 3], [10.0; 3], false);
+    let ball = sample::sphere(&mut m, Point3::new(5.0, 5.0, 13.0), 3.0).unwrap();
+    let ball = m.shells(ball).unwrap()[0].id;
+    let body = solid_of(&mut m, vec![block, ball]);
+    let report = check(&m, body, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(report.unchecked().is_empty(), "{report}");
+    assert_eq!(lumps(&m, body).unwrap().len(), 2);
+}
+
+/// B1 still refuses a crossing: two cylinders whose walls cross along two
+/// rulings, parallel axes a radius and a half apart.
+#[test]
+fn b1_two_cylinders_crossing_meet() {
+    let mut m = Model::default();
+    let a = cylinder_shell(&mut m, [0.0; 3], Vec3::x(), 1.0, 4.0);
+    let b = cylinder_shell(&mut m, [1.5, 0.0, 0.0], Vec3::x(), 1.0, 4.0);
+    let body = solid_of(&mut m, vec![a, b]);
+    assert_eq!(
+        only_nesting_fault(&check(&m, body, Level::Full)),
+        ShellNestingFault::Overlap { shells: [a, b] }
+    );
+}
+
+/// B1 still refuses touching from inside: a cylinder of radius 1 inside
+/// one of radius 2, tangent to it along a ruling, is an outer shell inside
+/// an outer shell — and its two vertices, on the contact, do not leave the
+/// nesting undecided: it is placed by a point of its faces.
+#[test]
+fn b1_a_cylinder_tangent_inside_another_is_nested() {
+    let mut m = Model::default();
+    let big = cylinder_shell(&mut m, [0.0; 3], Vec3::x(), 2.0, 4.0);
+    let small = cylinder_shell(&mut m, [1.0, 0.0, 1.0], Vec3::x(), 1.0, 2.0);
+    let body = solid_of(&mut m, vec![big, small]);
+    let report = check(&m, body, Level::Full);
+    assert!(report.unchecked().is_empty(), "{report}");
+    assert_eq!(
+        only_nesting_fault(&report),
+        ShellNestingFault::OuterInOuter {
+            shell: small,
+            container: big,
+        }
+    );
+}
+
 /// B1: a hollow box — an outer shell with a void inside it — and a box
 /// sitting in the cavity, clear of its walls, are two lumps: the hollow
 /// box with its void, and the box inside, whose innermost container is

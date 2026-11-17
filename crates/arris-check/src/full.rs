@@ -17,7 +17,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::Side;
 use arris_geom::{
-    Curve, Surface, SurfaceIntersection, SurfaceKind, intersect_surfaces, trace_section,
+    Curve, MeetKind, Surface, SurfaceIntersection, SurfaceKind, intersect_surfaces, trace_section,
 };
 use arris_math::{Aabb, Interval, Point2, Point3, Tolerance, Vec3};
 use arris_topo::entity::BodyKind;
@@ -41,6 +41,20 @@ const PATCH_DEPTH: u32 = 8;
 /// Every face's box, or `None` for one no box bounds: what S5 and B1
 /// reject face pairs by before any intersector is asked.
 pub(crate) type FaceBoxes = BTreeMap<FaceId, Option<Aabb>>;
+
+/// What a meeting of two faces' surfaces is held to by
+/// [`Checker::faces_meet`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Meeting {
+    /// Every meeting interior to both faces is a violation, a touch as
+    /// much as a crossing: two faces of one shell (S5).
+    Any,
+    /// A touch (`MeetKind::Touch`: tangent along a curve or at a point,
+    /// the surfaces not crossing) is admitted; a crossing and an overlap
+    /// of coincident regions are violations: two faces of two shells,
+    /// whose lumps may touch (B1, ADR-0088).
+    Crossing,
+}
 
 impl<'m> Checker<'m> {
     /// E8, L5, S5, B1 and B2.
@@ -249,9 +263,10 @@ impl<'m> Checker<'m> {
             .collect()
     }
 
-    /// Whether faces `a` and `b` meet away from the edges and vertices
-    /// they share — S5's test, and B1's between two shells, which share
-    /// none. A pair whose boxes are apart shares no point and is decided
+    /// Whether faces `a` and `b` meet, as `meeting` holds them to, away
+    /// from the edges and vertices they share — S5's test
+    /// ([`Meeting::Any`]), and B1's between two shells, which share none
+    /// ([`Meeting::Crossing`]: lumps may touch, ADR-0088). A pair whose boxes are apart shares no point and is decided
     /// without an intersector; a pair that does not resolve is M1's and
     /// meets nowhere here. Errors: the intersector does not decide the
     /// pair's surfaces, whose kinds it names.
@@ -260,6 +275,7 @@ impl<'m> Checker<'m> {
         a: FaceId,
         b: FaceId,
         boxes: &FaceBoxes,
+        meeting: Meeting,
     ) -> Result<bool, (SurfaceKind, SurfaceKind)> {
         let model = self.model;
         let (Ok(fa), Ok(fb)) = (model.face(a), model.face(b)) else {
@@ -299,7 +315,7 @@ impl<'m> Checker<'m> {
         };
         let nurbs = |s: &Surface| matches!(s, Surface::Nurbs(_));
         if nurbs(sa) || nurbs(sb) {
-            return match self.nurbs_pair_meets(a, sa, b, sb, &within, query) {
+            return match self.nurbs_pair_meets(a, sa, b, sb, &within, query, meeting) {
                 // A pair the intersector refuses is still apart when
                 // every piece of one face's patch is clear of every piece
                 // of the other's (the nesting of two lumps on one wall).
@@ -318,14 +334,17 @@ impl<'m> Checker<'m> {
                     self.regions_overlap(a, sa, b, sb, tolerance)
                 }
                 // Crossing or touching, every curve and every point is held to
-                // the one rule.
+                // the one rule, but for the touches `meeting` admits.
                 Ok(SurfaceIntersection::Meets { curves, points }) => {
-                    curves
-                        .iter()
-                        .any(|c| self.curve_is_interior_to_both(a, sa, b, sb, &c.curve, tolerance))
-                        || points.iter().any(|p| {
-                            self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
-                        })
+                    let held =
+                        |kind: MeetKind| meeting == Meeting::Any || kind == MeetKind::Crossing;
+                    curves.iter().any(|c| {
+                        held(c.kind)
+                            && self.curve_is_interior_to_both(a, sa, b, sb, &c.curve, tolerance)
+                    }) || points.iter().any(|p| {
+                        held(p.kind)
+                            && self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
+                    })
                 }
             },
         )
@@ -373,6 +392,7 @@ impl<'m> Checker<'m> {
     /// the tolerance was the larger share of a NURBS part's `Full`
     /// check). Every branch, exact isoline and singular point is held to
     /// the rule the fitted curves were.
+    #[allow(clippy::too_many_arguments)]
     fn nurbs_pair_meets(
         &self,
         a: FaceId,
@@ -381,6 +401,7 @@ impl<'m> Checker<'m> {
         sb: &Surface,
         within: &Aabb,
         query: Tolerance,
+        meeting: Meeting,
     ) -> Result<bool, (SurfaceKind, SurfaceKind)> {
         let tolerance = query.linear;
         let kinds = (sa.kind(), sb.kind());
@@ -389,18 +410,20 @@ impl<'m> Checker<'m> {
         let interior = |range: Interval, at: &dyn Fn(f64) -> Point3| {
             self.section_is_interior_to_both(a, sa, b, sb, range, at, tolerance)
         };
-        Ok(trace
-            .circles()
+        // A tangent isoline and an isolated singular point are the touches
+        // the intersector would name `MeetKind::Touch`; a branch crosses.
+        let any = meeting == Meeting::Any;
+        Ok(trace.circles().iter().any(|c| {
+            (any || !c.tangent)
+                && self.curve_is_interior_to_both(a, sa, b, sb, &c.circle, tolerance)
+        }) || trace
+            .branches()
             .iter()
-            .any(|c| self.curve_is_interior_to_both(a, sa, b, sb, &c.circle, tolerance))
-            || trace
-                .branches()
-                .iter()
-                .any(|branch| interior(branch.domain(), &|t| branch.point(t)))
-            || trace
-                .points()
-                .iter()
-                .any(|p| self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)))
+            .any(|branch| interior(branch.domain(), &|t| branch.point(t)))
+            || trace.points().iter().any(|p| {
+                (any || !p.isolated)
+                    && self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
+            }))
     }
 
     /// `true` when an isolated meeting point of the two surfaces — a
@@ -484,7 +507,7 @@ impl<'m> Checker<'m> {
                 .collect();
             for (i, &a) in faces.iter().enumerate() {
                 for &b in faces.iter().skip(i + 1) {
-                    match self.faces_meet(a, b, &boxes) {
+                    match self.faces_meet(a, b, &boxes, Meeting::Any) {
                         Ok(false) => {}
                         Ok(true) => found.push(Violation::FacesIntersect {
                             shell: shell_id,
@@ -760,21 +783,69 @@ impl<'m> Checker<'m> {
         self.unchecked.extend(nesting.unchecked);
     }
 
-    /// A point of `shell`: the start vertex of the first edge of its first
-    /// face that resolves. `None` when nothing does.
-    pub(crate) fn shell_point(&self, shell: ShellId) -> Option<Point3> {
+    /// Points of `shell` to place it by, best first: the start vertices of
+    /// its edges in face order, each once, then interior points of its
+    /// faces ([`Checker::face_interior_points`]), so that a shell whose
+    /// every vertex is on a contact with another lump (a cylinder's two
+    /// seam vertices, on the line another cylinder touches it along) is
+    /// still placed. Empty when nothing resolves.
+    pub(crate) fn shell_points(&self, shell: ShellId) -> impl Iterator<Item = Point3> + '_ {
         let model = self.model;
-        model
-            .shell(shell)
-            .ok()?
-            .faces()
+        let faces: Vec<FaceId> = model.shell(shell).ok().map_or_else(Vec::new, |s| {
+            s.faces()
+                .iter()
+                .map(|f| f.id)
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect()
+        });
+        let mut seen = BTreeSet::new();
+        let vertices: Vec<Point3> = faces
             .iter()
-            .filter_map(|f| model.face(f.id).ok())
+            .filter_map(|&f| model.face(f).ok())
             .flat_map(coedges)
             .filter_map(|(_, _, c)| model.edge(c.edge()).ok())
-            .filter_map(|e| model.vertex(e.start()).ok())
+            .map(|e| e.start())
+            .filter(|&v| seen.insert(v))
+            .filter_map(|v| model.vertex(v).ok())
             .map(|v| v.point())
-            .next()
+            .collect();
+        vertices.into_iter().chain(
+            faces
+                .into_iter()
+                .flat_map(move |f| self.face_interior_points(f)),
+        )
+    }
+
+    /// A deterministic grid of points strictly inside `face`: the
+    /// `check_samples`-per-side grid over its (u, v) box, its cells'
+    /// centres that [`FaceDomain::side`] holds inside the loops, carried
+    /// to 3D. Empty for a face with no domain.
+    fn face_interior_points(&self, face: FaceId) -> Vec<Point3> {
+        let Some(domain) = self.domains.get(&face) else {
+            return Vec::new();
+        };
+        let points: Vec<Point2> = domain
+            .polygons()
+            .iter()
+            .flat_map(|p| p.points())
+            .copied()
+            .collect();
+        let (Some(lo), Some(hi)) = (corner(&points, f64::min), corner(&points, f64::max)) else {
+            return Vec::new();
+        };
+        let n = self.precision.check_samples.max(2);
+        let at = |k: usize| (k as f64 + 0.5) / n as f64;
+        let mut out = Vec::new();
+        for i in 0..n {
+            for j in 0..n {
+                let uv = Point2::new(lerp(lo.x, hi.x, at(i)), lerp(lo.y, hi.y, at(j)));
+                if domain.side(uv).0 == Side::Inside {
+                    out.push(domain.surface().point(uv.x, uv.y));
+                }
+            }
+        }
+        out
     }
 
     /// The classifier over the closed shell `shell`'s faces alone, in

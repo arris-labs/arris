@@ -83,7 +83,7 @@ tests are mechanical; **[2]** careful, a geometric or numeric case within
 the design; **[3]** unproven, an algorithm whose robustness is established
 here.
 
-- [ ] Step 1 **[3]** — ADR-0088, `GLOSSARY.md`, DATA-MODEL B1 and
+- [x] Step 1 **[3]** — ADR-0088, `GLOSSARY.md`, DATA-MODEL B1 and
   §Entities, and B1 in the checker as the deltas say. Tests in
   `arris-check` use bodies assembled from two shells:
   - two cylinders tangent from outside: passes;

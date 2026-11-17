@@ -227,8 +227,9 @@ pub enum ShellNestingFault {
         /// Its innermost container, an outer shell too.
         container: ShellId,
     },
-    /// Two shells of the body meet: a face of one intersects a face of the
-    /// other, which shells that share no edge never may.
+    /// Two shells of the body cross or overlap: a face of one crosses a
+    /// face of the other, or coincides with it over an area. Shells that
+    /// share no edge may touch (ADR-0088) and never cross.
     Overlap {
         /// The two shells, ascending.
         shells: [ShellId; 2],

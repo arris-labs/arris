@@ -27,6 +27,13 @@ _Avoid_: surface body, open solid
 An outer shell with the voids it contains, derived from geometry and never
 stored (ADR-0006).
 
+**Touching lumps**:
+Lumps of one solid whose boundaries meet along curves where their surfaces
+touch, or at isolated points, never across or over an area; each keeps its
+own edges and vertices (ADR-0088). Open CASCADE's compound of touching
+solids.
+_Avoid_: compound, non-manifold solid
+
 **Precision**:
 The model-wide tolerance configuration: the default, the floor, and the
 maximum an operation may grow to.

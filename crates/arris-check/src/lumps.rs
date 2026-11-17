@@ -3,10 +3,11 @@
 //! and [`lumps`], the query that returns it, over one piece of code.
 //!
 //! A shell enclosing positive volume is an *outer* shell and one enclosing
-//! negative volume a *void*. No two shells may meet. A shell lies inside
-//! another when a vertex of it does, by the ray cast `classify` runs over
-//! the other's faces alone; two closed surfaces that do not meet are nested
-//! or apart, so one vertex decides. Each void's innermost container must be
+//! negative volume a *void*. No two shells may cross or overlap; they may
+//! touch (ADR-0088). A shell lies inside another when a point of it does,
+//! by the ray cast `classify` runs over the other's faces alone; two closed
+//! surfaces that do not cross are nested or apart, so one point clear of
+//! the other decides. Each void's innermost container must be
 //! an outer shell and each outer shell's none or a void: a lump is an outer
 //! shell with the voids whose innermost container it is, and a lump may sit
 //! in another lump's cavity.
@@ -20,8 +21,13 @@ use arris_topo::{Body, FaceId, Model, NotFound, Shell, ShellId};
 
 use crate::check::Checker;
 use crate::classify::Classifier;
+use crate::full::Meeting;
 use crate::unchecked::Unchecked;
 use crate::violation::ShellNestingFault;
+
+/// How many points of one shell [`Checker::shell_inside`] tries before it
+/// gives the nesting up as undecided.
+const PLACING_POINTS: usize = 64;
 
 /// One lump of a solid body (ADR-0006): an outer shell and the voids
 /// inside it. Every handle carries its effective orientation — the body
@@ -185,6 +191,27 @@ impl Checker<'_> {
             .collect()
     }
 
+    /// Whether `shell` lies inside the closed surface `other` classifies
+    /// against, by the first point of it that is clear of `other`'s faces
+    /// and edges and that a ray decides: two lumps that touch (ADR-0088)
+    /// may have a vertex on the contact, on `other`, where a ray's parity
+    /// means nothing, so that vertex is passed over for the next, and a
+    /// shell whose every vertex is on the contact for an interior point of
+    /// its faces ([`Checker::shell_points`]). `None` when no point of the
+    /// first [`PLACING_POINTS`] decides, or there is no classifier.
+    fn shell_inside(&self, shell: ShellId, other: Option<&Classifier>) -> Option<bool> {
+        let other = other?;
+        for point in self.shell_points(shell).take(PLACING_POINTS) {
+            if !matches!(other.on(point), Ok(None)) {
+                continue;
+            }
+            if let Ok(Some(is)) = other.contains(point) {
+                return Some(is);
+            }
+        }
+        None
+    }
+
     /// B1 over `shells` (from [`Checker::shell_volumes`]). The faces must
     /// have been discretised when there is more than one shell. Stops at
     /// the first stage that fails — roles, then meetings, then containment
@@ -244,7 +271,7 @@ impl Checker<'_> {
                 let mut meets = false;
                 'pairs: for &a in &faces[i] {
                     for &b in &faces[j] {
-                        match self.faces_meet(a, b, &boxes) {
+                        match self.faces_meet(a, b, &boxes, Meeting::Crossing) {
                             Ok(false) => {}
                             Ok(true) => {
                                 meets = true;
@@ -271,18 +298,17 @@ impl Checker<'_> {
             return out;
         }
 
-        // Which shells each lies inside, by a vertex of it: each shell's
-        // classifier is built once and asked for every other's vertex.
+        // Which shells each lies inside, by a point of it clear of the
+        // other: each shell's classifier is built once and asked for every
+        // other's point.
         let classifiers: Vec<Option<Classifier>> = shells
             .iter()
             .map(|(s, _)| self.shell_classifier(s.id))
             .collect();
         let mut inside = vec![vec![false; n]; n];
         for i in 0..n {
-            let point = self.shell_point(shells[i].0.id);
             for j in (0..n).filter(|&j| j != i) {
-                let asked = point.zip(classifiers[j].as_ref());
-                match asked.and_then(|(p, c)| c.contains(p).ok().flatten()) {
+                match self.shell_inside(shells[i].0.id, classifiers[j].as_ref()) {
                     Some(is) => inside[i][j] = is,
                     None => {
                         out.unchecked.push(Unchecked::ShellNesting {
