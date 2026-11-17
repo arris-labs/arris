@@ -170,7 +170,7 @@ bound is established here.
   cylinder-plane-unsupported`): the flat-edge line's family, so one
   backlog line, and the property allows a chain `TangentContact` a later
   solid covers (order decides).
-- [ ] Step 9 **[1]** — `crates/arris-py/tests/test_tangency.py` runs the
+- [x] Step 9 **[1]** — `crates/arris-py/tests/test_tangency.py` runs the
   harness's nine programs through the binding. Each matches its closed
   form or refusal kind, and every `Ok` body passes `check("full")`.
 - [ ] Step 10 **[3]** — The tangent ruling a hair off the seams. A
