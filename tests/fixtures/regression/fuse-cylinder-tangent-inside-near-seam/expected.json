@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "70b6e7ca86c44c181a626620ae61244e68de569a1e0156046b5abc21c838c749",
+  "results": {
+    "default": {
+      "area": 27.331856086146953,
+      "centroid": [
+        0.08888888844387607,
+        8.888888873989835e-06,
+        0.5
+      ],
+      "counts": {
+        "edges": 10,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          5.190460849982714,
+          -7.5398223183489e-05,
+          2.220446049250313e-16
+        ],
+        [
+          -7.5398223183489e-05,
+          5.9444430717558525,
+          -1.0232158002831948e-18
+        ],
+        [
+          2.220446049250313e-16,
+          -1.0232158002831948e-18,
+          8.731585541746153
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 10,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "outer cap, away from the inner",
+          "point": [
+            -1.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inner, above the outer",
+          "point": [
+            1.2,
+            0.0,
+            1.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inner, below the outer",
+          "point": [
+            1.2,
+            0.0,
+            -0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past the inner, above the outer",
+          "point": [
+            1.55,
+            0.0,
+            1.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above the outer, off the inner",
+          "point": [
+            -1.0,
+            0.0,
+            1.5
+          ]
+        }
+      ],
+      "volume": 7.634070148210523
+    }
+  }
+}

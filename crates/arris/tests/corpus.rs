@@ -2008,6 +2008,9 @@ corpus_tests! {
     /// read as a part: two `VERTEX_POINT`s at the touch on the end rim.
     #[ignore = "reader: #15: loop 0 of f0 is open at junction 2, the file's two VERTEX_POINTs at one point, (6, 0, 2), where the loop arrives at one and leaves at the other (docs/BACKLOG.md, the reader's coincident VERTEX_POINTs)"]
     regression_fuse_end_disc_tangent_to_wall_occt_step => run "regression/fuse-end-disc-tangent-to-wall-occt-step";
+    /// A radius-1.5 cylinder fused with a radius-0.3 one, tangent inside it along a ruling 1e-4 rad off the seams: V = 2.43 pi, A = 8.7 pi.
+    #[ignore = "kernel bug: the face arrangement is not a subdivision (a section edge of the outer cap ends at a node nothing else reaches), for a tangent ruling within about 0.003 rad of the seams (plans/tangency-faults step 8)"]
+    regression_fuse_cylinder_tangent_inside_near_seam => run "regression/fuse-cylinder-tangent-inside-near-seam";
     /// Open CASCADE's STEP of a cylinder capped by a spherical dome, converted
     /// to B-splines: the cap's pole a vertex the reader finds no singular row
     /// for.
@@ -2196,6 +2199,9 @@ corpus_tests! {
     /// plane and the third's wall across both: every pair and the chain build.
     #[ignore = "OpError::Unsupported: plane against plane, a low box's top against the tall box's wall at a right angle, where every pair and the chain build (the retired flat-edge-read-as-tangent-contact plan, step 8)"]
     regression_fuse_many_three_boxes_plane_against_plane_unsupported => run "regression/fuse-many-three-boxes-plane-against-plane-unsupported";
+    /// A box, a unit cylinder tangent inside a slab's side and the slab, all on one plane, fused in one call: every pair and the chain build.
+    #[ignore = "OpError::Unsupported: no closed form for the cylinder against the plane, its wall tangent to the slab's side along a line inside the box, where every pair and the chain build (plans/tangency-faults step 8)"]
+    regression_fuse_many_tangent_cylinder_plane_unsupported => run "regression/fuse-many-tangent-cylinder-plane-unsupported";
 }
 
 /// A variant the recipe does not have fails naming it.

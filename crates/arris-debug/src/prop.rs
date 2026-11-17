@@ -41,7 +41,8 @@
 //! that a test builds into a model;
 //! `profile` draws sketches, with an axis and the sweep parameters for
 //! them, `sweep` is the Pappus oracle a sweep's volume and area are
-//! held to, and `recipe` draws whole corpus recipes that both kernels
+//! held to, `tangent` draws solids whose walls touch along a line, with
+//! the closed form of each boolean, and `recipe` draws whole corpus recipes that both kernels
 //! build (ADR-0024 §2).
 //!
 //! ```
@@ -60,6 +61,7 @@ pub mod geom;
 pub mod profile;
 pub mod recipe;
 pub mod sweep;
+pub mod tangent;
 pub mod turned;
 pub mod twin;
 

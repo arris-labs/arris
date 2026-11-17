@@ -1,0 +1,20 @@
+{
+  "description": "a cylinder of radius 1.5 (z 0..1) fused with a cylinder of radius 0.3 (z -1..2) whose axis is 1.2 from the first's in the direction 1e-4 rad off the seam, so the inner wall touches the outer's along one ruling a hair off both seams, and stands out of both ends. The ruling's angle is all that differs from the cases that build (0, and any angle of 0.005 rad and up, either side of the seam; 0.002 and under fault, with the inner flush or standing out): fuse is refused as a kernel bug, 'a cycle of the outer cap's arrangement does not turn once' or 'a section edge ends at a node nothing else reaches', where the closed form is V = 2.25 pi + 0.27 pi - 0.09 pi = 2.43 pi and A = 3 pi (outer wall) + 2 (2.25 - 0.09) pi (outer caps) + 2 pi 0.3 2 (inner wall outside the slab) + 2 0.09 pi (inner ends) = 8.7 pi (plans/tangency-faults step 8, found by the tangent-inside property). The desired assertion: it builds Full-green to the closed form",
+  "steps": [
+    {"name": "outer", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": 1.5, "height": 1},
+    {"name": "inner", "op": "cylinder", "base": [1.199999994, 0.0001199999998, -1], "axis": [0, 0, 1], "radius": 0.3, "height": 3},
+    {"name": "result", "op": "fuse", "a": "outer", "b": "inner"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "outer cap, away from the inner", "point": [-1, 0, 0.5], "expect": "in"},
+    {"label": "inner, above the outer", "point": [1.2, 0, 1.5], "expect": "in"},
+    {"label": "inner, below the outer", "point": [1.2, 0, -0.5], "expect": "in"},
+    {"label": "past the inner, above the outer", "point": [1.55, 0, 1.5], "expect": "out"},
+    {"label": "above the outer, off the inner", "point": [-1, 0, 1.5], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": "2.43 * pi",
+    "area": "8.7 * pi"
+  }
+}

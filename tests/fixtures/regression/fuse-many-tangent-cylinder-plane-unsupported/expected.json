@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "3e49f9760394a1fce1190eda3e46a829161832922a4e2ad372ca0417e3858ff4",
+  "results": {
+    "default": {
+      "area": 98.0,
+      "centroid": [
+        0.4285714285714286,
+        -0.5000000000000002,
+        1.0714285714285718
+      ],
+      "counts": {
+        "edges": 44,
+        "faces": 20,
+        "loops": 20,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 26
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          101.28571428571428,
+          -12.0,
+          -13.714285714285715
+        ],
+        [
+          -12.0,
+          118.07142857142854,
+          -12.000000000000009
+        ],
+        [
+          -13.714285714285715,
+          -12.000000000000009,
+          159.7857142857143
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 44,
+        "faces": 20,
+        "loops": 20,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 26
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "in the box, high",
+          "point": [
+            1.0,
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in the slab, far side",
+          "point": [
+            -2.0,
+            -2.5,
+            0.5
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in the cylinder, past the box",
+          "point": [
+            2.8,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past the slab's side, off the cylinder",
+          "point": [
+            -2.0,
+            1.5,
+            0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above the slab",
+          "point": [
+            -2.0,
+            0.0,
+            1.5
+          ]
+        }
+      ],
+      "volume": 41.99999999999998
+    }
+  }
+}

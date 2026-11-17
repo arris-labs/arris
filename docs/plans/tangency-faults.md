@@ -156,16 +156,29 @@ bound is established here.
   cone) from edge to contact; open stripes, rolled rings and pairs on
   different axes are not compared. It runs after the rings are built and
   before any stripe is.
-- [ ] Step 8 **[2]** — Property tests (`arris-debug/src/prop`), each in a
-  random rigid pose: a cylinder tangent inside a larger one, a bar end
-  tangent to a boss, and a column tangent to a bore. `fuse`, `cut` and
-  `common` match the closed form `Full`-green or refuse by a modelled
-  reason, never `Internal`. `prop::body::standing` takes back the tangent
-  draws it leaves out (backlog, flat-edge evidence line). Each fault found
-  becomes a regression fixture and a step.
+- [x] Step 8 **[2]** — Property tests (`arris-debug/src/prop/tangent.rs`,
+  `arris-ops/tests/tangency_prop.rs`), each in a random rigid pose: a
+  cylinder tangent inside a larger one, a bar with one or two end bosses,
+  and a column tangent to a bore. Each boolean matches the closed form
+  `Full`-green or is refused by a modelled reason, never `Internal`.
+  `prop::body::standing` takes the tangent draws back.
+  *Settled*: one family faults and is step 10: a tangent ruling within
+  about 0.003 rad of the seams (`regression/fuse-cylinder-tangent-inside-
+  near-seam`); the property leaves out that angle band by name. The chain
+  property, with tangent draws back, finds `fuse_many` refused
+  `Unsupported` where the chain builds (`regression/fuse-many-tangent-
+  cylinder-plane-unsupported`): the flat-edge line's family, so one
+  backlog line, and the property allows a chain `TangentContact` a later
+  solid covers (order decides).
 - [ ] Step 9 **[1]** — `crates/arris-py/tests/test_tangency.py` runs the
   harness's nine programs through the binding. Each matches its closed
   form or refusal kind, and every `Ok` body passes `check("full")`.
+- [ ] Step 10 **[3]** — The tangent ruling a hair off the seams. A
+  cylinder tangent inside another along a ruling 1e-4 rad off both seams
+  faults `SplitFault` ("a section edge ends at a node nothing else
+  reaches"); at 0 or 0.005 rad and up it builds. Find the node the
+  section's near-seam end misses, fix it, and move the fixture to
+  `boolean/`, `Full`-green; the property's `near_the_seam` exclusion goes.
 
 ## Acceptance
 
@@ -201,5 +214,5 @@ bound is established here.
 - *Settled* (step 4), was OPEN 1: a touching ruling is dropped from both
   faces. It stays the contact it was (ADR-0004, ADR-0050), and the walls
   are `Full`-green. Ownership does not change, so no ADR-0088.
-- ⚠ OPEN 2: step 8 may find a family no step covers. The agent adds steps
-  up to the ~10 limit; past that, one backlog line with its fixtures.
+- *Settled* (step 8), was OPEN 2: the properties found one family, the
+  near-seam ruling, now step 10, and one that is a backlog line.

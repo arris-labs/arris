@@ -18,8 +18,8 @@ use arris_debug::prop;
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
 use arris_debug::unmetered::{fuse, fuse_many, mass_properties, primitive_box, split, transform};
 use arris_math::{Control, Frame, Isometry, Point3};
-use arris_ops::OpError;
 use arris_ops::query::{Interference, interference};
+use arris_ops::{BooleanReason, OpError, Reason};
 use arris_topo::provenance::audit;
 use arris_topo::{Body, Model, Provenance};
 use proptest::prelude::*;
@@ -70,7 +70,9 @@ fn chain(m: &mut Model, bodies: &[Body]) -> Made {
 }
 
 /// `fuse_many` of solids standing on one plane is the chain of `fuse`s: the
-/// same volume and area, or both refuse.
+/// same volume and area, or both refuse; or the chain is refused
+/// `TangentContact` at a step where a cylinder touches a box's face from
+/// outside along a line, which a later solid covers.
 ///
 /// Ignored: at 1000 cases it finds what the fixtures
 /// `regression/two-boxes-on-one-plane-fuse-unsupported`,
@@ -85,6 +87,7 @@ fn the_chained_fuse_on_a_shared_plane_is_fuse_many() {
         let bodies = case.build(&mut m).map_err(fail)?;
         let many = fuse_many(&mut m, &bodies);
         let chained = chain(&mut m, &bodies);
+        let mut order_refusal = false;
         // The chain's record is its last step's, so its result is
         // checked clean and not audited against all the operands.
         let chained = match chained {
@@ -95,7 +98,16 @@ fn the_chained_fuse_on_a_shared_plane_is_fuse_many() {
                 }
                 Some(b)
             }
-            Err(e) if is_refusal(&e) => None,
+            Err(e) if is_refusal(&e) => {
+                order_refusal = matches!(
+                    e,
+                    OpError::Degenerate {
+                        reason: Reason::Boolean(BooleanReason::TangentContact),
+                        ..
+                    }
+                );
+                None
+            }
             Err(e) => return Err(fail(format!("the chain: {e}"))),
         };
         let many = settle(&m, "fuse_many", &bodies, many)?;
@@ -120,6 +132,10 @@ fn the_chained_fuse_on_a_shared_plane_is_fuse_many() {
                 );
             }
             (None, None) => {}
+            // A step of the chain can be a cylinder tangent outside a box's
+            // face, the designed `TangentContact`, which a later solid of
+            // the set covers: the order decides, so `fuse_many` builds.
+            (Some(_), None) if order_refusal => {}
             (Some(_), None) => return Err(fail("fuse_many builds where the chain refuses")),
             (None, Some(_)) => return Err(fail("the chain builds where fuse_many refuses")),
         }
@@ -227,31 +243,16 @@ fn a_box_split_and_fused_back_overlaps_the_box_in_its_volume() {
     );
 }
 
-/// The draws build clean bodies, none has a wall tangent to another, and
-/// `tangent` names the cases it leaves out: a cylinder whose wall touches a
-/// box's face along a line, and two cylinders touching along a ruling.
+/// The draws build clean bodies, among them a cylinder whose wall touches
+/// a box's face or another cylinder's wall along a line, which the strategy
+/// no longer leaves out.
 #[test]
-fn the_standing_draws_are_clean_and_leave_tangent_walls_out() {
-    use arris_debug::prop::body::{Standing, StandingShape, StandingSolid};
-    let solid = |shape, centre| StandingSolid {
-        shape,
-        centre,
-        height: 1.0,
-    };
-    let slab = StandingShape::Box { half: (1.0, 1.0) };
-    let disc = |radius| StandingShape::Cylinder { radius };
-    let tangent_to_face = Standing {
-        solids: vec![solid(slab, (0.0, 0.0)), solid(disc(1.0), (2.0, 0.0))],
-    };
-    let tangent_to_wall = Standing {
-        solids: vec![solid(disc(1.0), (0.0, 0.0)), solid(disc(2.0), (3.0, 0.0))],
-    };
-    let apart = Standing {
-        solids: vec![solid(slab, (0.0, 0.0)), solid(disc(1.5), (2.0, 0.0))],
-    };
-    assert!(tangent_to_face.tangent() && tangent_to_wall.tangent() && !apart.tangent());
+fn the_standing_draws_are_clean_and_include_tangent_walls() {
+    use std::cell::Cell;
+    let (drawn, tangent) = (Cell::new(0_usize), Cell::new(0_usize));
     prop::check(prop::body::standing(), |case| {
-        prop_assert!(!case.tangent());
+        drawn.set(drawn.get() + 1);
+        tangent.set(tangent.get() + usize::from(touches_along_a_line(&case)));
         let mut m = Model::default();
         for body in case.build(&mut m).map_err(fail)? {
             let report = check(&m, body, Level::Fast);
@@ -259,4 +260,43 @@ fn the_standing_draws_are_clean_and_leave_tangent_walls_out() {
         }
         Ok(())
     });
+    assert!(
+        tangent.get() > 0 || drawn.get() < 64,
+        "no tangent draw in {}",
+        drawn.get()
+    );
+}
+
+/// Whether a cylinder of `set` has its wall on a side plane of a box of it,
+/// or on another cylinder's wall, to the draw's own exactness.
+fn touches_along_a_line(set: &prop::body::Standing) -> bool {
+    use prop::body::StandingShape::{Box, Cylinder};
+    let hair = 1e-9; // tol-literal: a strategy's own exactness bound, no entity
+    let touches = |a: f64, b: f64| (a - b).abs() <= hair;
+    set.solids.iter().enumerate().any(|(i, s)| {
+        let Cylinder { radius } = s.shape else {
+            return false;
+        };
+        set.solids.iter().enumerate().any(|(j, o)| {
+            i != j
+                && match o.shape {
+                    Box { half } => {
+                        [o.centre.0 - half.0, o.centre.0 + half.0]
+                            .iter()
+                            .any(|&p| touches((s.centre.0 - p).abs(), radius))
+                            || [o.centre.1 - half.1, o.centre.1 + half.1]
+                                .iter()
+                                .any(|&p| touches((s.centre.1 - p).abs(), radius))
+                    }
+                    Cylinder { radius: other } => {
+                        let d = arris_math::real::hypot(
+                            s.centre.0 - o.centre.0,
+                            s.centre.1 - o.centre.1,
+                        );
+                        d > hair
+                            && (touches(d, radius + other) || touches(d, (radius - other).abs()))
+                    }
+                }
+        })
+    })
 }

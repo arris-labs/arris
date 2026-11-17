@@ -634,10 +634,18 @@ with a second set of slabs and a resized, re-posed box, so the same
 recipe is built twice under a parameter edit that never changes which
 entities bound which piece. `standing` draws three to five boxes and
 cylinders on one plane, half on whole numbers so bases, tops and walls
-come out flush, none with a wall tangent to another: `fuse_many` is held to
-the chain of `fuse`s on it, and a box split by a plane and fused back to
+come out flush, a wall tangent to another among them: `fuse_many` is held to
+the chain of `fuse`s on it (a chain refused `TangentContact` at a step a
+later solid covers is allowed), and a box split by a plane and fused back to
 `interference` with the whole (`coplanar_prop`, both `#[ignore]`d until the
 fixtures they found pass).
+
+`prop::tangent` draws three families whose walls touch along a line, each
+in a random pose with a closed form for every boolean: a cylinder tangent
+inside a larger one, a bar with a boss tangent to each end, and a column
+tangent to a bore along four lines (`tangency_prop`). Each boolean builds
+`Full`-green to the closed form or is refused by a modelled reason, never
+`Internal`.
 
 `ops::split(m, body, plane: &Frame, control)` cuts a solid by a plane and
 keeps both sides (ADR-0051): `Split { positive, negative, provenance }`,
