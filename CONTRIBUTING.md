@@ -19,7 +19,9 @@ Questions, "is arris a fit for…" and ideas go to
 Follow [Contributing from a fork](AGENTS.md#contributing-from-a-fork) to
 set up your clone, prepare your topic branch, and open a pull request.
 Run [`tools/pr-check.sh`](tools/pr-check.sh) on your committed branch
-before submitting it.
+before submitting it. The check ensures the tip has a local verification
+pass for the push hook. The first run in a fresh clone may run a wider set
+of tests to establish that pass.
 
 Read the [kernel, git, and docs rules](.agents/rules/) and the
 [provenance policy](PROVENANCE.md) before changing code. Include a fixture

@@ -5,8 +5,9 @@
 #   tools/pr-check.sh [--base <rev>]
 #   tools/pr-check.sh --ci --base <merge-base>
 #
-# Local runs fetch canonical main unless a revision is supplied. CI gives
-# the PR's merge base, skips the local setup checks, and runs clippy separately.
+# Local runs fetch canonical main unless a revision is supplied and verify
+# a passing tip for the push hook. CI supplies the PR's merge base and runs
+# clippy separately.
 set -euo pipefail
 
 usage() {
@@ -49,21 +50,22 @@ base=$(git rev-parse --verify --quiet --end-of-options "$base_ref^{commit}") || 
   printf 'pr-check: invalid base revision %q\n' "$base_ref" >&2
   exit 2
 }
+head=$(git rev-parse --verify HEAD)
 if ! "$ci"; then
   if [ "$(git config --get core.hooksPath || true)" != .githooks ]; then
     finding 'core.hooksPath must be .githooks (git config core.hooksPath .githooks)'
   fi
-  if ! git merge-base --is-ancestor "$base" HEAD; then
+  if ! git merge-base --is-ancestor "$base" "$head"; then
     finding "branch does not contain base ${base:0:12}; rebase onto it"
     # Check the branch's own changes even when upstream has advanced.
-    base=$(git merge-base "$base" HEAD)
+    base=$(git merge-base "$base" "$head")
   fi
 fi
 
 subject_pattern='^(feat|fix|refactor|perf|test|docs|chore|build|ci|fixtures)\([a-z0-9-]+(,[a-z0-9-]+)*\): [a-z]'
 email_pattern='^[^@[:space:]]+@[^@[:space:].]+(\.[^@[:space:].]+)+$'
 trailer_pattern='^[[:blank:]]*(co-authored-by:|claude-session:|(🤖[[:blank:]]*)?generated with([[:blank:]:]|$))'
-commits=$(git rev-list "$base..HEAD")
+commits=$(git rev-list "$base..$head")
 while IFS= read -r commit; do
   [ -n "$commit" ] || continue
   short=${commit:0:12}
@@ -104,10 +106,10 @@ while IFS= read -r -d '' status && IFS= read -r -d '' path; do
         esac ;;
     esac
   fi
-done < <(git diff --no-renames --name-status -z "$base" HEAD)
+done < <(git diff --no-renames --name-status -z "$base" "$head")
 
 # The test filter comes from the committed diff, so the build must see HEAD.
-if ! git diff --quiet HEAD --; then
+if ! git diff --quiet "$head" --; then
   finding 'commit tracked edits before checking the PR head'
   exit 1
 fi
@@ -117,7 +119,31 @@ run 'cargo fmt' cargo fmt --all -- --check
 if ! "$ci"; then
   run 'cargo clippy' cargo clippy --workspace --all-targets -- -D warnings
 fi
-run 'reached tests' tools/test-half.sh "$base" HEAD
+run 'reached tests' tools/test-half.sh "$base" "$head"
 
 [ "$failed" = 0 ] || exit 1
+if ! "$ci"; then
+  # A prose commit in a fresh clone inherits `none`. Use the ordinary
+  # verifier's own base and committed worktree to establish a local pass.
+  if [ "${ARRIS_VERIFY_LOCKED:-}" = 1 ] && tools/verify.sh --in-flight "$head"; then
+    finding 'tip verification is waiting on this worktree; run pr-check from the topic branch checkout'
+    exit 1
+  fi
+  if [ "$(tools/verify.sh --status "$head")" != pass ]; then
+    if [ "${ARRIS_VERIFY_LOCKED:-}" = 1 ]; then
+      finding 'tip verification needs the worktree lock; run pr-check from the topic branch checkout'
+      exit 1
+    fi
+    echo "pr-check: verifying ${head:0:12} for the push hook"
+    if ! tools/verify.sh "$head" || [ "$(tools/verify.sh --status "$head")" != pass ]; then
+      finding "tip verification did not pass; see $(git rev-parse --git-common-dir)/arris-verify/$head.log"
+    fi
+  fi
+fi
+
+[ "$failed" = 0 ] || exit 1
+if [ "$(git rev-parse --verify HEAD)" != "$head" ]; then
+  finding 'HEAD changed during the check; rerun on the current tip'
+  exit 1
+fi
 echo "pr-check: ok against ${base:0:12}"
