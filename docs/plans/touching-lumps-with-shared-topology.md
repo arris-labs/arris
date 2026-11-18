@@ -91,7 +91,7 @@ algorithm whose robustness has to be established here).
   variant, the binding, and a hand-built shell through two coincident
   vertices refused by it. Run the full corpus (`real_*` included). A V4
   hit on a body this plan does not make is decided as in Open questions 1.
-- [ ] Step 3 **[3]** — Radial pairing in `Build::shells` (delta 1). Unit
+- [x] Step 3 **[3]** — Radial pairing in `Build::shells` (delta 1). Unit
   tests in `result.rs`: two boxes on an edge give two shells; the pockets
   give one shell with both pairs and are refused `NonManifold` naming the
   edge; and a tie is refused. The step still ends `NonManifold` on the
@@ -156,7 +156,6 @@ algorithm whose robustness has to be established here).
    ids (`docs/ideas/sew-step-crescent-vertices.md`). V4 allows the
    distinct ends of a short edge, preserving the CTC-05 topology of
    ADR-0074 (ADR-0090 amendment).
-2. ⚠ OPEN: the angular tolerance for a tie in the radial order. The agent
-   decides in step 3. The default is the model's `parametric_tolerance`
-   over the edge's length scale, as a named constant in `arris-math`,
-   never a literal.
+2. *Settled in step 3.* The radial order uses `Precision::angular_tolerance`
+   to decide ties. The rays come from local unit normals and the unit edge
+   tangent, so the threshold has no dependence on the edge's trim length.

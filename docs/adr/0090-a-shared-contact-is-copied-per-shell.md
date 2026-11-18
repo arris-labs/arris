@@ -97,3 +97,14 @@ crescent's outer bound and hole touch. Sewing those vertices needs to
 splice the two loops as well. Merging ids alone changes the builder's
 Euler–Poincaré line by one per contact. See
 `docs/ideas/sew-step-crescent-vertices.md`.
+
+## Amendment of 2026-11-18 — Radial order reads the angular tolerance
+
+The pcurve gives each use's surface normal at the same midpoint
+parameter as the edge tangent. Increasing angle about the forward
+tangent crosses into material at a reversed use and out at a forward
+use, after composing each use with its result face's orientation.
+Every adjacent pair of directions in the cyclic order must alternate
+orientations and be farther apart than `Precision::angular_tolerance`.
+The directions come from local unit vectors, so changing an edge's trim
+length does not change the threshold.

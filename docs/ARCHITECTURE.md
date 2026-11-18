@@ -854,16 +854,22 @@ that remains undecided after the bounded retry returns the named
 grouped into shells by shared edges — none is
 `Degenerate` with `BooleanReason::Empty`, or with `InputReason::ZeroThickness` when
 what was dropped lay on the other operand (two solids sharing only a
-face); an edge piece used by more than two faces, or a vertex two shells
-reach, is two lumps sharing it and `InputReason::NonManifold` naming it, and so
-is a vertex whose face uses close into more than one fan — the corners
+face). At an edge piece with more than two uses, the face normal crossed
+with the oriented edge tangent gives the direction into each piece at
+the edge's midpoint. In cyclic order about the forward tangent, a
+reversed use enters material and the next forward use leaves it. Shell
+grouping connects the pairs across material. Ties within the model's
+angular tolerance and consecutive uses with the same orientation return
+`InputReason::NonManifold` naming the edge (ADR-0090). An edge piece with
+more than two uses, a vertex two shells reach, or a vertex whose face
+uses close into more than one fan returns the same refusal. The corners
 there, a use arriving and the next leaving, joined where two share an
-edge piece — one shell touching itself at a point, as a wall is left
-pinched at a singular point of a section; both before anything is
-assembled — and several shells are ordered into lumps, each outer shell then
-the voids inside it (ADR-0006), by assembling them once into a clone of
-the model and reading `arris_check::lumps` of that body, so the order is
-B1's own; a split target, a disjoint `fuse` and a cavity are each one
+edge piece, form separate fans where one shell touches itself at a point,
+as a wall is left pinched at a singular point of a section. These checks
+run before assembly. Several shells are ordered into lumps, each outer
+shell then its voids (ADR-0006). The boolean assembles them once into a
+clone of the model and reads `arris_check::lumps` of that body, using
+B1's order. A split target, a disjoint `fuse` and a cavity are each one
 solid. Two pieces in one lump whose output trims retain an isolated
 touch away from shared topology return `BooleanReason::TangentContact`
 naming the source faces. Two lumps that retain an isolated touch can
