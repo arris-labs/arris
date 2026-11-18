@@ -6,6 +6,28 @@ tessellation, STEP. A library: any CAD, CAM or simulation tool can build on it; 
 consumer swaps it in behind a kernel facade once it passes that
 application's probe corpus.
 
+## Contributing from a fork
+
+If you cloned a fork to submit a pull request, use this workflow.
+
+1. Follow [Setup](#setup-once-per-clone), read the project and kernel rules
+   below, and start a topic branch from the canonical repository's current
+   `main`. Keep that branch rebased on upstream `main`. The plan and
+   release pipeline below is for maintainer work.
+2. Use an author email with a dotted domain. Write commit subjects in the
+   form `type(scope): lower-case summary` without a trailing period. Keep
+   merge commits and `Co-Authored-By`, `Claude-Session`, and
+   `Generated with` trailers out of the branch.
+3. Include a regression fixture and its oracle value for a geometry fix.
+   Put new STEP data under `tests/fixtures/`. Propose changelog wording
+   and describe any decision that needs an ADR in the pull request.
+   The maintainer edits `CHANGELOG.md` and `docs/adr/` at landing.
+4. Run [`tools/pr-check.sh`](tools/pr-check.sh) from the committed branch
+   tip and fix any findings. It fetches canonical `main` and checks your
+   commits, file placement, formatting, clippy, and the tests the change
+   reaches. Push the branch to your fork and open a pull request against
+   upstream `main` using the [template](.github/pull_request_template.md).
+
 Read in this order: `SEED.md` (charter, competition, stack, the decisions
 taken at kickoff), `docs/ARCHITECTURE.md`, `docs/DATA-MODEL.md`,
 `docs/ROADMAP.md`, `docs/adr/`, then the rules in `.agents/rules/*.md`

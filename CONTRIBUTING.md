@@ -16,23 +16,16 @@ Questions, "is arris a fit for…" and ideas go to
 
 ## Code
 
-Arris is developed under written rules that every change follows. Read
-them before a pull request:
+Follow [Contributing from a fork](AGENTS.md#contributing-from-a-fork) to
+set up your clone, prepare your topic branch, and open a pull request.
+Run [`tools/pr-check.sh`](tools/pr-check.sh) on your committed branch
+before submitting it.
 
-- [AGENTS.md](AGENTS.md): the project in one page, its setup, and where the
-  rest lives;
-- [.agents/rules/](.agents/rules/): the kernel rules (no panics on
-  geometry, provenance from every operation, determinism, no tolerance
-  literals), git, and the docs lifecycle;
-- [PROVENANCE.md](PROVENANCE.md): code from other kernels is read, never
-  copied.
-
-Set up the hooks once per clone (`git config core.hooksPath .githooks`); the
-pre-commit hook runs fmt and clippy, and the tests the change reaches run
-after the commit, to be verified before a push (ADR-0078). A change
-that adds behaviour comes with a fixture and its Open CASCADE oracle value
-(`tools/oracle/`). For anything larger than a fix, open a discussion first:
-the design may already be settled in `docs/adr/`.
+Read the [kernel, git, and docs rules](.agents/rules/) and the
+[provenance policy](PROVENANCE.md) before changing code. Include a fixture
+and its Open CASCADE oracle value (`tools/oracle/`) when adding behaviour.
+For anything larger than a fix, open a discussion first. Check
+`docs/adr/` for decisions that already apply.
 
 ## Licence
 

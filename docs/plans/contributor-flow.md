@@ -85,7 +85,7 @@ run after the human pushes.
   wired into `tools/gate.sh`'s `tool_tests`. Test: the self-test, and the
   script run on PR #2's head names its clippy, trailer, author and
   test-data findings.
-- [ ] Step 3 **[1]** — the contributor path: a *Contributing from a fork*
+- [x] Step 3 **[1]** — the contributor path: a *Contributing from a fork*
   section in `AGENTS.md` (read before the maintainer's pipeline),
   `CONTRIBUTING.md` pointing to it and the script,
   `.github/pull_request_template.md`. Test: the docs tests.
