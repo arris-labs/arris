@@ -15,6 +15,9 @@ into its version (ADR-0027).
   A later fuse can join point-touching lumps by covering the contact.
   If a join leaves the contact exposed, `TangentContact` names both
   source faces.
+- A plate and cylinder that touch along a ruling cut to their targets
+  in either order. Their common returns `Empty`. `interference` reports
+  a curve for that pair and a point for the ball–disc and torus–box pairs.
 
 - Solids touching from the outside along a curve can fuse to one solid
   with two lumps. Each lump keeps its own edges and vertices. A fuse that
@@ -45,7 +48,7 @@ into its version (ADR-0027).
   width (as two tools of one `cut_many`) now build to their closed forms. A curve
   that one face would hold twice is reported as `OpInternalError`, a fault of the
   kernel, and `TangentContact` is again said only of two faces that touch along a
-  curve.
+  curve or at an isolated point.
 - `fuse`, `cut`, `common`, their n-ary forms and `interference` accept a body
   and a body derived from it (its split side, or the sides fused back) as
   operands. The later operand's untouched entities come back with new ids,

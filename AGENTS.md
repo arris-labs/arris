@@ -31,29 +31,19 @@ cargo install cargo-fuzz --locked
 
 ## Current state
 
-**C1–C10 done and released (2026-09-12 to 10-22)**, each compressed to its status line
-in `docs/ROADMAP.md`: the vertical slice, the application gate, every
-quadric pair, the STEP reader and real-part corpus, the consumer's API, the
-blend network, prismatic features, the query cycle, the healing cycle, and
-the NURBS cycle (NURBS blocks 0 of 38 parts). ADR-0001 to ADR-0068; PyPI
-`arris` beside them (ADR-0034); audience developers first (ADR-0067).
-**C11, the blend residue, done 2026-11-04** (ADR-0070 to ADR-0084, released
-as 0.10.0, 2026-11-04): the real parts' blend row **0 of 38** and the script corpus's
-`fillet` refusals 0, a second oracle's records (ADR-0073) holding what Open
-CASCADE cannot; closed with five nightly findings open, two of them panics
-(`docs/BACKLOG.md` §Findings). **C12, the training harness's refusals**
-(opened 2026-11-04 as the plugin CAD's asks, re-scoped 2026-11-16 by
-ADR-0020's amendment): the programs a consumer that scores generated
-code-CAD runs, and Open CASCADE builds, built or refused by name; draft,
-thicken and `region2` wait as the next named cycle. Per-face surface
-properties shipped beside it as 0.11.0, then 0.11.1 (2026-11-16), the first
-release on PyPI. Exact point classification in a batch
-(`classify_points`, Rust and Python) is the cycle's first item, done; the
-flat edge read as a tangent contact is its second, done, and the tangency
-faults its third, done (2026-11-17): five tangent cases build, the rim point
-and two chamfers that use up a face are refused by name. Solids touching
-along a curve now fuse to one solid of touching lumps.
-**Next:** `/plan touching-lumps-at-a-point` (`docs/ROADMAP.md` §C12 **In**).
+**C1–C10 done and released (2026-09-12 to 10-22)**, with their status
+lines in `docs/ROADMAP.md`. **C11, the blend residue, done and released
+as 0.10.0 (2026-11-04)**. The blend row blocked 0 of 38 real parts,
+the scripts had 0 fillet refusals, and five nightly findings stayed open.
+**C12, the training harness's refusals**, opened 2026-11-04 and re-scoped
+2026-11-16 (ADR-0020). The cycle's exact batched classification, flat-edge
+classification and tangency fixes are done. Per-face surface properties
+shipped beside it in 0.11.0, followed by 0.11.1, the first release on PyPI.
+Solids that touch along a curve or at an isolated point fuse to one solid
+of touching lumps. The torus-link, ball-knob and hinge pairs cut to their
+targets and have empty commons (ADR-0088, ADR-0089). Draft, thicken and
+`region2` wait for the next named cycle.
+**Next:** `/plan touching-lumps-with-shared-topology` (`docs/ROADMAP.md` §C12 **In**).
 
 ## Rules that are not derivable from the code
 

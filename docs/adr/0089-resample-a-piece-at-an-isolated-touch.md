@@ -1,7 +1,6 @@
 # ADR-0089 — Resample a piece at an isolated touch
 
 - Status: accepted (2026-11-18)
-- Plan: `touching-lumps-at-a-point` step 1
 - Follows: ADR-0004 (classify trimmed pieces), ADR-0030 (metering) and
   ADR-0088 (touching lumps)
 - Extends: ADR-0088's boolean rule for surviving curve contacts to
@@ -52,7 +51,8 @@ A trim that removes the touch leaves no contact to refuse.
 The same test applies to touches inherited from two shells of one
 operand, whose faces the pave does not compare. If those shells contribute
 pieces to one result lump, the checker intersects the selected faces and
-the boolean maps a surviving contact back to the source faces. A bridge
+the boolean maps a surviving contact back to the source faces. Face
+pairs and their intersections use the boolean's meter (ADR-0030). A bridge
 can fuse the ball and disc when it encloses the pole. A bridge joining
 them off-centre leaves the pole exposed and returns `TangentContact`.
 

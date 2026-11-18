@@ -972,10 +972,12 @@ the named cycle next in line.*
 - A revolve whose arc's circle reaches the axis while the arc stays on
   one side: the spindle torus's outer part, and the half horn torus
   (`docs/ideas/revolve-circle-meets-the-axis.md`).
-- Operands that only touch along a curve fuse to one solid of touching
-  lumps (ADR-0088). Next are point touches (`touching-lumps-at-a-point`),
-  then contacts that share topology
-  (`docs/ideas/touching-operands-fuse-to-several-shells.md`, Q2).
+- Operands that touch only along a curve or at an isolated point fuse to one
+  solid of touching lumps (ADR-0088, ADR-0089). The harness's torus-link,
+  ball-knob and hinge pairs cut to their targets and have empty commons.
+  A later fuse can cover the point of contact. A join that leaves the contact
+  exposed within one lump returns `TangentContact`. Next are contacts that
+  share topology (`docs/ideas/touching-operands-fuse-to-several-shells.md`, Q2).
 - A body's tight bounds where a NURBS edge reaches them
   (`docs/ideas/tight-body-bounds.md`).
 - Beside the cycle, in the second plan slot: the nightly's open findings,

@@ -827,12 +827,11 @@ inherited touches. It subdivides a contact curve at its intersections with
 the face trims. For an isolated point, it checks both trims, including any
 seam or pole at the contact. A touch away from shared topology returns the
 same refusal naming the two operand faces. A joining piece that covers
-the contact can fuse the shells. A touch from outside in a `cut` or a
-`common` passes:
-the tool's piece is dropped, the target's kept whole, and the ruling is no
-edge — Open
-CASCADE imprints it, and `boolean/tangent-outside-cut` states that
-convention. A piece `On` an edge or a vertex, or on a face its own is
+the contact can fuse the shells. When the operands touch only at a point
+or along a ruling, a `cut` keeps the target whole and a `common` returns
+`Empty`. Open CASCADE can imprint that contact on the target, as the
+`boolean/tangent-outside-cut` and hinge cut fixtures record. A piece
+`On` an edge or a vertex, or on a face its own is
 neither coincident nor tangent with, lies within the tolerance of the
 other operand at its interior point — a sliver between a seam and two
 section curves beside the point where they cross is within it
