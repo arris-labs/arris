@@ -7,7 +7,7 @@ boolean/ball-offset-drill-cut: 26354
 boolean/ball-on-apex-common: 11
 boolean/ball-on-disc-cavity: refused
 boolean/ball-on-disc-common: refused
-boolean/ball-on-disc-covered-join: 5141
+boolean/ball-on-disc-covered-join: 5226
 boolean/ball-on-disc-cut-ball: 16
 boolean/ball-on-disc-cut-stem: 16
 boolean/ball-on-disc-exposed-join: refused
@@ -57,6 +57,9 @@ boolean/disjoint-common: refused
 boolean/disjoint-cut: 18
 boolean/disjoint-fuse: 24
 boolean/edge-touching-band-ends: 82
+boolean/edge-touching-covered-join: 541
+boolean/edge-touching-drill: 38
+boolean/edge-touching-exposed-join: refused
 boolean/edge-touching-four-into: 82
 boolean/edge-touching-fuse: 82
 boolean/edge-touching-tilted-cut: 70
@@ -85,7 +88,7 @@ boolean/fuse-frustum-box-rim-point: 189
 boolean/fuse-frustum-box-rim-point-far-side: 187
 boolean/fuse-many-coaxial-cylinders-and-box: 131
 boolean/grazing-ball-bar-cut: 17441
-boolean/lump-in-cavity: 72
+boolean/lump-in-cavity: 280
 boolean/mirror-ball-corner-cut-fuse: 6085
 boolean/mirror-box-common: 116
 boolean/mirror-box-cut: 116

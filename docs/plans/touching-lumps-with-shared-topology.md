@@ -110,7 +110,7 @@ algorithm whose robustness has to be established here).
   `test_tangency.py`'s, into two-lump assertions. The `boolean_prop`
   crossing cylinders' cuts hold `V(a) − V(a ∩ b)` and two lumps.
   Re-measure the `tolerance_band.rs` header table.
-- [ ] Step 6 **[2]** — Touching lumps as an operand. A chain fixture from
+- [x] Step 6 **[2]** — Touching lumps as an operand. Chain fixtures from
   `edge-touching-fuse` covers three cases: a hole cut in one lump away from
   the contact (two lumps); a bridge over the whole contact (one lump, the
   copies inside it dropped); and a bridge over part of it, refused

@@ -1,0 +1,15 @@
+{
+  "description": "A box bridge joins the two touching boxes but leaves the contact edge exposed above the bridge. Arris refuses NonManifold naming the two operand edges.",
+  "steps": [
+    {"name": "a", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
+    {"name": "b", "op": "box", "min": [10, 10, 0], "max": [20, 20, 10]},
+    {"name": "touching", "op": "fuse", "a": "a", "b": "b"},
+    {"name": "bridge", "op": "box", "min": [8, 8, -1], "max": [12, 12, 5]},
+    {"name": "result", "op": "fuse", "a": "touching", "b": "bridge"}
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "expect_error": "non-manifold"
+  }
+}

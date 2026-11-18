@@ -1544,6 +1544,58 @@ fn boxes_touching_along_an_edge_give_two_lumps_with_provenance() {
     }
 }
 
+/// A bridge that only covers part of the contact names both copied
+/// operand edges, including when the result splits them.
+#[test]
+fn a_partial_bridge_names_the_two_inherited_contact_edges() {
+    let (mut m, touching, bridge) = inputs("boolean/edge-touching-exposed-join");
+    let mut copies: Vec<_> = touching_box_edge_copies(&m, touching)
+        .into_iter()
+        .map(shape)
+        .collect();
+    copies.sort_unstable();
+    assert_eq!(copies.len(), 2);
+    match fuse(&mut m, touching, bridge).unwrap_err() {
+        OpError::Degenerate {
+            reason: Reason::Input(InputReason::NonManifold),
+            entities,
+        } => assert_eq!(entities, copies),
+        other => panic!("{other:?}"),
+    }
+}
+
+/// The full bridge drops both copies of the buried edge and its endpoints.
+#[test]
+fn a_full_bridge_drops_the_inherited_contact_entities() {
+    let (mut m, touching, bridge) = inputs("boolean/edge-touching-covered-join");
+    let copies = touching_box_edge_copies(&m, touching);
+    assert_eq!(copies.len(), 2);
+    let (joined, provenance) = fuse(&mut m, touching, bridge).unwrap();
+    assert_eq!(lumps(&m, joined).unwrap().len(), 1);
+    for id in copies {
+        let edge = m.edge(id).unwrap();
+        assert!(provenance.is_deleted(shape(id)));
+        assert!(provenance.is_deleted(shape(edge.start())));
+        assert!(provenance.is_deleted(shape(edge.end())));
+    }
+}
+
+/// The two original edges of the touching box recipes, at x = y = 10.
+fn touching_box_edge_copies(m: &Model, body: Body) -> Vec<EdgeId> {
+    m.edges(body)
+        .unwrap()
+        .into_iter()
+        .filter(|edge| {
+            let edge = m.edge(edge.id).unwrap();
+            [edge.start(), edge.end()].into_iter().all(|id| {
+                let point = m.vertex(id).unwrap().point();
+                point.x == 10.0 && point.y == 10.0
+            })
+        })
+        .map(|edge| edge.id)
+        .collect()
+}
+
 /// The two cubes retain their own copies of the touching corner.
 #[test]
 fn boxes_touching_at_a_corner_give_two_lumps_with_provenance() {

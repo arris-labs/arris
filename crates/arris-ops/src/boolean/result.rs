@@ -14,15 +14,17 @@ use arris_check::{
     Classification, Classifier, ClassifyError, TouchingFacePairError,
     first_touching_face_pair_metered, lumps,
 };
-use arris_geom::{Curve, GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
+use arris_geom::{
+    Curve, GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection, curves_coincide,
+};
 use arris_math::{
     Aabb, DisjointSets, Frame, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3, real,
 };
 use arris_topo::builder::Builder;
 use arris_topo::entity::BodyKind;
 use arris_topo::{
-    Body, Curve2Id, CurveId, EdgeId, EntityId, Face as FaceHandle, FaceId, Model, Provenance,
-    Shape, ShellId, VertexId,
+    Body, Curve2Id, CurveId, EdgeId, EntityId, Face as FaceHandle, FaceId, Model, Origin,
+    Provenance, Shape, ShellId, VertexId,
 };
 
 use super::pieces::{Alias, EdgeOnFace, FacePiece, SplitFace, split_face};
@@ -1853,6 +1855,26 @@ impl Operands {
             shell_of,
         })
     }
+
+    /// A contact copy's sources of the same kind in the operand, including
+    /// a kept source whose identity needs no provenance record.
+    fn contact_origins(&self, side: usize, copy: Shape, provenance: &Provenance) -> Vec<Shape> {
+        let is_source = |shape: &Shape| match shape.id {
+            EntityId::Edge(id) => self.edges[side].contains(&id),
+            EntityId::Vertex(id) => self.vertices[side].contains(&id),
+            _ => false,
+        };
+        provenance
+            .origins(copy)
+            .into_iter()
+            .filter_map(|(_, origin)| match origin {
+                Origin::Entity(shape) if shape.id.kind() == copy.id.kind() => Some(shape),
+                _ => None,
+            })
+            .chain(std::iter::once(copy))
+            .filter(is_source)
+            .collect()
+    }
 }
 
 /// The section geometry one result owns: the ids of the curves and
@@ -2065,9 +2087,6 @@ fn one_result(
         .zip(slots.faces.iter().flatten().map(|&slot| built.faces[&slot]))
         .collect();
     point_slits(m, &kept, &out_faces, point_contacts, meter)?;
-    inherited_contact(
-        m, built.body, operands, &kept, &shells, &lump_of, &out_faces, meter,
-    )?;
     let vertex_id = |v| out_vertex.get(&v).map_or(&[][..], Vec::as_slice);
     let edge_id = |e| {
         let e = alias_of.get(&e).copied().unwrap_or(e);
@@ -2101,6 +2120,9 @@ fn one_result(
     );
     generated_vertices(&mut p, i, &vref_of, &out_vertex);
     generated_sections(&mut p, i, &out_edge);
+    inherited_contact(
+        m, built.body, operands, &kept, &shells, &lump_of, &out_faces, &p, meter,
+    )?;
     crate::verify_with(m, built.body, arris_check::check_boolean_result)?;
     Ok((built.body, p, outside))
 }
@@ -2147,8 +2169,8 @@ fn point_slits(
 
 /// A contact may lie between two shells of one operand, whose faces
 /// the pave does not compare. When their surviving pieces join into one
-/// lump, test the built face regions for contacts the operation leaves
-/// exposed.
+/// lump, test the built topology and face regions for contacts that
+/// remain exposed.
 #[allow(clippy::too_many_arguments)]
 fn inherited_contact(
     m: &Model,
@@ -2158,6 +2180,7 @@ fn inherited_contact(
     shells: &[Vec<usize>],
     lump_of: &[usize],
     out_faces: &BTreeMap<usize, FaceId>,
+    provenance: &Provenance,
     meter: &mut Meter<'_>,
 ) -> Result<(), OpError> {
     if operands.shells.iter().all(|shells| shells.len() < 2) {
@@ -2193,12 +2216,37 @@ fn inherited_contact(
         }
     }
     let mut pairs = Vec::new();
-    for groups in by_lump_and_operand.values() {
-        for (shell, faces) in groups {
-            for (_, other_faces) in
-                groups.range((std::ops::Bound::Excluded(shell), std::ops::Bound::Unbounded))
-            {
-                for &a in faces {
+    for (&(_, side), groups) in &by_lump_and_operand {
+        if groups.len() < 2 {
+            continue;
+        }
+        let boundaries: Vec<_> = groups
+            .values()
+            .map(|faces| Ok((faces, ContactBoundary::of(m, faces)?)))
+            .collect::<Result<_, OpError>>()?;
+        for (i, (faces, boundary)) in boundaries.iter().enumerate() {
+            for (other_faces, other_boundary) in boundaries.iter().skip(i + 1) {
+                if let Some(copies) = boundary.contact(m, other_boundary, meter)? {
+                    let origins =
+                        copies
+                            .into_iter()
+                            .zip([faces, other_faces])
+                            .flat_map(|(copy, faces)| {
+                                let mut origins = operands.contact_origins(side, copy, provenance);
+                                if origins.is_empty() {
+                                    origins.extend(
+                                        faces
+                                            .first()
+                                            .and_then(|face| source.get(face))
+                                            .copied()
+                                            .map(Shape::from),
+                                    );
+                                }
+                                origins
+                            });
+                    return Err(non_manifold(origins));
+                }
+                for &a in faces.iter() {
                     pairs.extend(other_faces.iter().map(|&b| [a, b]));
                 }
             }
@@ -2227,6 +2275,106 @@ fn inherited_contact(
         });
     }
     Ok(())
+}
+
+/// The boundary entities still reached by one input shell's pieces.
+struct ContactBoundary {
+    edges: BTreeSet<EdgeId>,
+    vertices: BTreeSet<VertexId>,
+}
+
+impl ContactBoundary {
+    fn of(m: &Model, faces: &[FaceId]) -> Result<Self, OpError> {
+        let mut edges = BTreeSet::new();
+        let mut vertices = BTreeSet::new();
+        for &face in faces {
+            for use_ in m.face(face)?.loops().iter().flat_map(|l| l.coedges()) {
+                if edges.insert(use_.edge()) {
+                    let edge = m.edge(use_.edge())?;
+                    vertices.extend([edge.start(), edge.end()]);
+                }
+            }
+        }
+        Ok(Self { edges, vertices })
+    }
+
+    /// Two distinct edge pieces on one curve, or two distinct vertices
+    /// at one point. Shared output ids are ordinary shell adjacency.
+    fn contact(
+        &self,
+        m: &Model,
+        other: &Self,
+        meter: &mut Meter<'_>,
+    ) -> Result<Option<[Shape; 2]>, OpError> {
+        for &a in &self.edges {
+            let edge_a = m.edge(a)?;
+            let Some((id_a, range_a)) = edge_a.curve() else {
+                continue;
+            };
+            let curve_a = m.curve(id_a)?;
+            let bounds_a = curve_a.bounds(range_a);
+            for &b in &other.edges {
+                meter.tick()?;
+                if a == b {
+                    continue;
+                }
+                let edge_b = m.edge(b)?;
+                let Some((id_b, range_b)) = edge_b.curve() else {
+                    continue;
+                };
+                if id_a == id_b && range_a == range_b {
+                    return Ok(Some([forward(a), forward(b)]));
+                }
+                let curve_b = m.curve(id_b)?;
+                let tolerance = edge_a.tolerance().max(edge_b.tolerance());
+                if let (Some(bounds_a), Some(bounds_b)) = (bounds_a, curve_b.bounds(range_b))
+                    && !bounds_a.inflated(tolerance).intersects(&bounds_b)
+                {
+                    continue;
+                }
+                if (trim_enters(curve_a, range_a, curve_b, range_b, tolerance)
+                    || trim_enters(curve_b, range_b, curve_a, range_a, tolerance))
+                    && curves_coincide(
+                        curve_a,
+                        curve_b,
+                        Tolerance::new(tolerance, m.precision().angular_tolerance),
+                        meter,
+                    )
+                    .map_err(crate::error::fault_of)?
+                {
+                    return Ok(Some([forward(a), forward(b)]));
+                }
+            }
+        }
+        for &a in &self.vertices {
+            let va = m.vertex(a)?;
+            for &b in &other.vertices {
+                meter.tick()?;
+                if a != b && va.point() == m.vertex(b)?.point() {
+                    return Ok(Some([forward(a), forward(b)]));
+                }
+            }
+        }
+        Ok(None)
+    }
+}
+
+/// Overlapping trims have an interior sample or an end in the other's
+/// interior. Exclude the tolerance band of the ends, where neighboring
+/// pieces of one curve can meet at their common vertex.
+fn trim_enters(a: &Curve, ra: Interval, b: &Curve, rb: Interval, tolerance: f64) -> bool {
+    [ra.lo(), ra.midpoint(), ra.hi()].into_iter().any(|t| {
+        let Ok(projected) = b.project(a.point(t)) else {
+            return false;
+        };
+        let t = b.period().map_or(projected.t, |period| {
+            arris_math::wrap_into(projected.t, rb.lo(), period)
+        });
+        let speed = b.eval(t).d1.norm();
+        projected.distance <= tolerance
+            && (t - rb.lo()) * speed > tolerance
+            && (rb.hi() - t) * speed > tolerance
+    })
 }
 
 /// Records what generated each section vertex the result made: the

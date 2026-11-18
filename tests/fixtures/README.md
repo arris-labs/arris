@@ -259,8 +259,11 @@ of the step that made the fixture pass, and a later change to it is a
   odd, as in `boolean/tangent-hole`, the oracle records no genus
   and the recipe states none; `boolean/pockets-touching-edge-cut-many`
   has both material sectors at a shared edge in one lump, refused as
-  `InputReason::NonManifold` under ADR-0090; a blend it builds and Arris
-  refuses as `BlendReason::TooLarge`, `TangentChain` or `VertexBlend` —
+  `InputReason::NonManifold` under ADR-0090, as is
+  `boolean/edge-touching-exposed-join`, where separate copies from the
+  operand would leave a contact edge exposed within one lump; a blend it
+  builds and Arris refuses as `BlendReason::TooLarge`, `TangentChain` or
+  `VertexBlend` —
   ADR-0007; a revolve of an elliptic profile segment, which it sweeps
   into a surface of revolution with an elliptic meridian and Arris
   refuses as `SweepReason::EllipticRevolve` — ADR-0014; a sweep whose

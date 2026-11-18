@@ -1,0 +1,12 @@
+{
+  "description": "A box bridge enclosing the entire contact edge joins the two touching boxes into one lump.",
+  "steps": [
+    {"name": "a", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
+    {"name": "b", "op": "box", "min": [10, 10, 0], "max": [20, 20, 10]},
+    {"name": "touching", "op": "fuse", "a": "a", "b": "b"},
+    {"name": "bridge", "op": "box", "min": [8, 8, -1], "max": [12, 12, 11]},
+    {"name": "result", "op": "fuse", "a": "touching", "b": "bridge"}
+  ],
+  "result": "result",
+  "probes": []
+}

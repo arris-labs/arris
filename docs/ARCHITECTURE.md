@@ -874,6 +874,10 @@ Several shells are ordered into lumps, each outer shell then its voids
 (ADR-0006). The boolean assembles them once into a clone of the model and
 reads `arris_check::lumps` of that body, using B1's order. Shells in the
 same lump that still reach a shared edge or vertex return `NonManifold`.
+When pieces of two operand shells contribute to one result lump, the
+rebuilt boundaries decide whether separate copies of the operand contact
+survive. A bridge that covers the contact joins the lumps. An exposed
+contact returns `NonManifold` naming the source edges or vertices.
 A split target, a disjoint `fuse` and a cavity are each one solid. Two
 pieces in one lump whose output trims retain an isolated
 touch away from shared topology return `BooleanReason::TangentContact`

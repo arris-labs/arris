@@ -293,6 +293,12 @@ corpus_tests! {
     boolean_lump_in_cavity => run "boolean/lump-in-cavity";
     /// Two boxes touching along an edge, copied once per result shell.
     boolean_edge_touching_fuse => run "boolean/edge-touching-fuse";
+    /// Drilling one lump leaves two lumps with separate contact edges.
+    boolean_edge_touching_drill => run "boolean/edge-touching-drill";
+    /// A bridge that covers the whole edge joins the touching lumps.
+    boolean_edge_touching_covered_join => run "boolean/edge-touching-covered-join";
+    /// A bridge leaving part of the edge exposed would make one lump touch itself.
+    boolean_edge_touching_exposed_join => run "boolean/edge-touching-exposed-join";
     /// Three alternating 60-degree wedges, with six face uses around one edge.
     boolean_three_wedges_one_edge_fuse_many => run "boolean/three-wedges-one-edge-fuse-many";
     /// Two lumps with separate vertices where the box touches the frustum's top rim at its seam.

@@ -11,7 +11,9 @@ into its version (ADR-0027).
 - Solids that meet along a shared edge can fuse into touching lumps.
   Each lump keeps its own copy of the contact edge and endpoints, and
   provenance records every copy. A shared edge within one lump still
-  returns `NonManifold`.
+  returns `NonManifold`. Later booleans can cut one lump or join them by
+  covering the whole contact. A join that leaves part of the contact
+  exposed names the two operand edges in the refusal.
 - Fusing solids that share a point can return two touching lumps, each
   with its own copy of the contact vertex. This includes boxes meeting
   at a corner and a box touching a cone frustum at its rim. Cutting two

@@ -1,0 +1,26 @@
+{
+  "description": "A through hole in the first of two boxes that already share a contact edge. Both lumps survive with separate edges along the contact.",
+  "steps": [
+    {"name": "a", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
+    {"name": "b", "op": "box", "min": [10, 10, 0], "max": [20, 20, 10]},
+    {"name": "touching", "op": "fuse", "a": "a", "b": "b"},
+    {"name": "drill", "op": "cylinder", "base": [5, 5, -1], "axis": [0, 0, 1], "radius": 2, "height": 12},
+    {"name": "result", "op": "cut", "target": "touching", "tool": "drill"}
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "counts_differ": "Open CASCADE keeps the contact edge and endpoints shared by its two solids. Arris keeps separate copies for each lump.",
+    "occt_odd_euler": "The two Open CASCADE solids share one edge and its endpoints.",
+    "occt_step_counts_differ": "Open CASCADE writes one copy of the contact edge and endpoints per solid in STEP.",
+    "genus": 1,
+    "counts": {
+      "vertices": 18,
+      "edges": 27,
+      "faces": 13,
+      "loops": 15,
+      "shells": 2,
+      "solids": 2
+    }
+  }
+}
