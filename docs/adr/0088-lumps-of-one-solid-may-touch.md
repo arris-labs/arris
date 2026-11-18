@@ -82,6 +82,9 @@ checker passes them.
    stay `NonManifold` until then; this ADR draws no arbitrary line between
    the two kinds of touch.
 
+   ADR-0090 implements the copies. A shared edge or vertex can belong to
+   distinct touching lumps, and contact within one lump is still refused.
+
 ### Contact ends at coincident caps
 
 Two externally tangent walls with flush caps can meet at a rim tangency

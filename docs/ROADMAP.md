@@ -964,8 +964,8 @@ the named cycle next in line.*
   bar with a boss tangent to each end, a plate whose arc is tangent inside a
   cylinder, a bore cut by a column tangent along four lines, an end disc
   tangent to a wall), and a ruling a hair off the seams builds. A frustum
-  and a box that touch at one point of a rim are refused `NonManifold` on
-  both sides of the seam, and two chamfers that use up the face between them
+  and a box that touch at one point of a rim fuse as two touching lumps on
+  both sides of the seam. Two chamfers that use up the face between them
   are refused `BlendTooLarge`. Open: a seam crossing a cap a few
   tolerances inside the rim (the cusp), a touch merged into a vertex, and
   `fuse_many` of a cylinder tangent inside a slab's side (backlog).
@@ -976,8 +976,11 @@ the named cycle next in line.*
   solid of touching lumps (ADR-0088, ADR-0089). The harness's torus-link,
   ball-knob and hinge pairs cut to their targets and have empty commons.
   A later fuse can cover the point of contact. A join that leaves the contact
-  exposed within one lump returns `TangentContact`. Next are contacts that
-  share topology (`docs/plans/touching-lumps-with-shared-topology.md`).
+  exposed within one lump returns `TangentContact`. Shared edges and
+  vertices are copied per shell for edge-touching boxes, the crossing
+  cylinders' cut, and both frustum–box rim contacts (ADR-0090). A later
+  bridge over the whole shared contact joins the lumps. A bridge that
+  leaves contact exposed within one lump returns `NonManifold`.
 - A body's tight bounds where a NURBS edge reaches them
   (`docs/ideas/tight-body-bounds.md`).
 - Beside the cycle, in the second plan slot: the nightly's open findings,

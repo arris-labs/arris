@@ -649,8 +649,8 @@ apart between the two tangent distances, some with a seam on a ruling or
 flush caps — and `crossing_pair` — equal radii crossing at 30° to 90°,
 each through the other, some with a seam through a crossing vertex, its
 `common` held to `16R³/(3 sin ψ)` and either `cut` to
-`InputReason::NonManifold`. `bar_cut` is the split-order property's operand
-(ADR-0009): a box cut by one or two slabs that cross it, drawn together
+`V(target) − V(common)` and two touching lumps. `bar_cut` is the split-order
+property's operand (ADR-0009): a box cut by one or two slabs that cross it, drawn together
 with a second set of slabs and a resized, re-posed box, so the same
 recipe is built twice under a parameter edit that never changes which
 entities bound which piece. `standing` draws three to five boxes and

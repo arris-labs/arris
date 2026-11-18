@@ -39,11 +39,11 @@ the scripts had 0 fillet refusals, and five nightly findings stayed open.
 2026-11-16 (ADR-0020). The cycle's exact batched classification, flat-edge
 classification and tangency fixes are done. Per-face surface properties
 shipped beside it in 0.11.0, followed by 0.11.1, the first release on PyPI.
-Solids that touch along a curve or at an isolated point fuse to one solid
-of touching lumps. The torus-link, ball-knob and hinge pairs cut to their
-targets and have empty commons (ADR-0088, ADR-0089). Draft, thicken and
-`region2` wait for the next named cycle.
-**Next:** `/plan touching-lumps-with-shared-topology` (`docs/ROADMAP.md` §C12 **In**).
+Solids that touch along a curve, at a point or through shared topology
+build as touching lumps. Each lump keeps its own contact edges and
+vertices (ADR-0088 to ADR-0090). Draft, thicken and `region2` wait for the
+next named cycle.
+**Next:** `/plan revolve-circle-meets-the-axis` (`docs/ROADMAP.md` §C12 **In**).
 
 ## Rules that are not derivable from the code
 
