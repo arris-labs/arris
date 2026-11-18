@@ -85,7 +85,8 @@
 
 Outside contributors work on a branch from a fork and propose the changelog bullet in the PR.
 The maintainer writes the `CHANGELOG.md` and `docs/adr/` edits at landing (ADR-0091).
-All outside PRs land through the maintainer's verified rebase. Code PRs need green `full-ci` first.
+All outside PRs land through the maintainer's rebase, with the static and test halves run on the final tip.
+Code PRs first need green `full-ci` on the merge of the pinned canonical base and reviewed PR head.
 `/review-pr <n> --land` authorizes pushing the verified tip to the PR head, then fast-forwarding and pushing `main`.
 Without PR edit rights, push the verified tip to `main` and close the PR with its landed commit ids.
 

@@ -20,16 +20,19 @@ GitHub merge button updates `main` without that local verification.
    The maintainer owns edits to `CHANGELOG.md` and `docs/adr/` at landing.
 2. PR CI runs the cheap jobs and `pr-fast` by default. The `full-ci`
    label enables the full suite, including the jobs that the local gate
-   does not run. Code PRs need green full CI before landing. The PR
-   semver job reports its verdict without blocking because any required
-   `Breaking` bullet is written at landing.
+   does not run. Before landing a code PR, the maintainer checks that
+   full CI passed on GitHub's merge commit with the pinned canonical
+   `main` tip and the reviewed PR head as its parents. The PR semver job
+   reports its verdict without blocking because any required `Breaking`
+   bullet is written at landing.
 3. The maintainer reviews with `/review-pr <n>`, checks the PR against
    the project rules and runs its regression tests on the merge base to
    confirm they fail without the fix. The maintainer reads the semver
    verdict when preparing the changelog bullet.
 4. To land, the maintainer uses `/review-pr <n> --land` to rebase onto
-   current `main`, include the changelog bullet and any required docs,
-   and verify the resulting tip with `tools/verify.sh`. With edit
+   the pinned `main`, include the changelog bullet and any required docs,
+   run the static half on the final rebased tree against that base, and
+   verify the same tip with `tools/verify.sh`. With edit
    rights, the maintainer pushes the verified commits to the PR head,
    then fast-forwards and pushes `main`, so GitHub records the PR as
    merged. Without edit rights, the maintainer pushes the verified tip

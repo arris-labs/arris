@@ -62,25 +62,47 @@ and branch. Follow [the git rules](../../rules/git.md#pull-requests) and
 ## Land with `--land`
 
 1. Confirm the reviewed PR head is still current and its blockers are
-   resolved. For a code PR, confirm the `full-ci` label is present and
-   the full CI run for that head finished with all blocking jobs green,
-   including the jobs enabled by the label. Read the advisory semver
-   job's verdict and use it when preparing the changelog. Wait for an
-   in-flight full run by the git rules before proceeding.
-2. Fetch canonical `main` again. Use a clean checkout, bring local `main`
-   to that tip by fast-forward if needed, and pause if local `main` has
-   unpublished commits. Create a temporary landing branch at the
-   reviewed head and rebase onto the fetched tip. Review the rebased diff
-   and repeat the relevant checks if conflict resolution changes it.
+   resolved. Fetch canonical `main` and pin its tip as `base`. For a
+   code PR, confirm the `full-ci` label is present. Find candidate runs
+   with `gh run list --repo arris-labs/arris --workflow ci.yml --event pull_request --commit "$reviewed"`,
+   where `reviewed` is the reviewed head SHA. Use the default checkout
+   log from the run's `reuse` or `fmt` job to confirm the PR's merge ref
+   and read the checked-out merge SHA. Run
+   `gh api "repos/arris-labs/arris/commits/$merge_sha" --jq '[.parents[].sha]'`
+   and require exactly `[base, reviewed]`, in that order. GitHub can list
+   the source SHA alone for a fork run, so it cannot establish the base.
+   Wait for an in-flight candidate by the git rules, then require every
+   blocking job to have passed on the matching run, including every job
+   and shard enabled by the label. Read that run's advisory semver
+   verdict for the changelog. If there is no matching full run, wait for
+   a new label event or a source update. Rerunning an older run keeps its
+   original merge SHA.
+2. Use a clean checkout, bring local `main` to `base` by fast-forward if
+   needed, and pause if local `main` has unpublished commits. Create a
+   temporary landing branch at the reviewed head and rebase onto `base`.
+   Review the rebased diff and repeat the relevant checks if conflict
+   resolution changes it.
    Amend the landing branch's last commit with any required documentation
    and ADRs and, for a consumer-facing change, the `CHANGELOG.md` bullet.
    Put an API break under `Unreleased` → `Breaking` with its migration.
    Follow the repo's normal hooks for the amendment.
-3. Pin the final landing SHA. Run [tools/verify.sh](../../../tools/verify.sh)
-   on it and require `tools/verify.sh --status <sha>` to report `pass`.
-   Check that the canonical base and PR head still match the pinned ones
-   before pushing. If either moved, reconcile the change and verify the
-   resulting tip before attempting the landing again.
+3. Pin the final commit as `landing`. Even after a clean rebase, run the
+   static half on that commit against `base`:
+
+   ```sh
+   tools/at-commit.sh "$landing" sh -ec '
+     tools/check-layers.sh
+     tools/check-tolerance-literals.sh --diff "$1"
+     cargo fmt --all -- --check
+     cargo clippy --workspace --all-targets -- -D warnings
+   ' sh "$base"
+   ```
+
+   Require it to pass. Run [tools/verify.sh](../../../tools/verify.sh) on
+   `landing` and require `tools/verify.sh --status "$landing"` to report
+   `pass`. Follow the git rules for both checks. Check that the canonical
+   base and PR head still match the pinned ones before pushing. If either
+   moved, restart from step 1 with the new pair.
 4. With maintainer edit rights, push that exact verified SHA to the PR's
    source branch on its fork first. Use an explicit
    `--force-with-lease=refs/heads/<branch>:<reviewed-sha>` with the refspec
