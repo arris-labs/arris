@@ -7,15 +7,23 @@
 //! `Internal`, never a body the checker refuses. At least half the draws
 //! of each family must build. A failure prints the shrunk case and the
 //! seed and becomes a fixture under `tests/fixtures/regression/`
-//! (`tests/fixtures/README.md` §Property-test failures).
+//! (`tests/fixtures/README.md` §Property-test failures). A separate family
+//! uses a point-touch fuse as the target of a through cut.
 
-use arris_check::{Level, check};
+use std::collections::BTreeSet;
+use std::f64::consts::PI;
+
+use arris_check::{Level, check, lumps};
 use arris_debug::prop::{self, tangent::TangentInside};
+use arris_debug::sample;
 use arris_debug::testing::{REL, close_to, fail, fitted_rel};
-use arris_debug::unmetered::{common, cut, fuse, mass_properties};
+use arris_debug::unmetered::{
+    common, cut, fuse, mass_properties, primitive_box, primitive_cylinder, transform,
+};
+use arris_math::{Axis, Point3, real};
 use arris_ops::OpError;
 use arris_topo::provenance::audit;
-use arris_topo::{Body, Model, Provenance};
+use arris_topo::{Body, EdgeId, Face, Model, Provenance, VertexId};
 use proptest::prelude::*;
 use std::cell::Cell;
 
@@ -80,6 +88,89 @@ impl Tally {
             self.asked.get()
         );
     }
+}
+
+arris_debug::prop_shards! {
+    /// A bore passes through the box of a ball-and-box point-touch fuse.
+    /// Its wall clears the touch and the entire ball in every pose.
+    cut_one_point_touching_lump [shard_0 shard_1 shard_2 shard_3]
+        ((radius, width, depth, height, bore, pose)) = (
+            prop::radius(0.6..=1.2),
+            prop::radius(2.1..=3.5),
+            prop::radius(0.8..=2.0),
+            prop::radius(0.5..=2.0),
+            prop::radius(0.1..=0.3),
+            prop::pose_in(5.0),
+        ) => {
+            let mut m = Model::default();
+            let ball = sample::sphere(&mut m, Point3::new(0.0, 0.0, radius), radius)
+                .map_err(fail)?;
+            let (plate, _) = primitive_box(&mut m, [-width, -depth, -height], [width, depth, 0.0])
+                .map_err(fail)?;
+            let (tool, _) = primitive_cylinder(
+                &mut m, Axis::z_at(Point3::new(1.6, 0.0, -height - 1.0)), bore, height + 2.0,
+            ).map_err(fail)?;
+            let (ball, _) = transform(&mut m, ball, &pose).map_err(fail)?;
+            let (plate, _) = transform(&mut m, plate, &pose).map_err(fail)?;
+            let (tool, _) = transform(&mut m, tool, &pose).map_err(fail)?;
+
+            let ball_surfaces = m.closure(ball).map_err(fail)?.surfaces;
+            let (target, _) = fuse(&mut m, plate, ball).map_err(fail)?;
+            prop_assert_eq!(lumps(&m, target).map_err(fail)?.len(), 2);
+            let mut ball_faces = Vec::new();
+            for face in m.closure(target).map_err(fail)?.faces {
+                if ball_surfaces.contains(&m.face(face).map_err(fail)?.surface()) {
+                    ball_faces.push(face);
+                }
+            }
+            prop_assert!(!ball_faces.is_empty());
+
+            let (result, provenance) = cut(&mut m, target, tool).map_err(fail)?;
+            let volume = 4.0 * width * depth * height + 4.0 * PI * real::powi(radius, 3) / 3.0;
+            let expected = volume - PI * bore * bore * height;
+            let report = check(&m, result, Level::Full);
+            prop_assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+            audit(&m, &[target, tool], result, &provenance).map_err(fail)?;
+            let measured = mass_properties(&m, result).map_err(fail)?.volume;
+            prop_assert!(close_to(measured, expected, expected, REL), "{measured} != {expected}");
+
+            let found = lumps(&m, result).map_err(fail)?;
+            let [a, b] = found.as_slice() else {
+                return Err(fail(format!("expected two lumps, found {}", found.len())));
+            };
+            prop_assert!(a.voids.is_empty() && b.voids.is_empty());
+            let a = m.shell(a.outer.id).map_err(fail)?.faces();
+            let b = m.shell(b.outer.id).map_err(fail)?.faces();
+            let untouched = |faces: &[Face]| {
+                let mut ids: Vec<_> = faces.iter().map(|face| face.id).collect();
+                ids.sort();
+                ids == ball_faces
+            };
+            prop_assert!(untouched(a) ^ untouched(b), "the ball's face ids changed");
+            let (edges_a, vertices_a) = boundary_ids(&m, a)?;
+            let (edges_b, vertices_b) = boundary_ids(&m, b)?;
+            prop_assert!(edges_a.is_disjoint(&edges_b), "the lumps share edges");
+            prop_assert!(vertices_a.is_disjoint(&vertices_b), "the lumps share vertices");
+            Ok(())
+        }
+}
+
+fn boundary_ids(
+    m: &Model,
+    faces: &[Face],
+) -> Result<(BTreeSet<EdgeId>, BTreeSet<VertexId>), TestCaseError> {
+    let mut edges = BTreeSet::new();
+    let mut vertices = BTreeSet::new();
+    for face in faces {
+        let face = m.face(face.id).map_err(fail)?;
+        for coedge in face.loops().iter().flat_map(|l| l.coedges()) {
+            if edges.insert(coedge.edge()) {
+                let edge = m.edge(coedge.edge()).map_err(fail)?;
+                vertices.extend([edge.start(), edge.end()]);
+            }
+        }
+    }
+    Ok((edges, vertices))
 }
 
 /// The named exclusion of the first property: the touching ruling within

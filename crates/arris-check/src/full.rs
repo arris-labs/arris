@@ -55,24 +55,26 @@ pub(crate) enum Meeting {
     /// of coincident regions are violations: two faces of two shells,
     /// whose lumps may touch (B1, ADR-0088).
     Crossing,
-    /// Only touching curves, for the boolean's inherited contacts.
-    TouchingCurves,
+    /// Only touching curves and points, for the boolean's inherited
+    /// contacts. Isolated points may lie on the face boundary.
+    Touching,
 }
 
 impl Meeting {
-    fn holds_curve(self, kind: MeetKind) -> bool {
+    fn holds(self, kind: MeetKind) -> bool {
         match self {
             Self::Any => true,
             Self::Crossing => kind == MeetKind::Crossing,
-            Self::TouchingCurves => kind == MeetKind::Touch,
+            Self::Touching => kind == MeetKind::Touch,
         }
     }
 }
 
 /// The first supplied pair of faces of `body` that touch along a curve
-/// interior to both, away from shared edges, using S5's geometry test.
-/// Used by booleans when formerly separate shells join. An undecided pair
-/// does not establish a touch. Returns an error if `body` does not resolve.
+/// interior to both or at an isolated point on both trims, away from
+/// shared topology. Used by booleans when formerly separate shells
+/// contribute to one lump. An undecided pair does not establish a touch.
+/// Returns an error if `body` does not resolve.
 #[doc(hidden)]
 pub fn first_touching_face_pair(
     model: &Model,
@@ -90,7 +92,7 @@ pub fn first_touching_face_pair(
     Ok(pairs
         .iter()
         .copied()
-        .find(|&[a, b]| checker.faces_meet(a, b, &boxes, Meeting::TouchingCurves) == Ok(true)))
+        .find(|&[a, b]| checker.faces_meet(a, b, &boxes, Meeting::Touching) == Ok(true)))
 }
 
 impl<'m> Checker<'m> {
@@ -368,22 +370,25 @@ impl<'m> Checker<'m> {
                 Err(_) => return Err((sa.kind(), sb.kind())),
                 Ok(SurfaceIntersection::Empty) => false,
                 Ok(SurfaceIntersection::Coincident) => {
-                    meeting != Meeting::TouchingCurves
-                        && self.regions_overlap(a, sa, b, sb, tolerance)
+                    meeting != Meeting::Touching && self.regions_overlap(a, sa, b, sb, tolerance)
                 }
                 // Crossing or touching, every curve and every point is held to
                 // the one rule, but for the touches `meeting` admits.
                 Ok(SurfaceIntersection::Meets { curves, points }) => {
                     curves.iter().any(|c| {
-                        meeting.holds_curve(c.kind)
+                        meeting.holds(c.kind)
                             && self.curve_is_interior_to_both(
                                 a, sa, b, sb, &c.curve, query, meeting, c.kind,
                             )
-                    }) || (meeting != Meeting::TouchingCurves
-                        && points.iter().any(|p| {
-                            meeting.holds_curve(p.kind)
-                                && self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
-                        }))
+                    }) || points.iter().any(|p| {
+                        meeting.holds(p.kind)
+                            && self.isolated_point_meets(
+                                [(a, sa), (b, sb)],
+                                p.point,
+                                tolerance,
+                                meeting,
+                            )
+                    })
                 }
             },
         )
@@ -461,17 +466,41 @@ impl<'m> Checker<'m> {
         };
         Ok(trace.circles().iter().any(|c| {
             let kind = kind(c.tangent);
-            meeting.holds_curve(kind)
+            meeting.holds(kind)
                 && self.curve_is_interior_to_both(a, sa, b, sb, &c.circle, query, meeting, kind)
-        }) || (meeting != Meeting::TouchingCurves
-            && (trace
+        }) || (meeting.holds(MeetKind::Crossing)
+            && trace
                 .branches()
                 .iter()
-                .any(|branch| interior(branch.domain(), &|t| branch.point(t)))
-                || trace.points().iter().any(|p| {
-                    meeting.holds_curve(kind(p.isolated))
-                        && self.point_is_interior_to_both(a, sa, b, sb, p.point, tolerance)
-                }))))
+                .any(|branch| interior(branch.domain(), &|t| branch.point(t))))
+            || trace.points().iter().any(|p| {
+                meeting.holds(kind(p.isolated))
+                    && self.isolated_point_meets([(a, sa), (b, sb)], p.point, tolerance, meeting)
+            }))
+    }
+
+    /// B1 and S5 test face interiors. A boolean's inherited isolated
+    /// contact also survives on a seam or pole that belongs to just one
+    /// of the participating faces.
+    fn isolated_point_meets(
+        &self,
+        [(a, sa), (b, sb)]: [(FaceId, &Surface); 2],
+        point: Point3,
+        tolerance: f64,
+        meeting: Meeting,
+    ) -> bool {
+        if meeting == Meeting::Touching {
+            let on = |face| {
+                self.domains
+                    .get(&face)?
+                    .entity_at_contact(self.model, point)
+                    .ok()
+                    .flatten()
+            };
+            matches!([on(a), on(b)], [Some(a), Some(b)] if a != b)
+        } else {
+            self.point_is_interior_to_both(a, sa, b, sb, point, tolerance)
+        }
     }
 
     /// `true` when an isolated meeting point of the two surfaces — a
@@ -762,7 +791,7 @@ impl<'m> Checker<'m> {
                 // A seam used twice by this face is interior in 3D. The
                 // boolean's contact test counts it even though the chart
                 // puts it on the boundary.
-                Side::Boundary if meeting == Meeting::TouchingCurves => {
+                Side::Boundary if meeting == Meeting::Touching => {
                     let Ok(Some(on)) = domain.boundary_entity(self.model, point) else {
                         return false;
                     };

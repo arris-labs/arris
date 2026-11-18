@@ -199,6 +199,38 @@ fn a_plate_covering_the_entire_contact_can_join_the_lumps() {
 }
 
 #[test]
+fn a_bridge_leaving_the_point_contact_exposed_names_both_source_faces() {
+    let dir = fixtures::corpus_root().join("boolean/ball-on-disc-fuse");
+    let mut chain = corpus::chain(&dir, "default").unwrap();
+    let body = chain.result().unwrap();
+    let ball = chain.steps["ball"].body;
+    let stem = chain.steps["stem"].body;
+    let m = &mut chain.model;
+    let bridge = primitive_box(m, [0.5, -0.25, -2.25], [0.8, 0.25, -1.5], NONE)
+        .unwrap()
+        .0;
+    let poles = [Point3::new(0.0, 0.0, -2.0)];
+    let disc = classify_points(m, stem, &poles, NONE).unwrap();
+    let [Some(On(disc))] = disc.as_slice() else {
+        panic!("{disc:?}");
+    };
+    let sphere = m.faces(ball).unwrap()[0];
+    let expected = BTreeSet::from([*disc, Shape::from(sphere)]);
+    let before = native::to_bytes(m).unwrap();
+    let error = fuse(m, body, bridge, NONE).unwrap_err();
+    let OpError::Degenerate {
+        reason: Reason::Boolean(BooleanReason::TangentContact),
+        entities,
+    } = error
+    else {
+        panic!("{error:?}");
+    };
+    assert_eq!(entities.len(), 2);
+    assert_eq!(entities.into_iter().collect::<BTreeSet<_>>(), expected);
+    assert_eq!(native::to_bytes(m).unwrap(), before);
+}
+
+#[test]
 fn a_box_over_the_contact_can_clip_one_touching_lump() {
     let (mut m, body) = touching_cylinders();
     // The box contains the shared ruling and removes half a unit from the

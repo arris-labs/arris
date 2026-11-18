@@ -255,6 +255,10 @@ corpus_tests! {
     /// A ball and a cylinder end disc touch at the ball's pole, with the
     /// disc centred or offset. The fuse has two lumps.
     boolean_ball_on_disc_fuse => run "boolean/ball-on-disc-fuse";
+    /// A bridge joins the ball and stem away from the pole, leaving a pinch.
+    boolean_ball_on_disc_exposed_join => run "boolean/ball-on-disc-exposed-join";
+    /// A bridge covering the contact puts the pole inside the joined lump.
+    boolean_ball_on_disc_covered_join => run "boolean/ball-on-disc-covered-join";
     /// Cutting the disc's stem with the ball leaves the stem whole.
     boolean_ball_on_disc_cut_stem => run "boolean/ball-on-disc-cut-stem";
     /// Cutting the ball with the disc's stem leaves the ball whole.

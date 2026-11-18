@@ -12,6 +12,9 @@ into its version (ADR-0027).
   point can fuse as two lumps of one solid. Cutting in either order keeps
   the target, and the common returns `Empty`. Cutting a spherical cavity
   that touches its outer wall at a point returns `TangentContact`.
+  A later fuse can join point-touching lumps by covering the contact.
+  If a join leaves the contact exposed, `TangentContact` names both
+  source faces.
 
 - Solids touching from the outside along a curve can fuse to one solid
   with two lumps. Each lump keeps its own edges and vertices. A fuse that

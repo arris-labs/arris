@@ -939,8 +939,9 @@ fn refusal(body: Body, reason: BooleanReason) -> OpError {
 /// `docs/DATA-MODEL.md` §Provenance). A supported tangent contact along a
 /// curve or at an isolated point between separate lumps preserves both
 /// with their own edges and vertices (ADR-0088, ADR-0089).
-/// A contact that survives within one lump is
-/// refused as [`crate::BooleanReason::TangentContact`]. Tolerances follow
+/// A contact that survives within one lump, including one inherited
+/// from an operand, is refused as [`crate::BooleanReason::TangentContact`].
+/// A join that covers the contact can build. Tolerances follow
 /// the growth rule, as [`cut`]. Two faces on one surface are the flush
 /// case: a piece of `a`'s face lying on `b`'s is kept, once and in `a`'s
 /// orientation, exactly when the two effective normals agree, and

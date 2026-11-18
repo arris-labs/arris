@@ -90,7 +90,7 @@ mechanical. **[2]** careful, a geometric or numeric case within the design.
   the ball on a plate, sphere against a sphere's seam, and cone apex on a
   face from BACKLOG. Check `interference` in both orders against the
   oracle's point or curve dimension.
-- [ ] Step 4 **[3]** — Extend the surviving-region rule to a later fuse
+- [x] Step 4 **[3]** — Extend the surviving-region rule to a later fuse
   that joins a point-touch pair away from the touch. Hold the named refusal while a
   join covering the touch builds. Add oracle-backed fixtures and a
   seeded property using a point-touch fuse as an operand: vary dimensions
@@ -150,3 +150,11 @@ mechanical. **[2]** careful, a geometric or numeric case within the design.
   point and no section edge, so ADR-0089's isolated-touch retry does not
   apply. The oracle reports a point in both orders. The regression and
   remaining work are recorded in BACKLOG.
+- **Settled in step 4:** Open CASCADE builds one solid for each bridge
+  and classifies the inherited contact point on the boundary for the
+  off-centre bridge and inside for the covering bridge. Arris refuses the
+  exposed point as `TangentContact`, naming the ball and disc faces.
+  The covering bridge builds with the oracle's counts, measures and probe
+  classes. In the seeded through-cut property, face-id retention is
+  measured from the fused operand, whose ball face may be rebuilt during
+  the initial fuse in a rigid pose.

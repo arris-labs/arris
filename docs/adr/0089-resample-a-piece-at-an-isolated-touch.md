@@ -4,7 +4,7 @@
 - Plan: `touching-lumps-at-a-point` step 1
 - Follows: ADR-0004 (classify trimmed pieces), ADR-0030 (metering) and
   ADR-0088 (touching lumps)
-- Extends: ADR-0088's boolean rule for surviving curve contacts to new
+- Extends: ADR-0088's boolean rule for surviving curve contacts to
   isolated point contacts
 
 ## Context
@@ -49,6 +49,12 @@ point between distinct lumps is allowed by ADR-0088. For example, the
 outside point contact of the ball and disc builds with two independent
 shells, while a spherical cavity touching its outer plane is refused.
 A trim that removes the touch leaves no contact to refuse.
+The same test applies to touches inherited from two shells of one
+operand, whose faces the pave does not compare. If those shells contribute
+pieces to one result lump, the checker intersects the selected faces and
+the boolean maps a surviving contact back to the source faces. A bridge
+can fuse the ball and disc when it encloses the pole. A bridge joining
+them off-centre leaves the pole exposed and returns `TangentContact`.
 
 ## Consequences
 

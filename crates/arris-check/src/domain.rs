@@ -367,4 +367,24 @@ impl<'m> FaceDomain<'m> {
     pub fn boundary_entity(&self, model: &Model, point: Point3) -> Result<Option<Shape>, NotFound> {
         boundary_entity(model, self.edges.iter().copied(), point)
     }
+
+    /// The vertex, edge or face that contains a contact point. Read the
+    /// boundary first so chart seams and poles need no surface projection.
+    ///
+    /// Errors: a face or boundary reference that does not resolve.
+    #[doc(hidden)]
+    pub fn entity_at_contact(
+        &self,
+        model: &Model,
+        point: Point3,
+    ) -> Result<Option<Shape>, NotFound> {
+        if let Some(boundary) = self.boundary_entity(model, point)? {
+            return Ok(Some(boundary));
+        }
+        let tolerance = model.face(self.face)?.tolerance();
+        Ok(self.surface.project(point).ok().and_then(|p| {
+            (p.distance <= tolerance && self.side(p.uv).0 != Side::Outside)
+                .then(|| Shape::new(self.face, Orientation::Forward))
+        }))
+    }
 }

@@ -200,6 +200,9 @@ impl Model {
     /// The union of `a` and `b`. Errors as for `cut`.
     /// Supported curve and point contacts can join two operands as two
     /// lumps of one solid, each with its own edges and vertices.
+    /// A later union can join those lumps by covering the contact.
+    /// If the union leaves the contact exposed within one lump, it
+    /// returns a degeneracy error naming both source faces.
     ///
     /// ```python
     /// import arris

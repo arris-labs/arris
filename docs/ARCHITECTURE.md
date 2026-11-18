@@ -822,11 +822,13 @@ the other's are in, the operation is `Degenerate` with
 side face, a ball in a bore of its radius, whose cavity touches the wall
 round it — because the lump's material would touch itself, which no manifold
 `Solid` carries (ADR-0004). If two shells from one operand contribute faces
-to the same result shell, the surviving face regions are checked for an
-inherited curve touch, using its intersections with the face trims to
-subdivide the curve. The same refusal names the two operand faces when
-the result still contains the slit. A joining piece that covers the contact
-can fuse the shells. A touch from outside in a `cut` or a `common` passes:
+to the same result lump, the checker tests those output trims for
+inherited touches. It subdivides a contact curve at its intersections with
+the face trims. For an isolated point, it checks both trims, including any
+seam or pole at the contact. A touch away from shared topology returns the
+same refusal naming the two operand faces. A joining piece that covers
+the contact can fuse the shells. A touch from outside in a `cut` or a
+`common` passes:
 the tool's piece is dropped, the target's kept whole, and the ruling is no
 edge — Open
 CASCADE imprints it, and `boolean/tangent-outside-cut` states that

@@ -7,8 +7,10 @@ boolean/ball-offset-drill-cut: 26354
 boolean/ball-on-apex-common: 11
 boolean/ball-on-disc-cavity: refused
 boolean/ball-on-disc-common: refused
+boolean/ball-on-disc-covered-join: 5138
 boolean/ball-on-disc-cut-ball: 16
 boolean/ball-on-disc-cut-stem: 16
+boolean/ball-on-disc-exposed-join: refused
 boolean/ball-on-disc-fuse: 16
 boolean/ball-on-disc-gap: 8
 boolean/ball-on-disc-overlap: 2343

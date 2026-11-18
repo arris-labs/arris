@@ -11,7 +11,6 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::domain::FaceDomain;
 use arris_check::{Classification, Classifier, ClassifyError, first_touching_face_pair, lumps};
-use arris_geom::region2::Side;
 use arris_geom::{Curve, GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
 use arris_math::{Aabb, DisjointSets, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
 use arris_topo::builder::Builder;
@@ -249,6 +248,7 @@ struct PointContact {
 /// isolated-contact check on the resulting face trims.
 struct Selected {
     shells: Vec<Vec<usize>>,
+    lump_of: Vec<usize>,
     plan: Plan,
     point_contacts: Vec<PointContact>,
 }
@@ -1849,6 +1849,7 @@ impl<'m> Build<'m> {
         let plan = self.assembly(&shells)?;
         Ok(Selected {
             shells,
+            lump_of,
             plan,
             point_contacts,
         })
@@ -1889,6 +1890,7 @@ fn one_result(
     let mut b = Build::new(m, i, op, operands, geometry);
     let Selected {
         shells,
+        lump_of,
         plan,
         point_contacts,
     } = b.select_and_plan(meter)?;
@@ -1924,7 +1926,9 @@ fn one_result(
         .zip(slots.faces.iter().flatten().map(|&slot| built.faces[&slot]))
         .collect();
     point_slits(m, &kept, &out_faces, point_contacts, meter)?;
-    inherited_slit(m, built.body, operands, &kept, &shells, &out_faces)?;
+    inherited_contact(
+        m, built.body, operands, &kept, &shells, &lump_of, &out_faces,
+    )?;
     let vertex_id = |v: VRef| -> Option<VertexId> {
         match v {
             VRef::Existing(id) if plan.kept_vertices.contains(&id) => Some(id),
@@ -1996,7 +2000,7 @@ fn point_slits(
                     slot.insert(FaceDomain::of(model, face, tolerance)?)
                 }
             };
-            on[i] = face_at_point(model, domain, point)?;
+            on[i] = domain.entity_at_contact(model, point)?;
         }
         if let [Some(a), Some(b)] = on
             && a != b
@@ -2010,41 +2014,25 @@ fn point_slits(
     Ok(())
 }
 
-/// An output face or its boundary at a contact point. The boundary is
-/// read first both for shared topology and for chart seams and poles.
-fn face_at_point(
-    model: &Model,
-    domain: &FaceDomain<'_>,
-    point: Point3,
-) -> Result<Option<Shape>, OpError> {
-    if let Some(boundary) = domain.boundary_entity(model, point)? {
-        return Ok(Some(boundary));
-    }
-    Ok(domain.surface().project(point).ok().and_then(|p| {
-        (p.distance <= domain.tolerance() && domain.side(p.uv).0 != Side::Outside)
-            .then(|| forward(domain.face()))
-    }))
-}
-
 /// A contact may lie between two shells of one operand, whose faces
 /// the pave does not compare. When their surviving pieces join into one
-/// shell, test the built face regions: the joining material may have
-/// covered the contact or left a slit in the shell.
-fn inherited_slit(
+/// lump, test the built face regions for contacts the operation leaves
+/// exposed.
+fn inherited_contact(
     m: &Model,
     body: Body,
     operands: &Operands,
     kept: &[Kept],
     shells: &[Vec<usize>],
+    lump_of: &[usize],
     out_faces: &BTreeMap<usize, FaceId>,
 ) -> Result<(), OpError> {
     if operands.shells.iter().all(|shells| shells.len() < 2) {
         return Ok(());
     }
-    let mut pairs = Vec::new();
     let mut source = BTreeMap::new();
-    for shell in shells {
-        let mut by_operand = vec![BTreeMap::<ShellId, Vec<FaceId>>::new(); operands.bodies.len()];
+    let mut by_lump_and_operand = BTreeMap::<_, BTreeMap<ShellId, Vec<FaceId>>>::new();
+    for (shell, &lump) in shells.iter().zip(lump_of) {
         for &k in shell {
             let piece = &kept[k];
             if operands.shells[piece.side].len() < 2 {
@@ -2063,19 +2051,22 @@ fn inherited_slit(
                     what: "a kept face's output id",
                 }))?;
             source.insert(output, piece.face);
-            by_operand[piece.side]
+            by_lump_and_operand
+                .entry((lump, piece.side))
+                .or_default()
                 .entry(input_shell)
                 .or_default()
                 .push(output);
         }
-        for groups in &by_operand {
-            for (shell, faces) in groups {
-                for (_, other_faces) in
-                    groups.range((std::ops::Bound::Excluded(shell), std::ops::Bound::Unbounded))
-                {
-                    for &a in faces {
-                        pairs.extend(other_faces.iter().map(|&b| [a, b]));
-                    }
+    }
+    let mut pairs = Vec::new();
+    for groups in by_lump_and_operand.values() {
+        for (shell, faces) in groups {
+            for (_, other_faces) in
+                groups.range((std::ops::Bound::Excluded(shell), std::ops::Bound::Unbounded))
+            {
+                for &a in faces {
+                    pairs.extend(other_faces.iter().map(|&b| [a, b]));
                 }
             }
         }

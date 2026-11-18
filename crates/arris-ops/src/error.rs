@@ -310,7 +310,8 @@ pub enum BooleanReason {
     Empty,
     /// Two faces of *one lump* would touch along a curve interior to both
     /// or at an isolated point away from shared topology, as with a
-    /// cavity tangent to an outer wall. Also used when a section curve
+    /// cavity tangent to an outer wall or a join that leaves an operand's
+    /// contact exposed. Also used when a section curve
     /// is tangent to a loop edge at a vertex, or the surviving pieces
     /// of a curve contact cannot be separated by lump. Contacts between
     /// distinct lumps can build (ADR-0088, ADR-0089).
