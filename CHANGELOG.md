@@ -8,6 +8,11 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- Solids that meet along a shared edge can fuse into touching lumps.
+  Each lump keeps its own copy of the contact edge and endpoints, and
+  provenance records every copy. A shared edge within one lump still
+  returns `NonManifold`.
+
 - A ball touching a cylinder's end disc or a torus touching a box at a
   point can fuse as two lumps of one solid. Cutting in either order keeps
   the target, and the common returns `Empty`. Cutting a spherical cavity

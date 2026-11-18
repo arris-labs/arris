@@ -96,7 +96,7 @@ algorithm whose robustness has to be established here).
   give one shell with both pairs and are refused `NonManifold` naming the
   edge; and a tie is refused. The step still ends `NonManifold` on the
   shared entity, since copies come in step 4.
-- [ ] Step 4 **[2]** — Copies per shell, provenance, and the one-lump
+- [x] Step 4 **[2]** — Copies per shell, provenance, and the one-lump
   refusal (deltas 2–4). `edge-touching-fuse` builds, with `counts_differ`
   and a re-blessed dump. The edge half of
   `boxes_touching_along_an_edge_or_at_a_corner_are_non_manifold` becomes
@@ -159,3 +159,8 @@ algorithm whose robustness has to be established here).
 2. *Settled in step 3.* The radial order uses `Precision::angular_tolerance`
    to decide ties. The rays come from local unit normals and the unit edge
    tangent, so the threshold has no dependence on the edge's trim length.
+3. *Settled in step 4.* The wedge fixture matches three source edges
+   to one common-block representative. A face-boundary check accepts
+   that representative when two of the matched edges come from later
+   operands. Each source still gets its own same-parameter pcurves on
+   the representative before the build pairs the uses.

@@ -1,5 +1,5 @@
 {
-  "description": "box [0,0,0]–[10,10,10] ∪ box [10,10,0]–[20,20,10], touching along the edge x = 10, y = 10: two lumps sharing an edge of four faces, which a manifold solid does not hold — Arris refuses with OpError::Degenerate and Reason::NonManifold naming the edge, Open CASCADE builds a compound of two solids sharing it (ADR-0006)",
+  "description": "box [0,0,0]–[10,10,10] ∪ box [10,10,0]–[20,20,10], touching along the edge x = 10, y = 10: two touching lumps, each with its own copy of the contact edge and its endpoints (ADR-0090)",
   "steps": [
     {"name": "a", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
     {"name": "b", "op": "box", "min": [10, 10, 0], "max": [20, 20, 10]},
@@ -8,9 +8,12 @@
   "result": "result",
   "probes": [],
   "analytic": {
-    "expect_error": "non-manifold",
+    "counts_differ": "Open CASCADE returns two solids sharing the contact edge and endpoints. Arris returns one solid with a shell and separate contact topology for each lump.",
+    "occt_odd_euler": "The two Open CASCADE solids share one edge and its endpoints.",
+    "occt_step_counts_differ": "Open CASCADE writes the contact once per solid in STEP, with 16 vertices and 24 edges instead of 14 and 23 in memory.",
+    "genus": 0,
     "volume": "2 * 10^3",
     "area": "2 * 6 * 10^2",
-    "counts": {"vertices": 14, "edges": 23, "faces": 12, "loops": 12, "shells": 2, "solids": 2}
+    "counts": {"vertices": 16, "edges": 24, "faces": 12, "loops": 12, "shells": 2, "solids": 2}
   }
 }

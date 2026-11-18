@@ -1078,20 +1078,20 @@ PipeElbow Radius cut -4: generic
 PipeElbow Radius cut +4: INTERNAL Geometry(the section of the torus surface and the cylinde)
 PipeElbow Radius cut -16: generic
 PipeElbow Radius cut +16: generic
-EdgeOnEdge Offset fuse +0: refused NonManifold
+EdgeOnEdge Offset fuse +0: body
 EdgeOnEdge Offset fuse -0.25: flush
 EdgeOnEdge Offset fuse +0.25: flush
 EdgeOnEdge Offset fuse -0.5: flush
 EdgeOnEdge Offset fuse +0.5: flush
-EdgeOnEdge Offset fuse -1: flush
+EdgeOnEdge Offset fuse -1: refused NonManifold
 EdgeOnEdge Offset fuse +1: refused TangentContact
-EdgeOnEdge Offset fuse -1.5: generic
+EdgeOnEdge Offset fuse -1.5: flush
 EdgeOnEdge Offset fuse +1.5: refused TangentContact
-EdgeOnEdge Offset fuse -2: generic
+EdgeOnEdge Offset fuse -2: flush
 EdgeOnEdge Offset fuse +2: refused TangentContact
-EdgeOnEdge Offset fuse -4: generic
+EdgeOnEdge Offset fuse -4: flush
 EdgeOnEdge Offset fuse +4: generic
-EdgeOnEdge Offset fuse -16: generic
+EdgeOnEdge Offset fuse -16: flush
 EdgeOnEdge Offset fuse +16: generic
 EdgeOnEdge Offset common +0: refused Empty
 EdgeOnEdge Offset common -0.25: flush
@@ -1123,17 +1123,17 @@ EdgeOnEdge Offset cut -4: flush
 EdgeOnEdge Offset cut +4: generic
 EdgeOnEdge Offset cut -16: flush
 EdgeOnEdge Offset cut +16: generic
-EdgeOnEdge Tilt fuse +0: refused NonManifold
-EdgeOnEdge Tilt fuse -0.25: flush
-EdgeOnEdge Tilt fuse +0.25: flush
-EdgeOnEdge Tilt fuse -0.5: flush
-EdgeOnEdge Tilt fuse +0.5: flush
-EdgeOnEdge Tilt fuse -1: flush
-EdgeOnEdge Tilt fuse +1: flush
-EdgeOnEdge Tilt fuse -1.5: flush
-EdgeOnEdge Tilt fuse +1.5: flush
-EdgeOnEdge Tilt fuse -2: flush
-EdgeOnEdge Tilt fuse +2: flush
+EdgeOnEdge Tilt fuse +0: body
+EdgeOnEdge Tilt fuse -0.25: refused NonManifold
+EdgeOnEdge Tilt fuse +0.25: refused NonManifold
+EdgeOnEdge Tilt fuse -0.5: refused NonManifold
+EdgeOnEdge Tilt fuse +0.5: refused NonManifold
+EdgeOnEdge Tilt fuse -1: refused NonManifold
+EdgeOnEdge Tilt fuse +1: refused NonManifold
+EdgeOnEdge Tilt fuse -1.5: refused NonManifold
+EdgeOnEdge Tilt fuse +1.5: refused NonManifold
+EdgeOnEdge Tilt fuse -2: refused NonManifold
+EdgeOnEdge Tilt fuse +2: refused NonManifold
 EdgeOnEdge Tilt fuse -4: PANIC L4
 EdgeOnEdge Tilt fuse +4: PANIC L4
 EdgeOnEdge Tilt fuse -16: generic

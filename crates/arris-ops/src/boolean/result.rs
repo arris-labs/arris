@@ -315,6 +315,17 @@ struct Build<'m> {
     outside: Vec<bool>,
 }
 
+fn non_manifold(entities: impl IntoIterator<Item = Shape>) -> OpError {
+    OpError::Degenerate {
+        entities: entities
+            .into_iter()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect(),
+        reason: Reason::Input(InputReason::NonManifold),
+    }
+}
+
 impl<'m> Build<'m> {
     fn side_of_vertex(&self, v: VertexId) -> usize {
         self.vertices
@@ -1370,54 +1381,78 @@ impl<'m> Build<'m> {
                 },
             });
         }
-        let (shells, contacts) = self.shell_components()?;
-        // Assembly still requires separate topology at a shared contact.
-        let mut shared: BTreeSet<Shape> = contacts
-            .into_iter()
-            .flat_map(|e| self.edge_entities(e))
-            .collect();
-        if shared.is_empty() {
-            let mut shell_at: BTreeMap<VRef, usize> = BTreeMap::new();
-            for (shell, pieces) in shells.iter().enumerate() {
-                let edges = pieces
-                    .iter()
-                    .filter_map(|&k| self.kept.get(k))
-                    .flat_map(|p| p.loops.iter().flatten())
-                    .map(|u| u.edge);
-                for v in edges.flat_map(|e| self.edge_ends(e)).flatten() {
-                    match shell_at.get(&v) {
-                        Some(&s) if s != shell => shared.extend(self.vertex_entities(v)),
-                        Some(_) => {}
-                        None => {
-                            shell_at.insert(v, shell);
-                        }
-                    }
+        let (shells, contact_edges) = self.shell_components()?;
+        if shells.len() > 1 || !contact_edges.is_empty() {
+            self.check_shared_contacts(&shells, None)?;
+        }
+        // A manifold vertex has one fan of faces in its shell, so a
+        // disconnected fan within the same shell is a pinch (ADR-0022).
+        for shell in &shells {
+            if let Some(v) = self.pinched(shell) {
+                return Err(non_manifold(self.vertex_entities(v)));
+            }
+        }
+        Ok(shells)
+    }
+
+    /// Each contact edge has two uses in any one shell. The contact's
+    /// shells must also belong to distinct lumps, once those are known.
+    fn check_shared_contacts(
+        &self,
+        shells: &[Vec<usize>],
+        lump_of: Option<&[usize]>,
+    ) -> Result<(), OpError> {
+        let mut edges = BTreeMap::<ERef, BTreeMap<usize, usize>>::new();
+        for (shell, pieces) in shells.iter().enumerate() {
+            for u in pieces
+                .iter()
+                .filter_map(|&k| self.kept.get(k))
+                .flat_map(|piece| piece.loops.iter().flatten())
+            {
+                *edges.entry(u.edge).or_default().entry(shell).or_default() += 1;
+            }
+        }
+
+        let mut vertices = BTreeMap::<VRef, BTreeMap<usize, bool>>::new();
+        for (edge, owners) in edges {
+            let shared = owners.len() > 1;
+            let mut lumps = BTreeSet::new();
+            for (shell, uses) in owners {
+                if uses > 2
+                    || lump_of
+                        .and_then(|lumps| lumps.get(shell))
+                        .is_some_and(|lump| !lumps.insert(lump))
+                {
+                    return Err(non_manifold(self.edge_entities(edge)));
+                }
+                for v in self.edge_ends(edge).into_iter().flatten() {
+                    *vertices.entry(v).or_default().entry(shell).or_default() |= shared;
                 }
             }
         }
-        if !shared.is_empty() {
-            return Err(OpError::Degenerate {
-                entities: shared.into_iter().collect(),
-                reason: Reason::Input(InputReason::NonManifold),
-            });
+
+        let mut refused = BTreeSet::new();
+        for (vertex, owners) in vertices {
+            if owners.len() < 2 {
+                continue;
+            }
+            let mut lumps = BTreeSet::new();
+            for (shell, on_shared_edge) in owners {
+                // Isolated point contacts are enabled in a separate step.
+                if !on_shared_edge
+                    || lump_of
+                        .and_then(|lumps| lumps.get(shell))
+                        .is_some_and(|lump| !lumps.insert(lump))
+                {
+                    refused.extend(self.vertex_entities(vertex));
+                    break;
+                }
+            }
         }
-        // One shell touching itself at a vertex is the same statement: the
-        // faces round the vertex close into more than one fan — a wall
-        // left two pieces that meet only at a singular point of the
-        // section, pinched between a drill's two exits — which no
-        // manifold `Solid` holds (ADR-0022, the pinch).
-        if let Some(v) = self.pinched() {
-            return Err(OpError::Degenerate {
-                entities: self
-                    .vertex_entities(v)
-                    .into_iter()
-                    .collect::<BTreeSet<_>>()
-                    .into_iter()
-                    .collect(),
-                reason: Reason::Input(InputReason::NonManifold),
-            });
+        if !refused.is_empty() {
+            return Err(non_manifold(refused));
         }
-        Ok(shells)
+        Ok(())
     }
 
     /// Connect face pieces across shared edges, pairing uses across material
@@ -1622,7 +1657,7 @@ impl<'m> Build<'m> {
     /// vertex and the next leaving it, in one loop of one piece — joined
     /// wherever two share an edge piece. A manifold vertex's corners are
     /// one fan, a disc round it; `None` when every vertex's are.
-    fn pinched(&self) -> Option<VRef> {
+    fn pinched(&self, shell: &[usize]) -> Option<VRef> {
         let ends = |u: &PieceUse| {
             let [a, b] = self.edge_ends(u.edge)?;
             Some(if u.orientation.is_reversed() {
@@ -1633,7 +1668,7 @@ impl<'m> Build<'m> {
         };
         // Per vertex, its corners as the two edge pieces of each.
         let mut corners: BTreeMap<VRef, Vec<[ERef; 2]>> = BTreeMap::new();
-        for piece in &self.kept {
+        for piece in shell.iter().filter_map(|&k| self.kept.get(k)) {
             for l in &piece.loops {
                 for (k, u) in l.iter().enumerate() {
                     let Some(next) = l.get((k + 1) % l.len()) else {
@@ -1941,6 +1976,7 @@ impl<'m> Build<'m> {
         let mut lump_of = vec![0; shells.len()];
         if shells.len() > 1 {
             (shells, lump_of) = self.lump_order(shells)?;
+            self.check_shared_contacts(&shells, Some(&lump_of))?;
         }
         self.slits(&shells, &lump_of)?;
         let point_contacts = self.point_contacts(&shells, &lump_of);
@@ -2006,14 +2042,20 @@ fn one_result(
     let (builder, slots) = Builder::assemble(m, precision.default_tolerance, plan.assembly)?;
     let built = builder.finish(m, BodyKind::Solid)?;
 
-    // The output ids behind every reference.
-    let mut out_vertex: BTreeMap<VRef, VertexId> = BTreeMap::new();
-    for (v, &slot) in plan.new_vertices.iter().zip(&slots.vertices) {
-        out_vertex.insert(*v, built.vertices[&slot]);
+    // Copies follow the kept id (where present), in shell order.
+    let mut out_vertex = BTreeMap::new();
+    for &v in &plan.kept_vertices {
+        out_vertex.insert(VRef::Existing(v), vec![v]);
     }
-    let mut out_edge: BTreeMap<ERef, EdgeId> = BTreeMap::new();
-    for (e, &slot) in plan.new_edges.iter().zip(&slots.edges) {
-        out_edge.insert(*e, built.edges[&slot]);
+    for (&(v, _), &slot) in plan.new_vertices.iter().zip(&slots.vertices) {
+        out_vertex.entry(v).or_default().push(built.vertices[&slot]);
+    }
+    let mut out_edge = BTreeMap::new();
+    for &e in &plan.kept_edges {
+        out_edge.insert(ERef::Sub { edge: e, index: 0 }, vec![e]);
+    }
+    for (&(e, _), &slot) in plan.new_edges.iter().zip(&slots.edges) {
+        out_edge.entry(e).or_default().push(built.edges[&slot]);
     }
     // Face slots follow the assembly's shells; `plan.faces` is the kept
     // piece behind each.
@@ -2027,18 +2069,10 @@ fn one_result(
     inherited_contact(
         m, built.body, operands, &kept, &shells, &lump_of, &out_faces, meter,
     )?;
-    let vertex_id = |v: VRef| -> Option<VertexId> {
-        match v {
-            VRef::Existing(id) if plan.kept_vertices.contains(&id) => Some(id),
-            other => out_vertex.get(&other).copied(),
-        }
-    };
-    let edge_id = |e: ERef| -> Option<EdgeId> {
+    let vertex_id = |v| out_vertex.get(&v).map_or(&[][..], Vec::as_slice);
+    let edge_id = |e| {
         let e = alias_of.get(&e).copied().unwrap_or(e);
-        match e {
-            ERef::Sub { edge, index: 0 } if plan.kept_edges.contains(&edge) => Some(edge),
-            other => out_edge.get(&other).copied(),
-        }
+        out_edge.get(&e).map_or(&[][..], Vec::as_slice)
     };
 
     let operand = |side: usize| rebuild::OperandWrite {
@@ -2203,44 +2237,46 @@ fn generated_vertices(
     p: &mut Provenance,
     i: &Interferences,
     vref_of: &[VRef],
-    out_vertex: &BTreeMap<VRef, VertexId>,
+    out_vertex: &BTreeMap<VRef, Vec<VertexId>>,
 ) {
     for (k, v) in i.vertices.iter().enumerate() {
         let VRef::Section(_) = vref_of[k] else {
             continue;
         };
-        let Some(id) = out_vertex.get(&vref_of[k]) else {
+        let Some(ids) = out_vertex.get(&vref_of[k]) else {
             continue;
         };
-        match v.source {
-            VertexSource::Hits | VertexSource::SectionCrossing | VertexSource::TriplePoint => {
-                for &h in &v.hits {
-                    p.add_generated(forward(i.hits[h].edge), forward(*id));
-                    p.add_generated(forward(i.hits[h].face), forward(*id));
+        for &id in ids {
+            match v.source {
+                VertexSource::Hits | VertexSource::SectionCrossing | VertexSource::TriplePoint => {
+                    for &h in &v.hits {
+                        p.add_generated(forward(i.hits[h].edge), forward(id));
+                        p.add_generated(forward(i.hits[h].face), forward(id));
+                    }
+                    for &x in &v.crossings {
+                        p.add_generated(forward(i.crossings[x].a), forward(id));
+                        p.add_generated(forward(i.crossings[x].b), forward(id));
+                    }
+                    for &x in &v.section_crossings {
+                        let pair = &i.pairs[i.section_crossings[x].pair];
+                        p.add_generated(forward(pair.a), forward(id));
+                        p.add_generated(forward(pair.b), forward(id));
+                    }
+                    for &x in &v.triple_points {
+                        let q = &i.triple_points[x];
+                        let pair = &i.pairs[q.pair];
+                        p.add_generated(forward(pair.a), forward(id));
+                        p.add_generated(forward(pair.b), forward(id));
+                        p.add_generated(forward(q.face), forward(id));
+                    }
                 }
-                for &x in &v.crossings {
-                    p.add_generated(forward(i.crossings[x].a), forward(*id));
-                    p.add_generated(forward(i.crossings[x].b), forward(*id));
+                VertexSource::CurveStart { pair, .. } => {
+                    p.add_generated(forward(i.pairs[pair].a), forward(id));
+                    p.add_generated(forward(i.pairs[pair].b), forward(id));
                 }
-                for &x in &v.section_crossings {
-                    let pair = &i.pairs[i.section_crossings[x].pair];
-                    p.add_generated(forward(pair.a), forward(*id));
-                    p.add_generated(forward(pair.b), forward(*id));
-                }
-                for &x in &v.triple_points {
-                    let q = &i.triple_points[x];
-                    let pair = &i.pairs[q.pair];
-                    p.add_generated(forward(pair.a), forward(*id));
-                    p.add_generated(forward(pair.b), forward(*id));
-                    p.add_generated(forward(q.face), forward(*id));
-                }
+                // Always an operand's vertex, never a new one.
+                VertexSource::Singular => {}
             }
-            VertexSource::CurveStart { pair, .. } => {
-                p.add_generated(forward(i.pairs[pair].a), forward(*id));
-                p.add_generated(forward(i.pairs[pair].b), forward(*id));
-            }
-            // Always an operand's vertex, never a new one.
-            VertexSource::Singular => {}
         }
     }
 }
@@ -2250,16 +2286,22 @@ fn generated_vertices(
 /// order and then along each curve, so the section edges one pair
 /// generates reach the record in split order: along their own curve
 /// (ADR-0009).
-fn generated_sections(p: &mut Provenance, i: &Interferences, out_edge: &BTreeMap<ERef, EdgeId>) {
+fn generated_sections(
+    p: &mut Provenance,
+    i: &Interferences,
+    out_edge: &BTreeMap<ERef, Vec<EdgeId>>,
+) {
     for (k, s) in i.sections.iter().enumerate() {
-        let Some(&id) = out_edge.get(&ERef::Section(k)) else {
+        let Some(ids) = out_edge.get(&ERef::Section(k)) else {
             continue;
         };
         let pair = &i.pairs[i.curves[s.curve].pair];
-        p.add_generated(forward(pair.a), forward(id));
-        p.add_generated(forward(pair.b), forward(id));
-        for u in &s.shared {
-            p.add_generated(forward(u.face), forward(id));
+        for &id in ids {
+            p.add_generated(forward(pair.a), forward(id));
+            p.add_generated(forward(pair.b), forward(id));
+            for u in &s.shared {
+                p.add_generated(forward(u.face), forward(id));
+            }
         }
     }
 }
@@ -2409,7 +2451,13 @@ mod tests {
         let [edge] = contacts[..] else {
             panic!("one contact edge: {contacts:?}");
         };
-        names_contact(&build, edge, build.shells().unwrap_err());
+        assert_eq!(build.shells().unwrap(), shells);
+        // The same shell partition is forbidden if both shells are
+        // assigned to one lump (as with a touching outer and void).
+        let error = build
+            .check_shared_contacts(&shells, Some(&[0, 0]))
+            .unwrap_err();
+        names_contact(&build, edge, error);
     }
 
     #[test]

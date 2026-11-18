@@ -147,18 +147,11 @@ pub enum InputReason {
     /// The result has no thickness: a common of flush bodies, a sweep of
     /// zero length.
     ZeroThickness,
-    /// The result's shells would *share* an edge or a vertex — an edge
-    /// used by four faces, a vertex two lumps both reach — or one shell
-    /// would touch itself at a vertex where its faces close into more than
-    /// one fan, or a full revolve's profile would touch its axis at a vertex
-    /// with no segment along it: which a manifold `Solid`'s shells never do
-    /// (ADR-0006, ADR-0088); the error's entities are the shared edges or
-    /// vertices — a section vertex named by the edges and faces whose hits
-    /// and crossings made it — none for a sweep. A `Solid` can represent
-    /// lumps that touch along a curve or at a point when each retains its
-    /// own edges and vertices. Supported curve-contact fuses build
-    /// touching lumps (ADR-0088). Shells that share an edge or vertex
-    /// require a `General` body, which no operation builds yet.
+    /// A result shell or lump would touch itself at a shared edge or
+    /// vertex (ADR-0090), or an edge contact has ambiguous radial order.
+    /// Also raised when a full revolve's profile touches the axis at a
+    /// vertex with no segment along it. The error names the contact's
+    /// source entities. For a revolve it names no entities.
     NonManifold,
     /// The query needs an enclosed volume and the body is not a solid:
     /// a sheet, a wire, a general body.
@@ -188,7 +181,7 @@ impl core::fmt::Display for InputReason {
             }
             InputReason::ZeroThickness => f.write_str("the result has no thickness"),
             InputReason::NonManifold => f.write_str(
-                "the result's shells would share an edge or a vertex, or a shell touch itself at one, which a solid does not hold",
+                "a result shell or lump would touch itself, or the contact cannot be split into manifold shells",
             ),
             InputReason::NotSolid => f.write_str("the body is not a solid"),
         }
@@ -1055,7 +1048,7 @@ mod tests {
             (
                 Reason::Input(InputReason::NonManifold),
                 "NonManifold",
-                "the result's shells would share an edge or a vertex, or a shell touch itself at one, which a solid does not hold",
+                "a result shell or lump would touch itself, or the contact cannot be split into manifold shells",
             ),
             (
                 Reason::Input(InputReason::NotSolid),

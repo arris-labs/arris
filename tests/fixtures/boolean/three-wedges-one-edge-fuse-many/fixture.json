@@ -1,0 +1,26 @@
+{
+  "description": "Three equilateral triangular prisms of side 2 and height 3 occupy alternating 60-degree sectors around the z axis. The fuse has three touching lumps, each with its own copy of the contact edge from (0,0,0) to (0,0,3).",
+  "steps": [
+    {"name": "sector_1", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [2, 0]}, {"line_to": [1, "sqrt(3)"]}, {"line_to": [0, 0]}]}, "holes": []},
+    {"name": "wedge_1", "op": "extrude", "profile": "sector_1", "direction": [0, 0, 1], "length": 3},
+    {"name": "sector_2", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [-1, "sqrt(3)"]}, {"line_to": [-2, 0]}, {"line_to": [0, 0]}]}, "holes": []},
+    {"name": "wedge_2", "op": "extrude", "profile": "sector_2", "direction": [0, 0, 1], "length": 3},
+    {"name": "sector_3", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+     "outer": {"start": [0, 0], "segments": [{"line_to": [-1, "-sqrt(3)"]}, {"line_to": [1, "-sqrt(3)"]}, {"line_to": [0, 0]}]}, "holes": []},
+    {"name": "wedge_3", "op": "extrude", "profile": "sector_3", "direction": [0, 0, 1], "length": 3},
+    {"name": "result", "op": "fuse", "bodies": ["wedge_1", "wedge_2", "wedge_3"]}
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {
+    "volume": "9 * sqrt(3)",
+    "area": "54 + 6 * sqrt(3)",
+    "centroid": [0, 0, 1.5],
+    "counts_differ": "Open CASCADE returns three solids sharing the contact edge and endpoints. Arris keeps separate contact topology for each shell in one solid.",
+    "occt_step_counts_differ": "Open CASCADE writes the contact once per solid in STEP, with 18 vertices and 27 edges instead of 14 and 25 in memory.",
+    "counts": {"vertices": 18, "edges": 27, "faces": 15, "loops": 15, "shells": 3, "solids": 3},
+    "genus": 0
+  }
+}

@@ -1,6 +1,6 @@
 //! The coincident face pairs: the paves every section vertex puts on their edges, each edge piece placed on the other face as an image or matched to a piece of its boundary as a common block.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::Side;
 use arris_geom::{MeetKind, SurfaceIntersection};
@@ -244,6 +244,7 @@ impl<'m, 'c> Build<'m, 'c> {
     pub(super) fn coincident(&mut self) -> Result<(), OpError> {
         let mut images = Vec::new();
         let mut blocks = Vec::new();
+        let mut representative = BTreeMap::new();
         let mut floors: Vec<(End, f64)> = Vec::new();
         for pi in 0..self.pairs.len() {
             if self.pairs[pi].intersection != SurfaceIntersection::Coincident {
@@ -263,10 +264,7 @@ impl<'m, 'c> Build<'m, 'c> {
                         if let Some((gid, gb, reversed)) =
                             self.matching_block(side, e, &block, other)?
                         {
-                            let seen = blocks
-                                .iter()
-                                .any(|x: &CommonBlock| x.b == (e.id, block.index));
-                            if side == ob && !seen {
+                            if side == ob && !representative.contains_key(&(e.id, block.index)) {
                                 let (b, raised) =
                                     self.common_block(pi, e, &block, gid, &gb, reversed)?;
                                 floors.extend(
@@ -274,6 +272,7 @@ impl<'m, 'c> Build<'m, 'c> {
                                         .into_iter()
                                         .map(|end| (end, raised)),
                                 );
+                                representative.insert(b.b, b.a);
                                 blocks.push(b);
                             }
                             continue;
@@ -353,13 +352,12 @@ impl<'m, 'c> Build<'m, 'c> {
                 // A piece along the other face's boundary is that face's
                 // edge, not a curve inside it — a pipe's cap circle on the
                 // bend it runs into, the two walls tangent along it — and
-                // the coincident caps beside it hold the common block.
+                // coincident faces elsewhere assign both pieces to one
+                // common representative, possibly on a third operand.
                 if let Some((gid, gb, _)) = self.matching_block(side, e, &block, other)? {
                     let (ours, theirs) = ((e.id, block.index), (gid, gb.index));
-                    let held = blocks.iter().any(|x: &CommonBlock| {
-                        (x.a, x.b) == (theirs, ours) || (x.a, x.b) == (ours, theirs)
-                    });
-                    if !held {
+                    let canonical = |piece| representative.get(&piece).copied().unwrap_or(piece);
+                    if canonical(ours) != canonical(theirs) {
                         return Err(OpError::Internal(Fault::Invariant {
                             what: "an edge along a face's boundary with no common block",
                         }));

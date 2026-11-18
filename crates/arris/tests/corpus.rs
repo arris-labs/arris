@@ -291,10 +291,10 @@ corpus_tests! {
     /// A box inside the cavity of a hollow box: three shells, two lumps, one
     /// of them in the other's void.
     boolean_lump_in_cavity => run "boolean/lump-in-cavity";
-    /// Two boxes touching along an edge: Open CASCADE builds two solids that
-    /// share it, Arris refuses with `InputReason::NonManifold` — the runner's
-    /// expected-error path.
+    /// Two boxes touching along an edge, copied once per result shell.
     boolean_edge_touching_fuse => run "boolean/edge-touching-fuse";
+    /// Three alternating 60-degree wedges, with six face uses around one edge.
+    boolean_three_wedges_one_edge_fuse_many => run "boolean/three-wedges-one-edge-fuse-many";
     /// A frustum and a box touching its top rim at the revolve's seam vertex, a point: refused `NonManifold`.
     boolean_fuse_frustum_box_rim_point => run "boolean/fuse-frustum-box-rim-point";
     /// The same at the point opposite the seam, inside the rim edge: refused `NonManifold` too.
@@ -362,7 +362,7 @@ corpus_tests! {
     boolean_overlapping_pockets_cut_many => run "boolean/overlapping-pockets-cut-many";
     /// Two bosses overlapping on a plate's top fused in one call: the top flush with both bosses' bottoms at once.
     boolean_overlapping_bosses_fuse_many => run "boolean/overlapping-bosses-fuse-many";
-    /// Two pockets touching along an edge: Arris refuses with `InputReason::NonManifold`.
+    /// Both material sectors at the pockets’ shared edge remain in one lump: `NonManifold`.
     boolean_pockets_touching_edge_cut_many => run "boolean/pockets-touching-edge-cut-many";
     /// Two holes whose walls touch along a ruling inside the plate: Arris refuses with `BooleanReason::TangentContact`.
     boolean_tangent_holes_cut_many => run "boolean/tangent-holes-cut-many";

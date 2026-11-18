@@ -1484,63 +1484,92 @@ fn a_boolean_over_a_body_that_does_not_resolve_still_names_that_body() {
     }
 }
 
-/// Two boxes touching along an edge, and two touching at a corner, fused:
-/// the two lumps would share the edge — used by four faces — or the
-/// vertex, which a manifold solid's shells never do (ADR-0006, plan
-/// `⚠ OPEN` 2). Each is `InputReason::NonManifold` naming exactly what is
-/// shared, before anything is assembled, and the model is as it was.
+/// Two boxes meeting along an edge fuse as two lumps with separate
+/// copies of the edge and both endpoints (ADR-0090).
 #[test]
-fn boxes_touching_along_an_edge_or_at_a_corner_are_non_manifold() {
-    let corner = Point3::new(10.0, 10.0, 10.0);
-    for (what, min, max) in [
-        (
-            "edge",
-            Point3::new(10.0, 10.0, 0.0),
-            Point3::new(20.0, 20.0, 10.0),
-        ),
-        ("vertex", corner, Point3::new(20.0, 20.0, 20.0)),
-    ] {
-        let mut m = Model::default();
-        let (a, _) = primitive_box(&mut m, Point3::origin(), corner).unwrap();
-        let (b, _) = primitive_box(&mut m, min, max).unwrap();
-        let before = arris_debug::dump_text(&m, a).unwrap();
-        let entities = match fuse(&mut m, a, b) {
-            Err(OpError::Degenerate {
-                reason: Reason::Input(InputReason::NonManifold),
-                entities,
-            }) => entities,
-            other => panic!("{what}: {other:?}"),
-        };
-        // Where the entity sits: the edge along x = y = 10, or the corner.
-        let on_the_touch = |p: Point3| (p.x - 10.0).abs() < 1e-9 && (p.y - 10.0).abs() < 1e-9;
-        match (what, entities.as_slice()) {
-            (
-                "edge",
-                [
-                    Shape {
-                        id: EntityId::Edge(e),
-                        ..
-                    },
-                ],
-            ) => {
-                let edge = m.edge(*e).unwrap();
-                for v in [edge.start(), edge.end()] {
-                    assert!(on_the_touch(m.vertex(v).unwrap().point()), "{what}");
-                }
-            }
-            (
-                "vertex",
-                [
-                    Shape {
-                        id: EntityId::Vertex(v),
-                        ..
-                    },
-                ],
-            ) => assert_eq!(m.vertex(*v).unwrap().point(), corner),
-            other => panic!("{what}: {other:?}"),
+fn boxes_touching_along_an_edge_give_two_lumps_with_provenance() {
+    let (mut m, a, b) = inputs("boolean/edge-touching-fuse");
+    let on_contact = |v| {
+        let point = m.vertex(v).unwrap().point();
+        point.x == 10.0 && point.y == 10.0
+    };
+    let input_edges = [a, b].map(|body| {
+        m.edges(body)
+            .unwrap()
+            .into_iter()
+            .find(|edge| {
+                let edge = m.edge(edge.id).unwrap();
+                on_contact(edge.start()) && on_contact(edge.end())
+            })
+            .unwrap()
+            .id
+    });
+    let input_vertices = input_edges.map(|id| {
+        let edge = m.edge(id).unwrap();
+        [edge.start(), edge.end()]
+    });
+
+    let (body, p) = fuse(&mut m, a, b).unwrap();
+    let report = check(&m, body, Level::Full);
+    assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+    assert_eq!(arris_check::lumps(&m, body).unwrap().len(), 2);
+    arris_topo::provenance::audit(&m, &[a, b], body, &p).unwrap();
+    let copies = p.modified_from(shape(input_edges[0]));
+    assert_eq!(copies.len(), 2);
+    assert_eq!(copies, p.modified_from(shape(input_edges[1])));
+
+    let edge_vertices: Vec<_> = copies
+        .iter()
+        .map(|copy| {
+            let EntityId::Edge(edge) = copy.id else {
+                panic!("expected a contact edge, got {copy:?}");
+            };
+            let edge = m.edge(edge).unwrap();
+            [edge.start(), edge.end()]
+        })
+        .collect();
+    for input in input_vertices.into_iter().flatten() {
+        let point = m.vertex(input).unwrap().point();
+        let images = p.modified_from(shape(input));
+        assert_eq!(images.len(), 2);
+        for ends in &edge_vertices {
+            assert_eq!(
+                ends.iter()
+                    .filter(|&&v| m.vertex(v).unwrap().point() == point)
+                    .filter(|&&v| images.contains(&shape(v)))
+                    .count(),
+                1
+            );
         }
-        assert_eq!(arris_debug::dump_text(&m, a).unwrap(), before, "{what}");
     }
+}
+
+#[test]
+fn boxes_touching_at_a_corner_are_non_manifold() {
+    let corner = Point3::new(10.0, 10.0, 10.0);
+    let mut m = Model::default();
+    let (a, _) = primitive_box(&mut m, Point3::origin(), corner).unwrap();
+    let (b, _) = primitive_box(&mut m, corner, Point3::new(20.0, 20.0, 20.0)).unwrap();
+    let before = arris_debug::dump_text(&m, a).unwrap();
+    match fuse(&mut m, a, b) {
+        Err(OpError::Degenerate {
+            reason: Reason::Input(InputReason::NonManifold),
+            entities,
+        }) => {
+            let [
+                Shape {
+                    id: EntityId::Vertex(v),
+                    ..
+                },
+            ] = entities.as_slice()
+            else {
+                panic!("expected the contact vertex, got {entities:?}");
+            };
+            assert_eq!(m.vertex(*v).unwrap().point(), corner);
+        }
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(arris_debug::dump_text(&m, a).unwrap(), before);
 }
 
 /// A tool that splits its target leaves two lumps of one solid

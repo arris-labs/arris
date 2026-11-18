@@ -257,10 +257,9 @@ of the step that made the fixture pass, and a later change to it is a
   `BooleanReason::TangentContact` — ADR-0004, whose contact Open CASCADE carries
   as an edge of four faces, so where that makes the Euler characteristic
   odd, as in `boolean/tangent-hole`, the oracle records no genus
-  and the recipe states none; `boolean/edge-touching-fuse`, two
-  solids sharing an edge, `InputReason::NonManifold` — ADR-0006, whose
-  compound has an odd Euler characteristic, so the oracle records no
-  genus for it and the recipe states none; a blend it builds and Arris
+  and the recipe states none; `boolean/pockets-touching-edge-cut-many`
+  has both material sectors at a shared edge in one lump, refused as
+  `InputReason::NonManifold` under ADR-0090; a blend it builds and Arris
   refuses as `BlendReason::TooLarge`, `TangentChain` or `VertexBlend` —
   ADR-0007; a revolve of an elliptic profile segment, which it sweeps
   into a surface of revolution with an elliptic meridian and Arris

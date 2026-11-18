@@ -66,10 +66,10 @@ pub(crate) struct Plan {
     pub assembly: Assembly,
     /// The kept piece behind each face spec, shell by shell in order.
     pub faces: Vec<usize>,
-    /// The `VRef` behind each `VertexSpec::New`, in order.
-    pub new_vertices: Vec<VRef>,
-    /// The `ERef` behind each `EdgeSpec::New`, in order.
-    pub new_edges: Vec<ERef>,
+    /// The vertex reference and its shell behind each `VertexSpec::New`, in order.
+    pub new_vertices: Vec<(VRef, usize)>,
+    /// The edge reference and its shell behind each `EdgeSpec::New`, in order.
+    pub new_edges: Vec<(ERef, usize)>,
     /// Operand vertices kept by id.
     pub kept_vertices: BTreeSet<VertexId>,
     /// Operand edges kept by id.
@@ -112,43 +112,65 @@ pub(crate) fn assembly(
     let edge_new =
         |e: EdgeId, side: usize| touched.contains(&e) || policy[side] == Policy::Regenerate;
 
-    let mut used_edges: BTreeSet<ERef> = BTreeSet::new();
-    for piece in pieces {
-        for u in piece.loops.iter().flatten() {
-            used_edges.insert(u.edge);
+    let mut used_edges: BTreeMap<ERef, BTreeSet<usize>> = BTreeMap::new();
+    for (shell, indices) in shells.iter().enumerate() {
+        for piece in indices.iter().filter_map(|&k| pieces.get(k)) {
+            for u in piece.loops.iter().flatten() {
+                used_edges.entry(u.edge).or_default().insert(shell);
+            }
         }
     }
-    let mut used_vertices: BTreeSet<VRef> = BTreeSet::new();
-    for &e in &used_edges {
-        let (start, end) = match e {
+    let missing = |what| OpError::Internal(Fault::Invariant { what });
+    let mut used_vertices: BTreeMap<VRef, BTreeSet<usize>> = BTreeMap::new();
+    for (&e, owners) in &used_edges {
+        let [start, end] = match e {
             ERef::Sub { edge, index } => {
-                let s = &sub_edges[&edge][index];
-                (s.start, s.end)
+                let s = sub_edges
+                    .get(&edge)
+                    .and_then(|subs| subs.get(index))
+                    .ok_or_else(|| missing("a used edge piece"))?;
+                [s.start, s.end]
             }
             ERef::Section(k) => {
-                let s = &section_edges[k];
-                (s.start, s.end)
+                let s = section_edges
+                    .get(k)
+                    .ok_or_else(|| missing("a used section edge"))?;
+                [s.start, s.end]
             }
         };
-        used_vertices.insert(start);
-        used_vertices.insert(end);
+        for v in [start, end] {
+            used_vertices.entry(v).or_default().extend(owners);
+        }
     }
 
     let mut assembly = Assembly::default();
     let mut new_vertices = Vec::new();
     let mut kept_vertices = BTreeSet::new();
-    let mut vkey: BTreeMap<VRef, VertexKey> = BTreeMap::new();
-    // Section vertices first, ascending; then operand vertices that are
-    // appended, ascending by id; the rest kept.
-    let mut order: Vec<VRef> = used_vertices.iter().copied().collect();
-    order.sort_by_key(|v| match *v {
+    let mut vkey = BTreeMap::new();
+    // Preserve the original order of references. For each reference, the
+    // first shell can keep the operand id and later shells get copies.
+    let mut order: Vec<_> = used_vertices.into_iter().collect();
+    order.sort_by_key(|(v, _)| match *v {
         VRef::Section(k) => (0, k, None),
         VRef::Existing(id) => (1, 0, Some(id)),
     });
-    for v in order {
-        if vertex_new(v) {
+    for (v, owners) in order {
+        for (i, shell) in owners.into_iter().enumerate() {
+            if i == 0
+                && !vertex_new(v)
+                && let VRef::Existing(id) = v
+            {
+                vkey.insert((v, shell), VertexKey::Kept(id));
+                kept_vertices.insert(id);
+                continue;
+            }
             let (point, tolerance) = match v {
-                VRef::Section(k) => (section_vertices[k].point, section_vertices[k].tolerance),
+                VRef::Section(k) => {
+                    let s = section_vertices
+                        .get(k)
+                        .ok_or_else(|| missing("a used section vertex"))?;
+                    (s.point, s.tolerance)
+                }
                 VRef::Existing(id) => {
                     let stored = m.vertex(id)?;
                     (
@@ -158,34 +180,30 @@ pub(crate) fn assembly(
                 }
             };
             assembly.vertices.push(VertexSpec::New { point, tolerance });
-            vkey.insert(v, VertexKey::New(new_vertices.len()));
-            new_vertices.push(v);
-        } else if let VRef::Existing(id) = v {
-            vkey.insert(v, VertexKey::Kept(id));
-            kept_vertices.insert(id);
+            vkey.insert((v, shell), VertexKey::New(new_vertices.len()));
+            new_vertices.push((v, shell));
         }
     }
 
     let mut new_edges = Vec::new();
     let mut kept_edges = BTreeSet::new();
-    let mut ekey: BTreeMap<ERef, EdgeKey> = BTreeMap::new();
+    let mut ekey = BTreeMap::new();
+    let vertex_key = |v, shell| {
+        vkey.get(&(v, shell))
+            .copied()
+            .ok_or_else(|| missing("a used edge's vertex in its shell"))
+    };
     for (side, side_edges) in edges.iter().enumerate() {
         for &e in side_edges {
             let edge = *m.edge(e)?;
-            let subs = &sub_edges[&e];
-            if !edge_new(e, side) {
-                let whole = ERef::Sub { edge: e, index: 0 };
-                if used_edges.contains(&whole) {
-                    ekey.insert(whole, EdgeKey::Kept(e));
-                    kept_edges.insert(e);
-                }
-                continue;
-            }
+            let Some(subs) = sub_edges.get(&e) else {
+                return Err(missing("the operand edge pieces"));
+            };
             for (index, s) in subs.iter().enumerate() {
                 let r = ERef::Sub { edge: e, index };
-                if !used_edges.contains(&r) {
+                let Some(owners) = used_edges.get(&r) else {
                     continue;
-                }
+                };
                 let geometry = match edge.geometry() {
                     EdgeGeometry::Curve { curve, .. } => EdgeGeometry::Curve {
                         curve,
@@ -193,50 +211,72 @@ pub(crate) fn assembly(
                     },
                     EdgeGeometry::Degenerate { .. } => EdgeGeometry::Degenerate { range: s.range },
                 };
-                // The edge's own tolerance whenever no image or common
-                // block raised this piece's — never a literal, since the
-                // entity's tolerance is always the floor.
+                // Images and common blocks can raise the edge's own tolerance.
                 let tolerance = edge_tolerance
                     .get(&r)
                     .map_or(edge.tolerance(), |t| t.max(edge.tolerance()));
-                assembly.edges.push(EdgeSpec::New {
-                    geometry,
-                    start: vkey[&s.start],
-                    end: vkey[&s.end],
-                    tolerance,
-                });
-                ekey.insert(r, EdgeKey::New(new_edges.len()));
-                new_edges.push(r);
+                for (i, &shell) in owners.iter().enumerate() {
+                    let start = vertex_key(s.start, shell)?;
+                    let end = vertex_key(s.end, shell)?;
+                    if i == 0
+                        && index == 0
+                        && !edge_new(e, side)
+                        && start == VertexKey::Kept(edge.start())
+                        && end == VertexKey::Kept(edge.end())
+                    {
+                        ekey.insert((r, shell), EdgeKey::Kept(e));
+                        kept_edges.insert(e);
+                        continue;
+                    }
+                    assembly.edges.push(EdgeSpec::New {
+                        geometry,
+                        start,
+                        end,
+                        tolerance,
+                    });
+                    ekey.insert((r, shell), EdgeKey::New(new_edges.len()));
+                    new_edges.push((r, shell));
+                }
             }
         }
     }
     for (k, s) in section_edges.iter().enumerate() {
         let r = ERef::Section(k);
-        if !used_edges.contains(&r) {
-            continue;
+        for &shell in used_edges.get(&r).into_iter().flatten() {
+            assembly.edges.push(EdgeSpec::New {
+                geometry: EdgeGeometry::Curve {
+                    curve: s.curve,
+                    range: s.range,
+                },
+                start: vertex_key(s.start, shell)?,
+                end: vertex_key(s.end, shell)?,
+                tolerance: s.tolerance,
+            });
+            ekey.insert((r, shell), EdgeKey::New(new_edges.len()));
+            new_edges.push((r, shell));
         }
-        assembly.edges.push(EdgeSpec::New {
-            geometry: EdgeGeometry::Curve {
-                curve: s.curve,
-                range: s.range,
-            },
-            start: vkey[&s.start],
-            end: vkey[&s.end],
-            tolerance: s.tolerance,
-        });
-        ekey.insert(r, EdgeKey::New(new_edges.len()));
-        new_edges.push(r);
     }
 
     let mut face_pieces = Vec::with_capacity(pieces.len());
-    for shell in shells {
-        let mut faces = Vec::with_capacity(shell.len());
-        for &k in shell {
+    for (shell, indices) in shells.iter().enumerate() {
+        let mut faces = Vec::with_capacity(indices.len());
+        for &k in indices {
             let Some(piece) = pieces.get(k) else {
                 continue;
             };
             face_pieces.push(k);
-            if piece.whole {
+            let edge_key = |u: &PieceUse| {
+                ekey.get(&(u.edge, shell))
+                    .copied()
+                    .ok_or_else(|| missing("a face use's edge in its shell"))
+            };
+            if piece.whole
+                && piece
+                    .loops
+                    .iter()
+                    .flatten()
+                    .all(|u| matches!(edge_key(u), Ok(EdgeKey::Kept(_))))
+            {
                 faces.push(FaceSpec::Keep(FaceHandle::new(
                     piece.face.id,
                     piece.orientation,
@@ -248,19 +288,20 @@ pub(crate) fn assembly(
                 .loops
                 .iter()
                 .map(|l| {
-                    effective_uses(
-                        piece.orientation,
-                        l.iter().map(|u| (ekey[&u.edge], u.orientation, u.pcurve)),
-                    )
-                    .into_iter()
-                    .map(|(edge, orientation, pcurve)| UseSpec {
-                        edge,
-                        orientation,
-                        pcurve,
-                    })
-                    .collect()
+                    let uses = l
+                        .iter()
+                        .map(|u| Ok((edge_key(u)?, u.orientation, u.pcurve)))
+                        .collect::<Result<Vec<_>, OpError>>()?;
+                    Ok(effective_uses(piece.orientation, uses)
+                        .into_iter()
+                        .map(|(edge, orientation, pcurve)| UseSpec {
+                            edge,
+                            orientation,
+                            pcurve,
+                        })
+                        .collect())
                 })
-                .collect();
+                .collect::<Result<_, OpError>>()?;
             faces.push(FaceSpec::New {
                 surface: entity.surface(),
                 orientation: piece.orientation,
@@ -306,14 +347,14 @@ pub(crate) struct OperandWrite<'a> {
 /// vertex or edge — the boolean's section geometry — add those records
 /// on top of the one this returns.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn write_provenance(
+pub(crate) fn write_provenance<'a>(
     operands: &[OperandWrite<'_>],
     built_body: Body,
     sub_edges: &BTreeMap<EdgeId, Vec<SubEdge>>,
     merged_into: &BTreeMap<VertexId, usize>,
     vref_of: &[VRef],
-    vertex_id: impl Fn(VRef) -> Option<VertexId>,
-    edge_id: impl Fn(ERef) -> Option<EdgeId>,
+    vertex_id: impl Fn(VRef) -> &'a [VertexId],
+    edge_id: impl Fn(ERef) -> &'a [EdgeId],
     face_pieces: &BTreeMap<FaceId, (bool, Vec<usize>)>,
     out_faces: &BTreeMap<usize, FaceId>,
     kept: &[Kept],
@@ -346,7 +387,11 @@ pub(crate) fn write_provenance(
                 Some(&k) => vertex_id(vref_of[k]),
                 None => vertex_id(VRef::Existing(v)),
             };
-            record(&mut p, forward(v), image.into_iter().map(forward).collect());
+            record(
+                &mut p,
+                forward(v),
+                image.iter().copied().map(forward).collect(),
+            );
         }
         // An edge's pieces are recorded in split order (ADR-0009): the
         // sub-edge index ascends along the edge's own curve from its
@@ -355,7 +400,7 @@ pub(crate) fn write_provenance(
             let n = sub_edges.get(&e).map_or(0, Vec::len);
             let mut images: Vec<Shape> = Vec::new();
             for index in 0..n {
-                if let Some(id) = edge_id(ERef::Sub { edge: e, index }) {
+                for &id in edge_id(ERef::Sub { edge: e, index }) {
                     let image = forward(id);
                     if !images.contains(&image) {
                         images.push(image);
