@@ -172,7 +172,9 @@ boolean/tilted-cylinder-slot-cut: 1547
 boolean/torus-box-point-common: refused
 boolean/torus-box-point-cut-box: 27222
 boolean/torus-box-point-cut-torus: 27222
+boolean/torus-box-point-cut-torus-equator-seam: 27021
 boolean/torus-box-point-fuse: 27222
+boolean/torus-box-point-fuse-equator-seam: 27021
 boolean/touching-cylinders-short-slit: refused
 boolean/touching-cylinders-short-slit-many: refused
 boolean/tripod-fuse-many: 16109

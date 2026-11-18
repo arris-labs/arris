@@ -261,11 +261,16 @@ corpus_tests! {
     boolean_ball_on_disc_overlap => run "boolean/ball-on-disc-overlap";
     /// Cutting a spherical cavity that touches its own outer wall is refused.
     boolean_ball_on_disc_cavity => run "boolean/ball-on-disc-cavity";
-    /// A torus and a box fuse at one point, on the torus's vertex, on
-    /// just the equator seam, or off both seams.
+    /// A torus and a box fuse at one point, at the torus's seam vertex
+    /// or off both seams.
     boolean_torus_box_point_fuse => run "boolean/torus-box-point-fuse";
-    /// The tangent box leaves the torus whole in all three poses.
+    /// The fuse keeps the torus whole when the touch is on its equator seam.
+    boolean_torus_box_point_fuse_equator_seam => run "boolean/torus-box-point-fuse-equator-seam";
+    /// The tangent box leaves the torus whole with the touch at the torus's
+    /// seam vertex or off both seams.
     boolean_torus_box_point_cut_torus => run "boolean/torus-box-point-cut-torus";
+    /// Cutting at the equator seam keeps the torus's seam whole.
+    boolean_torus_box_point_cut_torus_equator_seam => run "boolean/torus-box-point-cut-torus-equator-seam";
     /// The tangent torus leaves the box whole in all three poses.
     boolean_torus_box_point_cut_box => run "boolean/torus-box-point-cut-box";
     /// A point of contact yields Empty with or without a seam there.

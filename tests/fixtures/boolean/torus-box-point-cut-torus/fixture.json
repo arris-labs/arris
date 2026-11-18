@@ -1,7 +1,7 @@
 {
-  "description": "The training harness's torus link: a ring torus of major radius 3 and minor radius 1 touches the centre of the box's near face at (4, 0, 0). Rotate the torus's seam about its axis for an equator-only touch, or tilt the axis 30 degrees and translate the torus to keep the touch off both seams.",
+  "description": "The training harness's torus link: a ring torus of major radius 3 and minor radius 1 touches the centre of the box's near face at (4, 0, 0). The default touch is at the torus's seam vertex. Tilt the axis 30 degrees and translate the torus to keep the touch off both seams.",
   "params": {"turn": 0, "tilt": 0},
-  "variants": {"equator_seam": {"turn": 25}, "off_seams": {"turn": 25, "tilt": 30}},
+  "variants": {"off_seams": {"turn": 25, "tilt": 30}},
   "steps": [
     {"name": "section", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]}, "outer": {"circle": {"center": [3, 0], "radius": 1}}},
     {"name": "ring", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 360},
@@ -17,5 +17,5 @@
     {"label": "contact", "point": [4, 0, 0], "expect": "on"},
     {"label": "outside_contact", "point": [3.99, 0, 0.5], "expect": "out"}
   ],
-  "analytic": {"volume": "6 * pi^2", "area": "12 * pi^2", "centroid": ["3 * (1 - cos(radians(tilt)))", "-3 * sin(radians(tilt))", 0], "genus": 1, "counts": {"vertices": 1, "edges": 2, "faces": 1, "loops": 1, "shells": 1, "solids": 1}, "counts_differ": "Open CASCADE imprints the contact at the equator seam away from its vertex, adding one vertex and one edge. Arris keeps the seam whole."}
+  "analytic": {"volume": "6 * pi^2", "area": "12 * pi^2", "centroid": ["3 * (1 - cos(radians(tilt)))", "-3 * sin(radians(tilt))", 0], "genus": 1, "counts": {"vertices": 1, "edges": 2, "faces": 1, "loops": 1, "shells": 1, "solids": 1}}
 }

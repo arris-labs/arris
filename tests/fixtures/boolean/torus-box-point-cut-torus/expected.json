@@ -1,6 +1,6 @@
 {
   "occt": "8.0.1.0.0",
-  "recipe_sha256": "47793790c5c680dc79a7169358f35bd7ec6515710399c5250e5f5d2657a2df95",
+  "recipe_sha256": "87c4581b0ec862835b52ad98886b83fefd56a8898f4a18c25517c5e0c995d2ef",
   "results": {
     "default": {
       "area": 118.4352528130723,
@@ -84,89 +84,6 @@
         }
       ],
       "volume": 59.21762640653615
-    },
-    "equator_seam": {
-      "area": 118.43525281307227,
-      "centroid": [
-        -8.881784197001252e-16,
-        -9.718361526694082e-17,
-        2.220446049250313e-16
-      ],
-      "counts": {
-        "edges": 3,
-        "faces": 1,
-        "loops": 1,
-        "shells": 1,
-        "solids": 1,
-        "vertices": 2
-      },
-      "degenerate": false,
-      "euler_characteristic": 0,
-      "genus": 1,
-      "inertia": [
-        [
-          303.4903353334977,
-          5.537878076361494e-15,
-          -5.684341886080802e-14
-        ],
-        [
-          5.537878076361494e-15,
-          577.3718574637265,
-          -3.3205734641663464e-17
-        ],
-        [
-          -5.684341886080802e-14,
-          -3.3205734641663464e-17,
-          303.4903353334977
-        ]
-      ],
-      "nurbs_counts": {
-        "edges": 3,
-        "faces": 1,
-        "loops": 1,
-        "shells": 1,
-        "solids": 1,
-        "vertices": 2
-      },
-      "probes": [
-        {
-          "class": "in",
-          "label": "inside_ring",
-          "point": [
-            0.0,
-            -0.0,
-            -3.0
-          ]
-        },
-        {
-          "class": "out",
-          "label": "inside_box",
-          "point": [
-            5.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "class": "on",
-          "label": "contact",
-          "point": [
-            4.0,
-            0.0,
-            0.0
-          ]
-        },
-        {
-          "class": "out",
-          "label": "outside_contact",
-          "point": [
-            3.99,
-            0.0,
-            0.5
-          ]
-        }
-      ],
-      "volume": 59.217626406536134
     },
     "off_seams": {
       "area": 118.43525281307227,
