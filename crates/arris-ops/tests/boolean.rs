@@ -3,9 +3,9 @@
 //! their paves and the hits that made them — at random poses of a box
 //! and a cylinder, and identical over two runs.
 
-use arris_debug::unmetered::{common, cut, extrude, fuse, fuse_many, interferences};
 use arris_debug::unmetered::{
-    mass_properties, primitive_box, primitive_cylinder, revolve, transform,
+    common, cut, extrude, fuse, fuse_many, interferences, interferences_many, mass_properties,
+    primitive_box, primitive_cylinder, revolve, transform,
 };
 use arris_debug::{corpus, fixtures, prop, sample};
 use arris_geom::{
@@ -1544,6 +1544,42 @@ fn boxes_touching_along_an_edge_give_two_lumps_with_provenance() {
     }
 }
 
+fn polygon_prism(m: &mut Model, xy: &[[f64; 2]], base: f64, length: f64) -> Body {
+    let profile = Profile {
+        plane: Frame::new(Point3::new(0.0, 0.0, base), Vec3::z(), Vec3::x()).unwrap(),
+        outer: ProfileLoop::Path {
+            start: Point2::from(xy[0]),
+            segments: xy[1..]
+                .iter()
+                .chain(&xy[..1])
+                .map(|&p| ProfileSegment::LineTo(Point2::from(p)))
+                .collect(),
+        },
+        holes: Vec::new(),
+    };
+    extrude(m, &profile, Vec3::z(), length).unwrap().0
+}
+
+/// Three wedges meet on the z axis. The second wedge's edge represents
+/// the third's in a common block and has its own block with the first.
+/// Open CASCADE (cadquery-ocp 8.0.1.0.0) returns three solids sharing
+/// the axis edge, with total volume 70.
+#[test]
+fn a_common_block_can_use_another_blocks_source_as_representative() {
+    let mut m = Model::default();
+    let wedges = [
+        [[0.0, 0.0], [4.0, 0.0], [4.0, 2.0]],
+        [[0.0, 0.0], [-4.0, 1.0], [-4.0, 0.0]],
+        [[0.0, 0.0], [4.0, -1.0], [4.0, -0.5]],
+    ]
+    .map(|xy| polygon_prism(&mut m, &xy, 0.0, 10.0));
+    for order in [wedges, [wedges[2], wedges[1], wedges[0]]] {
+        let pave = interferences_many(&m, &order).unwrap();
+        assert_eq!(pave.blocks.len(), 2, "{pave}");
+        assert_eq!(pave.blocks[0].b, pave.blocks[1].a, "{pave}");
+    }
+}
+
 /// A triangular void reaches the reentrant edge of an L-shaped prism.
 /// Open CASCADE (cadquery-ocp 8.0.1.0.0) returns one solid of volume 2976
 /// with two shells and one shared edge, (0, 0, 2) to (0, 0, 8), used by
@@ -1551,22 +1587,7 @@ fn boxes_touching_along_an_edge_give_two_lumps_with_provenance() {
 #[test]
 fn a_void_touching_the_outer_shell_at_a_shared_edge_names_the_edge() {
     let mut m = Model::default();
-    let prism = |m: &mut Model, xy: &[[f64; 2]], base: f64, length: f64| {
-        let profile = Profile {
-            plane: Frame::new(Point3::new(0.0, 0.0, base), Vec3::z(), Vec3::x()).unwrap(),
-            outer: ProfileLoop::Path {
-                start: Point2::from(xy[0]),
-                segments: xy[1..]
-                    .iter()
-                    .chain(&xy[..1])
-                    .map(|&p| ProfileSegment::LineTo(Point2::from(p)))
-                    .collect(),
-            },
-            holes: Vec::new(),
-        };
-        extrude(m, &profile, Vec3::z(), length).unwrap().0
-    };
-    let target = prism(
+    let target = polygon_prism(
         &mut m,
         &[
             [-10.0, -10.0],
@@ -1579,7 +1600,7 @@ fn a_void_touching_the_outer_shell_at_a_shared_edge_names_the_edge() {
         0.0,
         10.0,
     );
-    let tool = prism(&mut m, &[[0.0, 0.0], [-4.0, 0.0], [-2.0, -2.0]], 2.0, 6.0);
+    let tool = polygon_prism(&mut m, &[[0.0, 0.0], [-4.0, 0.0], [-2.0, -2.0]], 2.0, 6.0);
 
     let pave = interferences(&m, target, tool).unwrap();
     assert_eq!(pave.blocks.len(), 1, "{pave}");

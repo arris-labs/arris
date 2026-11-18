@@ -352,12 +352,16 @@ impl<'m, 'c> Build<'m, 'c> {
                 // A piece along the other face's boundary is that face's
                 // edge, not a curve inside it — a pipe's cap circle on the
                 // bend it runs into, the two walls tangent along it — and
-                // coincident faces elsewhere assign both pieces to one
-                // common representative, possibly on a third operand.
+                // coincident faces elsewhere give them a direct common
+                // block or the same representative on a third operand.
+                // A direct block still holds when the piece representing
+                // it is itself an alias.
                 if let Some((gid, gb, _)) = self.matching_block(side, e, &block, other)? {
                     let (ours, theirs) = ((e.id, block.index), (gid, gb.index));
-                    let canonical = |piece| representative.get(&piece).copied().unwrap_or(piece);
-                    if canonical(ours) != canonical(theirs) {
+                    let representative_of =
+                        |piece| representative.get(&piece).copied().unwrap_or(piece);
+                    let (our_rep, their_rep) = (representative_of(ours), representative_of(theirs));
+                    if our_rep != their_rep && our_rep != theirs && their_rep != ours {
                         return Err(OpError::Internal(Fault::Invariant {
                             what: "an edge along a face's boundary with no common block",
                         }));
