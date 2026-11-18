@@ -9,11 +9,13 @@ use core::f64::consts::{PI, TAU};
 
 use arris_check::classify::{Classification, classify_point};
 use arris_check::{Level, Lump, LumpError, Report, ShellNestingFault, Violation, check, lumps};
-use arris_debug::sample;
+use arris_debug::{sample, unmetered};
 use arris_geom::{Curve, Curve2, NurbsCurve, NurbsSurface, Surface};
 use arris_math::{
-    Frame, Frame2, Handedness, Interval, Point2, Point3, Precision, UnitVec2, UnitVec3, Vec2, Vec3,
+    Control, Frame, Frame2, Handedness, Interval, Point2, Point3, Precision, UnitVec2, UnitVec3,
+    Vec2, Vec3,
 };
+use arris_mesh::{MeshRequest, TriMesh, tessellate_faces};
 use arris_topo::entity::{
     Body as BodyEntity, BodyKind, Coedge, Edge, EdgeGeometry, Face, Loop, Shell, Vertex,
 };
@@ -1080,6 +1082,86 @@ fn b1_a_ball_on_a_box_face_is_two_lumps() {
     assert!(report.is_ok(), "{report}");
     assert!(report.unchecked().is_empty(), "{report}");
     assert_eq!(lumps(&m, body).unwrap().len(), 2);
+}
+
+/// ADR-0090: build the solid directly so the checker, measure and both
+/// tessellation paths see the separate copies at the contact.
+fn assert_touching_lumps(
+    m: &mut Model,
+    shells: [ShellId; 2],
+    expected_volume: f64,
+    contact_vertices: &[[f64; 3]],
+) {
+    let body = solid_of(m, shells.to_vec());
+    let report = check(m, body, Level::Full);
+    assert!(report.is_ok(), "{report}");
+    assert!(report.unchecked().is_empty(), "{report}");
+    let found = lumps(m, body).unwrap();
+    assert_eq!(
+        found,
+        shells.map(|id| Lump {
+            outer: ShellHandle::forward(id),
+            voids: Vec::new(),
+        })
+    );
+    let volume = unmetered::mass_properties(m, body).unwrap().volume;
+    assert!(
+        (volume - expected_volume).abs() <= 1e-12 * expected_volume,
+        "volume {volume}, expected {expected_volume}"
+    );
+
+    let chord = 0.05;
+    let count =
+        |mesh: &TriMesh, point: &[f64; 3]| mesh.positions().iter().filter(|&p| p == point).count();
+    let mut position_total = 0;
+    for shell in shells {
+        let lump = solid_of(m, vec![shell]);
+        let mesh = unmetered::tessellate(m, lump, chord).unwrap();
+        assert!(mesh.is_closed(), "{shell}");
+        for point in contact_vertices {
+            assert_eq!(count(&mesh, point), 1, "{shell} at {point:?}");
+        }
+        position_total += mesh.positions().len();
+    }
+
+    let request = MeshRequest::new(chord);
+    let parts: Vec<_> = m
+        .faces(body)
+        .unwrap()
+        .iter()
+        .map(|f| tessellate_faces(m, body, &[f.id], &request, &Control::NONE).unwrap())
+        .collect();
+    let welded = TriMesh::weld(&parts).unwrap();
+    assert!(welded.is_closed());
+    assert_eq!(welded.positions().len(), position_total);
+    for point in contact_vertices {
+        assert_eq!(count(&welded, point), 2, "at {point:?}");
+    }
+}
+
+#[test]
+fn b1_cuboids_touching_along_copies_of_one_edge_are_two_lumps() {
+    let mut m = Model::default();
+    let a = cuboid_shell(&mut m, [0.0; 3], [1.0; 3], false);
+    let b = cuboid_shell(&mut m, [1.0, 1.0, 0.0], [2.0, 2.0, 1.0], false);
+    assert_touching_lumps(&mut m, [a, b], 2.0, &[[1.0, 1.0, 0.0], [1.0; 3]]);
+}
+
+#[test]
+fn b1_cuboids_touching_at_copies_of_one_vertex_are_two_lumps() {
+    let mut m = Model::default();
+    let a = cuboid_shell(&mut m, [0.0; 3], [1.0; 3], false);
+    let b = cuboid_shell(&mut m, [1.0; 3], [3.0; 3], false);
+    assert_touching_lumps(&mut m, [a, b], 9.0, &[[1.0; 3]]);
+}
+
+#[test]
+fn b1_a_cuboid_touching_a_cylinders_top_rim_is_a_separate_lump() {
+    let mut m = Model::default();
+    let cylinder = cylinder_shell(&mut m, [0.0; 3], Vec3::x(), 1.0, 1.0);
+    // The corner meets the top rim at the cylinder's seam vertex.
+    let block = cuboid_shell(&mut m, [1.0, 0.0, 1.0], [2.0, 1.0, 2.0], false);
+    assert_touching_lumps(&mut m, [cylinder, block], PI + 1.0, &[[1.0, 0.0, 1.0]]);
 }
 
 /// B1 still refuses a crossing: two cylinders whose walls cross along two

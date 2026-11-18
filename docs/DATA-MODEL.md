@@ -1624,10 +1624,11 @@ test scaffolding that stores a dangling reference as given), the builder
   container it is (B1) — so one solid holds a cavity (a `shell` with no opening: the
   body's faces and the offset's, reversed, ADR-0049), the two halves of a
   split, disjoint pieces, and a piece inside another's cavity (ADR-0006).
-  The lumps' interiors are disjoint and their boundaries may touch, along
-  a curve where their surfaces are tangent or at a point, each lump keeping
-  its own edges and vertices (*touching lumps*, ADR-0088); two lumps whose
-  boundaries cross, or share an area, are no solid.
+  The lumps' interiors are disjoint and their boundaries may touch along
+  a curve or at a point (*touching lumps*, ADR-0088). Where the contact
+  follows an edge or reaches a vertex of both shells, each keeps its own
+  copy (ADR-0090). Lumps whose boundaries cross or share an area cannot
+  form a solid.
   A lump is derived, never stored: `arris_check::lumps(&Model, Body)`
   returns them, and an operation stores a body's shells lump by lump, the
   outer shell first. `Sheet`: open shells

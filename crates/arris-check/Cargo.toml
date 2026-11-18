@@ -23,9 +23,11 @@ arris-topo.workspace = true
 # The sample bodies the violation tests break live in `arris-debug`; a
 # dev-dependency is exempt from the layer rule. The seeded property-test
 # runner is there too, and `proptest` supplies the assertion macros the
-# classifier's properties are written with.
+# classifier's properties are written with. The Full tests use
+# `arris-mesh` to check tessellation and welding of touching lumps.
 [dev-dependencies]
 arris-debug.workspace = true
+arris-mesh = { path = "../arris-mesh" }
 proptest.workspace = true
 
 [lints]

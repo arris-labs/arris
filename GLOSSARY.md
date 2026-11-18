@@ -29,9 +29,9 @@ stored (ADR-0006).
 
 **Touching lumps**:
 Lumps of one solid whose boundaries meet along curves where their surfaces
-touch, or at isolated points, never across or over an area; each keeps its
-own edges and vertices (ADR-0088). Open CASCADE's compound of touching
-solids.
+touch, or at isolated points, never across or over an area (ADR-0088).
+Each lump keeps its own copy of a contact edge or vertex (ADR-0090).
+Open CASCADE's compound of touching solids.
 _Avoid_: compound, non-manifold solid
 
 **Precision**:

@@ -1854,8 +1854,10 @@ depends on `check`. The mesh guarantees (ADR-0003):
   become one index run, compared bit for bit, never snapped; a difference
   is `MeshError::WeldMismatch` naming the edge. A partition of a body's
   faces, meshed apart and welded in any order, is the one-call mesh's edge
-  polylines and per-face triangles, and closed. The corpus runner holds
-  every fixture to it.
+  polylines and per-face triangles, and closed for a solid. Contact copies
+  in touching lumps have distinct edge ids, so welding retains separate
+  indices for the coincident positions and each lump stays closed
+  (ADR-0090). The corpus runner holds every fixture to the one-call mesh.
 - A face whose surface curves in both directions — a sphere, a torus, a
   NURBS surface — carries interior points on a uniform (u, v) lattice at
   its `chord_steps` spacing, those its loops wind around; a ruled

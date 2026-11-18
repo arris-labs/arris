@@ -76,7 +76,7 @@ Grades are tiers (`.agents/tiers.md`): **[1]** routine, **[2]** careful
 (a geometric or numeric case within a given design), **[3]** unproven (an
 algorithm whose robustness has to be established here).
 
-- [ ] Step 1 **[2]** — Prove the representation before the boolean makes
+- [x] Step 1 **[2]** — Prove the representation before the boolean makes
   it. Write ADR-0090. Add `arris-check/tests/full.rs` cases with hand-built
   bodies (`solid_of`): two cuboids on one line with their own coincident
   edges, two at one corner, and a cuboid touching `cylinder_in`'s top rim

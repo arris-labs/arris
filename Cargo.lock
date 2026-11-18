@@ -95,6 +95,7 @@ dependencies = [
  "arris-debug",
  "arris-geom",
  "arris-math",
+ "arris-mesh",
  "arris-topo",
  "proptest",
 ]
