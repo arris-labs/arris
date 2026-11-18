@@ -80,7 +80,7 @@ run after the human pushes.
 
 - [x] Step 1 **[1]** — ADR-0091 and its index row; `.agents/rules/git.md`
   §Pull requests; *Land* in `GLOSSARY.md`. Test: the docs tests.
-- [ ] Step 2 **[2]** — `tools/pr-check.sh` and `tools/pr-check-test.sh`
+- [x] Step 2 **[2]** — `tools/pr-check.sh` and `tools/pr-check-test.sh`
   (each commit and file rule shown failing and passing on a scratch repo),
   wired into `tools/gate.sh`'s `tool_tests`. Test: the self-test, and the
   script run on PR #2's head names its clippy, trailer, author and

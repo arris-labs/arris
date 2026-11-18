@@ -173,6 +173,7 @@ out=$(plan tools/gate.sh)
 equals "tool filter" "$(key filter "$out")" "none()"
 equals "tool test" "$(key tool_tests "$out")" "tools/gate-test.sh"
 equals "tool test by test" "$(key tool_tests "$(plan tools/gate-test.sh tools/gate.sh)")" "tools/gate-test.sh"
+equals "PR check tool test" "$(key tool_tests "$(plan tools/pr-check.sh tools/pr-check-test.sh)")" "tools/pr-check-test.sh"
 equals "tool without test" "$(key tool_tests "$(plan tools/stop-gate.sh)")" ""
 equals "harness config is prose" "$(key filter "$(plan .claude/settings.json)")" \
   "binary_id(arris::docs_refs) | binary_id(arris-check::doc_drift)"
