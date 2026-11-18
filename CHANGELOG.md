@@ -8,10 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
-- A ball touching a cylinder's end disc at a point can fuse with it as
-  two lumps of one solid. Cutting in either order keeps the target, and
-  their common returns `Empty`. Cutting a spherical cavity that touches
-  its outer wall at a point returns `TangentContact`.
+- A ball touching a cylinder's end disc or a torus touching a box at a
+  point can fuse as two lumps of one solid. Cutting in either order keeps
+  the target, and the common returns `Empty`. Cutting a spherical cavity
+  that touches its outer wall at a point returns `TangentContact`.
 
 - Solids touching from the outside along a curve can fuse to one solid
   with two lumps. Each lump keeps its own edges and vertices. A fuse that

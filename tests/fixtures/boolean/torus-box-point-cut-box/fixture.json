@@ -1,0 +1,21 @@
+{
+  "description": "The training harness's torus link: a ring torus of major radius 3 and minor radius 1 touches the centre of the box's near face at (4, 0, 0). Rotate the torus's seam about its axis for an equator-only touch, or tilt the axis 30 degrees and translate the torus to keep the touch off both seams.",
+  "params": {"turn": 0, "tilt": 0},
+  "variants": {"equator_seam": {"turn": 25}, "off_seams": {"turn": 25, "tilt": 30}},
+  "steps": [
+    {"name": "section", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]}, "outer": {"circle": {"center": [3, 0], "radius": 1}}},
+    {"name": "ring", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 360},
+    {"name": "turned", "op": "transform", "of": "ring", "rotate": {"axis": [0, 1, 0], "angle_deg": "turn"}},
+    {"name": "torus", "op": "transform", "of": "turned", "rotate": {"axis": [0, 0, 1], "angle_deg": "tilt"}, "translate": ["3 * (1 - cos(radians(tilt)))", "-3 * sin(radians(tilt))", 0]},
+    {"name": "box", "op": "box", "min": [4, -1, -1], "max": [6, 1, 1]},
+    {"name": "result", "op": "cut", "target": "box", "tool": "torus"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside_ring", "point": ["(3 * (1 - cos(radians(tilt))))", "-3 * sin(radians(tilt))", -3], "expect": "out"},
+    {"label": "inside_box", "point": [5, 0, 0], "expect": "in"},
+    {"label": "contact", "point": [4, 0, 0], "expect": "on"},
+    {"label": "outside_contact", "point": [3.99, 0, 0.5], "expect": "out"}
+  ],
+  "analytic": {"volume": 8, "area": 24, "centroid": [5, 0, 0], "genus": 0}
+}

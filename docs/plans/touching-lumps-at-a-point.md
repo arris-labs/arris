@@ -77,7 +77,7 @@ mechanical. **[2]** careful, a geometric or numeric case within the design.
   overlap beyond tolerance on either side of the touch. Hold the
   surviving-touch rule for the cases this step opens, with the spherical
   cavity against a plane as the same-lump control.
-- [ ] Step 2 **[3]** — Build the torus and box at the outer point of the
+- [x] Step 2 **[3]** — Build the torus and box at the outer point of the
   ring in the harness pose, on the equator seam away from its vertex, and
   off both seams. Trace any hit that wrongly splits a piece or changes
   the dimension of the touch. Graduate oracle-backed fixtures for fuse,
@@ -135,5 +135,10 @@ mechanical. **[2]** careful, a geometric or numeric case within the design.
   records the bounded retry, the clearance in both poses and the gap and
   overlap controls. B1 places both shells in both poses with its existing
   clear-point rule.
-- ⚠ OPEN: Step 2's agent checks whether the torus trace supplies the
-  touch in each pose and repairs the layer where evidence is lost.
+- **Settled in step 2:** The torus tracer returns an isolated touch in
+  all three poses. The seam vertex keeps its own hits, with no section
+  edge. The equator hit away from that vertex adds no pave. Off both
+  seams, the face pair supplies the only hit at the contact. The
+  selection retry from ADR-0089 builds all three, with no tracer or
+  pave change. Open CASCADE imprints the equator contact away from its
+  vertex, adding one vertex and one edge.

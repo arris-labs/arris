@@ -261,6 +261,15 @@ corpus_tests! {
     boolean_ball_on_disc_overlap => run "boolean/ball-on-disc-overlap";
     /// Cutting a spherical cavity that touches its own outer wall is refused.
     boolean_ball_on_disc_cavity => run "boolean/ball-on-disc-cavity";
+    /// A torus and a box fuse at one point, on the torus's vertex, on
+    /// just the equator seam, or off both seams.
+    boolean_torus_box_point_fuse => run "boolean/torus-box-point-fuse";
+    /// The tangent box leaves the torus whole in all three poses.
+    boolean_torus_box_point_cut_torus => run "boolean/torus-box-point-cut-torus";
+    /// The tangent torus leaves the box whole in all three poses.
+    boolean_torus_box_point_cut_box => run "boolean/torus-box-point-cut-box";
+    /// A point of contact yields Empty with or without a seam there.
+    boolean_torus_box_point_common => run "boolean/torus-box-point-common";
     /// A cylinder wholly inside a box: a void of three faces, the seam
     /// carried with them.
     boolean_cavity_cylinder => run "boolean/cavity-cylinder";

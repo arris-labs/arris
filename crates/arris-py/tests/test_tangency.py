@@ -9,7 +9,7 @@ import math
 
 import arris
 import pytest
-from arris.build import Solid
+from arris.build import Solid, Workplane
 
 from conftest import AREA_REL, CENTROID_ABS, VOLUME_REL
 
@@ -235,6 +235,61 @@ def test_a_cylinder_tangent_to_a_centred_box_side_fuses_to_two_lumps():
         probes=[
             ("contact ruling", (2, 0, 0), "on"),
             ("contact ends on the box edge", (2, 2, 0), "on"),
+        ],
+    )
+
+
+def test_a_torus_touching_a_box_at_its_outer_equator_fuses_to_two_lumps():
+    """The torus link: a ring of radii 3 and 1 about y touches the centre
+    of the box's near face at (4, 0, 0), at the torus's seam vertex."""
+    model = arris.Model()
+    torus = Workplane.XY().circle(1, center=(3, 0)).revolve("y", TAU, model=model)
+    box = Solid.box((4, -1, -1), (6, 1, 1), model=model)
+    fused = torus.fuse(box)
+    volume = 6 * PI**2 + 8
+    hold(
+        model,
+        fused.body,
+        volume=volume,
+        area=12 * PI**2 + 24,
+        centroid=(40 / volume, 0, 0),
+        genus=1,
+        counts=(9, 14, 7, 7, 2),
+        probes=[
+            ("inside the ring", (3, 0, 0), "in"),
+            ("inside the box", (5, 0, 0), "in"),
+            ("contact point", (4, 0, 0), "on"),
+            ("next to the contact", (3.99, 0, 0.5), "out"),
+        ],
+    )
+
+
+def test_a_ball_touching_a_cylinder_at_its_pole_fuses_to_two_lumps():
+    """The ball knob: a radius-two ball at the origin touches the top of
+    its radius-one stem at (0, 0, -2)."""
+    model = arris.Model()
+    ball = (
+        Workplane.XZ()
+        .start((0, -2))
+        .arc_to((0, 2), tangent=(1, 0))
+        .close()
+        .revolve("y", TAU, model=model)
+    )
+    stem = Solid.cylinder((0, 0, -5), (0, 0, 1), 1, 3, model=model)
+    fused = stem.fuse(ball)
+    hold(
+        model,
+        fused.body,
+        volume=41 * PI / 3,
+        area=24 * PI,
+        centroid=(0, 0, -31.5 / 41),
+        genus=0,
+        counts=(4, 4, 4, 4, 2),
+        probes=[
+            ("inside the ball", (0, 0, 0), "in"),
+            ("inside the stem", (0, 0, -3), "in"),
+            ("south pole contact", (0, 0, -2), "on"),
+            ("beside the disc", (1.5, 0, -2), "out"),
         ],
     )
 

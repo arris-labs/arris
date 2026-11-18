@@ -866,7 +866,13 @@ B1's own; a split target, a disjoint `fuse` and a cavity are each one
 solid. Two pieces in one lump whose output trims retain an isolated
 touch away from shared topology return `BooleanReason::TangentContact`
 naming the source faces. Two lumps that retain an isolated touch can
-build with their own edges and vertices (ADR-0089). The shells are
+build with their own edges and vertices (ADR-0089). For a ring torus
+touching the centre of a box face, the tracer gives a `MeetPoint` in
+all three poses in `boolean/torus-box-point-fuse`. At the torus's seam
+vertex the two tangent edge hits meet at that existing vertex alone.
+Along the equator seam away from the vertex, the one tangent hit adds
+no pave. Off both seams the face pair supplies the point without an
+edge hit. The three poses preserve both operands' face trims. The shells are
 assembled through `Builder::assemble` with every untouched entity of a kept-by-id operand
 `Keep` (for an operand copied because it shares entities, the copy's, so
 not the caller's ids: below): a face whose loops changed at all, even

@@ -1,0 +1,255 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "96a59b7c8954492552b7824656deaddf710291ff9e5bc0ca0091749ca1bc120b",
+  "results": {
+    "default": {
+      "area": 24.0,
+      "centroid": [
+        5.000000000000001,
+        5.2041704279304236e-18,
+        1.387778780781446e-17
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          5.333333333333334,
+          2.801224388503418e-18,
+          -3.3306690738754686e-16
+        ],
+        [
+          2.801224388503418e-18,
+          5.333333333333229,
+          -1.0842021724855039e-18
+        ],
+        [
+          -3.3306690738754686e-16,
+          -1.0842021724855039e-18,
+          5.333333333333286
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "inside_ring",
+          "point": [
+            0.0,
+            -0.0,
+            -3.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_box",
+          "point": [
+            5.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "contact",
+          "point": [
+            4.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_contact",
+          "point": [
+            3.99,
+            0.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 7.999999999999998
+    },
+    "equator_seam": {
+      "area": 24.0,
+      "centroid": [
+        5.000000000000001,
+        5.2041704279304236e-18,
+        1.387778780781446e-17
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          5.333333333333334,
+          2.801224388503418e-18,
+          -3.3306690738754686e-16
+        ],
+        [
+          2.801224388503418e-18,
+          5.333333333333229,
+          -1.0842021724855039e-18
+        ],
+        [
+          -3.3306690738754686e-16,
+          -1.0842021724855039e-18,
+          5.333333333333286
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "inside_ring",
+          "point": [
+            0.0,
+            -0.0,
+            -3.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_box",
+          "point": [
+            5.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "contact",
+          "point": [
+            4.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_contact",
+          "point": [
+            3.99,
+            0.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 7.999999999999998
+    },
+    "off_seams": {
+      "area": 24.0,
+      "centroid": [
+        5.0,
+        5.2041704279304236e-18,
+        1.387778780781446e-17
+      ],
+      "counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          5.333333333333334,
+          -8.862268557896513e-16,
+          -3.3306690738754696e-16
+        ],
+        [
+          -8.862268557896513e-16,
+          5.333333333333371,
+          2.3852447794681105e-18
+        ],
+        [
+          -3.3306690738754696e-16,
+          2.3852447794681105e-18,
+          5.333333333333371
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 12,
+        "faces": 6,
+        "loops": 6,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 8
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "inside_ring",
+          "point": [
+            0.4019237886466839,
+            -1.4999999999999998,
+            -3.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_box",
+          "point": [
+            5.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "contact",
+          "point": [
+            4.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_contact",
+          "point": [
+            3.99,
+            0.0,
+            0.5
+          ]
+        }
+      ],
+      "volume": 7.999999999999998
+    }
+  }
+}
