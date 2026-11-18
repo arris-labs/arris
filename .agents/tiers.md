@@ -4,7 +4,7 @@ A plan step's complexity grade (`docs/plans/TEMPLATE.md`) is its **tier**:
 the class of model that executes it.
 
 | Tier | Grade | The step |
-|---|---|---|
+| --- | --- | --- |
 | 1 | **[1]** routine | the design says exactly what to write; the tests are mechanical |
 | 2 | **[2]** careful | a geometric or numeric case to get right within a given design |
 | 3 | **[3]** unproven | an algorithm whose robustness or bound is established here |
@@ -18,10 +18,10 @@ model update is an edit of one row.
 ## Claude Code
 
 | Tier | Model | Effort |
-|---|---|---|
-| 1 | Haiku 5.5 (`haiku`) | the session's |
-| 2 | Sonnet 5.5 (`sonnet`) | the session's |
-| 3 | Opus 5.5 (`opus`) | the session's |
+| --- | --- | --- |
+| 1 | `haiku 5.5` | `medium` |
+| 2 | `sonnet 5.5` | `medium` |
+| 3 | `opus 5.5` | `medium` |
 
 The conductor (`/work` with no range) starts a step with the Agent tool,
 `model` set to the tier's name in parentheses; the subagent's model follows
@@ -31,13 +31,13 @@ The conductor needs no tier of its own: it starts steps, checks what
 landed and runs `/retire-plan`, whose review and hard fixes are
 subagents. Tier 2 is enough; it conducted development-throughput.
 
-## ChatGPT (OpenAI models)
+## Codex
 
 | Tier | Model | Reasoning effort |
-|---|---|---|
-| 1 | GPT-6.1-Sol | medium |
-| 2 | GPT-6.1-Sol | high |
-| 3 | GPT-6-Astra | xhigh |
+| --- | --- | --- |
+| 1 | `gpt-6.2-sol` | `low` |
+| 2 | `gpt-6.2-sol` | `medium` |
+| 3 | `gpt-6.2-sol` | `high` |
 
 Effort is pinned here rather than inherited: a tier-3 step is the one that
 needs the deepest reasoning, and the session's setting may be lower. The
