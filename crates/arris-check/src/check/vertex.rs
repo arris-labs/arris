@@ -99,7 +99,10 @@ impl Checker<'_> {
 
     /// V4: distinct vertices of one shell must be farther apart than
     /// both of their tolerances, except at the ends of a short edge.
-    pub(crate) fn v4_coincident(&mut self, edges: &BTreeMap<EdgeId, Vec<Orientation>>) {
+    pub(crate) fn v4_coincident(
+        &self,
+        edges: &BTreeMap<EdgeId, Vec<Orientation>>,
+    ) -> Vec<[VertexId; 2]> {
         let ids: BTreeSet<_> = edges
             .keys()
             .filter_map(|&id| self.model.edge(id).ok())
@@ -116,6 +119,7 @@ impl Checker<'_> {
             .collect();
         vertices
             .sort_unstable_by(|(a, v), (b, w)| v.point().x.total_cmp(&w.point().x).then(a.cmp(b)));
+        let mut pairs = Vec::new();
         for &(id, vertex) in &vertices {
             let point = vertex.point();
             let tolerance = vertex.tolerance();
@@ -143,10 +147,10 @@ impl Checker<'_> {
                             })
                     });
                 if !joined {
-                    let (a, b) = (id.min(other_id), id.max(other_id));
-                    self.push(Violation::CoincidentVertices { a, b });
+                    pairs.push([id.min(other_id), id.max(other_id)]);
                 }
             }
         }
+        pairs
     }
 }

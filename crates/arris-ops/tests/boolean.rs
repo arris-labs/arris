@@ -1638,6 +1638,84 @@ fn a_partial_bridge_names_the_two_inherited_contact_edges() {
     }
 }
 
+/// Joining two shells remotely must refuse their unjoined corners within
+/// vertex tolerance. Assemble the input from already separate shells so
+/// their corners keep their distinct positions and ids.
+#[test]
+fn a_remote_bridge_refuses_inherited_corners_within_vertex_tolerance() {
+    let mut m = Model::default();
+    let corner = Point3::new(10.0, 10.0, 10.0);
+    let separated = corner + Vec3::repeat(m.precision().default_tolerance / 2.0);
+    let (a, _) = primitive_box(&mut m, Point3::origin(), corner).unwrap();
+    let (b, _) = primitive_box(&mut m, separated, Point3::new(20.0, 20.0, 20.0)).unwrap();
+    let mut corners = [(a, corner), (b, separated)].map(|(body, point)| {
+        m.vertices(body)
+            .unwrap()
+            .into_iter()
+            .find(|v| m.vertex(v.id).unwrap().point() == point)
+            .map(|v| shape(v.id))
+            .unwrap()
+    });
+    corners.sort_unstable();
+    let shells = [a, b]
+        .into_iter()
+        .flat_map(|body| m.shells(body).unwrap())
+        .collect();
+    let body = Body::forward(m.raw().add_body(arris_topo::entity::Body::solid(shells)));
+    let report = check(&m, body, Level::Full);
+    assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+    assert_eq!(lumps(&m, body).unwrap().len(), 2);
+    let before = arris_debug::dump_text(&m, body).unwrap();
+
+    let (first, _) = primitive_box(&mut m, [4.0, 4.0, 9.0], [6.0, 6.0, 16.0]).unwrap();
+    let (second, _) = primitive_box(&mut m, [5.0, 5.0, 14.0], [12.0, 12.0, 16.0]).unwrap();
+    match fuse_many(&mut m, &[body, first, second]).unwrap_err() {
+        OpError::Degenerate {
+            reason: Reason::Input(InputReason::NonManifold),
+            entities,
+        } => assert_eq!(entities, corners),
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(arris_debug::dump_text(&m, body).unwrap(), before);
+}
+
+/// A V4 pair already present in an operand shell can survive a disjoint
+/// fuse with its points, tolerances and vertex ids intact.
+#[test]
+fn a_disjoint_fuse_preserves_a_preexisting_pair_within_vertex_tolerance() {
+    use arris_topo::builder::{Assembly, Builder, KeepGeometry, VertexSpec};
+    use arris_topo::entity::BodyKind;
+
+    let mut m = Model::default();
+    let precision = m.precision();
+    let width = precision.max_tolerance * 0.4;
+    let (prism, _) = primitive_box(&mut m, [0.0; 3], [width, width, 10.0]).unwrap();
+    let (mut assembly, _) = Assembly::of_body(&mut m, prism, &mut KeepGeometry).unwrap();
+    for vertex in &mut assembly.vertices {
+        if let VertexSpec::New { point, tolerance } = vertex
+            && *point == Point3::origin()
+        {
+            *tolerance = precision.max_tolerance;
+        }
+    }
+    let (builder, _) = Builder::assemble(&m, precision.default_tolerance, assembly).unwrap();
+    let a = builder.finish(&mut m, BodyKind::Solid).unwrap().body;
+    let report = check(&m, a, Level::Full);
+    assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+    let pairs = arris_check::coincident_vertices(&m, a).unwrap();
+    assert_eq!(pairs.len(), 1);
+
+    let (b, _) = primitive_box(&mut m, [100.0; 3], [110.0; 3]).unwrap();
+    let (joined, provenance) = fuse(&mut m, a, b).unwrap();
+    assert_eq!(lumps(&m, joined).unwrap().len(), 2);
+    assert_eq!(arris_check::coincident_vertices(&m, joined).unwrap(), pairs);
+    for vertex in pairs.into_iter().flatten() {
+        assert!(provenance.is_kept(shape(vertex), &m, joined));
+    }
+    let report = check(&m, joined, Level::Full);
+    assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+}
+
 /// The full bridge drops both copies of the buried edge and its endpoints.
 #[test]
 fn a_full_bridge_drops_the_inherited_contact_entities() {

@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::domain::FaceDomain;
 use arris_check::{
-    Classification, Classifier, ClassifyError, TouchingFacePairError,
+    Classification, Classifier, ClassifyError, TouchingFacePairError, coincident_vertices,
     first_touching_face_pair_metered, lumps,
 };
 use arris_geom::{
@@ -2123,8 +2123,71 @@ fn one_result(
     inherited_contact(
         m, built.body, operands, &kept, &shells, &lump_of, &out_faces, &p, meter,
     )?;
-    crate::verify_with(m, built.body, arris_check::check_boolean_result)?;
+    check_new_coincidences(m, built.body, operands, &p)?;
+    crate::verify(m, built.body)?;
     Ok((built.body, p, outside))
+}
+
+/// Apply V4 to new vertex pairs. Some checker-valid operands already
+/// contain unjoined vertices within tolerance, so an unchanged pair
+/// from one input shell is allowed to survive.
+fn check_new_coincidences(
+    m: &Model,
+    body: Body,
+    operands: &Operands,
+    p: &Provenance,
+) -> Result<(), OpError> {
+    let mut pairs: BTreeSet<_> = coincident_vertices(m, body)?.into_iter().collect();
+    if pairs.is_empty() {
+        return Ok(());
+    }
+    for &operand in &operands.bodies {
+        for [u, v] in coincident_vertices(m, operand)? {
+            let originals = [m.vertex(u)?.point(), m.vertex(v)?.point()];
+            let images = |id| {
+                p.modified_from(forward(id))
+                    .iter()
+                    .filter_map(|image| match image.id {
+                        EntityId::Vertex(image) => Some(image),
+                        _ => None,
+                    })
+                    .chain(std::iter::once(id))
+            };
+            for a in images(u) {
+                for b in images(v) {
+                    let pair = [a.min(b), a.max(b)];
+                    if pairs.contains(&pair)
+                        && [m.vertex(a)?.point(), m.vertex(b)?.point()] == originals
+                    {
+                        pairs.remove(&pair);
+                    }
+                }
+            }
+        }
+    }
+    if let Some(pair) = pairs.first() {
+        let mut sources = Vec::new();
+        for &vertex in pair {
+            let from = sources.len();
+            let output = forward(vertex);
+            for side in 0..operands.bodies.len() {
+                sources.extend(operands.contact_origins(side, output, p));
+            }
+            if sources.len() == from {
+                sources.extend(p.origins(output).into_iter().filter_map(
+                    |(_, origin)| match origin {
+                        Origin::Entity(entity) => Some(entity),
+                        Origin::Role(_) => None,
+                    },
+                ));
+            }
+        }
+        if sources.is_empty() {
+            sources.extend(operands.bodies.iter().copied().map(Shape::from));
+        }
+        return Err(non_manifold(sources));
+    }
+    Ok(())
 }
 
 /// Refuse an isolated contact that survives on both faces of one lump.

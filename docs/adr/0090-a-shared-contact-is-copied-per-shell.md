@@ -91,7 +91,12 @@ the edge and its ends. V4 reports exact coincidences even when an
 edge joins the pair, and all unjoined pairs within the larger vertex
 tolerance.
 
-The Fast guard on boolean results runs V4. The general checker continues
+Before the Fast guard, booleans use V4 to find coincident vertex pairs.
+They can preserve a pair that already qualifies in one operand shell
+when both vertices keep their source positions. A newly coincident
+pair returns `NonManifold` naming source entities. This includes a
+pair from distinct shells of one operand that end up in the same shell.
+The general checker continues
 to accept the two vertex instances Open CASCADE writes where a STEP
 crescent's outer bound and hole touch. Sewing those vertices needs to
 splice the two loops as well. Merging ids alone changes the builder's

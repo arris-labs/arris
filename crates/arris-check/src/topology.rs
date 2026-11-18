@@ -476,7 +476,11 @@ impl<'m> Checker<'m> {
         for shell_id in self.closure.shells.clone() {
             let uses = self.shell_edge_uses(shell_id);
             if distinct_vertices {
-                self.v4_coincident(&uses);
+                self.violations.extend(
+                    self.v4_coincident(&uses)
+                        .into_iter()
+                        .map(|[a, b]| Violation::CoincidentVertices { a, b }),
+                );
             }
             self.s1_faces(shell_id);
             self.s2_edge_uses(shell_id, kind, uses);
@@ -507,7 +511,7 @@ impl<'m> Checker<'m> {
     /// The effective orientation of every coedge use of every edge of a
     /// shell: the coedge's composed with the face use's, in the shell's
     /// own stored order.
-    fn shell_edge_uses(&self, shell_id: ShellId) -> BTreeMap<EdgeId, Vec<Orientation>> {
+    pub(crate) fn shell_edge_uses(&self, shell_id: ShellId) -> BTreeMap<EdgeId, Vec<Orientation>> {
         let mut uses: BTreeMap<EdgeId, Vec<Orientation>> = BTreeMap::new();
         let Ok(shell) = self.model.shell(shell_id) else {
             return uses;

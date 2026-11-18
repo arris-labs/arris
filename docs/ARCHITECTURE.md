@@ -878,6 +878,9 @@ When pieces of two operand shells contribute to one result lump, the
 rebuilt boundaries decide whether separate copies of the operand contact
 survive. A bridge that covers the contact joins the lumps. An exposed
 contact returns `NonManifold` naming the source edges or vertices.
+The boolean also checks each shell for new pairs of coincident vertices
+under V4. An unchanged pair inherited from one operand shell can survive.
+A new pair returns `NonManifold` naming its source entities (ADR-0090).
 A split target, a disjoint `fuse` and a cavity are each one solid. Two
 pieces in one lump whose output trims retain an isolated
 touch away from shared topology return `BooleanReason::TangentContact`
@@ -1619,8 +1622,8 @@ that constructs it and sees it reported, and a level:
 - `Level::Fast` — combinatorial and local geometric checks (ids resolve,
   loops close, orientations compose, tolerances are ordered, pcurves match
   their 3D curves at sample points, a torus face's pcurves off its axis — the regular band). Linear in the body. This is what runs
-  after every operation. The boolean result guard also sweeps each shell
-  for coincident vertices (V4, ADR-0090).
+  after every operation. Booleans separately sweep each result shell for
+  new pairs of coincident vertices (V4, ADR-0090).
 - `Level::Full` — adds the global checks: an edge does not cross itself,
   the loops of a face do not cross, faces of a shell intersect only at
   shared edges, shells nest, a solid encloses positive volume. Not

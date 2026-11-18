@@ -1985,7 +1985,7 @@ reference tree) mapped onto this representation.
 | V1 | `Precision::min_tolerance ≤ tolerance` (`max_tolerance` bounds what an operation grows, not what a body holds: ADR-0060) | Fast |
 | V2 | For every incident edge, the edge's curve at the end of its range is within the vertex's tolerance of the vertex's point | Fast |
 | V3 | For every face the vertex lies on (through any coedge), the surface at the pcurve's end is within the vertex's tolerance of the point | Fast |
-| V4 | Distinct vertices of one shell are farther apart than the larger of their tolerances. The two ends of a non-degenerate edge can be closer if they are at different points (E2, ADR-0074 and ADR-0090). | Fast, boolean results only |
+| V4 | Distinct vertices of one shell are farther apart than the larger of their tolerances. The two ends of a non-degenerate edge can be closer if they are at different points (E2, ADR-0074 and ADR-0090). A boolean can preserve an unchanged pair from one operand shell. | Boolean result guard |
 
 **Edge**
 

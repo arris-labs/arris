@@ -30,7 +30,7 @@ mod vertex;
 /// that does not resolve is one `M1` line naming the body. Never panics
 /// and never repairs: a reference that does not resolve is reported once
 /// under M1 and skipped by every other row.
-/// The boolean result guard additionally runs V4.
+/// Booleans separately check that they introduce no new V4 pairs.
 ///
 /// ```
 /// use arris_check::{Level, check};
@@ -45,10 +45,22 @@ pub fn check(model: &Model, body: Body, level: Level) -> Report {
     check_with(model, body, level, false)
 }
 
-/// The Fast checker with V4 enabled for a solid assembled by a boolean.
+/// The Fast checker with V4 enabled, including pairs inherited from inputs.
 #[doc(hidden)]
 pub fn check_boolean_result(model: &Model, body: Body) -> Report {
     check_with(model, body, Level::Fast, true)
+}
+
+/// V4 pairs within each shell, in deterministic shell and vertex sweep
+/// order. Errors if `body` does not resolve.
+#[doc(hidden)]
+pub fn coincident_vertices(model: &Model, body: Body) -> Result<Vec<[VertexId; 2]>, NotFound> {
+    let c = Checker::new(model, body)?;
+    Ok(c.closure
+        .shells
+        .iter()
+        .flat_map(|&shell| c.v4_coincident(&c.shell_edge_uses(shell)))
+        .collect())
 }
 
 fn check_with(model: &Model, body: Body, level: Level, distinct_vertices: bool) -> Report {

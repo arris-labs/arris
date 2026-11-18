@@ -690,6 +690,8 @@ pub fn interferences_many(
 /// normal, is below the other surface's). A tool touching from outside
 /// along such a curve or at an isolated point, such as a ball at an
 /// end disc, leaves the target whole.
+/// When separate result lumps meet at a shared edge or vertex, each
+/// shell gets its own copy of that topology (ADR-0090).
 ///
 /// Errors, the model untouched on each: [`OpError::InvalidInput`] and
 /// [`OpError::NotFound`] as every operation; [`OpError::Unsupported`]
@@ -701,9 +703,10 @@ pub fn interferences_many(
 /// [`crate::BooleanReason::Empty`] when nothing survives (the target inside the
 /// tool), [`crate::InputReason::ZeroThickness`] when nothing survives and
 /// what was dropped lay on the other operand (two solids touching along
-/// a face), [`crate::InputReason::NonManifold`] naming the shared edges or
-/// vertices when two shells of the result would share an edge or a
-/// vertex, [`crate::BooleanReason::TangentContact`] when two faces of
+/// a face), [`crate::InputReason::NonManifold`] naming the source entities
+/// when a shared edge or vertex, including copies inherited from an
+/// operand, would leave one lump touching itself, or a shell would gain
+/// coincident vertices, [`crate::BooleanReason::TangentContact`] when two faces of
 /// one lump retain a curve contact interior to both or an isolated
 /// contact away from shared topology (a cavity tangent to a wall), or
 /// a section edge is tangent to a loop edge at a vertex (ADR-0088,
@@ -937,10 +940,13 @@ fn refusal(body: Body, reason: BooleanReason) -> OpError {
 /// each result shell from the operand shells its pieces came from — two
 /// disjoint operands are two lumps of one solid (ADR-0006,
 /// `docs/DATA-MODEL.md` §Provenance). A supported tangent contact along a
-/// curve or at an isolated point between separate lumps preserves both
-/// with their own edges and vertices (ADR-0088, ADR-0089).
-/// A contact that survives within one lump, including one inherited
-/// from an operand, is refused as [`crate::BooleanReason::TangentContact`].
+/// curve or at an isolated point between separate lumps preserves both.
+/// Each shell gets its own copy of any shared edge or vertex at the
+/// contact (ADR-0088, ADR-0089, ADR-0090). Such a contact within one lump,
+/// including contact through copies inherited from an operand, gives
+/// [`crate::InputReason::NonManifold`]. A curve contact interior to both
+/// faces, or an isolated touch away from shared topology in one lump,
+/// gives [`crate::BooleanReason::TangentContact`].
 /// A join that covers the contact can build. Tolerances follow
 /// the growth rule, as [`cut`]. Two faces on one surface are the flush
 /// case: a piece of `a`'s face lying on `b`'s is kept, once and in `a`'s

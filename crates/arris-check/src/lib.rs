@@ -27,7 +27,7 @@ mod violation;
 pub use arris_topo::euler::EulerLine;
 pub use check::check;
 #[doc(hidden)]
-pub use check::check_boolean_result;
+pub use check::{check_boolean_result, coincident_vertices};
 pub use classify::{Classification, Classifier, ClassifyError, classify_point};
 pub use full::{TouchingFacePairError, first_touching_face_pair, first_touching_face_pair_metered};
 pub use lumps::{Lump, LumpError, lumps};
