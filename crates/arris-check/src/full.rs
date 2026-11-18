@@ -20,7 +20,7 @@ use arris_geom::{
     Curve, CurveIntersection, MeetKind, Surface, SurfaceIntersection, SurfaceKind,
     intersect_curves, intersect_surfaces, trace_section,
 };
-use arris_math::{Aabb, Interval, Meter, Point2, Point3, Tolerance, Vec3, wrap_into};
+use arris_math::{Aabb, Interrupted, Interval, Meter, Point2, Point3, Tolerance, Vec3, wrap_into};
 use arris_topo::entity::BodyKind;
 use arris_topo::{Body, EdgeId, EntityId, FaceId, Model, NotFound, Orientation, ShellId, VertexId};
 
@@ -81,7 +81,33 @@ pub fn first_touching_face_pair(
     body: Body,
     pairs: &[[FaceId; 2]],
 ) -> Result<Option<[FaceId; 2]>, NotFound> {
-    let mut checker = Checker::new(model, body)?;
+    match first_touching_face_pair_metered(model, body, pairs, &mut Meter::default()) {
+        Ok(pair) => Ok(pair),
+        Err(TouchingFacePairError::NotFound(e)) => Err(e),
+        Err(TouchingFacePairError::Interrupted(_)) => unreachable!("the default meter cannot stop"),
+    }
+}
+
+/// Why a search for touching faces could not finish.
+#[doc(hidden)]
+#[derive(Debug)]
+pub enum TouchingFacePairError {
+    /// The body does not resolve.
+    NotFound(NotFound),
+    /// The caller stopped the search.
+    Interrupted(Interrupted),
+}
+
+/// The same search as [`first_touching_face_pair`], charging each face pair
+/// and its intersections to the operation's `meter`.
+#[doc(hidden)]
+pub fn first_touching_face_pair_metered(
+    model: &Model,
+    body: Body,
+    pairs: &[[FaceId; 2]],
+    meter: &mut Meter<'_>,
+) -> Result<Option<[FaceId; 2]>, TouchingFacePairError> {
+    let mut checker = Checker::new(model, body).map_err(TouchingFacePairError::NotFound)?;
     let tolerance = checker.precision.parametric_tolerance;
     for face in pairs.iter().flatten().copied().collect::<BTreeSet<_>>() {
         if let Ok(domain) = FaceDomain::of(model, face, tolerance) {
@@ -89,10 +115,18 @@ pub fn first_touching_face_pair(
         }
     }
     let boxes = checker.face_boxes();
-    Ok(pairs
-        .iter()
-        .copied()
-        .find(|&[a, b]| checker.faces_meet(a, b, &boxes, Meeting::Touching) == Ok(true)))
+    for &[a, b] in pairs {
+        meter.tick().map_err(TouchingFacePairError::Interrupted)?;
+        let meets = checker.faces_meet(a, b, &boxes, Meeting::Touching, meter);
+        // An intersection that was stopped can be reported as undecided.
+        if let Some(stop) = meter.stopped() {
+            return Err(TouchingFacePairError::Interrupted(stop));
+        }
+        if meets == Ok(true) {
+            return Ok(Some([a, b]));
+        }
+    }
+    Ok(None)
 }
 
 impl<'m> Checker<'m> {
@@ -315,6 +349,7 @@ impl<'m> Checker<'m> {
         b: FaceId,
         boxes: &FaceBoxes,
         meeting: Meeting,
+        meter: &mut Meter<'_>,
     ) -> Result<bool, (SurfaceKind, SurfaceKind)> {
         let model = self.model;
         let (Ok(fa), Ok(fb)) = (model.face(a), model.face(b)) else {
@@ -354,44 +389,45 @@ impl<'m> Checker<'m> {
         };
         let nurbs = |s: &Surface| matches!(s, Surface::Nurbs(_));
         if nurbs(sa) || nurbs(sb) {
-            return match self.nurbs_pair_meets(a, sa, b, sb, &within, query, meeting) {
+            return match self.nurbs_pair_meets(a, sa, b, sb, &within, query, meeting, meter) {
                 // A pair the intersector refuses is still apart when
                 // every piece of one face's patch is clear of every piece
                 // of the other's (the nesting of two lumps on one wall).
-                Err(kinds) if self.patches_apart(a, sa, b, sb, tolerance) => {
-                    let _ = kinds;
+                Err(_)
+                    if meter.stopped().is_none() && self.patches_apart(a, sa, b, sb, tolerance) =>
+                {
                     Ok(false)
                 }
                 found => found,
             };
         }
-        Ok(
-            match intersect_surfaces(sa, sb, &within, query, &mut arris_math::Meter::default()) {
-                Err(_) => return Err((sa.kind(), sb.kind())),
-                Ok(SurfaceIntersection::Empty) => false,
-                Ok(SurfaceIntersection::Coincident) => {
-                    meeting != Meeting::Touching && self.regions_overlap(a, sa, b, sb, tolerance)
-                }
-                // Crossing or touching, every curve and every point is held to
-                // the one rule, but for the touches `meeting` admits.
-                Ok(SurfaceIntersection::Meets { curves, points }) => {
-                    curves.iter().any(|c| {
-                        meeting.holds(c.kind)
-                            && self.curve_is_interior_to_both(
-                                a, sa, b, sb, &c.curve, query, meeting, c.kind,
-                            )
-                    }) || points.iter().any(|p| {
-                        meeting.holds(p.kind)
-                            && self.isolated_point_meets(
-                                [(a, sa), (b, sb)],
-                                p.point,
-                                tolerance,
-                                meeting,
-                            )
-                    })
-                }
-            },
-        )
+        Ok(match intersect_surfaces(sa, sb, &within, query, meter) {
+            Err(_) => return Err((sa.kind(), sb.kind())),
+            Ok(SurfaceIntersection::Empty) => false,
+            Ok(SurfaceIntersection::Coincident) => {
+                meeting != Meeting::Touching && self.regions_overlap(a, sa, b, sb, tolerance)
+            }
+            // Crossing or touching, every curve and every point is held to
+            // the one rule, but for the touches `meeting` admits.
+            Ok(SurfaceIntersection::Meets { curves, points }) => {
+                curves.iter().any(|c| {
+                    meter.stopped().is_none()
+                        && meeting.holds(c.kind)
+                        && self.curve_is_interior_to_both(
+                            a, sa, b, sb, &c.curve, query, meeting, c.kind, meter,
+                        )
+                }) || points.iter().any(|p| {
+                    meter.stopped().is_none()
+                        && meeting.holds(p.kind)
+                        && self.isolated_point_meets(
+                            [(a, sa), (b, sb)],
+                            p.point,
+                            tolerance,
+                            meeting,
+                        )
+                })
+            }
+        })
     }
 
     /// Whether the faces' patches share no point within `tolerance`,
@@ -446,11 +482,11 @@ impl<'m> Checker<'m> {
         within: &Aabb,
         query: Tolerance,
         meeting: Meeting,
+        meter: &mut Meter<'_>,
     ) -> Result<bool, (SurfaceKind, SurfaceKind)> {
         let tolerance = query.linear;
         let kinds = (sa.kind(), sb.kind());
-        let trace = trace_section(sa, sb, within, query, &mut arris_math::Meter::default())
-            .map_err(|_| kinds)?;
+        let trace = trace_section(sa, sb, within, query, meter).map_err(|_| kinds)?;
         let interior = |range: Interval, at: &dyn Fn(f64) -> Point3| {
             let samples = range.samples(self.precision.check_samples.max(2));
             self.section_is_interior_to_both(a, sa, b, sb, samples, at, tolerance, meeting)
@@ -466,15 +502,19 @@ impl<'m> Checker<'m> {
         };
         Ok(trace.circles().iter().any(|c| {
             let kind = kind(c.tangent);
-            meeting.holds(kind)
-                && self.curve_is_interior_to_both(a, sa, b, sb, &c.circle, query, meeting, kind)
-        }) || (meeting.holds(MeetKind::Crossing)
+            meter.stopped().is_none()
+                && meeting.holds(kind)
+                && self
+                    .curve_is_interior_to_both(a, sa, b, sb, &c.circle, query, meeting, kind, meter)
+        }) || (meter.stopped().is_none()
+            && meeting.holds(MeetKind::Crossing)
             && trace
                 .branches()
                 .iter()
                 .any(|branch| interior(branch.domain(), &|t| branch.point(t))))
             || trace.points().iter().any(|p| {
-                meeting.holds(kind(p.isolated))
+                meter.stopped().is_none()
+                    && meeting.holds(kind(p.isolated))
                     && self.isolated_point_meets([(a, sa), (b, sb)], p.point, tolerance, meeting)
             }))
     }
@@ -584,7 +624,7 @@ impl<'m> Checker<'m> {
                 .collect();
             for (i, &a) in faces.iter().enumerate() {
                 for &b in faces.iter().skip(i + 1) {
-                    match self.faces_meet(a, b, &boxes, Meeting::Any) {
+                    match self.faces_meet(a, b, &boxes, Meeting::Any, &mut Meter::default()) {
                         Ok(false) => {}
                         Ok(true) => found.push(Violation::FacesIntersect {
                             shell: shell_id,
@@ -681,6 +721,7 @@ impl<'m> Checker<'m> {
         tolerance: Tolerance,
         meeting: Meeting,
         kind: MeetKind,
+        meter: &mut Meter<'_>,
     ) -> bool {
         let Some(range) = self.curve_range(a, sa, b, sb, curve) else {
             return false;
@@ -688,7 +729,7 @@ impl<'m> Checker<'m> {
         let samples = range.samples(self.precision.check_samples.max(2));
         let midpoints = std::iter::once_with(|| {
             if kind == MeetKind::Touch {
-                self.trimmed_section_midpoints([a, b], curve, range, tolerance)
+                self.trimmed_section_midpoints([a, b], curve, range, tolerance, meter)
             } else {
                 Vec::new()
             }
@@ -715,6 +756,7 @@ impl<'m> Checker<'m> {
         curve: &Curve,
         range: Interval,
         tolerance: Tolerance,
+        meter: &mut Meter<'_>,
     ) -> Vec<f64> {
         let in_range = |t: f64, curve: &Curve, range: Interval| {
             let t = curve.period().map_or(t, |p| wrap_into(t, range.lo(), p));
@@ -753,9 +795,11 @@ impl<'m> Checker<'m> {
             {
                 continue;
             }
-            if let Ok(CurveIntersection::Points(hits)) =
-                intersect_curves(curve, edge_curve, tol, &mut Meter::default())
-            {
+            let section = intersect_curves(curve, edge_curve, tol, meter);
+            if meter.stopped().is_some() {
+                return Vec::new();
+            }
+            if let Ok(CurveIntersection::Points(hits)) = section {
                 cuts.extend(hits.into_iter().filter_map(|hit| {
                     in_range(hit.tb, edge_curve, edge_range)?;
                     in_range(hit.ta, curve, range)

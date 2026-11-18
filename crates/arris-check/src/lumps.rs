@@ -16,6 +16,7 @@ use core::cmp::Reverse;
 use core::fmt;
 use std::collections::BTreeSet;
 
+use arris_math::Meter;
 use arris_topo::entity::BodyKind;
 use arris_topo::{Body, FaceId, Model, NotFound, Shell, ShellId};
 
@@ -271,7 +272,13 @@ impl Checker<'_> {
                 let mut meets = false;
                 'pairs: for &a in &faces[i] {
                     for &b in &faces[j] {
-                        match self.faces_meet(a, b, &boxes, Meeting::Crossing) {
+                        match self.faces_meet(
+                            a,
+                            b,
+                            &boxes,
+                            Meeting::Crossing,
+                            &mut Meter::default(),
+                        ) {
                             Ok(false) => {}
                             Ok(true) => {
                                 meets = true;

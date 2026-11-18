@@ -7,7 +7,7 @@ boolean/ball-offset-drill-cut: 26354
 boolean/ball-on-apex-common: 11
 boolean/ball-on-disc-cavity: refused
 boolean/ball-on-disc-common: refused
-boolean/ball-on-disc-covered-join: 5138
+boolean/ball-on-disc-covered-join: 5141
 boolean/ball-on-disc-cut-ball: 16
 boolean/ball-on-disc-cut-stem: 16
 boolean/ball-on-disc-exposed-join: refused
@@ -85,7 +85,7 @@ boolean/fuse-frustum-box-rim-point: refused
 boolean/fuse-frustum-box-rim-point-far-side: refused
 boolean/fuse-many-coaxial-cylinders-and-box: 131
 boolean/grazing-ball-bar-cut: 17441
-boolean/lump-in-cavity: 36
+boolean/lump-in-cavity: 72
 boolean/mirror-ball-corner-cut-fuse: 6085
 boolean/mirror-box-common: 116
 boolean/mirror-box-cut: 116

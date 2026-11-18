@@ -10,7 +10,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::domain::FaceDomain;
-use arris_check::{Classification, Classifier, ClassifyError, first_touching_face_pair, lumps};
+use arris_check::{
+    Classification, Classifier, ClassifyError, TouchingFacePairError,
+    first_touching_face_pair_metered, lumps,
+};
 use arris_geom::{Curve, GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
 use arris_math::{Aabb, DisjointSets, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
 use arris_topo::builder::Builder;
@@ -1927,7 +1930,7 @@ fn one_result(
         .collect();
     point_slits(m, &kept, &out_faces, point_contacts, meter)?;
     inherited_contact(
-        m, built.body, operands, &kept, &shells, &lump_of, &out_faces,
+        m, built.body, operands, &kept, &shells, &lump_of, &out_faces, meter,
     )?;
     let vertex_id = |v: VRef| -> Option<VertexId> {
         match v {
@@ -2018,6 +2021,7 @@ fn point_slits(
 /// the pave does not compare. When their surviving pieces join into one
 /// lump, test the built face regions for contacts the operation leaves
 /// exposed.
+#[allow(clippy::too_many_arguments)]
 fn inherited_contact(
     m: &Model,
     body: Body,
@@ -2026,6 +2030,7 @@ fn inherited_contact(
     shells: &[Vec<usize>],
     lump_of: &[usize],
     out_faces: &BTreeMap<usize, FaceId>,
+    meter: &mut Meter<'_>,
 ) -> Result<(), OpError> {
     if operands.shells.iter().all(|shells| shells.len() < 2) {
         return Ok(());
@@ -2071,9 +2076,14 @@ fn inherited_contact(
             }
         }
     }
-    if !pairs.is_empty()
-        && let Some([a, b]) = first_touching_face_pair(m, body, &pairs)?
-    {
+    if pairs.is_empty() {
+        return Ok(());
+    }
+    let touch = first_touching_face_pair_metered(m, body, &pairs, meter).map_err(|e| match e {
+        TouchingFacePairError::NotFound(e) => OpError::from(e),
+        TouchingFacePairError::Interrupted(stop) => OpError::from(stop),
+    })?;
+    if let Some([a, b]) = touch {
         let input = |face| {
             source
                 .get(&face)
