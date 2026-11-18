@@ -29,6 +29,10 @@ only test is a CI run, which needs a push, so the plan runs on
 - [ ] Step 1 **[1]** — …
 - [ ] Step 2 **[1]** — …
 Each step is one commit-sized unit with its own test, fixture or oracle comparison.
+For a step that changes where a checker applies, name the relevant design
+sections or ADRs, the first focused corpus probe (command and cases), and
+which result settles each scope option. Include an existing case from
+outside the proposed scope when its verdict determines the decision.
 
 ## Acceptance
 The executable check (test, corpus run, oracle comparison) that closes the plan.
