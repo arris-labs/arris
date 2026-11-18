@@ -1,0 +1,19 @@
+{
+  "description": "The offset disc crosses the ball by 0.01: their common is a spherical cap joined to its flat section.",
+  "params": {"offset": 0.3, "shift": 0.01},
+  "steps": [
+    {"name": "section", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, -2], "segments": [{"arc_to": [0, 2], "via": [2, 0]}, {"line_to": [0, -2]}]}},
+    {"name": "ball", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "stem", "op": "cylinder", "base": ["offset", 0, "-5 + shift"], "axis": [0, 0, 1], "radius": 1, "height": 3},
+    {"name": "result", "op": "common", "a": "stem", "b": "ball"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside_cap", "point": [0, 0, -1.995], "expect": "in"},
+    {"label": "pole", "point": [0, 0, -2], "expect": "on"},
+    {"label": "end_disc", "point": [0, 0, -1.99], "expect": "on"},
+    {"label": "above_disc", "point": [0, 0, -1.98], "expect": "out"}
+  ],
+  "tolerances": {"mesh_chord": 0.00001},
+  "analytic": {"volume": "pi * shift^2 * (2 - shift / 3)", "area": "pi * shift * (8 - shift)", "centroid": [0, 0, "-2 + shift * (16 - 3 * shift) / (4 * (6 - shift))"], "genus": 0}
+}

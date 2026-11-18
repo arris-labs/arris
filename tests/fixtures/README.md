@@ -244,13 +244,16 @@ of the step that made the fixture pass, and a later change to it is a
   (ADR-0070); its result is the rest. The lint refuses a comparison against
   such a body: the recipe names the edge Open CASCADE took, or expects
   Arris's refusal with `expect_error`.
-  `expect_error: "tangent-contact" | "non-manifold" | "blend-too-large" |
+  `expect_error: "empty" | "tangent-contact" | "non-manifold" | "blend-too-large" |
   "tangent-chain" | "vertex-blend" | "elliptic-revolve" | "vanishes" |
   "vertex-splits" | "no-exact-offset" | "surface-collapses" | "gap" | "self-intersects" |
   "opening-dragged" | "no-crossing" | "path-corner" | "profile-along-path" |
   "sweep-folds" | "frame-does-not-close" | "loft-too-few-sections" |
-  "loft-loop-count" | "loft-coincident" | "unsupported"` says Open CASCADE
-  builds a result Arris refuses by design (the tangent cases,
+  "loft-loop-count" | "loft-coincident" | "unsupported"` requires Arris
+  to report the named error. `"empty"` requires exactly
+  `BooleanReason::Empty` and holds a common with no material.
+  Other named errors can hold a result Open CASCADE builds and Arris
+  refuses by design (the tangent cases,
   `BooleanReason::TangentContact` — ADR-0004, whose contact Open CASCADE carries
   as an edge of four faces, so where that makes the Euler characteristic
   odd, as in `boolean/tangent-hole`, the oracle records no genus

@@ -161,10 +161,12 @@ impl Model {
 
     /// `target` with `tool` removed. The tool's faces that bound the new
     /// cavity are generated from; see the returned `Provenance`.
+    /// An external point touch leaves the target whole.
     ///
     /// Raises `OpUnsupportedError` (naming both operands) for a pair of
     /// surfaces with no closed form yet, `OpDegenerateError` when nothing
-    /// would remain, and `Interrupted` when `cancel` or `budget` stops it.
+    /// would remain or a cavity would touch its own wall, and `Interrupted`
+    /// when `cancel` or `budget` stops it.
     ///
     /// ```python
     /// import math
@@ -196,6 +198,8 @@ impl Model {
     }
 
     /// The union of `a` and `b`. Errors as for `cut`.
+    /// Supported curve and point contacts can join two operands as two
+    /// lumps of one solid, each with its own edges and vertices.
     ///
     /// ```python
     /// import arris
@@ -307,6 +311,8 @@ impl Model {
     }
 
     /// The intersection of `a` and `b`. Errors as for `cut`.
+    /// A point contact encloses no material and raises `OpDegenerateError`
+    /// with reason `Empty`.
     ///
     /// ```python
     /// import arris

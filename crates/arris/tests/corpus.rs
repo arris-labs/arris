@@ -246,6 +246,21 @@ corpus_tests! {
     boolean_enclosed_cavity => run "boolean/enclosed-cavity";
     /// Operands apart: two lumps, every face of both kept by id.
     boolean_disjoint_fuse => run "boolean/disjoint-fuse";
+    /// A ball and a cylinder end disc touch at the ball's pole, with the
+    /// disc centred or offset. The fuse has two lumps.
+    boolean_ball_on_disc_fuse => run "boolean/ball-on-disc-fuse";
+    /// Cutting the disc's stem with the ball leaves the stem whole.
+    boolean_ball_on_disc_cut_stem => run "boolean/ball-on-disc-cut-stem";
+    /// Cutting the ball with the disc's stem leaves the ball whole.
+    boolean_ball_on_disc_cut_ball => run "boolean/ball-on-disc-cut-ball";
+    /// A point of contact encloses no material. The common is Empty.
+    boolean_ball_on_disc_common => run "boolean/ball-on-disc-common";
+    /// A small gap leaves two disjoint lumps.
+    boolean_ball_on_disc_gap => run "boolean/ball-on-disc-gap";
+    /// A shallow overlap gives one spherical cap in common.
+    boolean_ball_on_disc_overlap => run "boolean/ball-on-disc-overlap";
+    /// Cutting a spherical cavity that touches its own outer wall is refused.
+    boolean_ball_on_disc_cavity => run "boolean/ball-on-disc-cavity";
     /// A cylinder wholly inside a box: a void of three faces, the seam
     /// carried with them.
     boolean_cavity_cylinder => run "boolean/cavity-cylinder";

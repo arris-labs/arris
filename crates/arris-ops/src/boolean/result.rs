@@ -9,7 +9,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use arris_check::domain::FaceDomain;
 use arris_check::{Classification, Classifier, ClassifyError, first_touching_face_pair, lumps};
+use arris_geom::region2::Side;
 use arris_geom::{Curve, GeomError, GeomKind, MeetKind, Surface, SurfaceIntersection};
 use arris_math::{Aabb, DisjointSets, Interval, Meter, Point2, Point3, Precision, Tolerance, Vec3};
 use arris_topo::builder::Builder;
@@ -19,7 +21,7 @@ use arris_topo::{
     Shape, ShellId, VertexId,
 };
 
-use super::pieces::{Alias, EdgeOnFace, SplitFace, split_face};
+use super::pieces::{Alias, EdgeOnFace, FacePiece, SplitFace, split_face};
 use super::{EdgeImage, Interferences, VertexSource, meet_curves};
 use crate::error::{BooleanReason, Fault, InputReason, OpError, Reason, SplitFault};
 use crate::pass::pass;
@@ -235,6 +237,20 @@ struct Slit {
     faces: [Shape; 2],
     /// The same two faces' ids.
     ids: [FaceId; 2],
+}
+
+/// Two kept pieces that may retain an isolated touch within one lump.
+struct PointContact {
+    pieces: [usize; 2],
+    point: Point3,
+}
+
+/// The selected pieces grouped into shells, ready for assembly and the
+/// isolated-contact check on the resulting face trims.
+struct Selected {
+    shells: Vec<Vec<usize>>,
+    plan: Plan,
+    point_contacts: Vec<PointContact>,
 }
 
 /// The whole build, over the pave model.
@@ -602,6 +618,69 @@ impl<'m> Build<'m> {
         self.partner(side, f, on, |i| *i == SurfaceIntersection::Coincident)
     }
 
+    /// Isolated surface contact with the face or boundary reported by the
+    /// classifier. A point on a pole or seam names its topology first.
+    fn point_partner(&self, face: FaceId, on: Shape) -> bool {
+        self.i.pairs.iter().any(|pair| {
+            let other = if pair.a == face {
+                pair.b
+            } else if pair.b == face {
+                pair.a
+            } else {
+                return false;
+            };
+            if !pair
+                .intersection
+                .points()
+                .iter()
+                .any(|p| p.kind == MeetKind::Touch)
+            {
+                return false;
+            }
+            let Ok(other_face) = self.m.face(other) else {
+                return false;
+            };
+            let edges = other_face.loops().iter().flat_map(|l| l.coedges());
+            match on.id {
+                EntityId::Face(id) => id == other,
+                EntityId::Edge(id) => edges.into_iter().any(|c| c.edge() == id),
+                EntityId::Vertex(id) => edges.into_iter().any(|c| {
+                    self.m
+                        .edge(c.edge())
+                        .is_ok_and(|e| e.start() == id || e.end() == id)
+                }),
+                EntityId::Shell(_) | EntityId::Body(_) => false,
+            }
+        })
+    }
+
+    /// A clear classifier verdict after an initial sample at a point
+    /// contact. Every retry is on the same piece and is charged to the
+    /// operation. A sample on an entity or an undecided ray has no side.
+    fn retry_side(
+        &self,
+        face: FaceId,
+        piece: &FacePiece,
+        other: usize,
+        classifier: &Classifier<'_>,
+        meter: &mut Meter<'_>,
+    ) -> Result<Option<bool>, OpError> {
+        let range = |edge| match edge {
+            ERef::Sub { edge, index } => Some(self.sub_edges.get(&edge)?.get(index)?.range),
+            ERef::Section(k) => Some(self.i.sections.get(k)?.range),
+        };
+        for point in piece.retry_points(self.m, face, range)? {
+            meter.tick()?;
+            match classifier.classify(point) {
+                Ok(Classification::Inside) => return Ok(Some(true)),
+                Ok(Classification::Outside) => return Ok(Some(false)),
+                Ok(Classification::On(_)) | Err(ClassifyError::Undecided { .. }) => {}
+                Err(e) => return Err(classify_fault(self.m, face, self.bodies[other], e)),
+            }
+        }
+        Ok(None)
+    }
+
     /// The face of the other operand that `on` names, when face `f` of
     /// operand `side` is tangent to it.
     /// `on` may also be a seam of that face, which the face lies on both
@@ -785,6 +864,7 @@ impl<'m> Build<'m> {
     fn transversal_side(
         &self,
         side: usize,
+        against: usize,
         f: FaceHandle,
         loops: &[Vec<PieceUse>],
     ) -> Result<Option<bool>, OpError> {
@@ -824,6 +904,9 @@ impl<'m> Build<'m> {
             } else {
                 (pair.a, pair.operands[0])
             };
+            if other != against {
+                continue;
+            }
             let Some(g) = self.faces[other].iter().copied().find(|h| h.id == g) else {
                 continue;
             };
@@ -1041,6 +1124,26 @@ impl<'m> Build<'m> {
                     match class {
                         Classification::Inside => inside[other] = true,
                         Classification::Outside => {}
+                        Classification::On(shape)
+                            if self.point_partner(f.id, shape)
+                                && self.coincident_partner(side, f.id, shape).is_none()
+                                && self.tangent_partner(side, f.id, shape).is_none() =>
+                        {
+                            let clear = match self.transversal_side(side, other, f, &piece.loops)? {
+                                Some(inside) => Some(inside),
+                                None => self.retry_side(
+                                    f.id,
+                                    &piece,
+                                    other,
+                                    &classifiers[other],
+                                    meter,
+                                )?,
+                            };
+                            let Some(clear) = clear else {
+                                return Err(unsupported(self.m, f.id, shape));
+                            };
+                            inside[other] = clear;
+                        }
                         Classification::On(shape) => on.push((other, shape)),
                     }
                 }
@@ -1097,7 +1200,8 @@ impl<'m> Build<'m> {
                             // Within the tolerance of a face its own is
                             // transversal to, or of an edge or a vertex:
                             // read at a section edge the piece has instead.
-                            let Some(transversal) = self.transversal_side(side, f, &piece.loops)?
+                            let Some(transversal) =
+                                self.transversal_side(side, other, f, &piece.loops)?
                             else {
                                 return Err(unsupported(self.m, f.id, shape));
                             };
@@ -1375,6 +1479,48 @@ impl<'m> Build<'m> {
             }
         }
         Ok(())
+    }
+
+    /// Pairs of surviving pieces in the same lump with a point contact
+    /// on their source surfaces. The final trims decide which contacts
+    /// still exist.
+    fn point_contacts(&self, shells: &[Vec<usize>], lump_of: &[usize]) -> Vec<PointContact> {
+        let points = self.i.pairs.iter().flat_map(|pair| {
+            pair.intersection
+                .points()
+                .iter()
+                .filter(|p| p.kind == MeetKind::Touch)
+                .map(move |p| ([pair.a, pair.b], p.point))
+        });
+        let mut points = points.peekable();
+        if points.peek().is_none() {
+            return Vec::new();
+        }
+        let mut lump = vec![0; self.kept.len()];
+        for (shell, &id) in shells.iter().zip(lump_of) {
+            for &k in shell {
+                lump[k] = id;
+            }
+        }
+        let mut contacts = Vec::new();
+        for ([a, b], point) in points {
+            let (Some((_, left)), Some((_, right))) =
+                (self.face_pieces.get(&a), self.face_pieces.get(&b))
+            else {
+                continue;
+            };
+            for &a in left {
+                for &b in right {
+                    if lump[a] == lump[b] {
+                        contacts.push(PointContact {
+                            pieces: [a, b],
+                            point,
+                        });
+                    }
+                }
+            }
+        }
+        contacts
     }
 
     /// The first vertex, in `VRef` order, whose kept face uses close into
@@ -1686,10 +1832,7 @@ impl<'m> Build<'m> {
 
     /// Realises the section vertices and edges, selects the pieces to keep
     /// and orders their shells; `plan` is the assembly of them.
-    fn select_and_plan(
-        &mut self,
-        meter: &mut Meter<'_>,
-    ) -> Result<(Vec<Vec<usize>>, Plan), OpError> {
+    fn select_and_plan(&mut self, meter: &mut Meter<'_>) -> Result<Selected, OpError> {
         self.realise_vertices()?;
         self.sub_edges()?;
         self.aliases();
@@ -1702,8 +1845,13 @@ impl<'m> Build<'m> {
             (shells, lump_of) = self.lump_order(shells)?;
         }
         self.slits(&shells, &lump_of)?;
+        let point_contacts = self.point_contacts(&shells, &lump_of);
         let plan = self.assembly(&shells)?;
-        Ok((shells, plan))
+        Ok(Selected {
+            shells,
+            plan,
+            point_contacts,
+        })
     }
 }
 
@@ -1739,7 +1887,11 @@ fn one_result(
     let precision = m.precision();
     let geometry = SectionGeometry::add(m, i);
     let mut b = Build::new(m, i, op, operands, geometry);
-    let (shells, plan) = b.select_and_plan(meter)?;
+    let Selected {
+        shells,
+        plan,
+        point_contacts,
+    } = b.select_and_plan(meter)?;
     let Build {
         outside,
         face_pieces,
@@ -1771,6 +1923,7 @@ fn one_result(
         .copied()
         .zip(slots.faces.iter().flatten().map(|&slot| built.faces[&slot]))
         .collect();
+    point_slits(m, &kept, &out_faces, point_contacts, meter)?;
     inherited_slit(m, built.body, operands, &kept, &shells, &out_faces)?;
     let vertex_id = |v: VRef| -> Option<VertexId> {
         match v {
@@ -1815,6 +1968,62 @@ fn one_result(
     generated_sections(&mut p, i, &out_edge);
     crate::verify(m, built.body)?;
     Ok((built.body, p, outside))
+}
+
+/// Refuse an isolated contact that survives on both faces of one lump.
+/// Read the output trims so a later operand can remove the contact.
+fn point_slits(
+    model: &Model,
+    kept: &[Kept],
+    out_faces: &BTreeMap<usize, FaceId>,
+    contacts: Vec<PointContact>,
+    meter: &mut Meter<'_>,
+) -> Result<(), OpError> {
+    let mut domains = BTreeMap::new();
+    for PointContact { pieces, point } in contacts {
+        meter.tick()?;
+        let mut on = [None; 2];
+        for (i, piece) in pieces.into_iter().enumerate() {
+            let &face = out_faces
+                .get(&piece)
+                .ok_or(OpError::Internal(Fault::Invariant {
+                    what: "a touching piece's output face",
+                }))?;
+            let domain = match domains.entry(face) {
+                std::collections::btree_map::Entry::Occupied(slot) => slot.into_mut(),
+                std::collections::btree_map::Entry::Vacant(slot) => {
+                    let tolerance = model.face(face)?.tolerance();
+                    slot.insert(FaceDomain::of(model, face, tolerance)?)
+                }
+            };
+            on[i] = face_at_point(model, domain, point)?;
+        }
+        if let [Some(a), Some(b)] = on
+            && a != b
+        {
+            return Err(OpError::Degenerate {
+                entities: pieces.map(|k| Shape::from(kept[k].face)).to_vec(),
+                reason: Reason::Boolean(BooleanReason::TangentContact),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// An output face or its boundary at a contact point. The boundary is
+/// read first both for shared topology and for chart seams and poles.
+fn face_at_point(
+    model: &Model,
+    domain: &FaceDomain<'_>,
+    point: Point3,
+) -> Result<Option<Shape>, OpError> {
+    if let Some(boundary) = domain.boundary_entity(model, point)? {
+        return Ok(Some(boundary));
+    }
+    Ok(domain.surface().project(point).ok().and_then(|p| {
+        (p.distance <= domain.tolerance() && domain.side(p.uv).0 != Side::Outside)
+            .then(|| forward(domain.face()))
+    }))
 }
 
 /// A contact may lie between two shells of one operand, whose faces

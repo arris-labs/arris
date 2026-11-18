@@ -1,0 +1,14 @@
+{
+  "description": "A radius-2 ball touches the cylinder end disc at its south pole. The radius-one stem is centred on the ball axis or offset by 0.3.",
+  "params": {"offset": 0, "shift": 0},
+  "variants": {"offset": {"offset": 0.3}},
+  "steps": [
+    {"name": "section", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, -2], "segments": [{"arc_to": [0, 2], "via": [2, 0]}, {"line_to": [0, -2]}]}},
+    {"name": "ball", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "stem", "op": "cylinder", "base": ["offset", 0, "-5 + shift"], "axis": [0, 0, 1], "radius": 1, "height": 3},
+    {"name": "result", "op": "common", "a": "stem", "b": "ball"}
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {"expect_error": "empty"}
+}

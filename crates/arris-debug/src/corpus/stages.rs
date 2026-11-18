@@ -13,6 +13,7 @@ impl Refusal {
     fn expected(self) -> String {
         match self {
             Refusal::Degenerate => "OpError::Degenerate".into(),
+            Refusal::Error(ExpectError::Empty) => "OpError::Degenerate with Reason::Empty".into(),
             Refusal::Error(ExpectError::TangentContact) => {
                 "OpError::Degenerate with Reason::TangentContact".into()
             }
@@ -96,6 +97,9 @@ impl Refusal {
             }) => {
                 let matches = match self {
                     Refusal::Degenerate => true,
+                    Refusal::Error(ExpectError::Empty) => {
+                        reason == Reason::Boolean(BooleanReason::Empty)
+                    }
                     Refusal::Error(ExpectError::TangentContact) => {
                         reason == Reason::Boolean(BooleanReason::TangentContact)
                     }

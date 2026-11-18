@@ -30,12 +30,12 @@ use arris_math::real;
 use core::f64::consts::{PI, TAU};
 use std::collections::{BTreeMap, BTreeSet};
 
-use arris_geom::region2::{Piece as Walk, Polygon2, discretise, interior_point};
+use arris_geom::region2::{Piece as Walk, Polygon2, Side, SideIndex, discretise, interior_point};
 use arris_geom::{Curve, Curve2, CurveEval, Surface};
 use arris_math::{Interval, Point2, Point3, Precision, Vec2, Vec3, is_negligible, wrap_angle};
 use arris_topo::{Curve2Id, EdgeId, FaceId, Model, Orientation, Shape};
 
-use arris_check::domain::chord;
+use arris_check::domain::{band, chord};
 
 use crate::error::{BooleanReason, Fault, OpError, Reason, SplitFault};
 use crate::rebuild::{ERef, PieceUse, SubEdge, VRef};
@@ -89,6 +89,72 @@ pub(super) struct FacePiece {
     pub interior: Point3,
     /// Its (u, v).
     pub uv: Point2,
+}
+
+impl FacePiece {
+    /// Candidate samples on the original surface, in this piece's own
+    /// translate and clear of its pcurves. Rebuild the polygons only
+    /// when selection needs another point.
+    pub(super) fn retry_points(
+        &self,
+        m: &Model,
+        face: FaceId,
+        range_of: impl Fn(ERef) -> Option<Interval>,
+    ) -> Result<impl Iterator<Item = Point3>, OpError> {
+        let entity = m.face(face)?;
+        let surface = m.surface(entity.surface())?;
+        let tolerance = m.precision().parametric_tolerance;
+        let chord = chord(m, entity, surface, tolerance);
+        let rings = self
+            .loops
+            .iter()
+            .map(|ring| {
+                let walks = ring
+                    .iter()
+                    .map(|u| {
+                        let range =
+                            range_of(u.edge).ok_or(OpError::Internal(Fault::Invariant {
+                                what: "a piece edge's range for resampling",
+                            }))?;
+                        Ok(Walk {
+                            curve: m.curve2(u.pcurve)?,
+                            range,
+                            reversed: u.orientation.is_reversed(),
+                        })
+                    })
+                    .collect::<Result<Vec<_>, OpError>>()?;
+                Ok(discretise(&walks, chord))
+            })
+            .collect::<Result<Vec<_>, OpError>>()?;
+        let (lo, hi) = rings
+            .iter()
+            .flat_map(|ring| ring.points())
+            .fold((self.uv, self.uv), |(lo, hi), p| (lo.inf(p), hi.sup(p)));
+        let span = hi - lo;
+        let deviation = rings
+            .iter()
+            .map(Polygon2::chord_deviation)
+            .fold(0.0, f64::max);
+        let side = SideIndex::new(&rings);
+        let uv = self.uv;
+        // One quarter to one sixty-fourth of the box width, largest first.
+        // At each scale try +u, -u, +v, -v along this piece's chart.
+        Ok((2..=6)
+            .flat_map(move |power| {
+                let step = span / f64::from(1 << power);
+                [
+                    Vec2::new(step.x, 0.0),
+                    Vec2::new(-step.x, 0.0),
+                    Vec2::new(0.0, step.y),
+                    Vec2::new(0.0, -step.y),
+                ]
+            })
+            .filter_map(move |step| {
+                let p = uv + step;
+                (p != uv && side.side(p, deviation + band(surface, p, tolerance)) == Side::Inside)
+                    .then(|| surface.point(p.x, p.y))
+            }))
+    }
 }
 
 /// A face split into its pieces.

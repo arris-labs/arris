@@ -908,17 +908,19 @@ fn one() -> usize {
     1
 }
 
-/// A result the oracle builds and Arris refuses by design: the typed
+/// A result Arris refuses by design: the typed
 /// error the corpus runner asserts instead of comparing the result
 /// (ADR-0004). The oracle's numbers are recorded in `expected.json` as the
 /// record of what Open CASCADE makes, and not compared.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ExpectError {
+    /// `OpError::Degenerate` with `BooleanReason::Empty`: neither operand
+    /// contributes material to the common, and the oracle records no solid.
+    Empty,
     /// `OpError::Degenerate` with `BooleanReason::TangentContact`: two faces
-    /// touch along a curve interior to both. The oracle's result carries
-    /// the contact as an edge of four faces; where that makes its Euler
-    /// characteristic odd it records no genus, and the recipe states none.
+    /// of one lump touch along a curve or at a point. Where the oracle's
+    /// contact makes its Euler characteristic odd it records no genus.
     TangentContact,
     /// `OpError::Degenerate` with `InputReason::NonManifold`: two shells of the
     /// result would share an edge or a vertex (ADR-0006). The oracle's

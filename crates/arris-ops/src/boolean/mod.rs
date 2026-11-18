@@ -67,9 +67,9 @@ pub struct FacePair {
     /// curve interior to both faces — and the curvature rule at each;
     /// neither contributes a section edge. A `Meets` holding both kinds
     /// is read as both, its crossing curves sections and its touching
-    /// curves contacts. Its points are read only as a traced section's
-    /// singular points, where its branches end (ADR-0018), each a section
-    /// crossing.
+    /// curves contacts. Crossing points mark the ends of traced section
+    /// branches (ADR-0018). Isolated touches guide piece classification
+    /// and are checked against the surviving trims (ADR-0089).
     pub intersection: SurfaceIntersection,
 }
 
@@ -687,26 +687,27 @@ pub fn interferences_many(
 /// point lies on it is classified by the curvature rule (it lies inside
 /// the other operand exactly when its surface's normal curvature across
 /// the curve, signed against the other face's outward
-/// normal, is below the other surface's), and a tool touching from
-/// outside leaves the target as it was, every id kept.
+/// normal, is below the other surface's). A tool touching from outside
+/// along such a curve or at an isolated point, such as a ball at an
+/// end disc, leaves the target whole.
 ///
 /// Errors, the model untouched on each: [`OpError::InvalidInput`] and
 /// [`OpError::NotFound`] as every operation; [`OpError::Unsupported`]
 /// naming the pair for a surface pair or an edge–face pair with no
 /// closed form, and for a piece lying on an edge or a vertex of the
 /// other operand, or on a face of it that its own face is neither
-/// coincident nor tangent with; [`OpError::Degenerate`] with
+/// coincident nor tangent with, when no side is established;
+/// [`OpError::Degenerate`] with
 /// [`crate::BooleanReason::Empty`] when nothing survives (the target inside the
 /// tool), [`crate::InputReason::ZeroThickness`] when nothing survives and
 /// what was dropped lay on the other operand (two solids touching along
 /// a face), [`crate::InputReason::NonManifold`] naming the shared edges or
 /// vertices when two shells of the result would share an edge or a
 /// vertex, [`crate::BooleanReason::TangentContact`] when two faces of
-/// one lump touch along a curve interior to both and both pieces through
-/// it would survive — a hole wall tangent to a side face, a ball in a bore
-/// of its radius — or a section edge is tangent to
-/// a loop edge at a vertex (faces of two lumps that touch so are touching
-/// lumps, and built, ADR-0088);
+/// one lump retain a curve contact interior to both or an isolated
+/// contact away from shared topology (a cavity tangent to a wall), or
+/// a section edge is tangent to a loop edge at a vertex (ADR-0088,
+/// ADR-0089);
 /// [`OpError::Tolerance`] when a section vertex or edge would exceed the
 /// model's maximum; [`OpError::Internal`] for a kernel bug the operation
 /// caught — an arrangement that is not a subdivision, a point that
@@ -936,8 +937,9 @@ fn refusal(body: Body, reason: BooleanReason) -> OpError {
 /// each result shell from the operand shells its pieces came from — two
 /// disjoint operands are two lumps of one solid (ADR-0006,
 /// `docs/DATA-MODEL.md` §Provenance). A supported tangent contact along a
-/// curve between separate lumps preserves both, each with its own edges
-/// and vertices (ADR-0088). A contact that survives within one lump is
+/// curve or at an isolated point between separate lumps preserves both
+/// with their own edges and vertices (ADR-0088, ADR-0089).
+/// A contact that survives within one lump is
 /// refused as [`crate::BooleanReason::TangentContact`]. Tolerances follow
 /// the growth rule, as [`cut`]. Two faces on one surface are the flush
 /// case: a piece of `a`'s face lying on `b`'s is kept, once and in `a`'s
@@ -993,8 +995,9 @@ pub fn fuse(
 /// result shell from the operand shells its pieces came from.
 ///
 /// Errors, the model untouched on each: as [`cut`]'s, with
-/// [`crate::BooleanReason::Empty`] where two operands share no material — the
-/// common of disjoint solids — and [`crate::InputReason::ZeroThickness`]
+/// [`crate::BooleanReason::Empty`] where two operands share no material,
+/// including solids that meet only at an isolated touch, and
+/// [`crate::InputReason::ZeroThickness`]
 /// where they share only a face.
 ///
 /// ```

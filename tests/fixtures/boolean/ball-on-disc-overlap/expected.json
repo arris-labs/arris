@@ -1,0 +1,89 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "fc2492f80601b032cafb48218a92dc0ca4822ab6e9731059435ee2aef3d8c517",
+  "results": {
+    "default": {
+      "area": 0.2510132530218123,
+      "centroid": [
+        8.102072284841936e-18,
+        1.1345463866098738e-18,
+        -1.9933347245409014
+      ],
+      "counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          4.176583952560185e-06,
+          2.5136412703816878e-22,
+          5.116071931024093e-21
+        ],
+        [
+          2.5136412703816878e-22,
+          4.176583952559751e-06,
+          4.43528664943983e-24
+        ],
+        [
+          5.116071931024093e-21,
+          4.43528664943983e-24,
+          8.346195898962309e-06
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_cap",
+          "point": [
+            0.0,
+            0.0,
+            -1.995
+          ]
+        },
+        {
+          "class": "on",
+          "label": "pole",
+          "point": [
+            0.0,
+            0.0,
+            -2.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "end_disc",
+          "point": [
+            0.0,
+            0.0,
+            -1.99
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_disc",
+          "point": [
+            0.0,
+            0.0,
+            -1.98
+          ]
+        }
+      ],
+      "volume": 0.0006272713331667036
+    }
+  }
+}

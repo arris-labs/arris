@@ -1,0 +1,172 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "25bf0de56e636c53f88555d3fc7b6ae37fa9fe9cc2480c71e6df7ca4fbec2831",
+  "results": {
+    "default": {
+      "area": 75.39822368615503,
+      "centroid": [
+        -9.958063721246553e-17,
+        5.223499780879204e-17,
+        -0.7682926829268288
+      ],
+      "counts": {
+        "edges": 4,
+        "faces": 4,
+        "loops": 4,
+        "shells": 2,
+        "solids": 2,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 4,
+      "genus": 0,
+      "inertia": [
+        [
+          153.1513647923181,
+          3.861831651395487e-15,
+          -6.0410345246333574e-15
+        ],
+        [
+          3.861831651395487e-15,
+          153.151364792318,
+          -7.960383011768159e-16
+        ],
+        [
+          -6.0410345246333574e-15,
+          -7.960383011768159e-16,
+          58.32890360165054
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 4,
+        "faces": 4,
+        "loops": 4,
+        "shells": 2,
+        "solids": 2,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_ball",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_stem",
+          "point": [
+            0.0,
+            0.0,
+            -3.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "contact",
+          "point": [
+            0.0,
+            0.0,
+            -2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            1.5,
+            0.0,
+            -2.0
+          ]
+        }
+      ],
+      "volume": 42.935099599060514
+    },
+    "offset": {
+      "area": 75.39822368615503,
+      "centroid": [
+        0.06585365853658526,
+        2.901558066848497e-17,
+        -0.7682926829268288
+      ],
+      "counts": {
+        "edges": 4,
+        "faces": 4,
+        "loops": 4,
+        "shells": 2,
+        "solids": 2,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 4,
+      "genus": 0,
+      "inertia": [
+        [
+          153.15136479231808,
+          3.591182661305315e-15,
+          7.72372047516709
+        ],
+        [
+          3.591182661305315e-15,
+          153.81339797590377,
+          -4.2809797315298266e-15
+        ],
+        [
+          7.72372047516709,
+          -4.2809797315298266e-15,
+          58.990936785236286
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 4,
+        "faces": 4,
+        "loops": 4,
+        "shells": 2,
+        "solids": 2,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_ball",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_stem",
+          "point": [
+            0.3,
+            0.0,
+            -3.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "contact",
+          "point": [
+            0.0,
+            0.0,
+            -2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside",
+          "point": [
+            1.5,
+            0.0,
+            -2.0
+          ]
+        }
+      ],
+      "volume": 42.935099599060514
+    }
+  }
+}

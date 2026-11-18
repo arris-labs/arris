@@ -308,15 +308,12 @@ pub enum BooleanReason {
     /// A boolean selected no material: a `common` of disjoint operands,
     /// a target swallowed by its tool.
     Empty,
-    /// Two faces of *one lump* of the result touch along a curve that
-    /// would be interior to both — a hole wall tangent to a side face along
-    /// a ruling, a ball in a bore of its radius (the cavity touching the
-    /// wall round it), a section curve tangent to a loop edge at a vertex —
-    /// so that the lump's material would touch itself, which a manifold
-    /// `Solid` cannot represent (ADR-0004). Two faces that lie in different
-    /// lumps are touching lumps, and are built (ADR-0088). A pair the
-    /// grouping cannot place — a face with pieces in a lump that the other
-    /// face's pieces are in — is refused likewise.
+    /// Two faces of *one lump* would touch along a curve interior to both
+    /// or at an isolated point away from shared topology, as with a
+    /// cavity tangent to an outer wall. Also used when a section curve
+    /// is tangent to a loop edge at a vertex, or the surviving pieces
+    /// of a curve contact cannot be separated by lump. Contacts between
+    /// distinct lumps can build (ADR-0088, ADR-0089).
     TangentContact,
     /// A section curve passes a face's singular point — a cone's apex, a
     /// sphere's pole — without running through it, nearer than the face's
@@ -356,7 +353,7 @@ impl core::fmt::Display for BooleanReason {
         match self {
             BooleanReason::Empty => f.write_str("the result has no material"),
             BooleanReason::TangentContact => {
-                f.write_str("two faces of one lump of the result touch along a curve interior to both")
+                f.write_str("two faces of one lump of the result meet at a tangent contact")
             }
             BooleanReason::BesideSingularity => f.write_str(
                 "a section passes a face's apex or pole without running through it, nearer than the face's (u, v) resolves",
@@ -1092,7 +1089,7 @@ mod tests {
             (
                 Reason::Boolean(BooleanReason::TangentContact),
                 "TangentContact",
-                "two faces of one lump of the result touch along a curve interior to both",
+                "two faces of one lump of the result meet at a tangent contact",
             ),
             (
                 Reason::Boolean(BooleanReason::BesideSingularity),
