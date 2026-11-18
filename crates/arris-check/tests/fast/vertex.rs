@@ -1,6 +1,6 @@
-//! V1–V3.
+//! V1–V4.
 
-use arris_check::{Level, Violation, check};
+use arris_check::{Level, Violation, check, check_boolean_result};
 use arris_debug::testing::cylinder;
 use arris_geom::Curve2;
 use arris_math::{Frame2, Interval, Point2, Precision, Vec2};
@@ -144,4 +144,46 @@ fn v3_a_pcurve_whose_end_misses_the_vertex() {
         report.violations()[0],
         Violation::VertexOffFace { face, distance, .. } if face == r.faces[1] && (distance - 1.0).abs() < 1e-12
     ));
+}
+
+#[test]
+fn v4_distinct_vertices_of_one_shell_coincide_within_the_larger_tolerance() {
+    let mut m = Model::default();
+    // Vertices 3 and 6 meet across the notch, and vertices 4 and 5
+    // bound its short edge. Give one vertex of each pair a tolerance
+    // equal to the separation. Only the ends across the gap violate V4.
+    let corners = vec![
+        p2(0.0, 0.0),
+        p2(40.0, 0.0),
+        p2(40.0, 40.0),
+        p2(21.0, 40.0),
+        p2(21.0, 20.0),
+        p2(20.0, 20.0),
+        p2(20.0, 40.0),
+        p2(0.0, 40.0),
+    ];
+    let (body, _, _) = plate(&mut m, &[corners]);
+    let r = rebuild(
+        &mut m,
+        body,
+        &|i, v| {
+            if i == 3 || i == 4 {
+                Vertex::new(v.point(), 1.0)
+            } else {
+                v
+            }
+        },
+        &keep_edge,
+        &keep_face,
+    );
+    assert!(check(&m, r.body, Level::Fast).is_ok());
+    let report = check_boolean_result(&m, r.body);
+    assert_eq!(
+        report.violations(),
+        &[Violation::CoincidentVertices {
+            a: r.vertices[3],
+            b: r.vertices[6],
+        }],
+        "{report}"
+    );
 }

@@ -1973,7 +1973,7 @@ fn one_result(
     );
     generated_vertices(&mut p, i, &vref_of, &out_vertex);
     generated_sections(&mut p, i, &out_edge);
-    crate::verify(m, built.body)?;
+    crate::verify_with(m, built.body, arris_check::check_boolean_result)?;
     Ok((built.body, p, outside))
 }
 

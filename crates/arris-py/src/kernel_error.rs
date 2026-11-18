@@ -460,7 +460,7 @@ mod tests {
         Reason, Rejection, ShellReason, SplitReason, SweepReason,
     };
     use arris::topo::entity::BodyKind;
-    use arris::topo::{BodyId, EntityId, FaceId, NotFound};
+    use arris::topo::{BodyId, EntityId, FaceId, NotFound, VertexId};
 
     use super::*;
     use crate::error::BindError;
@@ -767,6 +767,23 @@ mod tests {
         );
         assert_eq!(mapped.attrs[1].1, Attr::Shape(shape()));
         assert_eq!(mapped.attrs[3].0, "b");
+    }
+
+    #[test]
+    fn a_boolean_checker_fault_names_both_coincident_vertices() {
+        let report = Report::new(vec![arris::check::Violation::CoincidentVertices {
+            a: VertexId::new(2, 0),
+            b: VertexId::new(7, 0),
+        }]);
+        let mapped = op_error(&OpError::Internal(Fault::Checker(Box::new(report))));
+        assert_eq!(mapped.class, Class::OpInternalError);
+        assert_eq!(
+            mapped.attrs,
+            vec![(
+                "detail",
+                Attr::Str("the output fails the checker:\nV4 v2: coincides with v7 within vertex tolerance\n".into()),
+            )]
+        );
     }
 
     #[test]

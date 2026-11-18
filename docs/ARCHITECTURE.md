@@ -1604,7 +1604,8 @@ that constructs it and sees it reported, and a level:
 - `Level::Fast` — combinatorial and local geometric checks (ids resolve,
   loops close, orientations compose, tolerances are ordered, pcurves match
   their 3D curves at sample points, a torus face's pcurves off its axis — the regular band). Linear in the body. This is what runs
-  after every operation.
+  after every operation. The boolean result guard also sweeps each shell
+  for coincident vertices (V4, ADR-0090).
 - `Level::Full` — adds the global checks: an edge does not cross itself,
   the loops of a face do not cross, faces of a shell intersect only at
   shared edges, shells nest, a solid encloses positive volume. Not

@@ -1,6 +1,6 @@
 //! L1–L4.
 
-use arris_check::{Level, LoopBreak, NestingFault, Violation, check};
+use arris_check::{Level, LoopBreak, NestingFault, Violation, check, check_boolean_result};
 use arris_geom::{Curve, Curve2};
 use arris_math::{Frame, Interval, Point2, Point3, Precision, Vec2, Vec3};
 use arris_topo::entity::{Coedge, Edge, EdgeGeometry, Loop, Vertex};
@@ -9,8 +9,7 @@ use arris_topo::{Body, FaceId, Model, Orientation};
 use crate::support::*;
 
 /// L1: the last coedge of a ring ends at a *twin* of the first vertex —
-/// a second vertex at the same point, so every geometric row still holds
-/// and only the loop's closure is broken.
+/// a second vertex at the same point, so the loop's closure is broken.
 #[test]
 fn l1_a_loop_that_does_not_close() {
     let mut m = Model::default();
@@ -20,6 +19,7 @@ fn l1_a_loop_that_does_not_close() {
     let twin = m.raw().add_vertex(Vertex::new(Point3::origin(), tol));
     let last = *r.coedges.last().unwrap();
     let old = *m.edge(last.edge()).unwrap();
+    let first = m.edge(r.coedges[0].edge()).unwrap().start();
     let edge = m.raw().add_edge(Edge::new(
         old.geometry(),
         old.start(),
@@ -39,6 +39,12 @@ fn l1_a_loop_that_does_not_close() {
             loop_index: 0,
             fault: LoopBreak::Between { coedge: 3 },
         }
+    );
+    let boolean_report = check_boolean_result(&m, body);
+    assert!(
+        boolean_report
+            .violations()
+            .contains(&Violation::CoincidentVertices { a: first, b: twin })
     );
 }
 

@@ -76,3 +76,24 @@ touches its outer shell.
 - **Return a `General` body.** This could represent self-contact
   within one shell, but the kernel's solid operations, measures and
   tessellation do not take it. It remains a separate design.
+
+## Amendment of 2026-11-18 — Short edges keep both ends
+
+The CTC-05 elbow fillets in the corpus leave an edge from the narrowest
+blend arc to the original vertex, as ADR-0074 requires. In the posed
+AP203 fixture, the ends of that edge are about 0.00657 apart and both
+have tolerance 0.00774. Removing either end would remove the edge and
+change the fillet's topology.
+
+V4 allows a pair of vertices at different points when both are ends
+of one non-degenerate edge in their shell. The other rows still check
+the edge and its ends. V4 reports exact coincidences even when an
+edge joins the pair, and all unjoined pairs within the larger vertex
+tolerance.
+
+The Fast guard on boolean results runs V4. The general checker continues
+to accept the two vertex instances Open CASCADE writes where a STEP
+crescent's outer bound and hole touch. Sewing those vertices needs to
+splice the two loops as well. Merging ids alone changes the builder's
+Euler–Poincaré line by one per contact. See
+`docs/ideas/sew-step-crescent-vertices.md`.

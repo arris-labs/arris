@@ -265,6 +265,7 @@ fn self_intersection(report: &arris_check::Report) -> Option<OpError> {
             | Violation::VertexTolerance { .. }
             | Violation::VertexOffEdge { .. }
             | Violation::VertexOffFace { .. }
+            | Violation::CoincidentVertices { .. }
             | Violation::EdgeRange { .. }
             | Violation::EdgeEnds { .. }
             | Violation::EdgeUnused { .. }

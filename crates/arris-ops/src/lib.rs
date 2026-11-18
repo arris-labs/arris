@@ -100,9 +100,19 @@ fn verify_solid(m: &Model, body: Body) -> Result<(), OpError> {
 /// returning `Ok`: `Level::Fast`, a panic with the report on a failure.
 /// With the `paranoid` feature a release build runs it too and returns
 /// [`OpError::Internal`]. In a plain release build, nothing runs.
-#[cfg(any(debug_assertions, feature = "paranoid"))]
 fn verify(m: &Model, body: Body) -> Result<(), OpError> {
-    let report = arris_check::check(m, body, arris_check::Level::Fast);
+    verify_with(m, body, |m, body| {
+        arris_check::check(m, body, arris_check::Level::Fast)
+    })
+}
+
+#[cfg(any(debug_assertions, feature = "paranoid"))]
+fn verify_with(
+    m: &Model,
+    body: Body,
+    check: impl FnOnce(&Model, Body) -> arris_check::Report,
+) -> Result<(), OpError> {
+    let report = check(m, body);
     if report.is_ok() {
         return Ok(());
     }
@@ -113,6 +123,10 @@ fn verify(m: &Model, body: Body) -> Result<(), OpError> {
 }
 
 #[cfg(not(any(debug_assertions, feature = "paranoid")))]
-fn verify(_: &Model, _: Body) -> Result<(), OpError> {
+fn verify_with(
+    _: &Model,
+    _: Body,
+    _: impl FnOnce(&Model, Body) -> arris_check::Report,
+) -> Result<(), OpError> {
     Ok(())
 }

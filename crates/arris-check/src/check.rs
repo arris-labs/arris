@@ -1,12 +1,11 @@
 //! `check`: the closure walk and the rows it evaluates.
 //!
-//! Rows implemented here: M1–M3 (`references`, `finite`), V1–V3 (`vertex`)
+//! Rows implemented here: M1–M3 (`references`, `finite`), V1–V4 (`vertex`)
 //! and E1–E7 (`edge`), one file per family (`docs/DATA-MODEL.md`
 //! §Invariants); the loop, face, shell and body rows are in
 //! `crate::topology` and the `Full` rows in `crate::full`, which `level`
-//! selects. Every row walks the body's closure in sorted id
-//! order and reports through `Report::new`, so the report is the same on
-//! every run and platform.
+//! selects. Every row walks the body's closure and reports through
+//! `Report::new`, so the report is the same on every run and platform.
 
 use std::collections::BTreeMap;
 
@@ -31,6 +30,7 @@ mod vertex;
 /// that does not resolve is one `M1` line naming the body. Never panics
 /// and never repairs: a reference that does not resolve is reported once
 /// under M1 and skipped by every other row.
+/// The boolean result guard additionally runs V4.
 ///
 /// ```
 /// use arris_check::{Level, check};
@@ -42,6 +42,16 @@ mod vertex;
 /// assert!(check(&m, body, Level::Fast).is_ok());
 /// ```
 pub fn check(model: &Model, body: Body, level: Level) -> Report {
+    check_with(model, body, level, false)
+}
+
+/// The Fast checker with V4 enabled for a solid assembled by a boolean.
+#[doc(hidden)]
+pub fn check_boolean_result(model: &Model, body: Body) -> Report {
+    check_with(model, body, Level::Fast, true)
+}
+
+fn check_with(model: &Model, body: Body, level: Level, distinct_vertices: bool) -> Report {
     let Ok(mut c) = Checker::new(model, body) else {
         return Report::new(vec![Violation::Unresolved {
             from: body.id.into(),
@@ -54,7 +64,7 @@ pub fn check(model: &Model, body: Body, level: Level) -> Report {
     c.vertex_rows();
     c.edge_rows();
     c.face_rows();
-    c.shell_rows();
+    c.shell_rows(distinct_vertices);
     c.body_rows();
     if level == Level::Full {
         c.full_rows();

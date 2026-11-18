@@ -322,6 +322,14 @@ pub enum Violation {
         /// Distance from the surface point to the vertex's point.
         distance: f64,
     },
+    /// **V4** — distinct vertices of one shell are within the larger
+    /// of their tolerances, with no short edge separating them.
+    CoincidentVertices {
+        /// The lower vertex id of the pair.
+        a: VertexId,
+        /// The higher vertex id of the pair.
+        b: VertexId,
+    },
     /// **E1** — a non-degenerate edge has no curve, an empty range, a range
     /// outside the curve's domain, or one that crosses the period more than
     /// once.
@@ -540,6 +548,7 @@ impl Violation {
             Violation::VertexTolerance { .. } => "V1",
             Violation::VertexOffEdge { .. } => "V2",
             Violation::VertexOffFace { .. } => "V3",
+            Violation::CoincidentVertices { .. } => "V4",
             Violation::EdgeRange { .. } => "E1",
             Violation::EdgeEnds { .. } => "E2",
             Violation::EdgeUnused { .. } => "E3",
@@ -580,6 +589,7 @@ impl Violation {
             | Violation::VertexTolerance { .. }
             | Violation::VertexOffEdge { .. }
             | Violation::VertexOffFace { .. }
+            | Violation::CoincidentVertices { .. }
             | Violation::EdgeRange { .. }
             | Violation::EdgeEnds { .. }
             | Violation::EdgeUnused { .. }
@@ -611,6 +621,7 @@ impl Violation {
             Violation::VertexTolerance { vertex, .. }
             | Violation::VertexOffEdge { vertex, .. }
             | Violation::VertexOffFace { vertex, .. } => vertex.into(),
+            Violation::CoincidentVertices { a, .. } => a.into(),
             Violation::EdgeRange { edge }
             | Violation::EdgeEnds { edge, .. }
             | Violation::EdgeUnused { edge }
@@ -716,6 +727,9 @@ impl fmt::Display for Violation {
             }
             Violation::VertexOffFace { face, distance, .. } => {
                 write!(f, "{face}'s surface at the pcurve end is {distance:e} away")
+            }
+            Violation::CoincidentVertices { b, .. } => {
+                write!(f, "coincides with {b} within vertex tolerance")
             }
             Violation::EdgeRange { .. } => f.write_str("no curve or an invalid range"),
             Violation::EdgeEnds { fault, .. } => match fault {

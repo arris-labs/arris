@@ -62,11 +62,14 @@ apart, so every lump's mesh is closed on its own.
      compound also gives. This answers the idea's open `weld` question.
   6. *The checker row.* **V4**: no two distinct vertices of one shell lie
      within the larger of their tolerances (Fast; a sweep sorted on x).
-     This is the safety net for an edge or vertex copied into the wrong lump.
+     Different points at the ends of one non-degenerate edge are allowed
+     (ADR-0074). The boolean result guard runs it as a safety net for an
+     edge or vertex copied into the wrong lump.
 - **Public types:** `arris_check::Violation` gains V4's variant
   (`CoincidentVertices { a, b }`, breaking: `Violation` is exhaustive).
   The changelog lists it under `Breaking`, and the binding maps it where
-  it maps violations. Nothing else public changes. `InputReason::NonManifold`'s
+  it maps violations. The boolean result guard uses the doc-hidden
+  `arris_check::check_boolean_result`. `InputReason::NonManifold`'s
   doc and text narrow to "would touch itself".
 - **Crate boundaries:** none (`arris-ops::rebuild`, `boolean/result.rs`,
   `arris-check`). Design docs: see *Docs to update*.
@@ -84,7 +87,7 @@ algorithm whose robustness has to be established here).
   lumps from `lumps`, and has a volume that is the sum. Each lump's
   tessellation is closed, and `weld` of the faces is closed with the
   contact's positions duplicated (delta 5).
-- [ ] Step 2 **[2]** — V4 in `arris-check`: the row, its `Violation`
+- [x] Step 2 **[2]** — V4 in `arris-check`: the row, its `Violation`
   variant, the binding, and a hand-built shell through two coincident
   vertices refused by it. Run the full corpus (`real_*` included). A V4
   hit on a body this plan does not make is decided as in Open questions 1.
@@ -148,12 +151,11 @@ algorithm whose robustness has to be established here).
   contact edge or vertex.
 
 ## Open questions
-1. ⚠ OPEN: a V4 hit in the corpus on a body this plan does not make, such as
-   an unsewn vertex pair in a read real part. The agent decides in step 2.
-   The default: if the hit is in the reader, step 2 merges such vertices
-   when it reads them, provided that is a few lines; otherwise V4 is
-   scoped to the boolean's bodies through `crate::verify`, and an idea
-   holds the reader case.
+1. *Settled in step 2.* V4 runs on boolean results. Both OCCT STEP
+   crescent read-backs require loop splicing as well as merging vertex
+   ids (`docs/ideas/sew-step-crescent-vertices.md`). V4 allows the
+   distinct ends of a short edge, preserving the CTC-05 topology of
+   ADR-0074 (ADR-0090 amendment).
 2. ⚠ OPEN: the angular tolerance for a tie in the radial order. The agent
    decides in step 3. The default is the model's `parametric_tolerance`
    over the edge's length scale, as a named constant in `arris-math`,

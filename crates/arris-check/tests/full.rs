@@ -8,7 +8,10 @@ use arris_math::real;
 use core::f64::consts::{PI, TAU};
 
 use arris_check::classify::{Classification, classify_point};
-use arris_check::{Level, Lump, LumpError, Report, ShellNestingFault, Violation, check, lumps};
+use arris_check::{
+    Level, Lump, LumpError, Report, ShellNestingFault, Violation, check, check_boolean_result,
+    lumps,
+};
 use arris_debug::{sample, unmetered};
 use arris_geom::{Curve, Curve2, NurbsCurve, NurbsSurface, Surface};
 use arris_math::{
@@ -1096,6 +1099,8 @@ fn assert_touching_lumps(
     let report = check(m, body, Level::Full);
     assert!(report.is_ok(), "{report}");
     assert!(report.unchecked().is_empty(), "{report}");
+    let report = check_boolean_result(m, body);
+    assert!(report.is_ok(), "{report}");
     let found = lumps(m, body).unwrap();
     assert_eq!(
         found,

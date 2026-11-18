@@ -90,6 +90,11 @@ into its version (ADR-0027).
 
 ### Breaking
 
+- `arris_check::Violation` adds `CoincidentVertices { a, b }` (V4). Handle
+  it in exhaustive matches. The boolean result checker reports distinct
+  vertices of one shell that lie within the larger vertex tolerance,
+  allowing the separate ends of a short edge.
+
 - Python's `Model.surface_properties` names its first parameter `entity`, not
   `body`, since it takes a `Body` or a `Face`: pass it positionally, or
   rename a `body=` keyword to `entity=`.

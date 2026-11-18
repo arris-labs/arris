@@ -1,8 +1,8 @@
-//! V1–V3.
+//! V1–V4.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use arris_topo::{EdgeId, FaceId, VertexId};
+use arris_topo::{EdgeId, FaceId, Orientation, VertexId};
 
 use super::{Checker, coedges};
 use crate::violation::{ToleranceBound, Violation};
@@ -94,6 +94,59 @@ impl Checker<'_> {
                 face,
                 distance,
             });
+        }
+    }
+
+    /// V4: distinct vertices of one shell must be farther apart than
+    /// both of their tolerances, except at the ends of a short edge.
+    pub(crate) fn v4_coincident(&mut self, edges: &BTreeMap<EdgeId, Vec<Orientation>>) {
+        let ids: BTreeSet<_> = edges
+            .keys()
+            .filter_map(|&id| self.model.edge(id).ok())
+            .flat_map(|edge| [edge.start(), edge.end()])
+            .collect();
+        let mut vertices: Vec<_> = ids
+            .into_iter()
+            .filter_map(|id| self.model.vertex(id).ok().map(|vertex| (id, vertex)))
+            // M3 handles invalid coordinates and tolerances.
+            .filter(|(_, vertex)| {
+                vertex.tolerance().is_finite()
+                    && vertex.point().coords.iter().all(|x| x.is_finite())
+            })
+            .collect();
+        vertices
+            .sort_unstable_by(|(a, v), (b, w)| v.point().x.total_cmp(&w.point().x).then(a.cmp(b)));
+        for &(id, vertex) in &vertices {
+            let point = vertex.point();
+            let tolerance = vertex.tolerance();
+            let first =
+                vertices.partition_point(|(_, other)| point.x - other.point().x > tolerance);
+            for &(other_id, other) in vertices
+                .iter()
+                .skip(first)
+                .take_while(|(_, other)| other.point().x - point.x <= tolerance)
+            {
+                // Only the larger tolerance tests the pair. Break ties by id.
+                if (tolerance, id) <= (other.tolerance(), other_id)
+                    || (point - other.point()).norm() > tolerance
+                {
+                    continue;
+                }
+                // An edge between different points can carry valid material
+                // even when its ends are closer than their tolerances (E2).
+                let joined = point != other.point()
+                    && self.vertex_edges.get(&id).into_iter().flatten().any(|e| {
+                        edges.contains_key(e)
+                            && self.model.edge(*e).is_ok_and(|edge| {
+                                edge.curve().is_some()
+                                    && (edge.start() == other_id || edge.end() == other_id)
+                            })
+                    });
+                if !joined {
+                    let (a, b) = (id.min(other_id), id.max(other_id));
+                    self.push(Violation::CoincidentVertices { a, b });
+                }
+            }
         }
     }
 }

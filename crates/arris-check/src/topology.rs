@@ -470,12 +470,16 @@ impl<'m> Checker<'m> {
         }
     }
 
-    /// S1–S4, shell by shell in closure order.
-    pub(crate) fn shell_rows(&mut self) {
+    /// V4 and S1–S4, shell by shell in closure order.
+    pub(crate) fn shell_rows(&mut self, distinct_vertices: bool) {
         let kind = self.model.body(self.body.id).map(|b| b.kind()).ok();
         for shell_id in self.closure.shells.clone() {
+            let uses = self.shell_edge_uses(shell_id);
+            if distinct_vertices {
+                self.v4_coincident(&uses);
+            }
             self.s1_faces(shell_id);
-            self.s2_edge_uses(shell_id, kind);
+            self.s2_edge_uses(shell_id, kind, uses);
             self.s3_connected(shell_id);
         }
     }
@@ -523,14 +527,19 @@ impl<'m> Checker<'m> {
 
     /// S2 (the coedge count and the orientations that pair up, by body
     /// kind) and S4 (a solid's shell is closed).
-    fn s2_edge_uses(&mut self, shell_id: ShellId, kind: Option<BodyKind>) {
+    fn s2_edge_uses(
+        &mut self,
+        shell_id: ShellId,
+        kind: Option<BodyKind>,
+        uses: BTreeMap<EdgeId, Vec<Orientation>>,
+    ) {
         // A wire body has no shell at all (B3); a shell it does carry is
         // not judged by a rule written for faces.
         let Some(kind) = kind.filter(|k| *k != BodyKind::Wire) else {
             return;
         };
         let mut found = Vec::new();
-        for (edge, orientations) in self.shell_edge_uses(shell_id) {
+        for (edge, orientations) in uses {
             // A degenerate edge is a singular point of the surface, not a
             // boundary between two faces: a sphere's pole is used once by
             // the one face that closes on it, and counting it would call
