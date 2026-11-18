@@ -2233,8 +2233,12 @@ B-Rep).
   queued run is covered by the next one over its range (ADR-0085).
   `/retire-plan` runs the full profile at 256 cases and records the
   verdict (`tools/gate-reuse.sh`), which `/close-cycle` and `/release`
-  reuse while no code path differs; CI runs 1000. `tools/stop-gate.sh` stops a
-  stuck hook or test run in this checkout, and only in it.
+  reuse while no code path differs. Full CI runs 1000 cases. A pull
+  request runs the cheap jobs and `pr-fast`, which uses the base
+  revision's `tools/pr-check.sh` on the PR head to check its commits and
+  run the tests its changes reach. The `full-ci` label adds the full
+  suite (ADR-0091). `tools/stop-gate.sh` stops a stuck hook or test run in
+  this checkout, and only in it.
 - **`tools/ci-reuse.sh`**: whether a push needs the suite again (ADR-0069).
   Finds the nearest green `main` commit, holds the diff to an allow-list of
   version-only and prose changes and prints `skip=true|false`; fails

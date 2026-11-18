@@ -15,8 +15,9 @@ name: CI
 # rerun the hours-long jobs: `reuse` decides (tools/ci-reuse.sh, which
 # fails closed), the seven jobs that take `needs: reuse` are skipped, and
 # `reused` runs what such a difference can still break. A pull request
-# always runs everything. `gh workflow run ci.yml --ref <branch>` runs
-# the workflow alone on a branch.
+# runs the cheap jobs and `pr-fast`; the `full-ci` label adds the full
+# suite (ADR-0091). `gh workflow run ci.yml --ref <branch>` runs the
+# workflow alone on a branch.
 on:
   push:
     branches: [main]
@@ -33,7 +34,11 @@ on:
       - "docs/DATA-MODEL.md"
       - "docs/plans/**"
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 # A newer push to main supersedes a running check of an older one: main's
 # tip holds every commit before it. A tag's run is the release gate and is
@@ -55,23 +60,22 @@ jobs:
       contents: read
       actions: read
     outputs:
-      skip: ${{ steps.reuse.outputs.skip }}
+      skip: ${{ steps.reuse.outputs.skip || 'false' }}
       base: ${{ steps.reuse.outputs.base }}
+      light: >-
+        ${{ github.event_name == 'pull_request' &&
+            !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
       - run: tools/ci-reuse.sh --self-test
       - id: reuse
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            echo "skip=false" | tee -a "$GITHUB_OUTPUT"
-            echo "reason=a pull request runs everything"
-          else
-            tools/ci-reuse.sh "$GITHUB_SHA" | tee -a "$GITHUB_OUTPUT"
-          fi
+        run: tools/ci-reuse.sh "$GITHUB_SHA" | tee -a "$GITHUB_OUTPUT"
 
   fmt:
     runs-on: ubuntu-latest
@@ -91,6 +95,36 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  # Check contributor commits on the PR head. The base supplies the
+  # checker even when the contributor branched before it existed.
+  pr-fast:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      ARRIS_ORACLE_CACHE: "off"
+      NEXTEST_TEST_THREADS: num-cpus
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@nextest
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - run: uv sync --project tools/oracle
+      - env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base=$(git merge-base "$PR_BASE" HEAD)
+          git show "$PR_BASE:tools/pr-check.sh" > "$RUNNER_TEMP/pr-check.sh"
+          bash "$RUNNER_TEMP/pr-check.sh" --ci --base "$base"
 
   # The roadmap's acceptance count for property tests is 1000 cases each
   # (docs/ROADMAP.md §M1); the pre-commit hook keeps the 256 default.
@@ -124,7 +158,7 @@ jobs:
   # of their tests unrun, a second failing shard among them.
   test:
     needs: reuse
-    if: needs.reuse.outputs.skip != 'true'
+    if: needs.reuse.outputs.skip != 'true' && needs.reuse.outputs.light != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -164,7 +198,7 @@ jobs:
   # were the longest wall time of a run.
   parallel:
     needs: reuse
-    if: needs.reuse.outputs.skip != 'true'
+    if: needs.reuse.outputs.skip != 'true' && needs.reuse.outputs.light != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -234,8 +268,10 @@ jobs:
   # A break since the last release is announced (ADR-0027): the published
   # crates against the last `v*` tag, and a breaking change fails unless
   # CHANGELOG.md's `## Unreleased` names it under `### Breaking`. The whole
-  # history is fetched so the tag and its tree are there to build.
+  # history is fetched so the tag and its tree are there to build. On a
+  # PR the verdict is advisory because the maintainer writes the bullet.
   semver:
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -259,7 +295,7 @@ jobs:
   # on the dev machine). The records are blessed where they were built.
   oracle:
     needs: reuse
-    if: needs.reuse.outputs.skip != 'true'
+    if: needs.reuse.outputs.skip != 'true' && needs.reuse.outputs.light != 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -274,7 +310,7 @@ jobs:
   # breaks here first.
   wasm:
     needs: reuse
-    if: needs.reuse.outputs.skip != 'true'
+    if: needs.reuse.outputs.skip != 'true' && needs.reuse.outputs.light != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -300,7 +336,7 @@ jobs:
   # release wheels, the sdist and `twine check` are `wheels.yml`'s, below.
   python:
     needs: reuse
-    if: needs.reuse.outputs.skip != 'true'
+    if: needs.reuse.outputs.skip != 'true' && needs.reuse.outputs.light != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -327,12 +363,13 @@ jobs:
   # The platforms beyond Linux x86_64 (`wheels.yml`): the determinism corpus
   # run natively on each, every platform's wheel installed from its file
   # and held to the binding's pytest, and the merged `python-dist` artifact
-  # `twine check` accepts, on each push to `main`. A pull request
-  # runs it on its own path-filtered trigger, and a tag's wheels are
-  # `release.yml`'s.
+  # `twine check` accepts, on each push to `main` and each `full-ci`
+  # pull request. A tag's wheels are `release.yml`'s.
   wheels:
     needs: reuse
-    if: github.ref == 'refs/heads/main' && needs.reuse.outputs.skip != 'true'
+    if: >-
+      (github.ref == 'refs/heads/main' || github.event_name == 'pull_request') &&
+      needs.reuse.outputs.skip != 'true' && needs.reuse.outputs.light != 'true'
     uses: ./.github/workflows/wheels.yml
 
   # arris-debug's `rerun` feature pulls in the large `rerun` SDK crate:
@@ -341,7 +378,7 @@ jobs:
   # a broken crate.
   rerun:
     needs: reuse
-    if: needs.reuse.outputs.skip != 'true'
+    if: needs.reuse.outputs.skip != 'true' && needs.reuse.outputs.light != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

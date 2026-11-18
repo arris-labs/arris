@@ -100,7 +100,7 @@ run after the human pushes.
   green, rebased, bullet and docs amended in, `tools/verify.sh`, pushed to
   the head then `main` fast-forwarded; without maintainer edit rights,
   `main` pushed and the PR closed naming the commits). Test: docs tests.
-- [ ] Step 6 **[2]** — the CI tiers of the design delta. Test:
+- [x] Step 6 **[2]** — the CI tiers of the design delta. Test:
   `tools/workflows-test.sh` (actionlint) and `tools/ci-reuse.sh
   --self-test`.
 
@@ -110,9 +110,9 @@ run after the human pushes.
   `localhost` author and `crates/arris-io/tests/data/*.step`, and passes on
   `main`'s tip against its parent.
 - actionlint is clean over `.github/workflows/`.
-- After the human pushes: PR #2's next run shows `pr-fast` and the cheap
-  jobs, no `test`/`parallel`/`wheels` shards, until it is labelled
-  `full-ci`.
+- After the human pushes and PR #2's changelog conflict is resolved:
+  its next run shows `pr-fast` and the cheap jobs, no
+  `test`/`parallel`/`wheels` shards, until it is labelled `full-ci`.
 
 ## Docs to update on completion
 - `AGENTS.md` — the skills sentence names `contribute` and `review-pr`.
@@ -128,3 +128,6 @@ run after the human pushes.
 - Decided (agent): contributors leave `CHANGELOG.md` alone and `semver` is
   advisory on a PR — the conflict PR #2 hit sat in the changelog, and the
   landing that writes the bullet runs before `main`'s CI holds the gate.
+- Settled: `pr-fast` runs the base revision's checker on the actual PR
+  head. This also checks branches made before the checker existed.
+  GitHub starts `pull_request` workflows after merge conflicts are resolved.
