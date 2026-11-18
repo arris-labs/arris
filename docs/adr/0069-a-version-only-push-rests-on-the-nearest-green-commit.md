@@ -56,3 +56,10 @@ the runs buy nothing.
   run tool self-tests.
 - A new file kind that is safe to skip is an allow-list edit with its
   self-test case, in `tools/`, which itself forces a full run.
+
+## Amendment (2026-11-19, ADR-0091)
+
+Decision 2's full run on every pull request is superseded by
+[ADR-0091](0091-an-outside-pull-request-lands-through-the-verified-rebase.md).
+Pull requests run the cheap jobs and `pr-fast` by default. The `full-ci`
+label enables the full suite. Push reuse still follows decision 2.
