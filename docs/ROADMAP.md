@@ -977,7 +977,7 @@ the named cycle next in line.*
   ball-knob and hinge pairs cut to their targets and have empty commons.
   A later fuse can cover the point of contact. A join that leaves the contact
   exposed within one lump returns `TangentContact`. Next are contacts that
-  share topology (`docs/ideas/touching-operands-fuse-to-several-shells.md`, Q2).
+  share topology (`docs/plans/touching-lumps-with-shared-topology.md`).
 - A body's tight bounds where a NURBS edge reaches them
   (`docs/ideas/tight-body-bounds.md`).
 - Beside the cycle, in the second plan slot: the nightly's open findings,
