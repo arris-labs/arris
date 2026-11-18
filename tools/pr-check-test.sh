@@ -125,11 +125,17 @@ for email in contributor@localhost contributor@intranet 'first.last@localhost'; 
 done
 
 for trailer in 'Co-Authored-By: Other <other@example.com>' \
-  'Claude-Session: abc' '🤖 Generated with Claude Code'; do
+  'Claude-Session: abc' '🤖 Generated with Claude Code' \
+  'Generated with [Claude Code](https://example.com)'; do
   at_base
   commit 'test(io): check the trailers' -m "$trailer"
   fail "disallowed trailer: $trailer"
 done
+
+at_base
+commit 'test(io): explain the fixture' \
+  -m 'Generated with Open CASCADE, these values describe the fixture.'
+pass --ci >/dev/null
 
 at_base
 mkdir -p docs/adr

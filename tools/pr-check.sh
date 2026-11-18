@@ -64,7 +64,8 @@ fi
 
 subject_pattern='^(feat|fix|refactor|perf|test|docs|chore|build|ci|fixtures)\([a-z0-9-]+(,[a-z0-9-]+)*\): [a-z]'
 email_pattern='^[^@[:space:]]+@[^@[:space:].]+(\.[^@[:space:].]+)+$'
-trailer_pattern='^[[:blank:]]*(co-authored-by:|claude-session:|(🤖[[:blank:]]*)?generated with([[:blank:]:]|$))'
+# Generated with footers do not always have a Git trailer separator.
+trailer_pattern='^[[:blank:]]*(co-authored-by:|claude-session:|generated with:|🤖[[:blank:]]*generated with([[:blank:]:]|$)|generated with[[:blank:]]+[^,!?]*[^.,!?[:space:]][[:blank:]]*$)'
 commits=$(git rev-list "$base..$head")
 while IFS= read -r commit; do
   [ -n "$commit" ] || continue
@@ -84,8 +85,8 @@ while IFS= read -r commit; do
   if [[ ! "$email" =~ $email_pattern ]]; then
     finding "$short author email needs a dotted domain: $(printf '%q' "$email")"
   fi
-  body=$(git show -s --format=%b "$commit")
-  trailers=$(grep -Ei "$trailer_pattern" <<<"$body" || true)
+  footer=$(git show -s --format=%b "$commit" | awk 'BEGIN { RS = "" } { last = $0 } END { print last }')
+  trailers=$(grep -Ei "$trailer_pattern" <<<"$footer" || true)
   while IFS= read -r trailer; do
     [ -n "$trailer" ] || continue
     finding "$short disallowed trailer: $trailer"
