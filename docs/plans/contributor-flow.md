@@ -91,7 +91,7 @@ run after the human pushes.
   `.github/pull_request_template.md`. Test: the docs tests.
 - [x] Step 4 **[1]** — `.agents/skills/contribute/SKILL.md`. Test: the
   docs tests; the skill names only scripts that exist.
-- [ ] Step 5 **[2]** — `.agents/skills/review-pr/SKILL.md`: review (the PR
+- [x] Step 5 **[2]** — `.agents/skills/review-pr/SKILL.md`: review (the PR
   fetched to `pr/<n>`, CI approved for a first-time contributor, `pr-check`
   over it, the new tests run on the merge base without the fix through
   `tools/at-commit.sh`, the rules and `.agents/review.md` read, the review
