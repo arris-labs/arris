@@ -1,0 +1,67 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "a28469d0ecd225764bc274f019c7973a0d28cb3348a81c1e207e77bea7b2924b",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "torus link"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "torus link, swapped"
+        }
+      ]
+    },
+    "equator_seam": {
+      "queries": [
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "torus link"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "torus link, swapped"
+        }
+      ]
+    },
+    "off_seams": {
+      "queries": [
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 2.811627629517552e-11,
+            "verdict": "touching"
+          },
+          "label": "torus link"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 2.7650172193714605e-11,
+            "verdict": "touching"
+          },
+          "label": "torus link, swapped"
+        }
+      ]
+    }
+  }
+}

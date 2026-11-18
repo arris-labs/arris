@@ -1,0 +1,91 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "d144cb46564550b94277d1c833f898d51e38b4b054450c0c5a8aebf221a9c499",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "interference": {
+            "contact": "curve",
+            "distance": 1.8369701987210297e-16,
+            "verdict": "touching"
+          },
+          "label": "hinge ruling"
+        },
+        {
+          "interference": {
+            "contact": "curve",
+            "distance": 1.8369701987210297e-16,
+            "verdict": "touching"
+          },
+          "label": "hinge ruling, swapped"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "centred ball knob"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "centred ball knob, swapped"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "offset ball knob"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "offset ball knob, swapped"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "ball on a plate"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "ball on a plate, swapped"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "balls at their seams"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "balls at their seams, swapped"
+        }
+      ]
+    }
+  }
+}

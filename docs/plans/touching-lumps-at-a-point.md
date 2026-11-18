@@ -83,7 +83,7 @@ mechanical. **[2]** careful, a geometric or numeric case within the design.
   the dimension of the touch. Graduate oracle-backed fixtures for fuse,
   cut and common. Drive the two harness fuses through Python
   `arris.build` in `test_tangency.py`.
-- [ ] Step 3 **[2]** — Extend the hinge recipe
+- [x] Step 3 **[2]** — Extend the hinge recipe
   (`boolean/fuse-box-cylinder-tangent-side`) with sibling cut and common
   fixtures. The external cut keeps the 4×4×1 plate, volume 16 and area 48,
   and the common is `Empty`. Add query probes for the harness pairs,
@@ -142,3 +142,11 @@ mechanical. **[2]** careful, a geometric or numeric case within the design.
   selection retry from ADR-0089 builds all three, with no tracer or
   pave change. Open CASCADE imprints the equator contact away from its
   vertex, adding one vertex and one edge.
+- **Settled in step 3:** Both hinge cuts retain the target's measures, and
+  its common is `Empty`. Open CASCADE imprints the ruling on the cut plate.
+  The harness pairs, the ball on a plate and the balls at their seams
+  match the oracle's contact dimension in both orders. The cone apex
+  remains a distinct holding failure: the pave model has one crossing
+  point and no section edge, so ADR-0089's isolated-touch retry does not
+  apply. The oracle reports a point in both orders. The regression and
+  remaining work are recorded in BACKLOG.

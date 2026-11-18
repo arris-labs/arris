@@ -1,0 +1,27 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "7931e0a9495972689572a1092d3bed4076cf93682acf08f70084748de2ba8667",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "cone apex on a face"
+        },
+        {
+          "interference": {
+            "contact": "point",
+            "distance": 0.0,
+            "verdict": "touching"
+          },
+          "label": "cone apex on a face, swapped"
+        }
+      ]
+    }
+  }
+}

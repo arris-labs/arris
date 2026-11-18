@@ -1,0 +1,14 @@
+{
+  "kind": "query",
+  "description": "A revolved cone of base radius 2 touches the interior of the block's bottom face at the apex (0, 0, 2). Open CASCADE answers point contact in both orders.",
+  "steps": [
+    {"name": "triangle", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, -2], "segments": [{"line_to": [2, -2]}, {"line_to": [0, 2]}, {"line_to": [0, -2]}]}},
+    {"name": "cone", "op": "revolve", "profile": "triangle", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "apex_block", "op": "box", "min": [-3, -3, 2], "max": [3, 3, 3]}
+  ],
+  "result": "apex_block",
+  "queries": [
+    {"label": "cone apex on a face", "interference": {"a": {"step": "cone"}, "b": {"step": "apex_block"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "cone apex on a face, swapped", "interference": {"a": {"step": "apex_block"}, "b": {"step": "cone"}}, "expect": "touching", "expect_contact": "point"}
+  ]
+}

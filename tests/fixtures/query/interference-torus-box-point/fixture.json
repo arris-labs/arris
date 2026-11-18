@@ -1,0 +1,18 @@
+{
+  "kind": "query",
+  "description": "The harness's torus link touches the box at (4, 0, 0) at the torus's seam vertex, on the equator seam away from the vertex, or off both seams. Each order reports point contact.",
+  "params": {"turn": 0, "tilt": 0},
+  "variants": {"equator_seam": {"turn": 25}, "off_seams": {"turn": 25, "tilt": 30}},
+  "steps": [
+    {"name": "section", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]}, "outer": {"circle": {"center": [3, 0], "radius": 1}}},
+    {"name": "ring", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 360},
+    {"name": "turned", "op": "transform", "of": "ring", "rotate": {"axis": [0, 1, 0], "angle_deg": "turn"}},
+    {"name": "torus", "op": "transform", "of": "turned", "rotate": {"axis": [0, 0, 1], "angle_deg": "tilt"}, "translate": ["3 * (1 - cos(radians(tilt)))", "-3 * sin(radians(tilt))", 0]},
+    {"name": "box", "op": "box", "min": [4, -1, -1], "max": [6, 1, 1]}
+  ],
+  "result": "box",
+  "queries": [
+    {"label": "torus link", "interference": {"a": {"step": "torus"}, "b": {"step": "box"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "torus link, swapped", "interference": {"a": {"step": "box"}, "b": {"step": "torus"}}, "expect": "touching", "expect_contact": "point"}
+  ]
+}

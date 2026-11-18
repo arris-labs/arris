@@ -1,0 +1,17 @@
+{
+  "description": "The hinge's reverse external cut keeps the barrel, which touches the plate between the two ends of a ruling.",
+  "steps": [
+    {"name": "plate", "op": "box", "min": [-2, -2, -0.5], "max": [2, 2, 0.5]},
+    {"name": "barrel", "op": "cylinder", "base": [3, -3, 0], "axis": [0, 1, 0], "radius": 1, "height": 6},
+    {"name": "result", "op": "cut", "target": "barrel", "tool": "plate"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in_plate", "point": [0, 0, 0], "expect": "out"},
+    {"label": "in_barrel", "point": [3, 0, 0], "expect": "in"},
+    {"label": "contact", "point": [2, 0, 0], "expect": "on"},
+    {"label": "edge_touch", "point": [2, 2, 0], "expect": "on"},
+    {"label": "between_wall_and_plate", "point": [2.01, 0, 0.25], "expect": "out"}
+  ],
+  "analytic": {"volume": "6 * pi", "area": "14 * pi", "centroid": [3, 0, 0], "genus": 0}
+}

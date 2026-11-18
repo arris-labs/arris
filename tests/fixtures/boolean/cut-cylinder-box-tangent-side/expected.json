@@ -1,0 +1,98 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "ced612e61c384466b724b481755867a32bd412fe529889544efa619c107e6201",
+  "results": {
+    "default": {
+      "area": 43.9822971502571,
+      "centroid": [
+        2.999999999999999,
+        4.7119328614274324e-17,
+        -1.295781536892544e-16
+      ],
+      "counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          61.26105674500094,
+          -8.88178419700126e-16,
+          2.442490654175346e-15
+        ],
+        [
+          -8.88178419700126e-16,
+          9.42477796076949,
+          2.2204460492503118e-16
+        ],
+        [
+          2.442490654175346e-15,
+          2.2204460492503118e-16,
+          61.26105674500113
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 3,
+        "faces": 3,
+        "loops": 3,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "out",
+          "label": "in_plate",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "in_barrel",
+          "point": [
+            3.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "contact",
+          "point": [
+            2.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "edge_touch",
+          "point": [
+            2.0,
+            2.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "between_wall_and_plate",
+          "point": [
+            2.01,
+            0.0,
+            0.25
+          ]
+        }
+      ],
+      "volume": 18.84955592153876
+    }
+  }
+}

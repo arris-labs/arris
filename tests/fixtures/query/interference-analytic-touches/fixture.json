@@ -1,0 +1,29 @@
+{
+  "kind": "query",
+  "description": "Both orders of the harness's hinge and ball knob, a ball on a plate and two balls meeting on their meridian seams.",
+  "steps": [
+    {"name": "plate", "op": "box", "min": [-2, -2, -0.5], "max": [2, 2, 0.5]},
+    {"name": "barrel", "op": "cylinder", "base": [3, -3, 0], "axis": [0, 1, 0], "radius": 1, "height": 6},
+    {"name": "section", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, -2], "segments": [{"arc_to": [0, 2], "via": [2, 0]}, {"line_to": [0, -2]}]}},
+    {"name": "ball", "op": "revolve", "profile": "section", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "stem", "op": "cylinder", "base": [0, 0, -5], "axis": [0, 0, 1], "radius": 1, "height": 3},
+    {"name": "offset_stem", "op": "cylinder", "base": [0.3, 0, -5], "axis": [0, 0, 1], "radius": 1, "height": 3},
+    {"name": "unit_section", "op": "profile", "plane": {"origin": [0, 0, 1], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, -1], "segments": [{"arc_to": [0, 1], "via": [1, 0]}, {"line_to": [0, -1]}]}},
+    {"name": "unit_ball", "op": "revolve", "profile": "unit_section", "axis": {"origin": [0, 0, 1], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "table", "op": "box", "min": [-5, -5, -1], "max": [5, 5, 0]},
+    {"name": "seam_ball", "op": "transform", "of": "ball", "rotate": {"axis": [0, 0, 1], "angle_deg": 180}, "translate": [4, 0, 0]}
+  ],
+  "result": "plate",
+  "queries": [
+    {"label": "hinge ruling", "interference": {"a": {"step": "plate"}, "b": {"step": "barrel"}}, "expect": "touching", "expect_contact": "curve"},
+    {"label": "hinge ruling, swapped", "interference": {"a": {"step": "barrel"}, "b": {"step": "plate"}}, "expect": "touching", "expect_contact": "curve"},
+    {"label": "centred ball knob", "interference": {"a": {"step": "stem"}, "b": {"step": "ball"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "centred ball knob, swapped", "interference": {"a": {"step": "ball"}, "b": {"step": "stem"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "offset ball knob", "interference": {"a": {"step": "offset_stem"}, "b": {"step": "ball"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "offset ball knob, swapped", "interference": {"a": {"step": "ball"}, "b": {"step": "offset_stem"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "ball on a plate", "interference": {"a": {"step": "unit_ball"}, "b": {"step": "table"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "ball on a plate, swapped", "interference": {"a": {"step": "table"}, "b": {"step": "unit_ball"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "balls at their seams", "interference": {"a": {"step": "ball"}, "b": {"step": "seam_ball"}}, "expect": "touching", "expect_contact": "point"},
+    {"label": "balls at their seams, swapped", "interference": {"a": {"step": "seam_ball"}, "b": {"step": "ball"}}, "expect": "touching", "expect_contact": "point"}
+  ]
+}

@@ -115,6 +115,12 @@ corpus_tests! {
     /// crossing and inside, both orders, and two cylinders along a ruling
     /// (ADR-0055).
     query_interference_primitives => query "query/interference-primitives";
+    /// Both operand orders for the hinge, the ball knob, a ball on a plate
+    /// and two balls meeting at their seams.
+    query_interference_analytic_touches => query "query/interference-analytic-touches";
+    /// The torus link and box touch at a point in either order, at or away
+    /// from the torus's seams.
+    query_interference_torus_box_point => query "query/interference-torus-box-point";
     /// A drilled plate against a pin with clearance, line to line and pressed
     /// in; an L bracket against its bolt, the head resting on the foot
     /// (ADR-0055).
@@ -771,6 +777,12 @@ corpus_tests! {
     boolean_fuse_cylinders_tangent_equal_height => run "boolean/fuse-cylinders-tangent-equal-height";
     /// A centred box whose side touches a cylinder between two box edges.
     boolean_fuse_box_cylinder_tangent_side => run "boolean/fuse-box-cylinder-tangent-side";
+    /// Cutting the hinge barrel from the plate keeps the plate whole.
+    boolean_cut_box_cylinder_tangent_side => run "boolean/cut-box-cylinder-tangent-side";
+    /// Cutting the hinge plate from the barrel keeps the barrel whole.
+    boolean_cut_cylinder_box_tangent_side => run "boolean/cut-cylinder-box-tangent-side";
+    /// The hinge's common is Empty even though the parts touch along a ruling.
+    boolean_common_box_cylinder_tangent_side => run "boolean/common-box-cylinder-tangent-side";
     /// A pin touching a bore's wall from inside: the pin's wall is inside the
     /// bore, and the fuse is the bore with every id kept.
     boolean_pin_in_bore_fuse => run "boolean/pin-in-bore-fuse";
@@ -2229,6 +2241,9 @@ corpus_tests! {
     /// is `Unsupported`. The desired answer is Open CASCADE's distance.
     #[ignore = "OpError::Unsupported: two off-axis cones' interiors need a solver in three unknowns (docs/BACKLOG.md, cone–cone off a common axis)"]
     regression_distance_cone_cone_refused => query "regression/distance-cone-cone-refused";
+    /// A cone apex touches the interior of a block face at one point.
+    #[ignore = "OpError::Unsupported: the cone apex is classified On at a crossing point with no section edge (docs/BACKLOG.md)"]
+    regression_interference_cone_apex_on_face => query "regression/interference-cone-apex-on-face";
     /// The ogive bar's ruling over a step: a cylinder against a cylinder below
     /// a ledge, a cylinder against a plane above, both filleted. The stripes
     /// meet at a vertex of five edges; Arris refuses the corner as `Degenerate`,

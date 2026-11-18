@@ -33,6 +33,7 @@ boolean/coaxial-fuse: 52
 boolean/coaxial-fuse-band-ends: 52
 boolean/coaxial-fuse-four-off: 57
 boolean/coaxial-fuse-four-off-back: 55
+boolean/common-box-cylinder-tangent-side: refused
 boolean/cone-apex-slice-cut: 25
 boolean/cone-boss-cut-kept-edge-mesh: 26
 boolean/corner-common: 42
@@ -44,6 +45,8 @@ boolean/cross-cylinders-cut: refused
 boolean/cross-cylinders-fuse: 6056
 boolean/crossing-pockets-cut-many: 139
 boolean/cut-bore-tangent-column: 81
+boolean/cut-box-cylinder-tangent-side: 35
+boolean/cut-cylinder-box-tangent-side: 35
 boolean/cut-many-bore-over-bore-of-its-width: 68
 boolean/cut-many-tools-miss-target: 24
 boolean/cylinder-prism-common-chamfer-cut-loops-intersect: 1476

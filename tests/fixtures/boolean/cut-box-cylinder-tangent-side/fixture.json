@@ -1,0 +1,24 @@
+{
+  "description": "The hinge's external cut keeps the centred 4 × 4 × 1 plate. The barrel touches along a ruling on the plate's side.",
+  "steps": [
+    {"name": "plate", "op": "box", "min": [-2, -2, -0.5], "max": [2, 2, 0.5]},
+    {"name": "barrel", "op": "cylinder", "base": [3, -3, 0], "axis": [0, 1, 0], "radius": 1, "height": 6},
+    {"name": "result", "op": "cut", "target": "plate", "tool": "barrel"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "in_plate", "point": [0, 0, 0], "expect": "in"},
+    {"label": "in_barrel", "point": [3, 0, 0], "expect": "out"},
+    {"label": "contact", "point": [2, 0, 0], "expect": "on"},
+    {"label": "edge_touch", "point": [2, 2, 0], "expect": "on"},
+    {"label": "between_wall_and_plate", "point": [2.01, 0, 0.25], "expect": "out"}
+  ],
+  "analytic": {
+    "volume": 16,
+    "area": 48,
+    "centroid": [0, 0, 0],
+    "counts": {"vertices": 8, "edges": 12, "faces": 6, "loops": 6, "shells": 1, "solids": 1},
+    "counts_differ": "Open CASCADE imprints the ruling on the side face, adding two vertices, three edges and one face. Arris keeps the original plate faces.",
+    "genus": 0
+  }
+}

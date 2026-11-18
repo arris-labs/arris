@@ -1,0 +1,10 @@
+{
+  "description": "The common of the hinge's plate and barrel contains no solid. Their only contact is the side ruling.",
+  "steps": [
+    {"name": "plate", "op": "box", "min": [-2, -2, -0.5], "max": [2, 2, 0.5]},
+    {"name": "barrel", "op": "cylinder", "base": [3, -3, 0], "axis": [0, 1, 0], "radius": 1, "height": 6},
+    {"name": "result", "op": "common", "a": "plate", "b": "barrel"}
+  ],
+  "result": "result",
+  "analytic": {"expect_error": "empty"}
+}
