@@ -1007,9 +1007,9 @@ printed, with no row above C11's close, and no panic.
 
 ## Beside the cycles
 
-Two lines of work that are not cycles. Neither changes a public type or a
-signature, so neither earns a minor version (`.agents/rules/git.md`
-§Tags); each stands beside whatever cycle is open (ADR-0020).
+These lines of work stand beside whichever cycle is open (ADR-0020).
+The process and tooling changes follow the release rules in
+`.agents/rules/git.md` §Tags.
 
 **The refactor sequence** (the `refactor-after-c10` review, option B).
 `small-seams` landed 2026-10-23: the union-find, golden-section minimiser,
@@ -1046,8 +1046,13 @@ at retirement, in CI, nightly, at cycle close and at release.
 **The reuse gate** (ADR-0069). A push whose diff from the nearest green
 commit of `main` is version-only (strings, changelog, prose no test reads)
 skips CI's hours-long jobs, which `tools/ci-reuse.sh` decides and fails
-closed on; a release costs one full run, not three. The `parallel` job is
-sharded four ways like `test`.
+closed on. The full run has four `parallel` shards and eight `test` shards.
+
+**Outside contributions** (ADR-0091). Contributors check their fork's
+topic branch with `tools/pr-check.sh` before opening a pull request.
+Pull requests run the cheap jobs and the reached tests by default.
+The maintainer adds `full-ci` to run the full suite before landing code
+through a locally verified rebase.
 
 **The measuring harness.** It measures what decides the cycle after C4
 (ADR-0024). The oracle answers from a cache keyed on every input it

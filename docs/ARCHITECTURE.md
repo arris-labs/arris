@@ -2236,9 +2236,10 @@ B-Rep).
   reuse while no code path differs. Full CI runs 1000 cases. A pull
   request runs the cheap jobs and `pr-fast`, which uses the base
   revision's `tools/pr-check.sh` on the PR head to check its commits and
-  run the tests its changes reach. The `full-ci` label adds the full
-  suite (ADR-0091). `tools/stop-gate.sh` stops a stuck hook or test run in
-  this checkout, and only in it.
+  run the tests its changes reach. A passing local `pr-check` verifies
+  the topic tip for the push hook if it has no passing verdict. The
+  `full-ci` label adds the full suite (ADR-0091). `tools/stop-gate.sh`
+  stops a stuck hook or test run in the current checkout.
 - **`tools/ci-reuse.sh`**: whether a push needs the suite again (ADR-0069).
   Finds the nearest green `main` commit, holds the diff to an allow-list of
   version-only and prose changes and prints `skip=true|false`; fails

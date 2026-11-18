@@ -25,8 +25,9 @@ If you cloned a fork to submit a pull request, use this workflow.
 4. Run [`tools/pr-check.sh`](tools/pr-check.sh) from the committed branch
    tip and fix any findings. It fetches canonical `main` and checks your
    commits, file placement, formatting, clippy, and the tests the change
-   reaches. Push the branch to your fork and open a pull request against
-   upstream `main` using the [template](.github/pull_request_template.md).
+   reaches. A passing check verifies the tip for the push hook. Push the
+   branch to your fork and open a pull request against upstream `main`
+   using the [template](.github/pull_request_template.md).
 
 Read in this order: `SEED.md` (charter, competition, stack, the decisions
 taken at kickoff), `docs/ARCHITECTURE.md`, `docs/DATA-MODEL.md`,
@@ -35,8 +36,9 @@ taken at kickoff), `docs/ARCHITECTURE.md`, `docs/DATA-MODEL.md`,
 `.claude/rules`; any other agent reads them here. `GLOSSARY.md` holds the
 project's words, one meaning each: use them as written. Skills live in
 `.agents/skills/` (same symlink arrangement): the idea → plan → work →
-retire → close-cycle → release pipeline, `refactor-review` (structural
-debt, measured and read, as one idea), `inspect` for seeing geometry,
+retire → close-cycle → release pipeline, `contribute` for preparing a fork
+PR, `review-pr` for maintainer review and landing, `refactor-review`
+(structural debt, measured and read, as one idea), `inspect` for seeing geometry,
 `map` for seeing the architecture (charts and checks derived from the code),
 and for the human `/next`, `/handoff`, `/retro` and `/wait-what`.
 

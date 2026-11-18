@@ -44,8 +44,11 @@ before a cycle closes. The pipeline is walked by the shared skills `/idea`,
 (`.agents/skills/`, symlinked into `.claude/skills/`), under the rules in
 `.agents/rules/`. `/work <slug>` with no step **conducts** the plan: each
 remaining step runs in a fresh subagent on its tier (`.agents/tiers.md`), and
-the conducting session retires the plan itself; `/work <slug> step N` does one
-step in the current session. `inspect`, beside them, is how the agent sees a shape it is
+a fresh coordinator retires the plan. `/work <slug> step N` does one step
+in the current session. `/contribute` guides a contributor from a fork
+through a checked topic branch to a pull request. `/review-pr` guides the
+maintainer through review and a verified landing (ADR-0091).
+`inspect`, beside them, is how the agent sees a shape it is
 changing without a GUI; `map` is how it sees the architecture — the crates,
 then each module down to the deepest, an operation's stages — drawn from the
 code and checked against the design docs. `/refactor-review`, suggested after each

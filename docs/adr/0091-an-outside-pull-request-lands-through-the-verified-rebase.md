@@ -1,7 +1,7 @@
 # ADR-0091 — An outside pull request lands through the verified rebase
 
 - Status: accepted (2026-11-19)
-- Plan: `contributor-flow`
+- Plan: outside contributor workflow (retired)
 - Follows: ADR-0078 and ADR-0085 for verification, ADR-0027 for the changelog
 - Reference trees read: none
 
