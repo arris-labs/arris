@@ -124,13 +124,13 @@ miss); reporting after one step and waiting for another `/work` is a bug.
 4. After the last box, read `tools/verify.sh --status` for HEAD, waiting on
    a run in flight. `pass` is the plan's tip verified. `fail` is an earlier
    step's red: a fresh subagent on that step's tier fixes it in a commit
-   carrying that step's suffix, before retirement. Then retire the plan in
-   this session by reading and following
-   `.agents/skills/retire-plan/SKILL.md` (the Skill tool refuses
-   `/retire-plan`; never call it); its review subagent runs on
-   tier 3. A hard finding goes to a fresh subagent on the tier of the step
-   it repairs, the finding as its brief; the conductor commits only the
-   retirement.
+   carrying that step's suffix, before retirement. Start a fresh
+   retirement coordinator with only the slug, verified SHA, acceptance
+   commands and docs checklist from the plan, and the path to
+   `.agents/skills/retire-plan/SKILL.md`. Use a fresh agent when it can
+   delegate the review and fixes on their specified tiers. Where nesting
+   cannot do that, hand off to a fresh top-level session with the same
+   brief. Wait for its hand-back using the harness rule above.
 5. Reply as *Do*'s step 7 does, one line per step conducted (its commit,
    its tier, anything surprising), then the retirement's reply.
 

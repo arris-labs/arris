@@ -7,51 +7,42 @@ argument-hint: <plan slug>
 
 # /retire-plan — move the durable parts, delete the rest
 
-Run by the human, or by `/work`'s conductor after a plan's last step.
-
-Deletion is the "done" signal; anything worth keeping moves first.
+Run by the human or a fresh coordinator after `/work`'s last step.
+The handoff carries the plan slug, verified SHA, acceptance commands and
+docs checklist. Deletion is the done signal.
 
 ## Do
 
-1. **Verify, starting the gate.** Every step of `docs/plans/<slug>.md`
-   ticked (never tick one here). First `tools/verify.sh --status HEAD`, in
-   the background (it waits on a run in flight): a `fail` is fixed before
-   the gate starts — the verification takes minutes, the gate an hour.
-   Then start the acceptance's runs, in the
-   background using the harness-specific wait rule in `.agents/rules/git.md`,
-   on the plan's tip's own tree so the checkout moves on (ADR-0081):
-   `tools/at-commit.sh HEAD sh -c '<runs>'`, the runs being the plan's
-   **full gate**, `tools/full-gate.sh <scratchpad>/gate.log` (absolute;
-   about an hour; its last lines name every red test), then
-   `ARRIS_ORACLE_CACHE=off` for the oracle comparisons the plan touched,
-   `cargo nextest run -p <crate> --features parallel` for each of
-   `arris-mesh`, `arris-ops`, `arris`, only when the plan's diff touches a
-   file `git grep -l 'feature = "parallel"' crates` lists (CI's `parallel`
-   job covers the rest; the three runs cost 60 minutes on rewrite-seams for
-   a plan that touched none), and
-   `tools/py-test.sh` when the plan touched `crates/arris-py`. The reply
-   names each run's expected finish (the gate: 55 minutes) when it starts.
-   Steps 2–4 run while they do, the review's fixes committed as they come. The
-   retirement commit waits for the gate green and HEAD verified `pass`;
-   anything red: stop and report (a conductor fixes it by `/work`'s
-   *Conduct* step 4). A plan whose diff (`git diff --name-only`
-   over its commits) reaches no code path (`tools/gate-reuse.sh
-   --reaches-code <the plan's first commit's parent> HEAD` exits 1, the
-   one list ADR-0085 §3 names) runs no full gate: its commits' hooks were
-   its gate, and the reply says so.
-2. **Review the commits against the plan**, in a subagent on tier 3
-   (`.agents/tiers.md`) so it reads with fresh eyes, started while the gate
-   runs. Give it the plan file, `.agents/review.md` (its brief and
-   standards), `.agents/rules/kernel.md`, `GLOSSARY.md`, and the plan's
-   commits: `git log --format='%h %s' --grep='plans/<slug>'` (another
-   plan's commits may sit between them, so it reads each with `git show`,
-   not one range diff). Report its findings by axis, unmerged. Fix a hard
-   finding in its own commit (`fix(scope): … (plans/<slug> review)`),
-   made at once: the gate reads the tip's tree, not the checkout. A judgement finding the agent decides on the
-   charter's terms (`SEED.md`), stating the decision and its reason in the
-   reply — a choice between fixes included; only a product question (what
-   the kernel offers its callers) waits for the human. One left
-   for later is a backlog line.
+1. **Check the handoff and review the commits.** Every step of
+   `docs/plans/<slug>.md` is ticked. Check that HEAD matches the verified
+   SHA, or verify HEAD with `tools/verify.sh --status HEAD` if starting
+   directly. Use the harness-specific wait in `.agents/rules/git.md`.
+   Start the review in a tier 3 subagent (`.agents/tiers.md`). Give it the
+   plan file, `.agents/review.md`, `.agents/rules/kernel.md`, `GLOSSARY.md`
+   and the plan commits from `git log --format='%h %s' --grep='plans/<slug>'`.
+   It reads each commit with `git show`, since other plans may interleave.
+   Report findings by axis. A fresh subagent on the tier of the affected
+   step fixes each hard finding in its own commit
+   (`fix(scope): … (plans/<slug> review)`). Resolve judgement findings on
+   the charter's terms (`SEED.md`) and state the decision in the reply.
+   A product question waits for the human. Deferred findings go in the
+   backlog.
+2. **Verify the reviewed tip and start acceptance.** Once review and fixes
+   have handed back, pin HEAD and run `tools/verify.sh --status <sha>`.
+   Fix any red verification before launching acceptance on that SHA's
+   tree. Run the plan's acceptance via
+   `tools/at-commit.sh <sha> sh -c '<runs>'` using the harness-specific
+   wait rule. Include `tools/full-gate.sh <absolute-log>`, then use
+   `ARRIS_ORACLE_CACHE=off` for the oracle comparisons the plan touched.
+   Run `cargo nextest run -p <crate> --features parallel` for each of
+   `arris-mesh`, `arris-ops` and `arris` whose changed files intersect
+   `git grep -l 'feature = "parallel"' crates`. Include
+   `tools/py-test.sh` if the plan touched `crates/arris-py`.
+   Give the expected finish when launching the runs (about 55 minutes
+   for the full gate). Steps 3–8 can proceed during acceptance. A red
+   result stops retirement until fixed and verified on the new tip.
+   A prose-only plan (`tools/gate-reuse.sh --reaches-code <first plan
+   commit's parent> <sha>` exits 1) uses the commits' hooks as its gate.
 3. Execute *Docs to update* line by line, present tense, no "as of this
    plan". A closed `⚠ OPEN:` gets its ADR now, listed in
    `docs/adr/README.md`.
@@ -68,7 +59,7 @@ Deletion is the "done" signal; anything worth keeping moves first.
    signature the commit bodies name goes under `### Breaking` with its fix;
    merge with bullets commits already added. Never the plan's history.
 8. Deferred work: one line each in `docs/BACKLOG.md`.
-9. `git rm docs/plans/<slug>.md`; commit all as `docs: retire plan <slug>`,
+9. Once acceptance is green and HEAD is verified, `git rm docs/plans/<slug>.md`; commit all as `docs: retire plan <slug>`,
    the body listing the docs updated. `git grep -n <slug> -- ':!docs/plans'`
    comes back empty first: the docs-refs test refuses a file citing it. An
    idea's `absorbed by plans/<slug>` status and the backlog's mentions are

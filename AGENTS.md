@@ -71,9 +71,9 @@ next named cycle.
   `/close-cycle` at a roadmap boundary, then `/release`. Not every idea becomes a plan. Details:
   `.agents/rules/docs-lifecycle.md`.
 - `/work <slug>` with no step **conducts** the plan: each step a fresh
-  subagent on its tier (`.agents/tiers.md` maps tiers to models), then the
-  conducting session follows `retire-plan`'s SKILL.md (the Skill tool refuses it). Waits (gate, CI) run in the
-  background, never in a foreground loop.
+  subagent on its tier (`.agents/tiers.md` maps tiers to models), then a
+  fresh coordinator follows `retire-plan`'s SKILL.md. Use the harness
+  completion waits in `.agents/rules/git.md`.
 - Trunk-based git, `main` always green (a pushed tip is a verified commit,
   ADR-0078), commit per plan step, never push or publish unasked: `.agents/rules/git.md`. `main` carries the next
   version with `-dev`; a `v*` tag the human pushes is what publishes the
