@@ -15,10 +15,11 @@ later session.
 1. **Read the sessions.** `.agents/skills/retro/session-digest --slug
    <slug>` (or `--session <id>`; nothing given: this session, from your
    own context). It prints each session's human messages, skills, tools,
-   failed calls and stalls; sessions from before the checkout moved need
-   `--project-dir` with the old path's transcript directory. Open a
-   transcript only where the digest points at something
-   (`~/.claude*/projects/<this repo>/<id>.jsonl`). Read the plan's commits
+   failed calls and stalls. It reads Claude Code and Codex sessions.
+   For a previous checkout path, pass `--project-dir` for Claude Code
+   or `--session` with the Codex session ID. Open a transcript only where
+   the digest points at something. Compare cached and uncached input and
+   output separately when token counts are available. Read the plan's commits
    too (`git log --grep='plans/<slug>'`). Print `tools/step-rework.sh
    --since <the plan's start date>` (its `Started` line; the whole history
    when no plan is named): a tier whose steps were often reworked is a

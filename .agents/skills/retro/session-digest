@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Digest this repository's Claude Code session transcripts for /retro.
+"""Digest this repository's Claude Code and Codex session transcripts for /retro.
 
 Usage: .agents/skills/retro/session-digest [--slug SLUG] [--last N] [--session ID]...
 
-Finds the transcripts of the checkout it lives in (under every
-~/.claude*/projects, or $CLAUDE_CONFIG_DIR/projects), picks the sessions
-that mention SLUG (a plan slug), the N most recent, or the given ids, and
-prints for each: when and how long, the models, the human's own messages,
-the skills and tools used, the tool calls that failed (the subagents'
-too), and the longest stalls between entries; a message the human sent
-while the agent was working is marked "(sent mid-turn)". The transcripts are read only.
+Finds the checkout's Claude Code transcripts under ~/.claude*/projects
+(or $CLAUDE_CONFIG_DIR/projects) and Codex rollouts under $CODEX_HOME
+(default ~/.codex). Select by plan slug, recent session or ID prefix.
+Reports Claude tool errors and stalls, and Codex usage, waits and largest
+tool results, including child rollouts linked to selected Codex sessions.
+Transcripts are read only.
 """
 
 import argparse
@@ -18,6 +17,7 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 from datetime import datetime
 
 def repo_root(here):
@@ -150,6 +150,110 @@ def digest(path, width):
     print()
 
 
+def records(path):
+    with open(path, encoding="utf-8", errors="replace") as stream:
+        for line in stream:
+            try:
+                yield json.loads(line)
+            except ValueError:
+                continue
+
+
+def mentions(path, slug):
+    with open(path, encoding="utf-8", errors="replace") as stream:
+        return any(slug in line for line in stream)
+
+
+def codex_sessions():
+    home = os.environ.get("CODEX_HOME", os.path.expanduser("~/.codex"))
+    sessions = {}
+    for directory in ("sessions", "archived_sessions"):
+        for path in glob.iglob(os.path.join(home, directory, "**", "rollout-*.jsonl"), recursive=True):
+            first = next(records(path), {})
+            if first.get("type") != "session_meta":
+                continue
+            meta = first["payload"]
+            source = meta.get("source")
+            spawn = source.get("subagent", {}).get("thread_spawn", {}) if isinstance(source, dict) else {}
+            sessions[meta["id"]] = (path, meta, spawn)
+    return sessions
+
+
+def codex_digest(path, meta, spawn, width):
+    counts, waits, models = Counter(), Counter(), set()
+    calls, largest, failed, human_messages, gaps = {}, [], [], [], []
+    phase, baseline, totals = "session", Counter(), Counter()
+    retirement_tasks = {"retirement_review", "retirement", "retirement_coordinator"}
+    phases = {}
+    start = previous = end = None
+    for row in records(path):
+        stamp = when(row.get("timestamp"))
+        if stamp:
+            start = start or stamp
+            if previous and (stamp - previous).total_seconds() > 120:
+                gaps.append(((stamp - previous).total_seconds(), previous))
+            previous = end = stamp
+        payload = row.get("payload", {})
+        kind = payload.get("type")
+        if row.get("type") == "turn_context" and payload.get("model"):
+            models.add(payload["model"])
+        if row.get("type") == "event_msg" and kind == "user_message":
+            human_messages.append(payload.get("message", ""))
+        if kind in ("function_call", "custom_tool_call"):
+            name = payload.get("name", "?")
+            arg = payload.get("arguments", payload.get("input", ""))
+            counts[name] += 1
+            if name in ("wait_agent", "sleep", "wait", "write_stdin"):
+                waits[name] += 1
+            if name == "spawn_agent" and phase == "session":
+                try:
+                    task = json.loads(arg).get("task_name", "")
+                except (ValueError, AttributeError):
+                    task = ""
+                if task in retirement_tasks:
+                    if totals:
+                        phases["before retirement agent launch"] = phases.pop("session", totals)
+                    phase, baseline = "from retirement agent launch", totals.copy()
+            calls[payload["call_id"]] = (name, str(arg).splitlines()[0][:width] if arg else "")
+        if kind in ("function_call_output", "custom_tool_call_output"):
+            name, brief = calls.pop(payload["call_id"], ("?", ""))
+            output = str(payload.get("output", ""))
+            if stamp:
+                largest.append((len(output.encode("utf-8")), stamp, name, brief))
+            if stamp and re.search(
+                    r"(?:Process exited with code [1-9]|exit_code[^0-9-]+-?[1-9])",
+                    output[:1200]):
+                failed.append((stamp, name, brief))
+        if kind == "token_count" and payload.get("info"):
+            totals = Counter(payload["info"]["total_token_usage"])
+            phases[phase] = totals - baseline
+    role = spawn.get("agent_path") or "top-level"
+    parent = spawn.get("parent_thread_id", "")
+    print(f"## {meta['id'][:13]} Codex {role}" + (f" (parent {parent[:8]})" if parent else ""))
+    if start and end:
+        print(f"started {start:%Y-%m-%d %H:%M UTC}, {(end-start).total_seconds()/60:.1f} min")
+    print("models:", ", ".join(sorted(models)) or "unavailable")
+    for label, usage in phases.items():
+        cached = usage["cached_input_tokens"]
+        uncached = usage["input_tokens"] - cached
+        print(f"{label} tokens: {cached:,} cached input, {uncached:,} uncached input, "
+              f"{usage['output_tokens']:,} output")
+    print("tools:", ", ".join(f"{name} {count}" for name, count in counts.most_common()) or "none")
+    print("wait calls:", ", ".join(f"{name} {count}" for name, count in waits.most_common()) or "none")
+    print("longest stalls:", ", ".join(f"{gap/60:.0f} min at {stamp:%H:%M}"
+                                      for gap, stamp in sorted(gaps, reverse=True)[:3]) or "none")
+    print("the human said:")
+    for message in human_messages:
+        print("  >", message.replace("\n", " / ")[:width * 2])
+    print(f"failed tool calls ({len(failed)}):")
+    for stamp, name, brief in failed[:15]:
+        print(f"  ! {stamp:%H:%M:%S} {name} {brief}")
+    print("largest tool results (serialized bytes):")
+    for size, stamp, name, brief in sorted(largest, key=lambda item: item[0], reverse=True)[:5]:
+        print(f"  {size:,} {stamp:%H:%M:%S} {name} {brief}")
+    print()
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--slug", help="sessions mentioning this plan slug")
@@ -164,17 +268,37 @@ def main():
     for f in (f for d in dirs for f in glob.glob(os.path.join(d, "*.jsonl"))):
         unique.setdefault(os.path.basename(f), f)
     files = sorted((f for f in unique.values() if started(f)), key=started)  # an empty one has no time
-    if not files:
+    codex = codex_sessions()
+    scoped = {sid for sid, (_, meta, _) in codex.items()
+              if os.path.realpath(meta.get("cwd", "")) == ROOT}
+    explicit = {sid for sid in codex if any(sid.startswith(prefix) for prefix in a.session)}
+    options = {f: (started(f), None) for f in files}
+    options.update({codex[sid][0]: (started(codex[sid][0]), sid) for sid in scoped | explicit})
+    if not options:
         sys.exit(f"no transcripts for {ROOT}")
-    picked = [f for f in files if any(os.path.basename(f).startswith(s) for s in a.session)]
+    picked = {f for f in files if any(os.path.basename(f).startswith(prefix) for prefix in a.session)}
+    picked.update(codex[sid][0] for sid in explicit)
     if a.slug:
-        picked += [f for f in files if a.slug in open(f, encoding="utf-8", errors="replace").read()]
+        picked.update(f for f in options if mentions(f, a.slug))
+    ordered = sorted(options, key=lambda f: options[f][0])
     if a.last:
-        picked += files[-a.last:]
+        picked.update(ordered[-a.last:])
     if not (a.slug or a.last or a.session):
-        picked = files[-1:]
-    for f in sorted(set(picked), key=started):
-        digest(f, a.width)
+        picked.add(ordered[-1])
+    selected = {options[f][1] for f in picked if options[f][1]}
+    while True:
+        children = {sid for sid, (_, _, spawn) in codex.items()
+                    if spawn.get("parent_thread_id") in selected}
+        if children <= selected:
+            break
+        selected.update(children)
+    entries = [(options[f][0], f, None) for f in picked if options[f][1] is None]
+    entries += [(started(codex[sid][0]), codex[sid][0], sid) for sid in selected]
+    for _, path, sid in sorted(entries):
+        if sid:
+            codex_digest(*codex[sid], a.width)
+        else:
+            digest(path, a.width)
 
 
 if __name__ == "__main__":
