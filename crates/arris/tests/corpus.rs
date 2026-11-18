@@ -295,9 +295,9 @@ corpus_tests! {
     boolean_edge_touching_fuse => run "boolean/edge-touching-fuse";
     /// Three alternating 60-degree wedges, with six face uses around one edge.
     boolean_three_wedges_one_edge_fuse_many => run "boolean/three-wedges-one-edge-fuse-many";
-    /// A frustum and a box touching its top rim at the revolve's seam vertex, a point: refused `NonManifold`.
+    /// Two lumps with separate vertices where the box touches the frustum's top rim at its seam.
     boolean_fuse_frustum_box_rim_point => run "boolean/fuse-frustum-box-rim-point";
-    /// The same at the point opposite the seam, inside the rim edge: refused `NonManifold` too.
+    /// The same opposite the seam. The contact splits the rim edge as well as the box edge.
     boolean_fuse_frustum_box_rim_point_far_side => run "boolean/fuse-frustum-box-rim-point-far-side";
     /// A unit cylinder fused with a radius-2 slab cylinder it is tangent
     /// inside along x = 0, y = 1: V = 5 pi, A = 14 pi. Each outer cap is a
@@ -417,8 +417,7 @@ corpus_tests! {
     /// other, meeting at the crossing vertices.
     boolean_cross_cylinders_fuse => run "boolean/cross-cylinders-fuse";
     /// The target minus the tool that is as wide as it: two lumps whose
-    /// closures touch at the crossing vertices, `InputReason::NonManifold`
-    /// through the runner's expected-error path (ADR-0006).
+    /// closures touch at the crossing vertices, copied per lump (ADR-0090).
     boolean_cross_cylinders_cut => run "boolean/cross-cylinders-cut";
     /// The common at ψ = 60°: ellipses of two different major radii still
     /// crossing at (0, ±R, 0), `16R³/(3 sin ψ)`.
@@ -2269,6 +2268,19 @@ corpus_tests! {
     /// A box, a unit cylinder tangent inside a slab's side and the slab, all on one plane, fused in one call: every pair and the chain build.
     #[ignore = "OpError::Unsupported: no closed form for the cylinder against the plane, its wall tangent to the slab's side along a line inside the box, where every pair and the chain build (the retired tangency-faults plan)"]
     regression_fuse_many_tangent_cylinder_plane_unsupported => run "regression/fuse-many-tangent-cylinder-plane-unsupported";
+
+    /// A rod tilted 1.5 tolerances from its coaxial bore should fuse.
+    #[ignore = "builder: the union has an edge with one use"]
+    regression_band_tilted_rod_fuse_open_edge => run "regression/band-tilted-rod-fuse-open-edge";
+    /// A rod tilted two tolerances from its coaxial bore gives no common at the oracle's tolerance.
+    #[ignore = "builder: the common has an edge with one use"]
+    regression_band_tilted_rod_common_open_edge => run "regression/band-tilted-rod-common-open-edge";
+    /// A pipe moved one tolerance away from its elbow should fuse within the band.
+    #[ignore = "builder: the union has an edge with one use"]
+    regression_band_elbow_pipe_fuse_open_edge => run "regression/band-elbow-pipe-fuse-open-edge";
+    /// Two boxes tilted by two tolerances across their contact edge should fuse.
+    #[ignore = "checker: the two result shells cross at B1"]
+    regression_band_tilted_edge_boxes_fuse_overlap => run "regression/band-tilted-edge-boxes-fuse-overlap";
 }
 
 /// A variant the recipe does not have fails naming it.

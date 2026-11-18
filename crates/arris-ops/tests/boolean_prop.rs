@@ -25,9 +25,9 @@ use arris_math::nalgebra::{Quaternion, UnitQuaternion};
 use arris_math::real;
 use arris_math::{Axis, Frame, Isometry, Point3, UnitVec3, Vec3};
 
-use arris_check::{Level, check};
+use arris_check::{Level, check, lumps};
 use arris_ops::measure::MassProperties;
-use arris_ops::{BooleanReason, InputReason, OpError, Reason};
+use arris_ops::{BooleanReason, OpError, Reason};
 use arris_topo::provenance::audit;
 use arris_topo::{Body, Model, Provenance};
 use proptest::prelude::*;
@@ -747,9 +747,9 @@ prop_shards! {
     /// crossing vertex: `fuse` and `common` clean at `Full` with nothing
     /// unchecked and their provenance audited, additive, commuting and
     /// dumping identically in a second run, and the common the Steinmetz
-    /// solid `16R³ / (3 sin ψ)` within `REL + tol·A/V`. Either cut is the designed
-    /// `NonManifold`: the tool is as wide as the target, so the two lumps
-    /// left meet at the crossing vertices (ADR-0006, `boolean/cross-cylinders-cut`).
+    /// solid `16R³ / (3 sin ψ)` within `REL + tol·A/V`. Both cuts are clean
+    /// and audited, preserve the cut volume identity and leave two
+    /// lumps touching at the crossing vertices (ADR-0090).
     crossing_cylinders_obey_every_identity
         [shard_0 shard_1 shard_2 shard_3 shard_4 shard_5 shard_6 shard_7]
         (pair) = prop::body::crossing_pair() => {
@@ -775,19 +775,12 @@ prop_shards! {
                 steinmetz,
                 rel
             );
-            for (name, target, tool) in [("cut(a, b)", a, b), ("cut(b, a)", b, a)] {
-                match cut(&mut m, target, tool) {
-                    Err(OpError::Degenerate {
-                        reason: Reason::Input(InputReason::NonManifold),
-                        ..
-                    }) => {}
-                    Ok(_) => {
-                        return Err(fail(format!(
-                            "{name}: the two lumps meet at the crossing vertices"
-                        )));
-                    }
-                    Err(e) => return Err(fail(format!("{name}: {e}"))),
-                }
+            for (name, target, tool, target_props, tool_props) in
+                [("cut(a, b)", a, b, &pa, &pb), ("cut(b, a)", b, a, &pb, &pa)]
+            {
+                let (body, diff) = run(&mut m, name, cut, target, tool)?;
+                assert_cut_identity(&diff, &inter, target_props, tool_props)?;
+                prop_assert_eq!(lumps(&m, body).map_err(fail)?.len(), 2, "{}", name);
             }
             assert_commutes_with(&mut m, "fuse", fuse, (u, union), a, b)?;
             assert_commutes_with(&mut m, "common", common, (c, inter), a, b)?;

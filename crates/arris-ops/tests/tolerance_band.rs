@@ -17,47 +17,38 @@
 //! `tests/tolerance_band.txt`, one way: nothing held may be lost. The
 //! record's failures are the band's residue, each a `regression/` fixture
 //! and a line of `docs/BACKLOG.md`. `the_band_survey` records the whole
-//! band and asserts nothing. At 256 cases, the default seed, 10 752
-//! booleans off their contact, after step 9:
+//! band and asserts nothing. The default seed at 256 cases across 32
+//! shards gave 10 752 booleans off their contact after enabling shared
+//! point contacts (ADR-0090).
 //!
 //! ```text
 //! outcome          booleans   per step     failed   per contact    failed
-//! flush                3444   ±16          21–23%   CoaxialBore        0%
-//! generic              3049   ±4           25–27%   FlushBoxes        11%
-//! designed refusal      659   ±2           27–57%   EdgeOnEdge        11%
-//!   TangentContact 486        ±1½          33–66%   PinInBore         18%
-//!   Empty 153                 ±1           35–52%   TangentCylinders  20%
-//!   NonManifold 20            ±½           24–28%   TangentOutside    35%
-//! failed               3600   ±¼           23–27%   TangentHole       39%
-//!   (step 1: 4248)                                  CoaxialRod        53%
-//!                                                   FlushBoss         54%
-//!                                                   PipeElbow         76%
+//! flush                3853   ±16          10–11%   CoaxialBore        0%
+//! generic              3471   ±4               18%   EdgeOnEdge         5%
+//! designed refusal      699   ±2           21–49%   FlushBoxes        13%
+//!   TangentContact      492   ±1½          29–62%   PinInBore         16%
+//!   Empty               153   ±1           27–48%   TangentCylinders   17%
+//!   NonManifold          54   ±½           13–18%   TangentHole        21%
+//! failed               2729   ±¼           14–17%   FlushBoss          24%
+//!                                                   TangentOutside    32%
+//!                                                   CoaxialRod        51%
+//!                                                   PipeElbow         70%
 //!
 //! failures by the plan step whose mechanism the fault's name points at
 //! (`mechanism`), which is not a diagnosis:
-//!   step 2    two points a tolerance apart, one vertex            114
-//!   step 2/4  a section edge ending where nothing else does       899
-//!   step 4    two curves crossing with no vertex, a seam crossed  360
-//!   step 5    a fit off its branch                                 81
-//!   none      no verdict a hair off parallel or tangent (plane–
-//!               plane 366, torus sections called degenerate 672,
-//!               …), slivers (NoInterior 446, L4 96, …), the
-//!               builder and the checker (EdgeUses 288, B1 66, …),
-//!               shells that meet                                 2210
+//!   step 2    two points a tolerance apart, one vertex             69
+//!   step 2/4  a section edge ending where nothing else does       438
+//!   step 4    two curves crossing with no vertex, a seam crossed  309
+//!   step 5    a fit off its branch                                111
+//!   none      other faults and unsupported pairs                 1802
 //!
-//! volume past its bound: 27, posed PipeElbow flush fuses and posed
-//! TangentOutside tilted cuts and fuses at ¼ and ½ of a tolerance — the
-//! measurement's drift with the distance from the origin
-//! (`docs/BACKLOG.md`): unposed, TangentOutside's cut passes every
-//! corpus stage, and Open CASCADE reads Arris's STEP as the box to
-//! 2.2e-8.
+//! volume past its bound: 12, all posed EdgeOnEdge fuses, at offsets
+//! up to one tolerance or tilted by 16 tolerances.
 //! ```
 //!
-//! Those counts are from the survey's last run, before the tangency
-//! faults' fixes; the survey has not been re-run since. A tilt's bound now
-//! counts the volume its faces inside the fixed solid sweep
-//! (`BandPair::sweep`), so the "volume past its bound" figure can only have
-//! fallen.
+//! The earlier step 9 survey recorded 3600 failures and 27 volumes past
+//! their bound. The generator divides its draws by shard, so the counts
+//! depend on the machine's available threads.
 //!
 //! At step 1 the same survey failed 4248: 157 under step 2's mechanism,
 //! 1356 under 2/4, 459 under 4, 56 under 5 and 2284 none. Each failure's

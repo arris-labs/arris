@@ -12,6 +12,11 @@ into its version (ADR-0027).
   Each lump keeps its own copy of the contact edge and endpoints, and
   provenance records every copy. A shared edge within one lump still
   returns `NonManifold`.
+- Fusing solids that share a point can return two touching lumps, each
+  with its own copy of the contact vertex. This includes boxes meeting
+  at a corner and a box touching a cone frustum at its rim. Cutting two
+  crossing cylinders of the same radius keeps separate copies of the
+  crossing vertices on each lump.
 
 - A ball touching a cylinder's end disc or a torus touching a box at a
   point can fuse as two lumps of one solid. Cutting in either order keeps
@@ -35,9 +40,6 @@ into its version (ADR-0027).
   four lines, a cylinder whose end disc is tangent to another's side, and a
   tangent ruling a hair off the seams of its cylinders. Each matches its closed
   form and passes the checker at `full`.
-- `fuse` of a cone frustum and a box that touch at one point of the frustum's
-  rim refuses with `OpDegenerateError` (the shells would touch) on both sides
-  of the revolve's seam; on the far side it used to return a body.
 - `arris_mesh::cdt` accepts a polygon point given twice, so a face whose loop
   passes one vertex twice (a crescent) meshes. The checker accepts Open
   CASCADE's crescent written as an outer bound and a hole that meet at a

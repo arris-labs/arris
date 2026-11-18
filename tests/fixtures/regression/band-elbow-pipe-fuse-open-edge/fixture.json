@@ -1,0 +1,13 @@
+{
+  "description": "The end disc of a pipe is one tolerance away from the matching disc of an elbow. Fusing the pipe and elbow leaves a boundary edge with one use. The union should close. The profile keeps the tolerance band’s quarter-turn rounding, which exposes the open edge.",
+  "params": {"d": -1e-07},
+  "steps": [
+    {"name": "a_disc", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 2.220446049250313e-16, 1]}, "outer": {"circle": {"center": [3, 0], "radius": 1}}},
+    {"name": "a", "op": "revolve", "profile": "a_disc", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 90},
+    {"name": "b0", "op": "cylinder", "base": [3, 0, 0], "axis": [0, -1, 0], "radius": 1, "height": 4},
+    {"name": "b", "op": "transform", "of": "b0", "translate": [0, "d", 0]},
+    {"name": "result", "op": "fuse", "a": "a", "b": "b"}
+  ],
+  "result": "result",
+  "analytic": {}
+}

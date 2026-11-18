@@ -1,0 +1,16 @@
+{
+  "description": "Two cuboids on a common edge with the second tilted across the edge, moving each end by two tolerances. Their shells cross in the overlap, where the union should have a single boundary.",
+  "params": {"t": -2e-07},
+  "variants": {"opposite-tilt": {"t": 2e-07}},
+  "steps": [
+    {"name": "a", "op": "box", "min": [0, 0, 0], "max": [10, 10, 10]},
+    {"name": "b0", "op": "box", "min": [10, 10, 0], "max": [20, 20, 10]},
+    {"name": "b", "op": "transform", "of": "b0", "rotate": {"axis": [0.7071067811865476, -0.7071067811865476, 0], "origin": [10, 10, 5], "angle_deg": "degrees(2 * t / 10)"}},
+    {"name": "result", "op": "fuse", "a": "a", "b": "b"}
+  ],
+  "result": "result",
+  "analytic": {
+    "occt_odd_euler": "Open CASCADE retains shared boundary topology on its two solids.",
+    "occt_step_counts_differ": "Open CASCADE writes the contact once per solid in STEP, with 16 vertices and 24 edges instead of 14 and 23 in memory."
+  }
+}

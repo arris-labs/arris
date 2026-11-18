@@ -104,7 +104,7 @@ algorithm whose robustness has to be established here).
   `three-wedges-one-edge-fuse-many`, has three 60° prisms round one edge,
   three lumps, and Open CASCADE's values. The pockets keep `NonManifold`,
   with their description saying why (one lump).
-- [ ] Step 5 **[2]** — Point contacts. `cross-cylinders-cut`, both
+- [x] Step 5 **[2]** — Point contacts. `cross-cylinders-cut`, both
   `fuse-frustum-box-rim-point` fixtures and the boxes' corner half build to
   Open CASCADE's values. Turn the frustum test in `boolean.rs`, and
   `test_tangency.py`'s, into two-lump assertions. The `boolean_prop`
@@ -164,3 +164,10 @@ algorithm whose robustness has to be established here).
    that representative when two of the matched edges come from later
    operands. Each source still gets its own same-parameter pcurves on
    the representative before the build pairs the uses.
+4. *Settled in step 5.* The tolerance band's unposed survey gains 11
+   bodies where it recorded a point-contact refusal. Six other rows
+   expose a boundary with an open edge or crossing result shells.
+   The record names those faults and four ignored regression fixtures
+   hold the desired outcomes, with both tilt signs where they fail.
+   Repairing the split and classification at those offsets is separate
+   from copying a contact vertex between lumps with disjoint interiors.

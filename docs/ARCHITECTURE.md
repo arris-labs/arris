@@ -562,8 +562,9 @@ rim is — a boss's rim tangent inside a bar's end edge, the bar's face
 pinched to that point between them; a touch from outside both faces
 splits nothing, unless the two faces lie on opposite sides of their
 plane (a frustum's cap and the box standing on it), where the solids
-touch at that point and it is a vertex of both, refused `NonManifold`; every edge of either face is paved by
-every section vertex on it but its own ends — a vertex holding one of
+touch at that point. The contact paves both boundaries, and a fuse
+keeps a vertex at the contact in each lump. Every edge of either face
+is paved by every section vertex on it but its own ends — a vertex holding one of
 the edge's end vertices, a crossing merged into it even a hair past
 that end's tolerance, paves nothing there, which would leave a sliver
 block; and each piece of each edge between its
@@ -863,16 +864,18 @@ reversed use enters material and the next forward use leaves it. Shell
 grouping connects the pairs across material. Ties within the model's
 angular tolerance and consecutive uses with the same orientation return
 `InputReason::NonManifold` naming the edge (ADR-0090). Each shell gets
-its own copy of a shared edge piece and its endpoints. The first shell
-can keep existing ids. Provenance records every copy from each source.
+its own copy of a shared edge piece and its endpoints, or of a shared
+vertex at a point contact. The first shell can keep existing ids.
+Provenance records every copy from each source.
 An edge still used more than twice in a shell returns `NonManifold`.
 The same refusal names a vertex where the corners of a shell form more
 than one fan, as when a wall is pinched at a singular point of a section.
 Several shells are ordered into lumps, each outer shell then its voids
 (ADR-0006). The boolean assembles them once into a clone of the model and
 reads `arris_check::lumps` of that body, using B1's order. Shells in the
-same lump that still reach a shared contact return `NonManifold`. A split target, a disjoint `fuse` and a cavity are each one
-solid. Two pieces in one lump whose output trims retain an isolated
+same lump that still reach a shared edge or vertex return `NonManifold`.
+A split target, a disjoint `fuse` and a cavity are each one solid. Two
+pieces in one lump whose output trims retain an isolated
 touch away from shared topology return `BooleanReason::TangentContact`
 naming the source faces. Two lumps that retain an isolated touch can
 build with their own edges and vertices (ADR-0089). For a ring torus

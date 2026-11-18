@@ -1,0 +1,14 @@
+{
+  "description": "A rod fills a coaxial bore and tilts about the middle of its axis. Fusing it leaves a boundary edge with one use at a tilt reach of 1.5 tolerances. The union should close.",
+  "params": {"t": 1.5e-07},
+  "steps": [
+    {"name": "a_wall", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": 2, "height": 2},
+    {"name": "a_bore", "op": "cylinder", "base": [0, 0, -1], "axis": [0, 0, 1], "radius": 1, "height": 4},
+    {"name": "a", "op": "cut", "target": "a_wall", "tool": "a_bore"},
+    {"name": "b0", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": 1, "height": 2},
+    {"name": "b", "op": "transform", "of": "b0", "rotate": {"axis": [0, 1, 0], "origin": [0, 0, 1], "angle_deg": "degrees(2 * t / 2)"}},
+    {"name": "result", "op": "fuse", "a": "a", "b": "b"}
+  ],
+  "result": "result",
+  "analytic": {}
+}

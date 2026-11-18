@@ -366,7 +366,7 @@ CoaxialRod Tilt fuse +0.5: refused TangentContact
 CoaxialRod Tilt fuse -1: refused NonManifold
 CoaxialRod Tilt fuse +1: refused NonManifold
 CoaxialRod Tilt fuse -1.5: refused NonManifold
-CoaxialRod Tilt fuse +1.5: refused NonManifold
+CoaxialRod Tilt fuse +1.5: INTERNAL Builder(EdgeUses)
 CoaxialRod Tilt fuse -2: refused NonManifold
 CoaxialRod Tilt fuse +2: refused NonManifold
 CoaxialRod Tilt fuse -4: refused NonManifold
@@ -382,12 +382,12 @@ CoaxialRod Tilt common -1: refused NonManifold
 CoaxialRod Tilt common +1: refused NonManifold
 CoaxialRod Tilt common -1.5: INTERNAL Builder(EdgeUses)
 CoaxialRod Tilt common +1.5: refused NonManifold
-CoaxialRod Tilt common -2: refused NonManifold
-CoaxialRod Tilt common +2: refused NonManifold
+CoaxialRod Tilt common -2: INTERNAL Builder(EdgeUses)
+CoaxialRod Tilt common +2: INTERNAL Builder(EdgeUses)
 CoaxialRod Tilt common -4: refused NonManifold
 CoaxialRod Tilt common +4: refused NonManifold
-CoaxialRod Tilt common -16: refused NonManifold
-CoaxialRod Tilt common +16: refused NonManifold
+CoaxialRod Tilt common -16: generic
+CoaxialRod Tilt common +16: generic
 CoaxialRod Tilt cut +0: body
 CoaxialRod Tilt cut -0.25: refused TangentContact
 CoaxialRod Tilt cut +0.25: refused TangentContact
@@ -948,7 +948,7 @@ PipeElbow Offset fuse -0.25: flush
 PipeElbow Offset fuse +0.25: flush
 PipeElbow Offset fuse -0.5: flush
 PipeElbow Offset fuse +0.5: flush
-PipeElbow Offset fuse -1: refused NonManifold
+PipeElbow Offset fuse -1: INTERNAL Builder(EdgeUses)
 PipeElbow Offset fuse +1: INTERNAL Split(Turn)
 PipeElbow Offset fuse -1.5: INTERNAL Geometry(the section of the torus surface and the plane s)
 PipeElbow Offset fuse +1.5: INTERNAL Geometry(the section of the torus surface and the plane s)
@@ -1083,7 +1083,7 @@ EdgeOnEdge Offset fuse -0.25: flush
 EdgeOnEdge Offset fuse +0.25: flush
 EdgeOnEdge Offset fuse -0.5: flush
 EdgeOnEdge Offset fuse +0.5: flush
-EdgeOnEdge Offset fuse -1: refused NonManifold
+EdgeOnEdge Offset fuse -1: flush
 EdgeOnEdge Offset fuse +1: refused TangentContact
 EdgeOnEdge Offset fuse -1.5: flush
 EdgeOnEdge Offset fuse +1.5: refused TangentContact
@@ -1124,16 +1124,16 @@ EdgeOnEdge Offset cut +4: generic
 EdgeOnEdge Offset cut -16: flush
 EdgeOnEdge Offset cut +16: generic
 EdgeOnEdge Tilt fuse +0: body
-EdgeOnEdge Tilt fuse -0.25: refused NonManifold
-EdgeOnEdge Tilt fuse +0.25: refused NonManifold
-EdgeOnEdge Tilt fuse -0.5: refused NonManifold
-EdgeOnEdge Tilt fuse +0.5: refused NonManifold
-EdgeOnEdge Tilt fuse -1: refused NonManifold
-EdgeOnEdge Tilt fuse +1: refused NonManifold
-EdgeOnEdge Tilt fuse -1.5: refused NonManifold
-EdgeOnEdge Tilt fuse +1.5: refused NonManifold
-EdgeOnEdge Tilt fuse -2: refused NonManifold
-EdgeOnEdge Tilt fuse +2: refused NonManifold
+EdgeOnEdge Tilt fuse -0.25: generic
+EdgeOnEdge Tilt fuse +0.25: generic
+EdgeOnEdge Tilt fuse -0.5: generic
+EdgeOnEdge Tilt fuse +0.5: generic
+EdgeOnEdge Tilt fuse -1: generic
+EdgeOnEdge Tilt fuse +1: generic
+EdgeOnEdge Tilt fuse -1.5: generic
+EdgeOnEdge Tilt fuse +1.5: generic
+EdgeOnEdge Tilt fuse -2: INTERNAL Lumps(Nesting
+EdgeOnEdge Tilt fuse +2: INTERNAL Lumps(Nesting
 EdgeOnEdge Tilt fuse -4: PANIC L4
 EdgeOnEdge Tilt fuse +4: PANIC L4
 EdgeOnEdge Tilt fuse -16: generic

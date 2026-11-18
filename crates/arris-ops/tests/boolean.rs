@@ -1544,30 +1544,41 @@ fn boxes_touching_along_an_edge_give_two_lumps_with_provenance() {
     }
 }
 
+/// The two cubes retain their own copies of the touching corner.
 #[test]
-fn boxes_touching_at_a_corner_are_non_manifold() {
+fn boxes_touching_at_a_corner_give_two_lumps_with_provenance() {
     let corner = Point3::new(10.0, 10.0, 10.0);
     let mut m = Model::default();
     let (a, _) = primitive_box(&mut m, Point3::origin(), corner).unwrap();
     let (b, _) = primitive_box(&mut m, corner, Point3::new(20.0, 20.0, 20.0)).unwrap();
+    let source_vertices = [a, b].map(|body| {
+        m.vertices(body)
+            .unwrap()
+            .into_iter()
+            .find(|v| m.vertex(v.id).unwrap().point() == corner)
+            .unwrap()
+            .id
+    });
     let before = arris_debug::dump_text(&m, a).unwrap();
-    match fuse(&mut m, a, b) {
-        Err(OpError::Degenerate {
-            reason: Reason::Input(InputReason::NonManifold),
-            entities,
-        }) => {
-            let [
-                Shape {
-                    id: EntityId::Vertex(v),
-                    ..
-                },
-            ] = entities.as_slice()
-            else {
-                panic!("expected the contact vertex, got {entities:?}");
-            };
-            assert_eq!(m.vertex(*v).unwrap().point(), corner);
-        }
-        other => panic!("{other:?}"),
+    let (body, p) = fuse(&mut m, a, b).unwrap();
+    let report = check(&m, body, Level::Full);
+    assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+    assert_eq!(lumps(&m, body).unwrap().len(), 2);
+    let volume = mass_properties(&m, body).unwrap().volume;
+    assert!((volume - 2000.0).abs() < 1e-9 * 2000.0, "{volume}");
+    arris_topo::provenance::audit(&m, &[a, b], body, &p).unwrap();
+    let copies: Vec<_> = m
+        .vertices(body)
+        .unwrap()
+        .into_iter()
+        .filter(|v| m.vertex(v.id).unwrap().point() == corner)
+        .map(|v| shape(v.id))
+        .collect();
+    assert_eq!(copies.len(), 2);
+    for source in source_vertices {
+        let images = p.modified_from(shape(source));
+        assert_eq!(images.len(), 2);
+        assert!(copies.iter().all(|copy| images.contains(copy)));
     }
     assert_eq!(arris_debug::dump_text(&m, a).unwrap(), before);
 }
@@ -2328,10 +2339,10 @@ fn operands_that_share_entities_build_with_their_own_ids() {
 /// on its top plane touch at one point of the top rim, where the rim meets
 /// the box's bottom edge from outside both faces: at the revolve's seam
 /// (+x), inside the rim edge (-x), and at either side of the axis for a lug
-/// turned 90 degrees. Two lumps joined at a vertex are refused
-/// `NonManifold` naming that vertex, whichever operand comes first.
+/// turned 90 degrees. Each lump has its own vertex at the touch,
+/// whichever operand comes first.
 #[test]
-fn a_frustum_and_a_box_touching_at_a_rim_point_are_refused_non_manifold() {
+fn a_frustum_and_a_box_touching_at_a_rim_point_give_two_lumps() {
     let p = |u, v| Point2::new(u, v);
     let section = Profile {
         plane: Frame::new(Point3::origin(), -Vec3::y(), Vec3::x()).unwrap(),
@@ -2362,26 +2373,22 @@ fn a_frustum_and_a_box_touching_at_a_rim_point_are_refused_non_manifold() {
             } else {
                 fuse(&mut m, lug, frustum)
             };
-            let entities = match result {
-                Err(OpError::Degenerate {
-                    reason: Reason::Input(InputReason::NonManifold),
-                    entities,
-                }) => entities,
-                other => panic!("{min:?}: {other:?}"),
-            };
-            // The touch is the rim's own vertex at the seam; inside both
-            // edges it is a section vertex, named by the two edges and the
-            // two faces whose touch made it.
+            let (body, provenance) = result.unwrap_or_else(|e| panic!("{min:?}: {e}"));
+            let report = check(&m, body, Level::Full);
+            assert!(
+                report.is_ok() && report.unchecked().is_empty(),
+                "{min:?}: {report}"
+            );
+            assert_eq!(lumps(&m, body).unwrap().len(), 2, "{min:?}");
             let touch = Point3::from(touch);
-            let named_vertex = entities.iter().any(|s| {
-                matches!(s.id, EntityId::Vertex(v)
-                    if m.vertex(v).is_ok_and(|v| (v.point() - touch).norm() < 1e-9))
-            });
-            let edges = entities
-                .iter()
-                .filter(|s| matches!(s.id, EntityId::Edge(_)))
+            let copies = m
+                .vertices(body)
+                .unwrap()
+                .into_iter()
+                .filter(|v| (m.vertex(v.id).unwrap().point() - touch).norm() < 1e-9)
                 .count();
-            assert!(named_vertex || edges == 2, "{min:?}: {entities:?}");
+            assert_eq!(copies, 2, "{min:?}");
+            arris_topo::provenance::audit(&m, &[frustum, lug], body, &provenance).unwrap();
         }
     }
 }

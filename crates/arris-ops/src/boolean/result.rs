@@ -1382,7 +1382,7 @@ impl<'m> Build<'m> {
             });
         }
         let (shells, contact_edges) = self.shell_components()?;
-        if shells.len() > 1 || !contact_edges.is_empty() {
+        if !contact_edges.is_empty() {
             self.check_shared_contacts(&shells, None)?;
         }
         // A manifold vertex has one fan of faces in its shell, so a
@@ -1395,8 +1395,8 @@ impl<'m> Build<'m> {
         Ok(shells)
     }
 
-    /// Each contact edge has two uses in any one shell. The contact's
-    /// shells must also belong to distinct lumps, once those are known.
+    /// Each contact edge has two uses in any one shell. Once the lumps
+    /// are known, shells sharing an edge or vertex must belong to distinct lumps.
     fn check_shared_contacts(
         &self,
         shells: &[Vec<usize>],
@@ -1413,9 +1413,8 @@ impl<'m> Build<'m> {
             }
         }
 
-        let mut vertices = BTreeMap::<VRef, BTreeMap<usize, bool>>::new();
+        let mut vertices = BTreeMap::<VRef, BTreeSet<usize>>::new();
         for (edge, owners) in edges {
-            let shared = owners.len() > 1;
             let mut lumps = BTreeSet::new();
             for (shell, uses) in owners {
                 if uses > 2
@@ -1425,8 +1424,10 @@ impl<'m> Build<'m> {
                 {
                     return Err(non_manifold(self.edge_entities(edge)));
                 }
-                for v in self.edge_ends(edge).into_iter().flatten() {
-                    *vertices.entry(v).or_default().entry(shell).or_default() |= shared;
+                if lump_of.is_some() {
+                    for v in self.edge_ends(edge).into_iter().flatten() {
+                        vertices.entry(v).or_default().insert(shell);
+                    }
                 }
             }
         }
@@ -1437,12 +1438,10 @@ impl<'m> Build<'m> {
                 continue;
             }
             let mut lumps = BTreeSet::new();
-            for (shell, on_shared_edge) in owners {
-                // Isolated point contacts are enabled in a separate step.
-                if !on_shared_edge
-                    || lump_of
-                        .and_then(|lumps| lumps.get(shell))
-                        .is_some_and(|lump| !lumps.insert(lump))
+            for shell in owners {
+                if lump_of
+                    .and_then(|lumps| lumps.get(shell))
+                    .is_some_and(|lump| !lumps.insert(lump))
                 {
                     refused.extend(self.vertex_entities(vertex));
                     break;
@@ -2458,6 +2457,30 @@ mod tests {
             .check_shared_contacts(&shells, Some(&[0, 0]))
             .unwrap_err();
         names_contact(&build, edge, error);
+    }
+
+    #[test]
+    fn shells_in_one_lump_cannot_share_a_point() {
+        let mut m = Model::default();
+        let corner = Point3::new(1.0, 1.0, 1.0);
+        let (a, _) = primitive_box(&mut m, Point3::origin(), corner, &Control::NONE).unwrap();
+        let (b, _) =
+            primitive_box(&mut m, corner, Point3::new(2.0, 2.0, 2.0), &Control::NONE).unwrap();
+        let i = pave::build(&m, &[a, b], &mut Meter::new(&Control::NONE)).unwrap();
+        let build = selected(&mut m, &i, Op::Fuse);
+        let (shells, contacts) = build.shell_components().unwrap();
+        assert_eq!(shells.len(), 2);
+        assert!(contacts.is_empty());
+        let point = i.vertices.iter().position(|v| v.point == corner).unwrap();
+        let entities = build.vertex_entities(build.vref_of[point]);
+        assert_eq!(entities.len(), 1);
+        assert_eq!(
+            build.check_shared_contacts(&shells, Some(&[0, 0])),
+            Err(OpError::Degenerate {
+                reason: Reason::Input(InputReason::NonManifold),
+                entities,
+            })
+        );
     }
 
     #[test]

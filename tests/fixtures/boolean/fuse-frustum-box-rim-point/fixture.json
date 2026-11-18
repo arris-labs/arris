@@ -1,5 +1,5 @@
 {
-  "description": "a cone frustum (radius 3 at z = 0, 2 at z = 4, revolved from a section in the xz plane, its seam at +x) and a 2 x 2 x 2 box standing on its top plane, z in 4..6, x in 2..4, touching the top rim at the single point (2, 0, 4): the rim's seam vertex. Two lumps joined at a vertex, which a manifold solid does not hold: Arris refuses with OpError::Degenerate and Reason::NonManifold, Open CASCADE builds a compound of two solids. (the retired tangency-faults plan; the far side, at -x, is regression/fuse-frustum-box-rim-point-far-side)",
+  "description": "a cone frustum (radius 3 at z = 0, 2 at z = 4, seam at +x) and a 2 x 2 x 2 box standing on its top plane, z in 4..6, x in 2..4. The box's bottom edge touches the top rim at (2, 0, 4), the rim's seam vertex. Each of the two lumps has its own contact vertex (ADR-0090)",
   "steps": [
     {"name": "section", "op": "profile",
      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]},
@@ -11,7 +11,11 @@
   "result": "result",
   "probes": [],
   "analytic": {
-    "expect_error": "non-manifold",
+    "counts_differ": "Open CASCADE's two solids share the rim contact vertex. Arris copies it per lump.",
+    "occt_odd_euler": "The two Open CASCADE solids share the contact vertex.",
+    "occt_step_counts_differ": "Open CASCADE writes 11 distinct vertices instead of its 10 in memory, giving each solid its own contact vertex.",
+    "genus": 0,
+    "counts": {"vertices": 11, "edges": 16, "faces": 9, "loops": 9, "shells": 2, "solids": 2},
     "volume": "76 * pi / 3 + 8",
     "area": "pi * (5 * sqrt(17) + 13) + 24"
   }

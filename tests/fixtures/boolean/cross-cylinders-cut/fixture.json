@@ -1,5 +1,5 @@
 {
-  "description": "the target cylinder of cross-cylinders-common minus the tool: πR²L − 16R³/3 of material in two lumps, above and below the tool, which is as wide as the target. The two lumps' closures meet at the crossing vertices (0, ±R, 0), where the walls touch: two shells sharing a vertex, which a manifold solid does not hold — Arris refuses with OpError::Degenerate and Reason::NonManifold naming them, Open CASCADE builds a compound of two solids (ADR-0006; plans/cylinder-cylinder-booleans step 2)",
+  "description": "the target cylinder of cross-cylinders-common minus the tool: πR²L − 16R³/3 in two touching lumps, above and below the tool. Each lump has its own vertices at (0, ±R, 0), where the walls touch (ADR-0090)",
   "params": {"R": 1, "L": 6, "turn": 30},
   "steps": [
     {"name": "a", "op": "cylinder", "base": [0, 0, "-L / 2"], "axis": [0, 0, 1], "radius": "R", "height": "L"},
@@ -10,7 +10,10 @@
   "result": "result",
   "probes": [],
   "analytic": {
-    "expect_error": "non-manifold",
+    "counts_differ": "Open CASCADE's two solids share the crossing vertices and can split ellipse arcs at their parameter origin. Arris copies the crossing vertices per lump.",
+    "occt_step_counts_differ": "Open CASCADE writes 11 distinct vertices instead of its 9 in memory, giving each solid its own crossing vertices.",
+    "genus": 0,
+    "counts": {"vertices": 10, "edges": 13, "faces": 7, "loops": 7, "shells": 2, "solids": 2},
     "volume": "pi * R^2 * L - 16 * R^3 / 3",
     "area": "2 * pi * R * L + 2 * pi * R^2",
     "centroid": [0, 0, 0]

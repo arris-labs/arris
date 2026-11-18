@@ -43,7 +43,7 @@ boolean/corner-cut: 42
 boolean/corner-union: 42
 boolean/counterbore-cut-many: 46
 boolean/cross-cylinders-common: 6056
-boolean/cross-cylinders-cut: refused
+boolean/cross-cylinders-cut: 6056
 boolean/cross-cylinders-fuse: 6056
 boolean/crossing-pockets-cut-many: 139
 boolean/cut-bore-tangent-column: 81
@@ -81,8 +81,8 @@ boolean/fuse-cylinder-tangent-inside: 26
 boolean/fuse-cylinder-tangent-inside-near-seam: 613
 boolean/fuse-cylinders-tangent-equal-height: 32
 boolean/fuse-end-disc-tangent-to-wall: 3512
-boolean/fuse-frustum-box-rim-point: refused
-boolean/fuse-frustum-box-rim-point-far-side: refused
+boolean/fuse-frustum-box-rim-point: 189
+boolean/fuse-frustum-box-rim-point-far-side: 187
 boolean/fuse-many-coaxial-cylinders-and-box: 131
 boolean/grazing-ball-bar-cut: 17441
 boolean/lump-in-cavity: 72

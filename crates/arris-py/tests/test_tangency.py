@@ -308,16 +308,19 @@ def frustum():
     [((2, -1, 4), (4, 1, 6)), ((-4, -1, 4), (-2, 1, 6))],
     ids=["rim-point-at-the-seam", "rim-point-far-side"],
 )
-def test_a_frustum_and_a_box_touching_at_a_rim_point_are_non_manifold(lo, hi):
-    """`fuse-frustum-box-rim-point` and `-far-side`: the box's bottom edge
-    touches the frustum's top rim at one point, from its seam side or the
-    side opposite it. Both are refused `NonManifold`, naming the touch."""
+def test_a_frustum_and_a_box_touching_at_a_rim_point_give_two_lumps(lo, hi):
+    """The box's bottom edge touches the frustum's top rim at the seam
+    or opposite it. Each lump keeps its own copy of the contact vertex."""
     model, body = frustum()
     lug = model.primitive_box(lo, hi)[0]
-    with pytest.raises(arris.OpDegenerateError) as raised:
-        model.fuse(body, lug)
-    # NonManifold's text, not TangentContact's ("... touch along a curve ...").
-    assert "shells would share" in raised.value.reason
+    fused, _ = model.fuse(body, lug)
+    report = model.check(fused, "full")
+    assert report.ok and not report.unchecked
+    assert len(model.shells(fused)) == 2
+    assert model.mass_properties(fused).volume == pytest.approx(76 * math.pi / 3 + 8)
+    touch = (2 if lo[0] > 0 else -2, 0, 4)
+    vertices = [model.point(v) for v in model.vertices(fused)]
+    assert sum(point == pytest.approx(touch) for point in vertices) == 2
 
 
 def ring(model):
