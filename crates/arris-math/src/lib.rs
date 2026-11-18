@@ -124,6 +124,12 @@ pub const SECTION_GROWTH_LIMIT: f64 = 2.0;
 /// default. Knot spans narrower than this are merged before isolation.
 pub const KNOT_RESOLUTION: f64 = 1e-7;
 
+/// Divisors of the piece's parameter-box width for retrying classification
+/// at an isolated touch (ADR-0089). The offsets halve from a quarter width
+/// to one sixty-fourth, bounding the search. The classifier still uses the
+/// model's tolerances to decide whether a candidate clears the touch.
+pub const ISOLATED_TOUCH_RETRY_DIVISORS: [f64; 5] = [4.0, 8.0, 16.0, 32.0, 64.0];
+
 /// `|x| ≤ RELATIVE_ROUNDING · |scale|`: `x` is zero to rounding at
 /// `scale`. A zero `scale` makes only an exact zero negligible.
 ///

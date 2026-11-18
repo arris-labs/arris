@@ -32,7 +32,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::{Piece as Walk, Polygon2, Side, SideIndex, discretise, interior_point};
 use arris_geom::{Curve, Curve2, CurveEval, Surface};
-use arris_math::{Interval, Point2, Point3, Precision, Vec2, Vec3, is_negligible, wrap_angle};
+use arris_math::{
+    ISOLATED_TOUCH_RETRY_DIVISORS, Interval, Point2, Point3, Precision, Vec2, Vec3, is_negligible,
+    wrap_angle,
+};
 use arris_topo::{Curve2Id, EdgeId, FaceId, Model, Orientation, Shape};
 
 use arris_check::domain::{band, chord};
@@ -137,11 +140,11 @@ impl FacePiece {
             .fold(0.0, f64::max);
         let side = SideIndex::new(&rings);
         let uv = self.uv;
-        // One quarter to one sixty-fourth of the box width, largest first.
         // At each scale try +u, -u, +v, -v along this piece's chart.
-        Ok((2..=6)
-            .flat_map(move |power| {
-                let step = span / f64::from(1 << power);
+        Ok(ISOLATED_TOUCH_RETRY_DIVISORS
+            .into_iter()
+            .flat_map(move |divisor| {
+                let step = span / divisor;
                 [
                     Vec2::new(step.x, 0.0),
                     Vec2::new(-step.x, 0.0),
