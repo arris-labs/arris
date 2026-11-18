@@ -89,7 +89,7 @@ run after the human pushes.
   section in `AGENTS.md` (read before the maintainer's pipeline),
   `CONTRIBUTING.md` pointing to it and the script,
   `.github/pull_request_template.md`. Test: the docs tests.
-- [ ] Step 4 **[1]** — `.agents/skills/contribute/SKILL.md`. Test: the
+- [x] Step 4 **[1]** — `.agents/skills/contribute/SKILL.md`. Test: the
   docs tests; the skill names only scripts that exist.
 - [ ] Step 5 **[2]** — `.agents/skills/review-pr/SKILL.md`: review (the PR
   fetched to `pr/<n>`, CI approved for a first-time contributor, `pr-check`
