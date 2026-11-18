@@ -509,9 +509,15 @@ def test_split_names_a_plane_tangent_to_a_wall_where_it_crosses_elsewhere():
     plate, _ = box(model, (0, 0, 0), (20, 20, 5))
     drill, _ = model.primitive_cylinder((10, 10, -1), (0, 0, 1), 3, 7)
     holed, _ = model.cut(plate, drill)
+    [wall] = [face for face in model.faces(holed) if model.surface(face).kind == "cylinder"]
     with pytest.raises(arris.OpDegenerateError) as raised:
         model.split(holed, (13, 0, 0), (1, 0, 0))
-    assert "touch along a curve" in str(raised.value)
+    error = raised.value
+    assert "tangent contact" in error.reason
+    assert len(error.entities) == 2 and wall in error.entities
+    [plane] = [entity for entity in error.entities if entity != wall]
+    # The other source face is the split plane, removed by rollback.
+    assert isinstance(plane, arris.Face) and not model.contains(plane)
     assert model.contains(holed)
 
 
