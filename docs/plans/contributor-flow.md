@@ -78,7 +78,7 @@ Complexity grades; a step's grade is its tier (`.agents/tiers.md`):
 the workflow step is held by actionlint here and by the next pull request's
 run after the human pushes.
 
-- [ ] Step 1 **[1]** — ADR-0091 and its index row; `.agents/rules/git.md`
+- [x] Step 1 **[1]** — ADR-0091 and its index row; `.agents/rules/git.md`
   §Pull requests; *Land* in `GLOSSARY.md`. Test: the docs tests.
 - [ ] Step 2 **[2]** — `tools/pr-check.sh` and `tools/pr-check-test.sh`
   (each commit and file rule shown failing and passing on a scratch repo),

@@ -101,3 +101,4 @@ here; the first ADR is the first decision taken *after* the seed.
 | [0088](0088-lumps-of-one-solid-may-touch.md) | Lumps of one solid may touch: their interiors are disjoint and their boundaries may meet along curves of `MeetKind::Touch` and at points, never across each other or over an area; B1 admits a touch between two shells and refuses a crossing, a shell is placed by a point clear of the other shell, shells still share no edge or vertex (amends ADR-0006) | accepted |
 | [0089](0089-resample-a-piece-at-an-isolated-touch.md) | Resample a piece at an isolated touch; check surviving point contacts against the output trims | accepted |
 | [0090](0090-a-shared-contact-is-copied-per-shell.md) | A shared contact is copied per shell | accepted |
+| [0091](0091-an-outside-pull-request-lands-through-the-verified-rebase.md) | An outside pull request lands through the maintainer's verified rebase | accepted |

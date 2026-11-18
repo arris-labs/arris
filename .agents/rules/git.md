@@ -69,9 +69,9 @@
   prose no test reads (`tools/ci-reuse.sh`, ADR-0069) skips the
   hours-long jobs: a release's CI run rests on the commit it was cut from
   and is short.
-- Commit **directly to `main`**, one plan step per commit. Branch
-  (`plan/<slug>`, rebased, `merge --ff-only`, deleted after) only when a
-  plan may be thrown away or the human asked to review first.
+- For maintainer work, commit **directly to `main`**, one plan step per
+  commit. Branch (`plan/<slug>`, rebased, `merge --ff-only`, deleted after)
+  only when a plan may be thrown away or the human asked to review first.
 - Never rewrite `main` (no amend of a pushed commit, no force-push, no
   rebase). Never push unless asked.
 - Stage deliberately: read `git status` and `git diff`, no blind `git add
@@ -80,6 +80,14 @@
   with an intentional geometry change, and the message says `fixtures:`
   and why. Oracle values do not drift; if they changed, the body says
   whether the fixture or the oracle script did.
+
+## Pull requests
+
+Outside contributors work on a branch from a fork and propose the changelog bullet in the PR.
+The maintainer writes the `CHANGELOG.md` and `docs/adr/` edits at landing (ADR-0091).
+All outside PRs land through the maintainer's verified rebase. Code PRs need green `full-ci` first.
+`/review-pr <n> --land` authorizes pushing the verified tip to the PR head, then fast-forwarding and pushing `main`.
+Without PR edit rights, push the verified tip to `main` and close the PR with its landed commit ids.
 
 ## Message format
 
@@ -143,4 +151,4 @@ Name any public type or signature it changes.
 
 While executing a plan: run checks, commit each step, tick boxes, edit the
 plan. Branching, tagging, pushing, resetting, rewriting and publishing are
-asked first.
+asked first. The landing invocation above is the ask for its pushes.

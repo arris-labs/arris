@@ -473,3 +473,8 @@ _Avoid_: orchestrator, driver, runner
 A step's grade read as the model class that executes it: 1 routine, 2
 careful, 3 unproven (`.agents/tiers.md`). A plan names tiers, never models.
 _Avoid_: level, model (a tier is mapped to a model by a harness's table)
+
+**Land** (a pull request):
+Take an outside pull request onto `main` through the maintainer's rebase
+and verification (ADR-0091).
+_Avoid_: merge (the button)
