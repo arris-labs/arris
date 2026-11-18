@@ -18,7 +18,7 @@ Deletion is the "done" signal; anything worth keeping moves first.
    the background (it waits on a run in flight): a `fail` is fixed before
    the gate starts — the verification takes minutes, the gate an hour.
    Then start the acceptance's runs, in the
-   background (`run_in_background`; no wait loop, `.agents/rules/git.md`),
+   background using the harness-specific wait rule in `.agents/rules/git.md`,
    on the plan's tip's own tree so the checkout moves on (ADR-0081):
    `tools/at-commit.sh HEAD sh -c '<runs>'`, the runs being the plan's
    **full gate**, `tools/full-gate.sh <scratchpad>/gate.log` (absolute;

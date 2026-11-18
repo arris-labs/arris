@@ -46,6 +46,14 @@
   `sleep` loop, or a `tail --pid`/`tail -f`, waiting on one is never
   written: the completion notification is the wait. In Claude Code
   `tools/bash-guard.sh` refuses it (a PreToolUse hook).
+  In Codex, use a completion notification if the runner offers one.
+  Otherwise start a detached job, retain its log, and write its exit
+  status on completion. Continue independent work, then use one
+  interruptible completion wait if available. If the runner only offers
+  short timed waits, schedule a status check near the expected finish if
+  supported. With neither mechanism, return the job ID and result path so
+  the run can resume from them. Each status check reads the result first
+  and opens the log only for a failure or a missed expected finish.
 - **The full gate** is `tools/full-gate.sh <log>`, run with
   `run_in_background`: the layer rule, fmt, clippy `-D warnings`, nextest
   over the workspace (256 cases, `real_*` included), the doctests, `cargo

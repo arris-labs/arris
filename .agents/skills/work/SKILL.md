@@ -105,15 +105,12 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    hand back the commit id and anything surprising, or the question that
    stopped you." The conductor writes no code itself; it alone talks to
    the human.
-   A notice that the subagent "is waiting on its own background work" is
-   interim, not a hand-back: send nothing, its own job's notification
-   resumes it (steps 3–6 of rewrite-seams did, after four nudges for
-   nothing). Every wait on a subagent or the gate also sets a
-   `ScheduleWakeup` of 20 minutes or more, so a lost notification costs one
-   interval, not the session: about 60 on the full gate, its prompt one
-   line ("conductor fallback for `<slug>`: check the hand-back or gate; if
-   none, set the next wakeup"), never `/work <slug>`, which loads this
-   skill again.
+   A notice that the subagent is waiting on its own background work is
+   interim. Let its completion resume it. In Claude Code, use the harness
+   notification and set a one-line `ScheduleWakeup` fallback after at
+   least 20 minutes (about 60 for a full gate). In Codex, use the longest
+   available interruptible `wait_agent` timeout appropriate to the step.
+   Follow the job-wait rule in `.agents/rules/git.md` for command jobs.
 3. On each hand-back, check what landed: the last commit names `(plans/<slug>
    step N)`, the plan has step N ticked, `git status` is clean. Its test
    half may still be running: that is not a failure, and the next hook or
