@@ -979,11 +979,9 @@ corpus_tests! {
     /// since the surface it would sweep has no variant (ADR-0014).
     sweep_revolve_ellipse => run "sweep/revolve-ellipse";
     /// The spindle arc starts on the axis and sweeps a torus face with a pole.
-    #[ignore = "the revolve refuses the spindle circle before building the arc's pole"]
-    regression_revolve_spindle_arc_from_axis => run "regression/revolve-spindle-arc-from-axis";
+    sweep_revolve_spindle_arc_from_axis => run "sweep/revolve-spindle-arc-from-axis";
     /// The arc ends on the axis, including a circle almost centred on it.
-    #[ignore = "the revolve refuses the spindle circle before building the arc's pole"]
-    regression_revolve_spindle_arc_to_axis => run "regression/revolve-spindle-arc-to-axis";
+    sweep_revolve_spindle_arc_to_axis => run "sweep/revolve-spindle-arc-to-axis";
     /// The arc's swept band stays away from the axis that its circle crosses.
     #[ignore = "the revolve refuses a spindle circle even when the arc stays clear of the axis"]
     regression_revolve_spindle_arc_clear_of_axis => run "regression/revolve-spindle-arc-clear-of-axis";

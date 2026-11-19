@@ -19,8 +19,8 @@ use crate::intersect_spline::spline_surface;
 use crate::nurbs::{conic_nurbs, line_nurbs};
 use crate::project::ellipse_distance;
 use crate::spline_nurbs::spline_nurbs;
+use crate::{AmbiguousLocus, DegenerateReason, FrameFault, RootsFault};
 use crate::{Curve, CurveKind, GeomError, GeomKind, Surface};
-use crate::{DegenerateReason, FrameFault, RootsFault};
 
 /// One point where a curve meets a surface.
 ///
@@ -36,8 +36,8 @@ pub struct CurveSurfaceHit {
     /// The curve parameter.
     pub t: f64,
     /// The surface parameters of the nearest surface point, from
-    /// [`Surface::project`] — at a cone's apex, where that is ambiguous,
-    /// `u = 0` and the apex's `v`.
+    /// [`Surface::project`]. At a cone apex or torus pole, the hit uses
+    /// `u = 0` and the singular `v`.
     pub uv: Point2,
     /// `curve.point(t)`.
     pub point: Point3,
@@ -69,8 +69,8 @@ pub enum CurveSurfaceIntersection {
 ///
 /// Guarantees: hits are sorted by `t`, each `t` is in the curve's domain,
 /// each hit's `uv` is the surface's own projection of the point — but at
-/// a cone's apex, whose projection is ambiguous, `u = 0` and the apex's
-/// `v`, as a sphere's pole takes `u = 0` from its projection — the
+/// a cone apex or torus pole, whose projections are ambiguous, it takes
+/// `u = 0` and the singular `v`, as a sphere's pole does — the
 /// result is deterministic bit for bit, and a transversal hit lies on
 /// both operands to rounding. The decisions: a line is parallel to a
 /// plane or a cylinder's axis within `tol.angular`, and then coincident
@@ -429,9 +429,8 @@ pub fn intersect_curve_surface(
 }
 
 /// A hit at `t`: the curve's point there, projected onto the surface for
-/// its `uv` — except at a cone's apex, where the projection's `u` is
-/// ambiguous and the hit takes `u = 0` and the apex's `v`, `−R / sin α`,
-/// as a sphere's pole already takes `u = 0` from the projection.
+/// its `uv`. At a cone apex or torus pole the hit takes the singular `v`
+/// with `u = 0`, as a sphere pole already does in its projection.
 pub(crate) fn hit(
     curve: &Curve,
     surface: &Surface,
@@ -441,10 +440,18 @@ pub(crate) fn hit(
     let point = curve.point(t);
     let uv = match surface.project(point) {
         Ok(projection) => projection.uv,
-        Err(e @ GeomError::Ambiguous { .. }) => match *surface {
+        Err(e @ GeomError::Ambiguous { locus, .. }) => match *surface {
             Surface::Cone {
                 radius, half_angle, ..
             } => Point2::new(0.0, -radius / real::sin(half_angle)),
+            Surface::Torus {
+                frame,
+                major_radius,
+                minor_radius,
+            } if locus == AmbiguousLocus::Axis && major_radius <= minor_radius => {
+                let v = real::acos(-major_radius / minor_radius);
+                Point2::new(0.0, wrap_turn(v.copysign(frame.to_local(point).z)))
+            }
             Surface::Plane { .. }
             | Surface::Cylinder { .. }
             | Surface::EllipticCylinder { .. }
@@ -793,7 +800,7 @@ fn line_cone(
 /// mirror circle among its roots, which only split a monotone stretch in
 /// two, and the kink where the line crosses the axis a double root. The
 /// crossings between them are [`line_by_distance`]'s, and a line along the
-/// axis, whose quartic vanishes, is clear of a torus (`R > 0`).
+/// axis, whose quartic vanishes, only meets the poles when `R ≤ r`.
 fn line_torus(
     curve: &Curve,
     surface: &Surface,

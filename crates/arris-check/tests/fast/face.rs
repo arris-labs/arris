@@ -123,20 +123,29 @@ fn horn_meridian_span(
     v_start: f64,
     v_end: f64,
 ) -> (Model, arris_check::Report, arris_topo::FaceId) {
+    torus_meridian_span(1.0, v_start, v_end, false)
+}
+
+fn torus_meridian_span(
+    major: f64,
+    v_start: f64,
+    v_end: f64,
+    pole_at_start: bool,
+) -> (Model, arris_check::Report, arris_topo::FaceId) {
     let mut m = Model::default();
     let tol = m.precision().default_tolerance;
     let surface = m.add_surface(Surface::Torus {
         frame: Frame::world(),
-        major_radius: 1.0,
+        major_radius: major,
         minor_radius: 1.0,
     });
-    let at = |v: f64| Point3::new(1.0 + real::cos(v), 0.0, real::sin(v));
+    let at = |v: f64| Point3::new(major + real::cos(v), 0.0, real::sin(v));
     let a = m.raw().add_vertex(Vertex::new(at(v_start), tol));
     let b = m.raw().add_vertex(Vertex::new(at(v_end), tol));
     let curve = m.add_curve(Curve::Circle {
         frame: Frame::new(
-            Point3::new(1.0, 0.0, 0.0),
-            Vec3::new(0.0, 1.0, 0.0),
+            Point3::new(major, 0.0, 0.0),
+            Vec3::new(0.0, -1.0, 0.0),
             Vec3::new(1.0, 0.0, 0.0),
         )
         .unwrap(),
@@ -155,8 +164,21 @@ fn horn_meridian_span(
         origin: Point2::new(0.0, 0.0),
         direction: UnitVec2::new_normalize(arris_math::Vec2::new(0.0, 1.0)),
     });
-    let coedge = Coedge::new(edge, Orientation::Forward, pcurve);
-    let (body, face, _) = one_face(&mut m, surface, vec![Loop::new(vec![coedge])], tol);
+    let mut coedges = Vec::new();
+    if pole_at_start {
+        let pole = m.raw().add_edge(Edge::new(
+            EdgeGeometry::Degenerate {
+                range: Interval::UNIT,
+            },
+            a,
+            a,
+            tol,
+        ));
+        let pcurve = m.add_curve2(Curve2::along_u(v_start));
+        coedges.push(Coedge::new(pole, Orientation::Forward, pcurve));
+    }
+    coedges.push(Coedge::new(edge, Orientation::Forward, pcurve));
+    let (body, face, _) = one_face(&mut m, surface, vec![Loop::new(coedges)], tol);
     let report = check(&m, body, Level::Fast);
     (m, report, face)
 }
@@ -170,6 +192,25 @@ fn f1_a_torus_face_over_its_axis_point() {
             fault: FaceFault::OffTorusBand {
                 loop_index: 0,
                 coedge: 0,
+            },
+        }),
+        "report:\n{report}"
+    );
+}
+
+/// The degenerate coedge at the pole is valid. The meridian must leave
+/// it on the outer sheet, so this meridian into the lemon fails F1.
+#[test]
+fn f1_a_spindle_face_leaving_its_pole_into_the_lemon() {
+    let major = 0.5;
+    let root = real::acos(-major);
+    let (_m, report, face) = torus_meridian_span(major, root, root + 0.3, true);
+    assert!(
+        report.violations().contains(&Violation::FaceMalformed {
+            face,
+            fault: FaceFault::OffTorusBand {
+                loop_index: 0,
+                coedge: 1,
             },
         }),
         "report:\n{report}"

@@ -76,7 +76,7 @@ design; **[3]** unproven, robustness or a bound established here.
   `tools/oracle/`, with probes and `#[ignore]`.
 - [x] Step 2 **[1]** — ADR-0092 as in *Design deltas*; ADR-0080 gets an
   "Amended by" line; GLOSSARY **Torus pole**.
-- [ ] Step 3 **[3]** — The pole: F1 admits a degenerate edge at `v*`, and the
+- [x] Step 3 **[3]** — The pole: F1 admits a degenerate edge at `v*`, and the
   revolve closes a torus face there (`closes_at`). Arc-from-axis and
   arc-to-axis (both variants) build `Full`-green and match their closed forms
   in `measure`. The fixtures move to `sweep/`. A hand-built face whose
@@ -94,7 +94,8 @@ design; **[3]** unproven, robustness or a bound established here.
   (`crates/arris-mesh/tests/band.rs` takes the revolve fixtures).
 - [ ] Step 7 **[2]** — STEP: write and read back a pole face. Arris reads Open
   CASCADE's STEP of each fixture, Open CASCADE reads Arris's, and the corpus
-  read-back stage passes.
+  read-back stage passes. Lift the expected pole refusals in the spindle
+  fixture and in `crates/arris-io/tests/step_read.rs` once the files read.
 - [ ] Step 8 **[3]** — The boolean on a pole body, three fixtures from the
   oracle: the apple fused to a coaxial shank on its flat side (the `rivet`
   program), cut by a box across the pole clear of the axis plane, and the
@@ -149,9 +150,10 @@ Decided here by the agent, recorded:
   snapped to a sphere. The consumer's points define it, Open CASCADE keeps the
   same surface, and a snap would change the surface by a tolerance the model
   does not carry.
-- ⚠ OPEN: if step 3 finds that F1's hull test cannot tell a pole from a
-  pcurve crossing `v*` without the coedge walk, it moves to `f1` over the
-  loop. The agent decides in step 3 and records it in ADR-0092.
+- Settled in step 3 and recorded in ADR-0092: F1 reads neighbouring
+  coedges to verify a pole endpoint before allowing it in the `v` hull.
+  The extent alone cannot establish a shared pole vertex or distinguish
+  an interior touch at the same `v`.
 - ⚠ OPEN: in step 7, diagnose Open CASCADE's own STEP of
   `revolve-spindle-arc-to-axis`. The direct build is valid and matches the
   closed forms. Its self-read loses the pole and trim, reporting zero

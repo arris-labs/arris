@@ -26,6 +26,7 @@
     "volume": "pi * (25 * center * (pi / 2 + atan(center / sqrt(25 - center ^ 2))) + (50 + center ^ 2) * sqrt(25 - center ^ 2) / 3)",
     "area": "10 * pi * (center * (pi / 2 + atan(center / sqrt(25 - center ^ 2))) + sqrt(25 - center ^ 2)) + pi * (center + 5) ^ 2",
     "centroid": [0, "((center + 5) ^ 4 / 4 - center * (center + 5) ^ 3 / 3) / (25 * center * (pi / 2 + atan(center / sqrt(25 - center ^ 2))) + (50 + center ^ 2) * sqrt(25 - center ^ 2) / 3)", 0],
-    "genus": 0
+    "genus": 0,
+    "step_differs": "Open CASCADE's own STEP self-read loses the pole and trim in both variants. The volumes are 0 instead of 768.8701638203883 and 261.81542617176586. The areas are only 201.06192982974667 and 78.54390046328741 instead of 535.4182526685349 and 235.62994843873076. Step 7 of revolve-circle-meets-the-axis diagnoses this loss."
   }
 }

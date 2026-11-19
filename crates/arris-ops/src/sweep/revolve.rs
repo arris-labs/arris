@@ -147,8 +147,8 @@ fn elliptic(loops: &[Vec<ProfileEdge>]) -> Option<&ProfileEdge> {
 /// `tol.linear` of the axis — a point that near is *on* it —
 /// ([`SweepReason::ProfileCrossesAxis`] for points beyond the tolerance on
 /// both sides, [`InputReason::ZeroThickness`] for a profile within it
-/// everywhere), and no arc's circle crossing the axis off its centre
-/// ([`SweepReason::SpindleTorus`]).
+/// everywhere). An off-centre circle that reaches the axis is admitted
+/// when its arc meets the axis at an endpoint.
 pub(super) fn orient(
     loops: &[Vec<ProfileEdge>],
     mut axis: AxisInPlane,
@@ -177,8 +177,27 @@ pub(super) fn orient(
     }
     for edge in loops.iter().flatten() {
         if let Curve2::Circle { frame, radius } = &edge.pcurve {
-            let centre = axis.rho(frame.origin());
-            if centre.abs() > tol.linear && centre - radius <= tol.linear {
+            let centre = frame.origin();
+            let major = axis.rho(centre);
+            if major.abs() <= tol.linear || major - radius > tol.linear {
+                continue;
+            }
+            let closes_at_end = major > tol.linear
+                && major <= *radius
+                && edge.range.length() < TAU - tol.angular
+                && {
+                    let root = real::acos(-major / radius);
+                    let at_pole = |p: Point2| {
+                        let rho = axis.rho(p);
+                        let v = real::atan2((p - centre).dot(&axis.along), rho - major);
+                        (v.abs() - root).abs() <= tol.angular
+                    };
+                    let mut on_axis = [edge.start, edge.end]
+                        .into_iter()
+                        .filter(|&p| axis.rho(p).abs() <= tol.linear);
+                    on_axis.next().is_some_and(at_pole) && on_axis.all(at_pole)
+                };
+            if !closes_at_end {
                 return Err(degenerate(Reason::Sweep(SweepReason::SpindleTorus)));
             }
         }
@@ -305,8 +324,8 @@ struct Chain {
 }
 
 /// The pcurve of the degenerate edge where a side of revolution closes at
-/// the axis — a cone's apex, a sphere's pole: the line at the singular `v`
-/// over the rise's range, its `u` running as a rise there would, with the
+/// the axis, at a cone apex or a sphere or torus pole. This is the line
+/// at the singular `v` over the rise's range, its `u` running with the
 /// axis along the surface's `Z` and against it otherwise.
 fn apex_pcurve(surface: &Surface, axis: &Axis, v: f64) -> Curve2 {
     let along = match surface {
@@ -372,9 +391,10 @@ fn apex_pcurve(surface: &Surface, axis: &Axis, v: f64) -> Curve2 {
 /// `default_tolerance` of the axis everywhere,
 /// [`InputReason::NonManifold`] when a full turn's profile touches the axis at
 /// a vertex with no segment along it, where the swept surface would touch
-/// itself, [`SweepReason::SpindleTorus`] when an arc's circle crosses it off
-/// its centre, and [`SweepReason::EllipticRevolve`] naming the first elliptic
-/// segment of the sketch, whose swept surface has no variant (ADR-0014).
+/// itself, [`SweepReason::SpindleTorus`] when an off-centre circle reaches
+/// the axis without its arc closing at a pole, and [`SweepReason::EllipticRevolve`]
+/// naming the first elliptic segment of the sketch, whose swept surface
+/// has no variant (ADR-0014).
 ///
 /// ```
 /// use arris_ops::revolve;
@@ -667,15 +687,17 @@ struct Turn<'a> {
 }
 
 impl Turn<'_> {
-    /// Which faces close at the vertex `v` of loop `li` on the axis — a
-    /// cone's apex, a sphere's pole — each holding a degenerate edge there
-    /// in place of the rise: the face ending at the vertex, then the one
-    /// starting there.
+    /// Which faces close at the vertex `v` of loop `li` on the axis, at a
+    /// cone apex or a sphere or torus pole. Each holds a degenerate edge
+    /// in place of the rise. The face ending at the vertex comes first.
     fn closes_at(&self, li: usize, v: usize) -> [bool; 2] {
         let singular = |j: usize| {
             matches!(
                 self.surfaces[li][j],
-                Some((Surface::Cone { .. } | Surface::Sphere { .. }, _))
+                Some((
+                    Surface::Cone { .. } | Surface::Sphere { .. } | Surface::Torus { .. },
+                    _
+                ))
             )
         };
         let n = self.loops[li].len();

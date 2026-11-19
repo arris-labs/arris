@@ -201,10 +201,8 @@ pub enum SweepReason {
     /// A revolve angle is above a full turn, by more than the angular
     /// tolerance.
     AngleAboveTurn,
-    /// A revolve profile has an arc off the axis whose circle reaches or
-    /// crosses it (`R <= r`): the face it sweeps would be a horn or
-    /// spindle torus. The data model holds those (ADR-0080, `R > 0`), and
-    /// a blend can build one, but the revolve sweeps only a ring torus.
+    /// A revolve profile has an off-centre circle reaching the axis
+    /// without its arc closing at a torus pole (ADR-0092).
     SpindleTorus,
     /// A revolve profile has an elliptic segment or a full-ellipse loop
     /// (ADR-0014): the surface it would sweep — a spheroid, an elliptic

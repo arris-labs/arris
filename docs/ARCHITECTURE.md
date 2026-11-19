@@ -1421,8 +1421,10 @@ copy rotated by `angle` — or a full turn with seams when `angle` is within
 `angular_tolerance` of `2π` (`SweepReason::AngleAboveTurn` above it,
 `NotPositive` at or below zero). The profile lies wholly on one side of
 the axis (`SweepReason::ProfileCrossesAxis` across it, `ZeroThickness` within
-`default_tolerance` of it everywhere), and an arc whose centre is off the
-axis and nearer it than its radius is `SweepReason::SpindleTorus`. An
+`default_tolerance` of it everywhere). An arc on an off-centre circle
+that reaches the axis closes at a torus pole if the arc meets the axis
+at its endpoint (ADR-0092). Other arcs on such circles return
+`SweepReason::SpindleTorus`. An
 elliptic segment or a full-ellipse loop is `SweepReason::EllipticRevolve`
 naming the first of them in the sketch's own order, the surface it would
 sweep having no variant (ADR-0014); an ellipse whose radii agree within
@@ -1433,8 +1435,8 @@ and not made in a full turn, since no face keeps it there — and a line
 segment with both ends on it lies *along* it and sweeps no face: in a
 partial turn the one edge both flat ends share, in a full turn nothing,
 so a rectangle with a side on the axis turns into a solid cylinder of
-three faces. A face closing at a vertex on the axis — a cone's apex, a
-sphere's pole — holds a degenerate edge there in place of the rise, its
+three faces. A face closing at a cone apex or a sphere or torus pole
+holds a degenerate edge there in place of the rise, its
 pcurve the line at the singular `v` over the rise's range, one per face
 closing there, and a full turn keeps the vertex for it: the first
 degenerate edges an operation makes, which `Builder::assemble` takes used
@@ -1621,7 +1623,7 @@ that constructs it and sees it reported, and a level:
 
 - `Level::Fast` — combinatorial and local geometric checks (ids resolve,
   loops close, orientations compose, tolerances are ordered, pcurves match
-  their 3D curves at sample points, a torus face's pcurves off its axis — the regular band). Linear in the body. This is what runs
+  their 3D curves at sample points, a torus face's pcurves on the regular band up to its poles). Linear in the body. This is what runs
   after every operation. Booleans separately sweep each result shell for
   new pairs of coincident vertices (V4, ADR-0090).
 - `Level::Full` — adds the global checks: an edge does not cross itself,

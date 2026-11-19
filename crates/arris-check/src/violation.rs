@@ -157,9 +157,8 @@ pub enum FaceFault {
         /// Index of the coedge in the loop.
         coedge: usize,
     },
-    /// A torus face's pcurve reaches the axis: `R + r cos v` is at most
-    /// the face's tolerance there, past the regular band a face may hold
-    /// (ADR-0080).
+    /// A torus face leaves the regular band outside an admitted pole
+    /// approach or crosses the axis inside its trim (ADR-0080, ADR-0092).
     OffTorusBand {
         /// Index of the loop.
         loop_index: usize,

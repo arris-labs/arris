@@ -9,19 +9,108 @@
 //! counts, and finer only where a sign or a containment question is
 //! within the coarse polygon's deviation (L4).
 
+use core::f64::consts::{PI, TAU};
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_geom::region2::{Polygon2, discretise};
 use arris_geom::{Curve2, Surface, torus_v_reaches_axis};
-use arris_math::{DisjointSets, Interval, Point2, Vec2};
-use arris_topo::entity::{BodyKind, Face, Loop};
-use arris_topo::{EdgeId, FaceId, Orientation, ShellId, VertexId};
+use arris_math::{DisjointSets, Interval, Point2, Vec2, real, shift_into_range, wrap_signed};
+use arris_topo::entity::{BodyKind, Coedge, Face, Loop};
+use arris_topo::{EdgeId, FaceId, Model, Orientation, ShellId, VertexId};
 
 use crate::check::{Checker, coedges};
 use crate::domain::{bands, bounded_pieces, chord};
 use crate::violation::{
     EdgeUseFault, FaceFault, LoopBreak, NestingFault, ToleranceBound, Violation, WireFault,
 };
+
+/// One translate of the regular band, with a pole allowed at either end.
+/// A span that crosses a root cannot fit in the same translate (ADR-0092).
+struct TorusBand {
+    root: f64,
+    margin: f64,
+    angular: f64,
+}
+
+impl TorusBand {
+    fn holds(&self, span: Interval, poles: [bool; 2]) -> bool {
+        let centre = TAU * (span.midpoint() / TAU).round();
+        let lo = span.lo() - centre;
+        let hi = span.hi() - centre;
+        (if poles[0] {
+            (lo + self.root).abs() <= self.angular
+        } else {
+            lo > -self.margin
+        }) && (if poles[1] {
+            (hi - self.root).abs() <= self.angular
+        } else {
+            hi < self.margin
+        })
+    }
+
+    /// The unwrapped `v` and vertex of a degenerate edge at a torus pole.
+    fn pole(&self, model: &Model, surface: &Surface, coedge: Coedge) -> Option<(f64, VertexId)> {
+        let edge = model.edge(coedge.edge()).ok()?;
+        if !edge.is_degenerate() || edge.start() != edge.end() || !edge.range().is_bounded() {
+            return None;
+        }
+        let Curve2::Line { origin, direction } = model.curve2(coedge.pcurve()).ok()? else {
+            return None;
+        };
+        let v = wrap_signed(origin.y, TAU);
+        let root = self.root.copysign(v);
+        if direction.y != 0.0 || (v - root).abs() > self.angular {
+            return None;
+        }
+        let vertex = model.vertex(edge.start()).ok()?;
+        ((vertex.point() - surface.point(origin.x, root)).norm() <= vertex.tolerance())
+            .then_some((origin.y, edge.start()))
+    }
+
+    /// Only a terminal approach may enter the margin. An interior turn
+    /// of `v` in it is a separate approach, even if an endpoint has the
+    /// same `v`. Check conic extrema exactly and sample a spline per span.
+    fn turns_clear(&self, pcurve: &Curve2, range: Interval, samples: usize) -> bool {
+        let clear = |v| wrap_signed(v, TAU).abs() < self.margin;
+        let conic = |a, b| {
+            let top = real::atan2(b, a);
+            let interior = Interval::new(range.lo() + self.angular, range.hi() - self.angular).ok();
+            [top, top + PI].into_iter().all(|t| {
+                interior
+                    .and_then(|span| shift_into_range(span, t, Some(TAU)))
+                    .is_none_or(|t| clear(pcurve.point(t).y))
+            })
+        };
+        match pcurve {
+            Curve2::Line { .. } => true,
+            Curve2::Circle { frame, radius } => conic(radius * frame.x().y, radius * frame.y().y),
+            Curve2::Ellipse {
+                frame,
+                major_radius,
+                minor_radius,
+            } => conic(major_radius * frame.x().y, minor_radius * frame.y().y),
+            Curve2::Nurbs(spline) => {
+                let mut lo = range.lo();
+                let mut values = vec![pcurve.point(lo).y];
+                for hi in spline.breaks_within(range).into_iter().chain([range.hi()]) {
+                    if let Ok(span) = Interval::new(lo, hi) {
+                        values.extend(
+                            span.samples(samples.max(3))
+                                .into_iter()
+                                .skip(1)
+                                .map(|t| pcurve.point(t).y),
+                        );
+                    }
+                    lo = hi;
+                }
+                values.windows(3).all(|run| {
+                    let (a, v, b) = (run[0], run[1], run[2]);
+                    clear(v) || (a < v && v < b) || (a > v && v > b)
+                })
+            }
+        }
+    }
+}
 
 impl<'m> Checker<'m> {
     /// L1–L4 and F1–F2, face by face in closure order.
@@ -333,10 +422,9 @@ impl<'m> Checker<'m> {
         Some(faults)
     }
 
-    /// F1: the face has a loop, no pcurve leaves the surface's
-    /// bounded domain and no pcurve of a torus face reaches the axis
-    /// (`R + r cos v` at most the face's tolerance). One line per face — the first coedge that leaves
-    /// it, since a face whose parametrisation is wrong is wrong once.
+    /// F1: the face has a loop, every pcurve lies in the surface's bounded
+    /// domain, and a torus face stays on the regular band up to its poles.
+    /// One line per face, at the first coedge that leaves the domain.
     fn f1_malformed(&mut self, face_id: FaceId, face: &'m Face) {
         if face.loops().is_empty() || face.loops().iter().all(|l| l.coedges().is_empty()) {
             self.push(Violation::FaceMalformed {
@@ -349,39 +437,37 @@ impl<'m> Checker<'m> {
         let Ok(surface) = model.surface(face.surface()) else {
             return;
         };
+        let fault = if let Surface::Torus {
+            major_radius,
+            minor_radius,
+            ..
+        } = surface
+        {
+            self.f1_torus_band(face, surface, *major_radius, *minor_radius)
+        } else {
+            self.f1_surface_domain(face, surface)
+        };
+        if let Some(fault) = fault {
+            self.push(Violation::FaceMalformed {
+                face: face_id,
+                fault,
+            });
+        }
+    }
+
+    fn f1_surface_domain(&self, face: &Face, surface: &Surface) -> Option<FaceFault> {
         let domain = surface.domain();
         let periods = surface.period();
-        let mut outside = None;
-        let mut v_span: Option<Interval> = None;
-        'face: for (loop_index, coedge_index, coedge) in coedges(face) {
-            let (Ok(edge), Ok(pcurve)) = (model.edge(coedge.edge()), model.curve2(coedge.pcurve()))
-            else {
+        for (loop_index, coedge_index, coedge) in coedges(face) {
+            let (Ok(edge), Ok(pcurve)) = (
+                self.model.edge(coedge.edge()),
+                self.model.curve2(coedge.pcurve()),
+            ) else {
                 continue;
             };
             let range = edge.range();
-            if !(range.lo().is_finite() && range.hi().is_finite()) {
+            if !range.is_bounded() {
                 continue;
-            }
-            if let Surface::Torus {
-                major_radius,
-                minor_radius,
-                ..
-            } = surface
-            {
-                // ADR-0080: the face lies on the regular band, more than
-                // its tolerance from the axis — decided over the
-                // pcurve's whole `v` extent, not at samples of it.
-                if let Some(extent) = pcurve.v_extent(range) {
-                    if torus_v_reaches_axis(*major_radius, *minor_radius, face.tolerance(), extent)
-                    {
-                        outside = Some(FaceFault::OffTorusBand {
-                            loop_index,
-                            coedge: coedge_index,
-                        });
-                        break 'face;
-                    }
-                    v_span = Some(v_span.map_or(extent, |s: Interval| s.hull(&extent)));
-                }
             }
             for t in range.samples(self.precision.check_samples) {
                 let uv = pcurve.point(t);
@@ -393,41 +479,112 @@ impl<'m> Checker<'m> {
                     let lo = domain[dir].lo() - bound[dir];
                     let hi = domain[dir].hi() + bound[dir];
                     if !(lo <= uv[dir] && uv[dir] <= hi) {
-                        outside = Some(FaceFault::PcurveOutsideDomain {
+                        return Some(FaceFault::PcurveOutsideDomain {
                             loop_index,
                             coedge: coedge_index,
                         });
-                        break 'face;
                     }
                 }
             }
         }
-        // The loops bound the face in the (u, v) plane the pcurves are
-        // given in, so the face covers the hull of their `v` extents: two
-        // loops each clear of the axis can still enclose it between them.
-        if let (
-            None,
-            Surface::Torus {
-                major_radius,
-                minor_radius,
-                ..
-            },
-            Some(span),
-        ) = (&outside, surface, v_span)
-        {
-            if torus_v_reaches_axis(*major_radius, *minor_radius, face.tolerance(), span) {
-                outside = Some(FaceFault::OffTorusBand {
-                    loop_index: 0,
-                    coedge: 0,
-                });
+        None
+    }
+
+    fn f1_torus_band(
+        &self,
+        face: &Face,
+        surface: &Surface,
+        major: f64,
+        minor: f64,
+    ) -> Option<FaceFault> {
+        let off_band = |span| torus_v_reaches_axis(major, minor, face.tolerance(), span);
+        let band = (major <= minor && face.tolerance() < major + minor).then(|| TorusBand {
+            root: real::acos(-major / minor),
+            margin: real::acos(((face.tolerance() - major) / minor).min(1.0)),
+            angular: self.precision.angular_tolerance,
+        });
+        let mut v_span: Option<Interval> = None;
+        let mut pole_span: Option<Interval> = None;
+        for (loop_index, coedge_index, coedge) in coedges(face) {
+            let (Ok(edge), Ok(pcurve)) = (
+                self.model.edge(coedge.edge()),
+                self.model.curve2(coedge.pcurve()),
+            ) else {
+                continue;
+            };
+            let range = edge.range();
+            let Some(extent) = pcurve.v_extent(range) else {
+                continue;
+            };
+            v_span = Some(v_span.map_or(extent, |span| span.hull(&extent)));
+            if !off_band(extent) {
+                continue;
             }
-        }
-        if let Some(fault) = outside {
-            self.push(Violation::FaceMalformed {
-                face: face_id,
-                fault,
+            if let Some(band) = &band {
+                if band.pole(self.model, surface, coedge).is_some() {
+                    pole_span = Some(pole_span.map_or(extent, |span| span.hull(&extent)));
+                    continue;
+                }
+                if !edge.is_degenerate() && extent.length() > 0.0 {
+                    let cs = face.loops()[loop_index].coedges();
+                    let before = cs[(coedge_index + cs.len() - 1) % cs.len()];
+                    let after = cs[(coedge_index + 1) % cs.len()];
+                    let mut ends = [
+                        (edge.start(), pcurve.point(range.lo()).y),
+                        (edge.end(), pcurve.point(range.hi()).y),
+                    ];
+                    if coedge.orientation() == Orientation::Reversed {
+                        ends.reverse();
+                    }
+                    let mut poles = [before, after].map(|adj| band.pole(self.model, surface, adj));
+                    for (pole, (vertex, v)) in poles.iter_mut().zip(ends) {
+                        *pole = pole.filter(|&(pole_v, at)| {
+                            at == vertex && wrap_signed(v - pole_v, TAU).abs() <= band.angular
+                        });
+                    }
+                    if ends[0].1 > ends[1].1 {
+                        ends.reverse();
+                        poles.reverse();
+                    }
+                    let at_pole = [
+                        poles[0].is_some() && (extent.lo() - ends[0].1).abs() <= band.angular,
+                        poles[1].is_some() && (extent.hi() - ends[1].1).abs() <= band.angular,
+                    ];
+                    let ends_clear = ends.iter().zip(poles).all(|((_, v), pole)| {
+                        pole.is_some() || wrap_signed(*v, TAU).abs() < band.margin
+                    });
+                    if ends_clear
+                        && band.holds(extent, at_pole)
+                        && band.turns_clear(pcurve, range, self.precision.check_samples)
+                    {
+                        continue;
+                    }
+                }
+            }
+            return Some(FaceFault::OffTorusBand {
+                loop_index,
+                coedge: coedge_index,
             });
         }
+        // The loops bound the face in their given (u, v) plane: even loops
+        // that each fit on a band can enclose the axis between them.
+        let span = v_span?;
+        if !off_band(span) {
+            return None;
+        }
+        let held_poles = band.zip(pole_span).is_some_and(|(band, poles)| {
+            band.holds(
+                span,
+                [
+                    (poles.lo() - span.lo()).abs() <= band.angular,
+                    (poles.hi() - span.hi()).abs() <= band.angular,
+                ],
+            )
+        });
+        (!held_poles).then_some(FaceFault::OffTorusBand {
+            loop_index: 0,
+            coedge: 0,
+        })
     }
 
     /// F2: the face's tolerance is at or above the model's floor and at

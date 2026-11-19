@@ -46,3 +46,14 @@ pole. The outer sheet and its poles determine the supported trim. The
 lemon sheet remains outside that domain. Blend contacts at the axis,
 offsets at a torus pole and section branches through a pole in a plane
 holding the axis retain their existing restrictions.
+
+## F1's coedge walk
+
+The hull alone cannot distinguish a pcurve ending at a pole from one
+reaching the same angle in its interior. F1 reads the two neighbours of
+each incident coedge to check the shared pole vertex and degenerate
+pcurve. It checks the incident pcurve's interior turns against the regular
+band margin, then admits the pole as a bound of the face's unwrapped hull.
+A ray hit at a torus pole carries `u = 0` and the singular `v`, as at a
+cone apex, so classification can test the face's trim without asking the
+ordinary surface projection for an azimuth at a collapsed point.
