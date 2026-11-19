@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "3f3f86a341b797ef668add498ecee9160fb2b6e0742cc3aa258308163421330b",
+  "results": {
+    "default": {
+      "area": 46.957211940235155,
+      "centroid": [
+        -1.2597700850725083e-15,
+        3.6007861700312054,
+        1.9209365186208095e-19
+      ],
+      "counts": {
+        "edges": 3,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 3
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          32.734691281277435,
+          4.704901717014902e-14,
+          -1.7214177014060908e-15
+        ],
+        [
+          4.704901717014902e-14,
+          43.926791880012175,
+          -1.8044816431106854e-18
+        ],
+        [
+          -1.7214177014060908e-15,
+          -1.8044816431106854e-18,
+          32.734691281277435
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 3,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 3
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "kept",
+          "point": [
+            0.0,
+            3.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_pole",
+          "point": [
+            0.0,
+            4.5,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "kept_above_pole",
+          "point": [
+            1.0,
+            4.5,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_ball",
+          "point": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "torus_pole",
+          "point": [
+            0.0,
+            4.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "ball_pole",
+          "point": [
+            0.0,
+            2.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 24.67612547547925
+    }
+  }
+}

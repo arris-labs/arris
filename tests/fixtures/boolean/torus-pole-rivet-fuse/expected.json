@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "7d570af50252b7476182ad263be07d87377737d96505719b18282806a49eb617",
+  "results": {
+    "default": {
+      "area": 610.81647635469,
+      "centroid": [
+        1.4938535833362612e-16,
+        1.6372764727837168,
+        -3.3243502277060463e-16
+      ],
+      "counts": {
+        "edges": 5,
+        "faces": 4,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          13707.931798145097,
+          3.9834203414493864e-13,
+          -3.7658764995285315e-13
+        ],
+        [
+          3.9834203414493864e-13,
+          20736.312288690362,
+          -6.584771531589468e-13
+        ],
+        [
+          -3.7658764995285315e-13,
+          -6.584771531589468e-13,
+          13707.931798145166
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 5,
+        "faces": 4,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "shank",
+          "point": [
+            0.0,
+            -3.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "join",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "head",
+          "point": [
+            3.0,
+            4.5,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "pole",
+          "point": [
+            0.0,
+            4.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "under_head",
+          "point": [
+            3.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "beside_shank",
+          "point": [
+            3.0,
+            -1.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 844.268387506544
+    }
+  }
+}

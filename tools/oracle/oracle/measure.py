@@ -32,7 +32,8 @@ from OCP.BRepClass3d import BRepClass3d_SolidClassifier
 from OCP.BRepGProp import BRepGProp
 from OCP.GeomAbs import GeomAbs_CurveType, GeomAbs_SurfaceType
 from OCP.GProp import GProp_GProps
-from OCP.gp import gp_Pnt, gp_Pnt2d, gp_Vec, gp_Vec2d
+from OCP.gp import gp_Lin, gp_Pln, gp_Pnt, gp_Pnt2d, gp_Vec, gp_Vec2d
+from OCP.Precision import Precision
 from OCP.TopAbs import (
     TopAbs_EDGE,
     TopAbs_FACE,
@@ -148,6 +149,34 @@ def _has_extrusion(shape: TopoDS_Shape) -> bool:
         BRepAdaptor_Surface(f).GetType() == GeomAbs_SurfaceType.GeomAbs_SurfaceOfExtrusion
         for f in _faces(shape)
     )
+
+
+def _has_spindle(shape: TopoDS_Shape) -> bool:
+    """Whether a face is on a spindle torus. The plain adaptive volume
+    integral can break a spindle's symmetry when the boundary is fitted:
+    the pole-centred ball's transverse moments differ by 6e-4 where they
+    should be equal, and the oblique box cut's x and z moments differ
+    by 6.9 despite mirror symmetry. Open CASCADE may store the face as
+    an analytic torus or as a circular arc swept about an axis."""
+    for face in _faces(shape):
+        surface = BRepAdaptor_Surface(face)
+        kind = surface.GetType()
+        if kind == GeomAbs_SurfaceType.GeomAbs_Torus:
+            torus = surface.Torus()
+            if torus.MajorRadius() < torus.MinorRadius():
+                return True
+        elif kind == GeomAbs_SurfaceType.GeomAbs_SurfaceOfRevolution:
+            basis = surface.BasisCurve()
+            if basis.GetType() == GeomAbs_CurveType.GeomAbs_Circle:
+                circle = basis.Circle()
+                axis = gp_Lin(surface.AxeOfRevolution())
+                plane = gp_Pln(circle.Location(), circle.Axis().Direction())
+                linear = Precision.Confusion_s()
+                if plane.Contains(axis, linear, Precision.Angular_s()) and (
+                    linear < axis.Distance(circle.Location()) < circle.Radius()
+                ):
+                    return True
+    return False
 
 
 def _area(shape: TopoDS_Shape) -> float:
@@ -506,8 +535,9 @@ def measure(
     is 1e-6 off in the inertia tensor of NIST's FTC-11, a solid of
     revolution whose Ixx and Iyy it splits by 3.3 in 1.6e6 and whose Ixy
     it makes −1.1, where the fixed-order and Gauss–Kronrod integrations
-    both keep the symmetry to 1e-13. A recipe's spline-bounded result
-    keeps the plain adaptive integration and its committed numbers."""
+    both keep the symmetry to 1e-13. A spline-bounded spindle also takes
+    Gauss–Kronrod for its symmetry. Other spline-bounded recipes keep the
+    plain adaptive integration and its committed numbers."""
     vertices, edges, loops = _count_boundary(shape)
     counts = {
         "vertices": vertices,
@@ -523,9 +553,10 @@ def measure(
         return out
 
     vp = GProp_GProps()
-    if _has_extrusion(shape) or (read and _spline_bounded(shape)):
+    spline = _spline_bounded(shape)
+    if _has_extrusion(shape) or (spline and (read or _has_spindle(shape))):
         BRepGProp.VolumePropertiesGK_s(shape, vp, SPLINE_EPS, False, True, True, True)
-    elif _spline_bounded(shape):
+    elif spline:
         BRepGProp.VolumeProperties_s(shape, vp, SPLINE_EPS)
     else:
         BRepGProp.VolumeProperties_s(shape, vp)

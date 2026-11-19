@@ -94,19 +94,17 @@ cache; `ci.yml` sets it, so CI always runs the oracle.
   the module docstring and `tests/fixtures/README.md`. `fixture.load_fixture`
   records the recipe's directory under `recipe.DIR_KEY`, outside the hash,
   which is where a `step` operand's file is found.
-- `oracle/measure.py` — volume, area, centroid and the inertia tensor
-  (`GProp`: its fixed-order integration, but the adaptive overloads to
-  `SPLINE_EPS` for a shape trimmed by a many-span B-spline pcurve — under
-  a quadric section walked or fitted, or under an exact conic on a cone,
-  a sphere or a torus — over which the fixed order is 1e-6 off, and
-  `VolumePropertiesGK` for a shape with a surface-of-extrusion face,
-  whose area is the Green integral of its basis arc length instead, and
-  for a part's spline-bounded solid, over which the plain adaptive one is
-  1e-6 off in the inertia tensor — NIST's FTC-11, a solid of revolution
-  whose symmetry it breaks; a solid the fixture records only as refused
-  keeps the plain adaptive one, since no measure of it is compared and
-  the Gauss–Kronrod one runs for hours on CTC-02 AP203's #380),
-  counts by unique
+- `oracle/measure.py` measures volume, area, centroid and inertia with
+  `GProp`. A shape trimmed by a many-span B-spline pcurve uses adaptive
+  integration to `SPLINE_EPS` because the fixed-order integral is off by
+  1e-6. `VolumePropertiesGK` handles a shape with a surface-of-extrusion
+  face and spline-bounded parts and spindle tori. The plain adaptive
+  integral breaks axial symmetry in NIST's FTC-11 and in the common of
+  a spindle with a ball centred at its pole. CTC-02 AP203's #380 uses the
+  plain adaptive integral because the fixture records a refusal and the
+  Gauss–Kronrod integral runs for hours. A face on a surface of extrusion
+  takes its area from the Green integral of its basis arc length.
+  The module also counts unique
   sub-shape (a seam edge once, an edge `BRep_Tool::Degenerated` names not
   at all), loops, shells, solids — of the boundary only: an edge oriented
   INTERNAL or EXTERNAL, a wire of nothing else and a vertex on nothing

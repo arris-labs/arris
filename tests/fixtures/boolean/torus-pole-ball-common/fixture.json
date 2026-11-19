@@ -1,0 +1,37 @@
+{
+  "description": "A ball centred at the spindle's upper pole intersects its outer sheet in a coaxial circle at y = (92 + 12 sqrt(6))/25. The common keeps the spindle pole and the lower sphere pole. Integrate circular slices of the ball from y = 2 to the join, subtracting the hole of radius 3 - sqrt(25 - y^2) above y = 4. Its outer area is the sphere's cap, plus the spindle meridian swept from the join to its pole through a meridian angle atan(4 sqrt(6)/23).",
+  "steps": [
+    {
+      "name": "meridian", "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": [0, 4], "segments": [
+        {"via": [6, 4], "arc_to": [8, 0]}, {"line_to": [0, 0]}, {"line_to": [0, 4]}
+      ]}
+    },
+    {"name": "apple", "op": "revolve", "profile": "meridian", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 360},
+    {
+      "name": "ball_meridian", "op": "profile",
+      "plane": {"origin": [0, 4, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": [0, -2], "segments": [
+        {"via": [2, 0], "arc_to": [0, 2]}, {"line_to": [0, -2]}
+      ]}
+    },
+    {"name": "ball", "op": "revolve", "profile": "ball_meridian", "axis": {"origin": [0, 4, 0], "direction": [0, 1, 0]}, "angle_deg": 360},
+    {"name": "result", "op": "common", "a": "apple", "b": "ball"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "kept", "point": [0, 3, 0], "expect": "in"},
+    {"label": "above_pole", "point": [0, 4.5, 0], "expect": "out"},
+    {"label": "kept_above_pole", "point": [1, 4.5, 0], "expect": "in"},
+    {"label": "past_ball", "point": [0, 1, 0], "expect": "out"},
+    {"label": "torus_pole", "point": [0, 4, 0], "expect": "on"},
+    {"label": "ball_pole", "point": [0, 2, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "genus": 0,
+    "volume": "pi * (352 / 75 - 276 * sqrt(6) / 25 + 75 * atan(4 * sqrt(6) / 23))",
+    "area": "pi * (32 - 6 * (92 + 12 * sqrt(6)) / 25 + 30 * atan(4 * sqrt(6) / 23))",
+    "centroid": [0, "((10152 + 3072 * sqrt(6)) / 625) / (352 / 75 - 276 * sqrt(6) / 25 + 75 * atan(4 * sqrt(6) / 23))", 0]
+  }
+}

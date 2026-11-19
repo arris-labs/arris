@@ -184,6 +184,9 @@ boolean/torus-box-point-cut-torus: 27222
 boolean/torus-box-point-cut-torus-equator-seam: 27021
 boolean/torus-box-point-fuse: 27222
 boolean/torus-box-point-fuse-equator-seam: 27021
+boolean/torus-pole-ball-common: 11
+boolean/torus-pole-box-cut: 21540
+boolean/torus-pole-rivet-fuse: 25
 boolean/touching-cylinders-short-slit: refused
 boolean/touching-cylinders-short-slit-many: refused
 boolean/tripod-fuse-many: 16109

@@ -904,6 +904,12 @@ corpus_tests! {
     /// A drill whose wall runs through both of a ball's poles: two traced
     /// loops, each through a singular vertex of the sphere.
     boolean_ball_pole_drill_cut => run "boolean/ball-pole-drill-cut";
+    /// The rivet keeps the spindle's pole when its shank meets the flat base.
+    boolean_torus_pole_rivet_fuse => run "boolean/torus-pole-rivet-fuse";
+    /// A box's cutting plane crosses the spindle pole at an oblique angle.
+    boolean_torus_pole_box_cut => run "boolean/torus-pole-box-cut";
+    /// The common with a ball centred at the spindle pole keeps both poles.
+    boolean_torus_pole_ball_common => run "boolean/torus-pole-ball-common";
     /// A ball and a cylinder whose flat end lies inside it, tilted off the
     /// ball's equator, the ball's frame turned half a turn: a bullet whose
     /// sphere face has two loops, the hole listed first, which STEP written

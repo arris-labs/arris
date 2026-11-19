@@ -1,0 +1,42 @@
+{
+  "description": "A box cuts the spindle-torus head with a plane tilted 25 degrees from perpendicular to the axis. The pole becomes an interior point of the cut face. In each meridian, put k = tan(tilt) (cos(u) - sin(u))/sqrt(2). The cut y = 4 + k*r meets (r - 3)^2 + y^2 = 25 at the pole and at r_cut = (6 - 8*k)/(1 + k^2), where the wall's meridian angle is atan(4/3) + 2 atan(k). Area integrates the tilted disk, the flat base and the wall. For volume and moments integrate the primitive in y as a vertical flux, with r dr du on the tilted disk and -r dr du along the wall from 8 to r_cut. Over a turn atan(k) averages to zero and 1/(1 + k^2) averages to cos(tilt). Reflection in x = -z fixes the body. The inertia is evaluated by quadrature of the same flux.",
+  "params": {"tilt": 25},
+  "steps": [
+    {
+      "name": "meridian", "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": [0, 4], "segments": [
+        {"via": [6, 4], "arc_to": [8, 0]}, {"line_to": [0, 0]}, {"line_to": [0, 4]}
+      ]}
+    },
+    {"name": "apple", "op": "revolve", "profile": "meridian", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 360},
+    {"name": "box", "op": "box", "min": [-20, 4, -20], "max": [20, 20, 20]},
+    {
+      "name": "tool", "op": "transform", "of": "box",
+      "rotate": {"axis": [1, 0, 1], "origin": [0, 4, 0], "angle_deg": "tilt"}
+    },
+    {"name": "result", "op": "cut", "target": "apple", "tool": "tool"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "kept", "point": [0, 2, 0], "expect": "in"},
+    {"label": "cut_away", "point": [0, 4.8, 3], "expect": "out"},
+    {"label": "pole", "point": [0, 4, 0], "expect": "on"},
+    {"label": "base", "point": [0, 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "genus": 0,
+    "volume": "2 * pi * (75 * atan(4 / 3) / 2 - 118 / 3 + 100 * cos(radians(tilt)) + 44 * cos(radians(tilt)) ^ 3 / 3)",
+    "area": "2 * pi * (15 * atan(4 / 3) + 37 + 40 * cos(radians(tilt)) - 7 * cos(radians(tilt)) ^ 2)",
+    "centroid": [
+      "sin(radians(tilt)) * (1525 - 350 * cos(radians(tilt)) ^ 2 - 527 * cos(radians(tilt)) ^ 4) / (4 * sqrt(2) * (75 * atan(4 / 3) / 2 - 118 / 3 + 100 * cos(radians(tilt)) + 44 * cos(radians(tilt)) ^ 3 / 3))",
+      "(256 - 625 * cos(radians(tilt)) / 4 - 59 * cos(radians(tilt)) ^ 3 / 2 + 527 * cos(radians(tilt)) ^ 5 / 4) / (75 * atan(4 / 3) / 2 - 118 / 3 + 100 * cos(radians(tilt)) + 44 * cos(radians(tilt)) ^ 3 / 3)",
+      "-sin(radians(tilt)) * (1525 - 350 * cos(radians(tilt)) ^ 2 - 527 * cos(radians(tilt)) ^ 4) / (4 * sqrt(2) * (75 * atan(4 / 3) / 2 - 118 / 3 + 100 * cos(radians(tilt)) + 44 * cos(radians(tilt)) ^ 3 / 3))"
+    ],
+    "inertia": [
+      [8786.916264135256, -430.916750474846, -1019.2298763781391],
+      [-430.916750474846, 15803.249237375267, 430.916750474846],
+      [-1019.2298763781391, 430.916750474846, 8786.916264135256]
+    ]
+  }
+}

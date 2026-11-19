@@ -97,7 +97,7 @@ design; **[3]** unproven, robustness or a bound established here.
   CASCADE's STEP of each fixture, Open CASCADE reads Arris's, and the corpus
   read-back stage passes. Lift the expected pole refusals in the spindle and
   horn arc fixtures and in `crates/arris-io/tests/step_read.rs` once the files read.
-- [ ] Step 8 **[3]** — The boolean on a pole body, three fixtures from the
+- [x] Step 8 **[3]** — The boolean on a pole body, three fixtures from the
   oracle: the apple fused to a coaxial shank on its flat side (the `rivet`
   program), cut by a box across the pole clear of the axis plane, and the
   common with a ball centred on the pole. Each is `Full`-green to the oracle,
@@ -176,3 +176,8 @@ Decided here by the agent, recorded:
   same shape, which preserves topology and measures. Arris's corpus
   reads both Open CASCADE exports and compares Arris's STEP through Open
   CASCADE. The fixture's tolerances and expected values are unchanged.
+- Settled in step 8: the rivet fuse, the oblique box cut and the common
+  with the pole-centred ball pass at `Full`. Open CASCADE's plain adaptive
+  volume integral breaks the cut's reflection symmetry and the common's
+  axial symmetry. Its span-wise Gauss–Kronrod integral agrees with
+  integration over the analytic profiles at the fixture tolerances.
