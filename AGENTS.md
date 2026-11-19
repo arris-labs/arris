@@ -70,7 +70,7 @@ Solids that touch along a curve, at a point or through shared topology
 build as touching lumps. Each lump keeps its own contact edges and
 vertices (ADR-0088 to ADR-0090). Draft, thicken and `region2` wait for the
 next named cycle.
-**Next:** `/plan revolve-circle-meets-the-axis` (`docs/ROADMAP.md` §C12 **In**).
+**Next:** `/work revolve-circle-meets-the-axis` (`docs/plans/`, ten steps).
 
 ## Rules that are not derivable from the code
 
