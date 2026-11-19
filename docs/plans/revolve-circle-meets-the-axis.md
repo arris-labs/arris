@@ -84,7 +84,7 @@ design; **[3]** unproven, robustness or a bound established here.
   (`crates/arris-check/tests/`).
 - [x] Step 4 **[1]** — `orient` drops the circle test. The clear-of-axis arc
   builds on the outer sheet, and its fixture moves to `sweep/`.
-- [ ] Step 5 **[2]** — Property (`crates/arris-ops/tests/revolve_prop.rs`):
+- [x] Step 5 **[2]** — Property (`crates/arris-ops/tests/revolve_prop.rs`):
   random arcs on circles with `R ≤ r`, from, to or clear of the axis, revolved
   by a random angle, are `Full`-green with Pappus's volume (the profile's area
   and centroid, closed form) and an area within the fixture tolerance, or are
