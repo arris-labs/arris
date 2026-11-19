@@ -20,7 +20,7 @@ use arris_math::{Axis, Frame, Interval, Isometry, Point3, Tolerance, UnitVec3, V
 
 use crate::error::OpError;
 
-use super::revolve::{axis_in_plane, orient, rho_range, swept_surface};
+use super::revolve::{axis_in_plane, check_circular_edges, orient, rho_range, swept_surface};
 
 /// The faces and rails of one exact span: for each loop and each walk
 /// index `j`, the surface edge `j` sweeps and the curve the vertex edge
@@ -273,7 +273,7 @@ fn arc_span(
         .flatten()
         .map(|e| rho_range(e, &in_plane).0)
         .fold(f64::INFINITY, f64::min);
-    if nearest <= tol.linear {
+    if nearest <= tol.linear || check_circular_edges(loops, &in_plane, tol).is_err() {
         return Ok(None);
     }
     let radial = carried_plane.vec_to_world(Vec3::new(in_plane.radial.x, in_plane.radial.y, 0.0));

@@ -1121,7 +1121,10 @@ its `Z` along the axis, its major axis along the surface's `X` either
 way, the radii agreeing within `tol.linear` — at constant `v`, `u`
 starting at `0` or `π` by its `X` against the surface's and running in
 the sense of its `Z` against the surface's, as a parallel does on a
-cylinder. On a **NURBS surface** every curve is fitted (below).
+cylinder. On a **NURBS surface**, a boundary curve between coincident pole
+rows a period apart has a line pcurve if its rational basis matches the
+boundary's and its control points agree within the tolerance (ADR-0092).
+Other curves are fitted (below).
 
 **The fitted fallback is one, for every surface.** Every other
 curve on a cylinder, an elliptic cylinder, a cone, a sphere or a torus —

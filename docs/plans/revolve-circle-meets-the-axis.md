@@ -102,7 +102,7 @@ design; **[3]** unproven, robustness or a bound established here.
   program), cut by a box across the pole clear of the axis plane, and the
   common with a ball centred on the pole. Each is `Full`-green to the oracle,
   or the refusal its kind already has (`TubeCircle` named in the fixture).
-- [ ] Step 9 **[2]** — Horn circle: re-seat a tangent `Circle` loop's vertex
+- [x] Step 9 **[2]** — Horn circle: re-seat a tangent `Circle` loop's vertex
   at the touch point. `revolve-horn-torus-half-turn` builds to `π²` and
   `2π² + 2π`, and its full turn is `NonManifold` (a unit test).
 - [ ] Step 10 **[1]** — `ArcTouchesAxis { loop_index, segment }` replaces
@@ -181,3 +181,11 @@ Decided here by the agent, recorded:
   volume integral breaks the cut's reflection symmetry and the common's
   axial symmetry. Its span-wise Gauss–Kronrod integral agrees with
   integration over the analytic profiles at the fixture tolerances.
+- Settled in step 9: the horn has two degenerate coedges at one vertex,
+  a period apart in the torus domain. The STEP reader sizes each walk
+  against its unwrapped pole row. In Open CASCADE's B-spline conversion
+  the meridian matches the surface boundary's rational basis and control
+  points, so its pcurve is a line. Projecting the common tangent at the
+  double root cannot recover the meridian's azimuth. Mass integration
+  splits the full meridian into quarter turns to resolve inertia at the
+  fixture's tolerance.

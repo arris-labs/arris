@@ -200,6 +200,19 @@ impl NurbsCurve {
         self.spline.weights()
     }
 
+    /// Equal rational bases make the curve-point gap a convex blend of
+    /// the control-point gaps, bounded by the largest of them.
+    pub(crate) fn same_parametrisation(&self, other: &Self, tol: arris_math::Tolerance) -> bool {
+        self.degree() == other.degree()
+            && self.knots() == other.knots()
+            && self.weights() == other.weights()
+            && self
+                .control_points()
+                .iter()
+                .zip(other.control_points())
+                .all(|(p, q)| (p - q).norm() <= tol.linear)
+    }
+
     /// `[knots[p], knots[n]]`.
     pub fn domain(&self) -> Interval {
         self.spline.domain()

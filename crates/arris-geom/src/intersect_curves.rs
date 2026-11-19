@@ -785,14 +785,7 @@ fn nurbs_nurbs_coincide(
     tol: Tolerance,
     meter: &mut Meter,
 ) -> Result<Option<bool>, GeomError> {
-    let same_spline = a.degree() == b.degree()
-        && a.knots() == b.knots()
-        && a.weights() == b.weights()
-        && a.control_points()
-            .iter()
-            .zip(b.control_points())
-            .all(|(p, q)| (p - q).norm() <= tol.linear);
-    if same_spline {
+    if a.same_parametrisation(b, tol) {
         return Ok(Some(true));
     }
     for (x, y) in [(a, b), (b, a)] {

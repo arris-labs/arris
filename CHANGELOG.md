@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `revolve` builds a capped horn torus from a partial turn of a circle
+  tangent to the axis. A full turn returns `NonManifold` at the pinch.
 - `revolve` builds a torus face from an arc that stays clear of the axis
   on the outer sheet, even when its circle reaches or crosses the axis.
 

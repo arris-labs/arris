@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use arris_geom::{Curve, Curve2, Profile, ProfileEdge, Surface, pcurve_on};
 use arris_math::nalgebra::UnitQuaternion;
 use arris_math::{
-    Axis, Control, Frame, Interval, Isometry, Meter, Point2, Point3, Tolerance, UnitVec2, UnitVec3,
-    Vec2, Vec3, wrap_angle,
+    Axis, Control, Frame, Frame2, Handedness, Interval, Isometry, Meter, Point2, Point3, Tolerance,
+    UnitVec2, UnitVec3, Vec2, Vec3, wrap_angle,
 };
 use arris_topo::builder::{EdgeSpec, VertexKey};
 use arris_topo::entity::EdgeGeometry;
@@ -143,10 +143,10 @@ fn elliptic(loops: &[Vec<ProfileEdge>]) -> Option<&ProfileEdge> {
 }
 
 /// The major radius of the swept circle. A terminal tangency is the
-/// horn's double root: reconstructing the circle from three points can
-/// put its centre distance on either side of the radius. Use the radius
-/// when the endpoint is on the axis and the circle is tangent there.
-fn arc_major_radius(
+/// horn's double root. A three-point arc can round to either side of
+/// equality. Use the tube radius when an endpoint on the axis proves
+/// tangency, including a circle seated at its pole.
+fn circle_major_radius(
     edge: &ProfileEdge,
     axis: &AxisInPlane,
     centre: Point2,
@@ -156,7 +156,6 @@ fn arc_major_radius(
     let major = axis.rho(centre);
     if major > tol.linear
         && (major - radius).abs() <= tol.linear
-        && edge.range.length() < TAU - tol.angular
         && [edge.start, edge.end].into_iter().any(|p| {
             axis.rho(p).abs() <= tol.linear
                 && (p - centre).dot(&axis.along).abs() <= radius * tol.angular
@@ -173,8 +172,7 @@ fn arc_major_radius(
 /// `tol.linear` of the axis — a point that near is *on* it —
 /// ([`SweepReason::ProfileCrossesAxis`] for points beyond the tolerance on
 /// both sides, [`InputReason::ZeroThickness`] for a profile within it
-/// everywhere). On the outer sheet of a torus, an arc may stay clear
-/// of the axis or meet it at a pole at an endpoint.
+/// everywhere).
 pub(super) fn orient(
     loops: &[Vec<ProfileEdge>],
     mut axis: AxisInPlane,
@@ -201,39 +199,85 @@ pub(super) fn orient(
     if hi <= tol.linear {
         return Err(degenerate(Reason::Input(InputReason::ZeroThickness)));
     }
+    Ok(axis)
+}
+
+/// Seat the seam of a tangent circle loop at its nearest point to the
+/// axis. Rotating both frames preserves the loop's direction and keeps
+/// the seam at parameter zero on the cap and the meridian.
+fn seat_horn_circles(
+    loops: &mut [Vec<ProfileEdge>],
+    plane: &Frame,
+    axis: &AxisInPlane,
+    tol: Tolerance,
+) -> Result<(), OpError> {
+    for edges in loops {
+        let [edge] = edges.as_mut_slice() else {
+            continue;
+        };
+        let (Curve::Circle { frame, radius }, Curve2::Circle { frame: uv, .. }) =
+            (&mut edge.curve, &mut edge.pcurve)
+        else {
+            continue;
+        };
+        let major = axis.rho(uv.origin());
+        if major > tol.linear && (major - *radius).abs() <= tol.linear {
+            let x = -axis.radial;
+            let handedness = if uv.is_right_handed() {
+                Handedness::Right
+            } else {
+                Handedness::Left
+            };
+            *uv = Frame2::new(uv.origin(), x, handedness)?;
+            *frame = Frame::new(
+                frame.origin(),
+                frame.z().into_inner(),
+                plane.vec_to_world(Vec3::new(x.x, x.y, 0.0)),
+            )?;
+            edge.start = uv.origin() + *radius * uv.x().into_inner();
+            edge.end = edge.start;
+        }
+    }
+    Ok(())
+}
+
+/// On the outer sheet of a torus, a circular edge may stay clear of the
+/// axis or meet it at a pole at an endpoint.
+pub(super) fn check_circular_edges(
+    loops: &[Vec<ProfileEdge>],
+    axis: &AxisInPlane,
+    tol: Tolerance,
+) -> Result<(), OpError> {
     for edge in loops.iter().flatten() {
         if let Curve2::Circle { frame, radius } = &edge.pcurve {
             let centre = frame.origin();
-            let major = arc_major_radius(edge, &axis, centre, *radius, tol);
+            let major = circle_major_radius(edge, axis, centre, *radius, tol);
             if major.abs() <= tol.linear {
                 continue;
             }
-            if major > tol.linear && rho_range(edge, &axis).0 > tol.linear {
+            if major > tol.linear && rho_range(edge, axis).0 > tol.linear {
                 continue;
             }
             // A centre on the opposite side would sweep the unsupported
             // inner sheet. On the outer sheet an axis contact requires a pole.
-            let closes_at_end = major > tol.linear
-                && major <= *radius
-                && edge.range.length() < TAU - tol.angular
-                && {
-                    let root = real::acos(-major / radius);
-                    let at_pole = |p: Point2| {
-                        let rho = axis.rho(p);
-                        let v = real::atan2((p - centre).dot(&axis.along), rho - major);
-                        (v.abs() - root).abs() <= tol.angular
-                    };
-                    let mut on_axis = [edge.start, edge.end]
-                        .into_iter()
-                        .filter(|&p| axis.rho(p).abs() <= tol.linear);
-                    on_axis.next().is_some_and(at_pole) && on_axis.all(at_pole)
+            let closes_at_end = major > tol.linear && major <= *radius && {
+                let root = real::acos(-major / radius);
+                let at_pole = |p: Point2| {
+                    let rho = axis.rho(p);
+                    let v = real::atan2((p - centre).dot(&axis.along), rho - major);
+                    (v.abs() - root).abs() <= tol.angular
                 };
+                let mut on_axis = [edge.start, edge.end]
+                    .into_iter()
+                    .filter(|&p| axis.rho(p).abs() <= tol.linear);
+                on_axis.next().is_some_and(at_pole) && on_axis.all(at_pole)
+            };
             if !closes_at_end {
                 return Err(degenerate(Reason::Sweep(SweepReason::SpindleTorus)));
             }
         }
     }
-    Ok(axis)
+    Ok(())
 }
 
 /// The surface one edge sweeps about the axis, in the one frame convention
@@ -315,7 +359,7 @@ pub(super) fn swept_surface(
             };
             let centre = in_plane.origin();
             let origin = axis_point(axis.t(centre));
-            let major = arc_major_radius(edge, axis, centre, radius, tol);
+            let major = circle_major_radius(edge, axis, centre, radius, tol);
             if major.abs() <= tol.linear {
                 Ok((
                     Surface::Sphere {
@@ -388,7 +432,7 @@ fn apex_pcurve(surface: &Surface, axis: &Axis, v: f64) -> Curve2 {
 /// one edge both flat ends share, in a full turn nothing. A face closing
 /// at a vertex on the axis — a cone apex, a sphere or torus pole — holds a
 /// degenerate edge there in place of the rise, its pcurve the line at the
-/// singular `v`, one per face and each `Generated` from the vertex's
+/// singular `v`, one per boundary row and each `Generated` from the vertex's
 /// `Rise`; a full turn keeps the vertex for it. The surfaces of revolution share one frame: origin on the
 /// axis, `X` the radial into the profile's plane, so `u = 0` is the
 /// profile plane and every seam lies in it, `Z` the axis (`−axis` for a
@@ -410,6 +454,8 @@ fn apex_pcurve(surface: &Surface, axis: &Axis, v: f64) -> Curve2 {
 /// turn sweeps an annulus of two closed rises and has no `StartEdge`, and
 /// a void is [`SweepPart::Cavity`], named by its loop and the lowest
 /// segment index the consumer wrote in its chain.
+/// A circle tangent to the axis starts its loop at the touch point. Its
+/// partial turn has two boundary rows at the same pole vertex.
 ///
 /// Errors, the model untouched: [`OpError::Profile`] when
 /// `Profile::edges` refuses the sketch; [`OpError::Degenerate`] with
@@ -487,7 +533,7 @@ pub fn revolve(
     let full = (angle - TAU).abs() <= tol.angular;
     let angle = if full { TAU } else { angle };
     let (axis, in_plane) = axis_in_plane(&profile.plane, axis, tol)?;
-    let loops = profile.edges(tol)?;
+    let mut loops = profile.edges(tol)?;
     if let Some(edge) = elliptic(&loops) {
         return Err(degenerate(Reason::Sweep(SweepReason::EllipticRevolve {
             loop_index: edge.loop_index,
@@ -495,6 +541,8 @@ pub fn revolve(
         })));
     }
     let in_plane = orient(&loops, in_plane, tol)?;
+    seat_horn_circles(&mut loops, &profile.plane, &in_plane, tol)?;
+    check_circular_edges(&loops, &in_plane, tol)?;
 
     let plane = &profile.plane;
     let normal = plane.z().into_inner();
@@ -903,7 +951,11 @@ fn add_rings(
             // there holds a degenerate edge at it instead.
             if on_axis[li][j] {
                 let before = (j + n - 1) % n;
-                for (side, closes) in [before, j].into_iter().zip(closes_at(li, j)) {
+                // A one-edge loop uses the same side at both ends.
+                for ((side, at_start), closes) in [(before, false), (j, true)]
+                    .into_iter()
+                    .zip(closes_at(li, j))
+                {
                     if !closes {
                         continue;
                     }
@@ -917,7 +969,7 @@ fn add_rings(
                         },
                         role,
                     );
-                    apex.insert((li, side, side == j), slot);
+                    apex.insert((li, side, at_start), slot);
                 }
                 rises[li].push(None);
                 return Ok(None);

@@ -993,8 +993,7 @@ corpus_tests! {
     /// A path arc's terminal tangency closes at the horn pole.
     sweep_revolve_horn_arc_to_axis => run "sweep/revolve-horn-arc-to-axis";
     /// The half-turn of a tangent circle has one axis pole and two flat caps.
-    #[ignore = "the revolve refuses the tangent circle before building the horn half-turn"]
-    regression_revolve_horn_torus_half_turn => run "regression/revolve-horn-torus-half-turn";
+    sweep_revolve_horn_torus_half_turn => run "sweep/revolve-horn-torus-half-turn";
     /// The interior tangency names the second segment of the first loop.
     #[ignore = "the spindle refusal gives neither the loop nor the segment"]
     regression_revolve_horn_arc_touches_axis_inside => arc_touches_axis "regression/revolve-horn-arc-touches-axis-inside";

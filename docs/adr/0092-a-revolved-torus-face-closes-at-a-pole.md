@@ -76,3 +76,11 @@ The writer leaves the degenerate coedge out of the `EDGE_LOOP`. The
 reader recovers it at the torus pole between the meridian coedges using
 the same boundary walk as for a sphere. The regular-band check still
 holds the rebuilt trim to the outer sheet.
+
+A tangent circle gives the horn face two degenerate coedges at the same
+vertex. Their rows differ by a period in the meridian parameter. The
+reader determines which side of each row contains the face using the
+incident pcurve's unwrapped parameter. When the horn is exported as a
+B-spline, an edge that matches the surface boundary's rational basis
+and control points has a line pcurve. The two paths approach each row
+with the same spatial tangent, which cannot determine their azimuths.

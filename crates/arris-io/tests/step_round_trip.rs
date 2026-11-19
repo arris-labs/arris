@@ -376,3 +376,13 @@ fn the_horn_and_spindle_blends_read_back_as_themselves() {
         reads_back_as_itself(&chain.model, body, &probes).unwrap_or_else(|e| panic!("{name}: {e}"));
     }
 }
+
+/// STEP omits both collapsed rows of the horn side. The reader reconstructs
+/// them a period apart in the torus domain, on the same vertex in space.
+#[test]
+fn a_horn_half_turn_reads_back_with_both_pole_rows() {
+    let dir = fixtures::corpus_root().join("sweep/revolve-horn-torus-half-turn");
+    let chain = corpus::chain(&dir, "default").unwrap();
+    let body = chain.result().unwrap();
+    reads_back_as_itself(&chain.model, body, &[]).unwrap();
+}

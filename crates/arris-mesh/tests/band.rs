@@ -10,6 +10,7 @@ use arris_geom::Surface;
 use arris_math::{Point3, Vec3, real};
 use arris_mesh::MeshRequest;
 use arris_topo::Orientation;
+use arris_topo::entity::EdgeGeometry;
 
 const CHORD: f64 = 1e-3;
 
@@ -20,12 +21,13 @@ const BLENDS: &[&str] = &[
     "blend/spindle-blend-cylinder-fuse",
 ];
 
-/// Whether each revolved torus face reaches the axis.
-const REVOLVES: &[(&str, bool)] = &[
-    ("sweep/revolve-spindle-arc-from-axis", true),
-    ("sweep/revolve-spindle-arc-to-axis", true),
-    ("sweep/revolve-spindle-arc-clear-of-axis", false),
-    ("sweep/revolve-horn-arc-to-axis", true),
+/// How many boundary rows of each revolved torus face reach the axis.
+const REVOLVES: &[(&str, usize)] = &[
+    ("sweep/revolve-spindle-arc-from-axis", 1),
+    ("sweep/revolve-spindle-arc-to-axis", 1),
+    ("sweep/revolve-spindle-arc-clear-of-axis", 0),
+    ("sweep/revolve-horn-arc-to-axis", 1),
+    ("sweep/revolve-horn-torus-half-turn", 2),
 ];
 
 #[test]
@@ -84,7 +86,7 @@ fn the_blends_of_a_horn_and_a_spindle_torus_mesh_closed_with_normals_off_the_axi
 
 #[test]
 fn the_revolved_torus_fixtures_mesh_closed_to_their_volume_with_pole_normals() {
-    for &(name, has_pole) in REVOLVES {
+    for &(name, pole_rows) in REVOLVES {
         let dir = fixtures::corpus_root().join(name);
         let fixture = fixtures::load(&dir).unwrap();
         for variant in fixture.recipe.variant_names() {
@@ -118,6 +120,7 @@ fn the_revolved_torus_fixtures_mesh_closed_to_their_volume_with_pole_normals() {
                 };
                 tori += 1;
                 let range = mesh.faces().iter().find(|r| r.face == face_use.id).unwrap();
+                let mut previous_pole = None;
                 for coedge in face.loops().iter().flat_map(|l| l.coedges()) {
                     let edge = m.edge(coedge.edge()).unwrap();
                     if !edge.is_degenerate() {
@@ -127,11 +130,26 @@ fn the_revolved_torus_fixtures_mesh_closed_to_their_volume_with_pole_normals() {
                     let &[pole] = mesh.edge_polyline(coedge.edge()).unwrap() else {
                         panic!("{label}: the pole must have one shared index");
                     };
+                    if pole_rows == 2 {
+                        assert_eq!(
+                            pole,
+                            *previous_pole.get_or_insert(pole),
+                            "{label}: the horn rows split the pole"
+                        );
+                    }
+                    let EdgeGeometry::Degenerate { range: edge_range } = edge.geometry() else {
+                        unreachable!();
+                    };
+                    let row = m.curve2(coedge.pcurve()).unwrap().point(edge_range.lo()).y;
                     let fan_corners = corners.triangles()[range.triangles.clone()]
                         .iter()
                         .flatten()
                         .map(|&i| i as usize)
-                        .filter(|&i| corners.positions()[i] == pole);
+                        .filter(|&i| {
+                            corners.positions()[i] == pole
+                                && (corners.uvs()[i][1] - row).abs()
+                                    <= m.precision().parametric_tolerance
+                        });
                     let mut fan_triangles = 0;
                     for i in fan_corners {
                         fan_triangles += 1;
@@ -156,7 +174,7 @@ fn the_revolved_torus_fixtures_mesh_closed_to_their_volume_with_pole_normals() {
                 }
             }
             assert_eq!(tori, 1, "{label}: expected one torus face");
-            assert_eq!(poles, usize::from(has_pole), "{label}: wrong pole count");
+            assert_eq!(poles, pole_rows, "{label}: wrong number of pole rows");
         }
     }
 }

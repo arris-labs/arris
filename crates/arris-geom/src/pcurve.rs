@@ -11,10 +11,12 @@ mod revolution;
 use arris_math::real;
 use core::f64::consts::FRAC_PI_2;
 
-use arris_math::{Interval, Meter, Point2, Tolerance};
+use arris_math::{Interval, Meter, Point2, Tolerance, Vec2};
 
 use crate::project::ellipse_distance;
-use crate::{Curve, Curve2, GeomError, GeomKind, NurbsCurve2, PcurveFault, Surface, fit_curve2};
+use crate::{
+    Curve, Curve2, GeomError, GeomKind, NurbsCurve2, NurbsSurface, PcurveFault, Surface, fit_curve2,
+};
 
 use fitted::fitted_on;
 pub(crate) use plane::principal_axes;
@@ -120,11 +122,13 @@ fn degenerate(kind: GeomKind, reason: PcurveFault) -> GeomError {
 /// does beside a pole or an apex, and a curve passing one fits from the
 /// band below out.
 ///
-/// On a **NURBS surface** every curve is fitted, the distance that decides
-/// it is on the surface is [`Surface::project`]'s global one, and the
-/// fitted arm's projections start from the unwrapping table's own
-/// neighbour, falling back to the global search where that lands farther
-/// than the band from the curve. A direction the surface closes in
+/// On a **NURBS surface**, a boundary meridian between coincident pole rows
+/// a period apart has a line pcurve when the curve shares the boundary's
+/// rational basis and its control points agree within `tol.linear`.
+/// For a fitted curve the on-surface test uses [`Surface::project`]'s
+/// global distance. The fitter's projections start from the unwrapping
+/// table's own neighbour, falling back to the global search where that
+/// lands farther than the band from the curve. A direction the surface closes in
 /// ([`crate::NurbsSurface::closure`]: periodic knots, or a clamped
 /// direction whose ends are one row) is unwrapped by its closure as a
 /// turn is on the analytic surfaces, so a pcurve crossing the seam is
@@ -276,6 +280,9 @@ pub fn pcurve_on(
             )
         }
         Surface::Nurbs(nurbs) => {
+            if let Some(boundary) = boundary_between_pole_rows(curve, range, nurbs, tol) {
+                return Ok(boundary);
+            }
             // The distance is the global projection's: a NURBS surface has
             // no closed form, and a local one could call a curve on a fold
             // of the surface off it.
@@ -291,6 +298,48 @@ pub fn pcurve_on(
             fitted_on(curve, range, surface, tol, meter)
         }
     }
+}
+
+/// A B-spline horn can have the same pole on both ends of its meridian.
+/// Its tangent at the pole has no azimuth, so projection of that tangent
+/// cannot find the boundary's free coordinate. Identify a boundary
+/// meridian by its rational basis and control points instead.
+fn boundary_between_pole_rows(
+    curve: &Curve,
+    range: Interval,
+    surface: &NurbsSurface,
+    tol: Tolerance,
+) -> Option<Curve2> {
+    let Curve::Nurbs(curve) = curve else {
+        return None;
+    };
+    let domain = surface.domain();
+    let rows = surface.collapsed_rows();
+    let [(dir, _, first), (other, _, last)] = rows.as_slice() else {
+        return None;
+    };
+    let fixed = 1 - *dir;
+    if dir != other
+        || range != domain[*dir]
+        || surface.closure()[*dir].is_none()
+        || (first - last).norm() > tol.linear
+    {
+        return None;
+    }
+    for at in [domain[fixed].lo(), domain[fixed].hi()] {
+        let boundary = surface.isocurve(fixed, at).ok()?;
+        if curve.same_parametrisation(&boundary, tol) {
+            let mut origin = Point2::origin();
+            origin[fixed] = at;
+            let direction = if fixed == 0 {
+                Vec2::y_axis()
+            } else {
+                Vec2::x_axis()
+            };
+            return Some(Curve2::Line { origin, direction });
+        }
+    }
+    None
 }
 
 /// [`GeomError::NotOnSurface`] at the first of [`PCURVE_SAMPLES`]

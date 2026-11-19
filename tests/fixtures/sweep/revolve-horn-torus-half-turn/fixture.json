@@ -3,8 +3,8 @@
   "steps": [
     {
       "name": "circle", "op": "profile",
-      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
-      "outer": {"circle": {"center": [1, 0], "radius": 1}}
+      "plane": {"origin": [0, 0, 0], "x": [-1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"circle": {"center": [-1, 0], "radius": 1}}
     },
     {"name": "result", "op": "revolve", "profile": "circle", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 180}
   ],

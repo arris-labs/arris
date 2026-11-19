@@ -1250,6 +1250,43 @@ fn revolve_refuses_the_inner_sheet_and_a_crossing_circle() {
     );
 }
 
+/// The input circle's seam is two radii from the axis. The half turn
+/// seats both meridians on the pole, while a full turn would pinch there.
+#[test]
+fn a_tangent_circle_revolves_to_the_pole_in_a_partial_turn() {
+    let profile = Profile {
+        plane: Frame::world(),
+        outer: ProfileLoop::Circle {
+            center: Point2::new(1.0, 0.0),
+            radius: 1.0,
+        },
+        holes: Vec::new(),
+    };
+    let axis = Axis::new(Point3::origin(), Vec3::y()).unwrap();
+    let mut m = Model::default();
+    let (body, _) = revolve(&mut m, &profile, axis, PI).unwrap();
+    let report = check(&m, body, Level::Full);
+    assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+    let vertices = m.vertices(body).unwrap();
+    assert_eq!(vertices.len(), 1);
+    assert_eq!(m.vertex(vertices[0].id).unwrap().point(), Point3::origin());
+    let edges = m.edges(body).unwrap();
+    assert_eq!(
+        edges
+            .iter()
+            .filter(|e| m.edge(e.id).unwrap().is_degenerate())
+            .count(),
+        2
+    );
+    assert!(matches!(
+        revolve(&mut m, &profile, axis, TAU),
+        Err(OpError::Degenerate {
+            reason: Reason::Input(InputReason::NonManifold),
+            ..
+        })
+    ));
+}
+
 /// A revolve refuses an elliptic segment by name (ADR-0014): the surface
 /// it would sweep has no variant. The reason names the first such segment
 /// in the *consumer's* order whichever way the loop had to be walked, and

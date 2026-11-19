@@ -1438,13 +1438,15 @@ partial turn the one edge both flat ends share, in a full turn nothing,
 so a rectangle with a side on the axis turns into a solid cylinder of
 three faces. A face closing at a cone apex or a sphere or torus pole
 holds a degenerate edge there in place of the rise, its
-pcurve the line at the singular `v` over the rise's range, one per face
-closing there, and a full turn keeps the vertex for it: the first
+pcurve the line at the singular `v` over the rise's range, one per
+boundary row, and a full turn keeps the vertex for it: the first
 degenerate edges an operation makes, which `Builder::assemble` takes used
-once and the Euler line leaves out. A full turn touching the axis at a
-vertex with no segment along it is `InputReason::NonManifold`, since the
-surface would touch itself there; a partial turn's flat ends make that
-vertex manifold. Every other segment sweeps one face: a segment
+once and the Euler line leaves out. A circle tangent to the axis seats
+its seam at the touch point. The torus face of a partial turn has two
+boundary rows a period apart at that one pole vertex. A full turn touching
+the axis at a vertex with no segment along it is `InputReason::NonManifold`,
+since the surface would touch itself there. A partial turn's flat ends make
+that vertex manifold. Every other segment sweeps one face: a segment
 parallel to the axis a cylinder, perpendicular a plane (an annulus, or a
 sector of one), oblique a cone with its apex on the axis; an arc centred
 on the axis a sphere, elsewhere a torus of `R` its centre's distance and

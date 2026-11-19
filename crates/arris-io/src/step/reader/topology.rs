@@ -901,9 +901,17 @@ impl Junctions<'_> {
             return Ok((if movable { by } else { Vec2::zeros() }, None));
         };
         let (fixed, free) = (row.fixed, 1 - row.fixed);
-        let side = [prev.midpoint(), next.midpoint()]
-            .iter()
-            .map(|m| m[fixed] - row.value)
+        // Unwrap the singular row to the endpoint of each incident use.
+        // A horn's meridian has opposite interior sides at the two
+        // copies of its pole a period apart.
+        let side = [(prev.midpoint(), end), (next.midpoint(), start)]
+            .into_iter()
+            .map(|(mid, at)| {
+                let value = period[fixed].map_or(row.value, |p| {
+                    row.value + p * ((at[fixed] - row.value) / p).round()
+                });
+                mid[fixed] - value
+            })
             .find(|&x| x != 0.0)
             .ok_or(Jump::Open(vertex))?
             .signum();

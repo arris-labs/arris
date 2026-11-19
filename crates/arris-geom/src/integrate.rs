@@ -13,9 +13,8 @@ use crate::Surface;
 use crate::region2::Piece;
 
 /// Points per Gauss–Legendre interval. Sixteen integrate a polynomial of
-/// degree 31 exactly and a full turn of a trigonometric integrand (a
-/// conic's `cos t`, `sin t` against a quadric's parametrisation) to below
-/// 1e-20 relative, far under any model tolerance. What sixteen points do
+/// degree 31 exactly and one full oscillation of a sine or cosine to
+/// below 1e-20 relative, far under any model tolerance. What sixteen points do
 /// not resolve is a kink or a knot inside one interval, which is why a
 /// conic piece is split at quarter turns and a NURBS piece at its knots
 /// before quadrature.
@@ -180,8 +179,11 @@ impl Grid {
 /// pieces change and, at a knot of multiplicity its degree, its
 /// derivatives jump — repeated by its closure where it closes — and for
 /// its boundary pieces to be split where they cross its knots in `u` or
-/// `v`, where the boundary integrand kinks for the same reason. An
-/// elliptic cylinder asks for a sixteenth of a turn: its area element
+/// `v`, where the boundary integrand kinks for the same reason. A torus
+/// also splits the boundary at quarter turns in `v`. A full meridian is
+/// a line in the parameter plane, and one panel over it leaves higher
+/// moments unresolved. An elliptic cylinder asks for a sixteenth of a
+/// turn because its area element
 /// `√(a² sin²u + b² cos²u)` is no trigonometric polynomial, and has
 /// complex singularities `atanh(b / a)` off the real axis at `u = 0` and
 /// `π`, which the quadrature resolves only when they sit at an interval's
@@ -211,10 +213,12 @@ pub fn surface_grid(surface: &Surface) -> Grid {
     };
     match surface {
         Surface::Plane { .. } => Grid::NONE,
-        Surface::Cylinder { .. }
-        | Surface::Cone { .. }
-        | Surface::Sphere { .. }
-        | Surface::Torus { .. } => turn(4),
+        Surface::Cylinder { .. } | Surface::Cone { .. } | Surface::Sphere { .. } => turn(4),
+        Surface::Torus { .. } => {
+            let mut grid = turn(4);
+            grid.outer[1] = grid.inner.clone();
+            grid
+        }
         Surface::EllipticCylinder { .. } => turn(16),
         Surface::Nurbs(s) => {
             let closure = s.closure();
