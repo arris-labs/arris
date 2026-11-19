@@ -92,7 +92,10 @@ miss); reporting after one step and waiting for another `/work` is a bug.
 1. Read the plan; for each unchecked step note its tier: its grade, or
    the tier it names (`**[1, tier 3]**`). A **[CI]** step stops the
    conductor before it starts: its push is the human's.
-2. For each step in order, start one fresh subagent on the step's tier
+2. For each step in order, include a short reading list in the handoff:
+   applicable repository rules, relevant ADRs and design sections, and
+   source entry points. The step agent follows references as needed.
+   Start one fresh subagent on the step's tier
    (`.agents/tiers.md` says how in this harness), and wait for its
    hand-back: the harness delivers it, never a poll of its output. Its prompt: "Work step N of `docs/plans/<slug>.md` in this
    checkout by *Do* in `.agents/skills/work/SKILL.md`, that one step only,

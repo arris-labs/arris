@@ -29,12 +29,15 @@ If you cloned a fork to submit a pull request, use this workflow.
    branch to your fork and open a pull request against upstream `main`
    using the [template](.github/pull_request_template.md).
 
-Read in this order: `SEED.md` (charter, competition, stack, the decisions
+At startup, a top-level agent (including a plan conductor) reads in this
+order: `SEED.md` (charter, competition, stack, the decisions
 taken at kickoff), `docs/ARCHITECTURE.md`, `docs/DATA-MODEL.md`,
 `docs/ROADMAP.md`, `docs/adr/`, then the rules in `.agents/rules/*.md`
 (git, docs lifecycle, kernel) — Claude Code loads them automatically via
 `.claude/rules`; any other agent reads them here. `GLOSSARY.md` holds the
-project's words, one meaning each: use them as written. Skills live in
+project's words, one meaning each: use them as written. Delegated plan
+steps use the conductor's reading list and follow references as needed.
+Skills live in
 `.agents/skills/` (same symlink arrangement): the idea → plan → work →
 retire → close-cycle → release pipeline, `contribute` for preparing a fork
 PR, `review-pr` for maintainer review and landing, `refactor-review`
