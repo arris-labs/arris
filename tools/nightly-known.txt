@@ -51,3 +51,34 @@ cusp-corner-complement-fillets-no-closed-form-torus-pair arris-ops::blend_prop::
 extrema-surfaces-and-neighbours-fail-on-nurbs-grids arris-geom::extrema_surfaces::nurbs_heights assert the grid's maximum at
 # A PANIC at the test's own assert (kernel rule: no panics on geometry); prioritise.
 torus-horn-and-spindle-section-test-panics arris-geom::trace_torus::random_horn_and_spindle_sections_keep_their_band panic crates/arris-geom/tests/trace_torus.rs:563
+
+# Added 2026-11-19 from the red nightlies of 11-13 to 11-19 (runs 43401805679
+# to 44504517451): signatures of open findings that the lines above did not match.
+# The other halves of the split side's family: a fillet's L5 or S5, a chamfer's E8 or L5, on either side.
+split-side-of-a-body-is-not-an-operand-clean-at-full arris-ops::split_prop::a_side_is_an_operand_of_every_operation assert fillet of the negative side: not clean at Full L
+split-side-of-a-body-is-not-an-operand-clean-at-full arris-ops::split_prop::a_side_is_an_operand_of_every_operation assert fillet of the positive side: not clean at Full L
+split-side-of-a-body-is-not-an-operand-clean-at-full arris-ops::split_prop::a_side_is_an_operand_of_every_operation assert chamfer of the negative side: not clean at Full E
+split-side-of-a-body-is-not-an-operand-clean-at-full arris-ops::split_prop::a_side_is_an_operand_of_every_operation assert chamfer of the positive side: not clean at Full E
+split-side-of-a-body-is-not-an-operand-clean-at-full arris-ops::split_prop::a_side_is_an_operand_of_every_operation assert chamfer of the positive side: not clean at Full L
+# cut_many against the chain of single cuts: the volume by 1e-8, or two more faces and loops.
+cut-many-differs-from-the-chain-of-cuts arris-ops::multi_tool_prop::cut_many_is_the_chain_of_cuts assert cut_many against the chain: volume
+cut-many-differs-from-the-chain-of-cuts arris-ops::multi_tool_prop::cut_many_is_the_chain_of_cuts assert cut_many against the chain: counts
+# A reversed plane's sheet differs from the body's section by about 1e-8 in area.
+split-sides-differ-from-the-body-by-1e-8 arris-ops::split_prop::a_reversed_plane_turns_the_sheet assert area
+# The grid's maximum, and a random NURBS pair's closest pair, are not reported.
+extrema-surfaces-and-neighbours-fail-on-nurbs-grids arris-geom::extrema_surfaces::nurbs_feet assert the grid's maximum at
+extrema-surfaces-and-neighbours-fail-on-nurbs-grids arris-geom::extrema_surface::random_nurbs_pairs assert CurveSurfacePair { t
+# A torus or NURBS against a cone, section refused as degenerate.
+nurbs-trace-and-section-properties arris-geom::trace_torus::random_torus_and_cone_pairs_trace assert refused: the section of the torus surface and the cone surface is degenerate: turning points of the section that cannot be told apart
+nurbs-trace-and-section-properties arris-geom::trace_nurbs::random_nurbs_and_cone_pairs_trace assert refused: the section of the NURBS surface and the cone surface is degenerate: turning points of the section that cannot be told apart
+# A random G1 sweep's faces cross away from their shared edges.
+sweep-props-leave-faces-crossing-away-from-their-edges arris-ops::sweep_prop::a_swept_body_round_trips_through_step checker S5
+sweep-props-leave-faces-crossing-away-from-their-edges arris-ops::sweep_prop::the_checker_is_green_or_the_sweep_is_a_named_refusal checker S5
+# The other pairs' fit runs past the cap; a sweep shard ended by the job's SIGTERM.
+nightly-tests-time-out-at-four-hours arris-geom::intersect_surfaces::every_other_pair_is_unsupported timeout -
+nightly-tests-time-out-at-four-hours arris-ops::sweep_prop::the_checker_is_green_or_the_sweep_is_a_named_refusal assert process aborted with signal
+# A turned end's fillet edge self-intersects. The key `E` is weak: it covers any E-row
+# checker assert of this test.
+turned-end-fillet-edge-self-intersects arris-ops::blend_prop::turned::ends_fillet_as_their_sections assert E
+# The line where two random planes meet starts off the first plane's frame by more than EXACT.
+two-random-planes-line-origin-off-the-frame arris-geom::intersect_surfaces::two_random_planes_meet_along_a_line_on_both assert assertion failed: (origin - a.frame().unwrap().origin()).dot(direction).abs() <= EXACT at crates/arris-geom/tests/intersect_surfaces.rs

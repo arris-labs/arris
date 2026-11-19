@@ -469,7 +469,7 @@ above when it wants a fix; the block moves or is deleted then.
 
 ### nightly-tests-time-out-at-four-hours
 
-- What: two `arris-ops::sweep_prop` tests, `a_swept_body_round_trips_through_step` and `the_checker_is_green_or_the_sweep_is_a_named_refusal` (shard 3 of each), run past nextest's per-test cap (2 h in the nightly profile, 4 h under the default) inside their first chunk of 8 cases, which the budget cannot stop, and are reported `TIMEOUT`, so their remaining shards report nothing.
+- What: two `arris-ops::sweep_prop` tests, `a_swept_body_round_trips_through_step` and `the_checker_is_green_or_the_sweep_is_a_named_refusal` (shard 3 of each), run past nextest's per-test cap (2 h in the nightly profile, 4 h under the default) inside their first chunk of 8 cases, which the budget cannot stop, and are reported `TIMEOUT`, so their remaining shards report nothing. `arris-geom::intersect_surfaces::every_other_pair_is_unsupported` times out the same way (11-14, 11-17, 11-19), and a sweep shard ended by the job's own limit reports `process aborted with signal 15 (SIGTERM)` (11-16).
 - Where: `crates/arris-ops/tests/sweep_prop.rs`, job `properties (blend-standoff+sweep-bodies)` in `.github/workflows/nightly.yml`.
 - Seen: run 42724063416 (11-10, 2 h cap, `TIMEOUT 7200 s`) and run 42522745189 (11-08, one of them at 4 h); 5000 cases.
 - Reproduce: `gh api repos/arris-labs/arris/actions/jobs/<id>/logs | grep TIMEOUT` on that job; locally `cargo nextest run -p arris-ops --test sweep_prop -E 'test(/a_swept_body_round_trips_through_step::shard_3/)'` at the night's seed and cases.
@@ -496,6 +496,25 @@ above when it wants a fix; the block moves or is deleted then.
 - Evidence: the triage key is `panic crates/arris-geom/tests/trace_torus.rs:563`; the failure message names the cell `(i, j)`, the torus and the other surface; the distance `d` is not recorded here. Not shrunk.
 - State: raw.
 - The fix is: shrink the case to a `regression/` fixture, then decide whether the trace misses a branch of the section near the horn or spindle (a kernel defect) or the band test's bound is wrong.
+
+### turned-end-fillet-edge-self-intersects
+
+- What: `turned::ends_fillet_as_their_sections` fillets a turned end whose output edge fails the checker: `E8 e55: self-intersects at t = 0.9888273288845362 and t = 0.9888273314615901`, two parameters 2.6e-9 apart near the edge's end.
+- Where: `crates/arris-ops/tests/blend_prop/`, shard 2 of 4 (job `properties (blend-rest)`), at the harness's `prop.rs:609`; no panic in the kernel.
+- Seen: run 44504517451 (11-19), commit `85a71a62`, seed `089e3699fe7f6a61be3e4b84016bbd5e19699ac5f2d61dd718ac968d5ca17a31`, 5000 cases, chunk 36.
+- Reproduce: `ARRIS_PROPTEST_SEED=089e3699fe7f6a61be3e4b84016bbd5e19699ac5f2d61dd718ac968d5ca17a31 ARRIS_PROPTEST_CHUNK=36 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-ops --test blend_prop -E 'test(/turned::ends_fillet_as_their_sections::shard_2/)'`.
+- Evidence: the failure prints the minimal `EndCase`; not read further. Once in seven nights; the blend commits of 11-17 (`c3ac1729`, `60ed9a19`) came before it.
+- State: raw.
+- The fix is: shrink the `EndCase` to a `regression/` fixture, then decide whether the self-intersection is a real fold near the edge's end or the E8 sampling reads two near points as a crossing.
+### two-random-planes-line-origin-off-the-frame
+
+- What: `two_random_planes_meet_along_a_line_on_both` fails its own `assert!((origin - a.frame().unwrap().origin()).dot(direction).abs() <= EXACT)`: the line where two planes meet does not start at the foot of the first plane's origin within `EXACT`.
+- Where: `crates/arris-geom/tests/intersect_surfaces.rs:690`, shard 0 of 1 (job `properties (boolean-crossing+workspace-rest)`), at the harness's `prop.rs:607`.
+- Seen: run 44282488347 (11-18), commit `4596f5fd`, seed `43db3cb95c2941e29ec982f2ece5013251a48de9e99763392a364919f1f2145e`, 5000 cases, chunk 214.
+- Reproduce: `ARRIS_PROPTEST_SEED=43db3cb95c2941e29ec982f2ece5013251a48de9e99763392a364919f1f2145e ARRIS_PROPTEST_CHUNK=214 ARRIS_PROPTEST_CASES=5000 cargo nextest run -p arris-geom --test intersect_surfaces -E 'test(/two_random_planes_meet_along_a_line_on_both/)'`.
+- Evidence: once in seven nights; no commit since 11-15 touches the surface intersections. The measured offset is not printed. Not shrunk.
+- State: raw.
+- The fix is: replay the chunk and read the offset: a nearly parallel pair whose foot is ill-conditioned (the bound wants scaling) or a plane–plane line that starts at the wrong point.
 
 ## Rejected
 
