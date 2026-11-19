@@ -983,8 +983,7 @@ corpus_tests! {
     /// The arc ends on the axis, including a circle almost centred on it.
     sweep_revolve_spindle_arc_to_axis => run "sweep/revolve-spindle-arc-to-axis";
     /// The arc's swept band stays away from the axis that its circle crosses.
-    #[ignore = "the revolve refuses a spindle circle even when the arc stays clear of the axis"]
-    regression_revolve_spindle_arc_clear_of_axis => run "regression/revolve-spindle-arc-clear-of-axis";
+    sweep_revolve_spindle_arc_clear_of_axis => run "sweep/revolve-spindle-arc-clear-of-axis";
     /// The half-turn of a tangent circle has one axis pole and two flat caps.
     #[ignore = "the revolve refuses the tangent circle before building the horn half-turn"]
     regression_revolve_horn_torus_half_turn => run "regression/revolve-horn-torus-half-turn";

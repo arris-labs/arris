@@ -122,8 +122,7 @@ fn fold_ratio(
 /// the path (`1 − κ · reach`), the profile has folded through the
 /// path's centre of curvature. The span is sampled and the intervals
 /// near the limit halved while the ratio still moves; a fold narrower
-/// than the last interval is left to the checker. Revolve's
-/// `ProfileCrossesAxis` and `SpindleTorus` are the same test on an arc.
+/// than the last interval is left to the checker.
 pub(super) fn folds(
     field: &FrameField,
     outer: &[ProfileEdge],

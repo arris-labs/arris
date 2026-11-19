@@ -82,7 +82,7 @@ design; **[3]** unproven, robustness or a bound established here.
   in `measure`. The fixtures move to `sweep/`. A hand-built face whose
   non-degenerate pcurve touches `v*` still reports `OffTorusBand`
   (`crates/arris-check/tests/`).
-- [ ] Step 4 **[1]** — `orient` drops the circle test. The clear-of-axis arc
+- [x] Step 4 **[1]** — `orient` drops the circle test. The clear-of-axis arc
   builds on the outer sheet, and its fixture moves to `sweep/`.
 - [ ] Step 5 **[2]** — Property (`crates/arris-ops/tests/revolve_prop.rs`):
   random arcs on circles with `R ≤ r`, from, to or clear of the axis, revolved
@@ -134,8 +134,8 @@ design; **[3]** unproven, robustness or a bound established here.
   `ArcTouchesAxis`.
 - `docs/ROADMAP.md` §C12: the revolve line **Done** with its numbers;
   `.agents/skills/inspect/SKILL.md:119`: the refusal's new name.
-- `CHANGELOG.md` `Unreleased`: what builds now (the `/retire-plan` commit);
-  the `Breaking` bullet is step 10's.
+- `CHANGELOG.md` `Unreleased`: consolidate what builds now in the
+  `/retire-plan` commit. The `Breaking` bullet is step 10's.
 - `AGENTS.md` current state: the revolve line, and the next step of C12.
 
 ## Open questions
@@ -154,6 +154,9 @@ Decided here by the agent, recorded:
   coedges to verify a pole endpoint before allowing it in the `v` hull.
   The extent alone cannot establish a shared pole vertex or distinguish
   an interior touch at the same `v`.
+- Settled in step 4: the signed centre-distance guard still refuses the
+  unsupported inner sheet. For an arc on the outer sheet, the arc's actual
+  radial extent determines whether it can build clear of the axis.
 - ⚠ OPEN: in step 7, diagnose Open CASCADE's own STEP of
   `revolve-spindle-arc-to-axis`. The direct build is valid and matches the
   closed forms. Its self-read loses the pole and trim, reporting zero

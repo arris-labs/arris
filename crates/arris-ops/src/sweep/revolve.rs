@@ -147,8 +147,8 @@ fn elliptic(loops: &[Vec<ProfileEdge>]) -> Option<&ProfileEdge> {
 /// `tol.linear` of the axis — a point that near is *on* it —
 /// ([`SweepReason::ProfileCrossesAxis`] for points beyond the tolerance on
 /// both sides, [`InputReason::ZeroThickness`] for a profile within it
-/// everywhere). An off-centre circle that reaches the axis is admitted
-/// when its arc meets the axis at an endpoint.
+/// everywhere). On the outer sheet of a torus, an arc may stay clear
+/// of the axis or meet it at a pole at an endpoint.
 pub(super) fn orient(
     loops: &[Vec<ProfileEdge>],
     mut axis: AxisInPlane,
@@ -179,9 +179,14 @@ pub(super) fn orient(
         if let Curve2::Circle { frame, radius } = &edge.pcurve {
             let centre = frame.origin();
             let major = axis.rho(centre);
-            if major.abs() <= tol.linear || major - radius > tol.linear {
+            if major.abs() <= tol.linear {
                 continue;
             }
+            if major > tol.linear && rho_range(edge, &axis).0 > tol.linear {
+                continue;
+            }
+            // A centre on the opposite side would sweep the unsupported
+            // inner sheet. On the outer sheet an axis contact requires a pole.
             let closes_at_end = major > tol.linear
                 && major <= *radius
                 && edge.range.length() < TAU - tol.angular
@@ -355,7 +360,7 @@ fn apex_pcurve(surface: &Surface, axis: &Axis, v: f64) -> Curve2 {
 /// turn and not made in a full turn — and a line segment with both ends
 /// on it lies *along* it and sweeps no face: in a partial turn it is the
 /// one edge both flat ends share, in a full turn nothing. A face closing
-/// at a vertex on the axis — a cone's apex, a sphere's pole — holds a
+/// at a vertex on the axis — a cone apex, a sphere or torus pole — holds a
 /// degenerate edge there in place of the rise, its pcurve the line at the
 /// singular `v`, one per face and each `Generated` from the vertex's
 /// `Rise`; a full turn keeps the vertex for it. The surfaces of revolution share one frame: origin on the
@@ -391,8 +396,9 @@ fn apex_pcurve(surface: &Surface, axis: &Axis, v: f64) -> Curve2 {
 /// `default_tolerance` of the axis everywhere,
 /// [`InputReason::NonManifold`] when a full turn's profile touches the axis at
 /// a vertex with no segment along it, where the swept surface would touch
-/// itself, [`SweepReason::SpindleTorus`] when an off-centre circle reaches
-/// the axis without its arc closing at a pole, and [`SweepReason::EllipticRevolve`]
+/// itself, [`SweepReason::SpindleTorus`] when an arc would sweep the inner
+/// sheet of a spindle torus or reach its revolve axis away from a torus pole
+/// at an endpoint, and [`SweepReason::EllipticRevolve`]
 /// naming the first elliptic segment of the sketch, whose swept surface
 /// has no variant (ADR-0014).
 ///

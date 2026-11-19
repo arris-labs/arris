@@ -204,6 +204,7 @@ sweep/revolve-notch-to-axis: 40
 sweep/revolve-onto-axis: 20
 sweep/revolve-quarter: 24
 sweep/revolve-ring: 5
+sweep/revolve-spindle-arc-clear-of-axis: 15
 sweep/revolve-spindle-arc-from-axis: 15
 sweep/revolve-spindle-arc-to-axis: 15
 sweep/revolve-tube: 20

@@ -1192,12 +1192,11 @@ fn ring_recipe() -> Recipe {
     )
 }
 
-/// An arc that stays clear of the axis while its circle crosses it would
-/// sweep a spindle torus, which the data model does not hold: refused by
-/// name, the model untouched. A whole circle crossing the axis is the
-/// profile crossing it, refused as that.
+/// An arc whose centre lies across the axis would sweep the unsupported
+/// inner sheet of a spindle torus. A circle crossing the axis is refused
+/// separately. Both refusals leave the model untouched.
 #[test]
-fn an_arc_whose_circle_crosses_the_axis_is_a_spindle_torus() {
+fn revolve_refuses_the_inner_sheet_and_a_crossing_circle() {
     let z = Axis::z_at(Point3::origin());
     let p = |u, v| Point2::new(u, v);
     // From (2, −1) through (2.2, 0) to (2, 1): radius 2.6 about (−0.4, 0).

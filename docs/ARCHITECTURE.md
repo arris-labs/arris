@@ -1422,9 +1422,10 @@ copy rotated by `angle` — or a full turn with seams when `angle` is within
 `NotPositive` at or below zero). The profile lies wholly on one side of
 the axis (`SweepReason::ProfileCrossesAxis` across it, `ZeroThickness` within
 `default_tolerance` of it everywhere). An arc on an off-centre circle
-that reaches the axis closes at a torus pole if the arc meets the axis
-at its endpoint (ADR-0092). Other arcs on such circles return
-`SweepReason::SpindleTorus`. An
+can sweep the outer sheet of a spindle or horn torus. An arc clear of
+the axis sweeps a regular-band face, and an arc ending at the axis closes
+at a torus pole (ADR-0092). An arc sweeping the inner sheet or reaching
+the axis away from a pole at its endpoint returns `SweepReason::SpindleTorus`. An
 elliptic segment or a full-ellipse loop is `SweepReason::EllipticRevolve`
 naming the first of them in the sketch's own order, the surface it would
 sweep having no variant (ADR-0014); an ellipse whose radii agree within

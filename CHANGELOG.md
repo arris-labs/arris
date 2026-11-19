@@ -8,6 +8,9 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- `revolve` builds a torus face from an arc that stays clear of the axis
+  on the outer sheet, even when its circle reaches or crosses the axis.
+
 - Solids that meet along a shared edge can fuse into touching lumps.
   Each lump keeps its own copy of the contact edge and endpoints, and
   provenance records every copy. A shared edge within one lump still
