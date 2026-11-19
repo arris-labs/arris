@@ -20,7 +20,9 @@ use arris_geom::{
     Curve, CurveIntersection, MeetKind, Surface, SurfaceIntersection, SurfaceKind,
     intersect_curves, intersect_surfaces, trace_section,
 };
-use arris_math::{Aabb, Interrupted, Interval, Meter, Point2, Point3, Tolerance, Vec3, wrap_into};
+use arris_math::{
+    Aabb, Frame, Interrupted, Interval, Meter, Point2, Point3, Tolerance, Vec3, real, wrap_into,
+};
 use arris_topo::entity::BodyKind;
 use arris_topo::{Body, EdgeId, EntityId, FaceId, Model, NotFound, Orientation, ShellId, VertexId};
 
@@ -372,6 +374,12 @@ impl<'m> Checker<'m> {
         // between them would decide it.
         let tolerance = fa.tolerance().max(fb.tolerance());
         let query = Tolerance::new(tolerance, self.precision.angular_tolerance);
+        if meeting.holds(MeetKind::Crossing)
+            && let Some(found) =
+                self.spindle_meridian_meets([(a, sa), (b, sb)], query, meeting, meter)
+        {
+            return Ok(found);
+        }
         // A point interior to both faces is in both boxes, so their
         // overlap — or the one box there is — bounds every traced section
         // S5 can find; the closed forms ignore it. With neither, no face
@@ -428,6 +436,74 @@ impl<'m> Checker<'m> {
                 })
             }
         })
+    }
+
+    /// An axial plane cuts a spindle's regular band along the outer arc
+    /// of each tube circle. The checker can sample those arcs directly
+    /// against the face trims. A whole circle would include the lemon;
+    /// the surface intersector refuses that section.
+    fn spindle_meridian_meets(
+        &self,
+        [(a, sa), (b, sb)]: [(FaceId, &Surface); 2],
+        tol: Tolerance,
+        meeting: Meeting,
+        meter: &mut Meter<'_>,
+    ) -> Option<bool> {
+        let (plane, frame, major, minor) = match (sa, sb) {
+            (
+                Surface::Plane { frame: plane },
+                Surface::Torus {
+                    frame,
+                    major_radius,
+                    minor_radius,
+                },
+            )
+            | (
+                Surface::Torus {
+                    frame,
+                    major_radius,
+                    minor_radius,
+                },
+                Surface::Plane { frame: plane },
+            ) => (plane, frame, *major_radius, *minor_radius),
+            _ => return None,
+        };
+        let normal = plane.z();
+        let z = frame.z().into_inner();
+        if minor - major <= tol.linear
+            || real::asin(normal.dot(&z).abs().min(1.0)) > tol.angular
+            || normal.dot(&(frame.origin() - plane.origin())).abs() > tol.linear
+        {
+            return None;
+        }
+        let radial = z.cross(&normal).try_normalize(0.0)?;
+        let pole = real::acos(-major / minor);
+        let range = Interval::new(-pole, pole).ok()?;
+        for side in [radial, -radial] {
+            meter.tick().ok()?;
+            let curve = Curve::Circle {
+                frame: Frame::new(frame.origin() + major * side, side.cross(&z), side).ok()?,
+                radius: minor,
+            };
+            let samples = range.samples(self.precision.check_samples.max(2));
+            let midpoints = self.trimmed_section_midpoints([a, b], &curve, range, tol, meter);
+            if meter.stopped().is_some() {
+                return None;
+            }
+            if self.section_is_interior_to_both(
+                a,
+                sa,
+                b,
+                sb,
+                samples.into_iter().chain(midpoints),
+                &|t| curve.point(t),
+                tol.linear,
+                meeting,
+            ) {
+                return Some(true);
+            }
+        }
+        Some(false)
     }
 
     /// Whether the faces' patches share no point within `tolerance`,

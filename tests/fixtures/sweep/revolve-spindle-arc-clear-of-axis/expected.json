@@ -1,6 +1,6 @@
 {
   "occt": "8.0.1.0.0",
-  "recipe_sha256": "0d2b705e40708a5dd026b0e271c79e672c68f143b0e4a1a5b1d2d058dc1143cc",
+  "recipe_sha256": "4f58cdc36adfa95ed8d80374fd18e91c128c776982e4d8e544f2a023665b7e5f",
   "results": {
     "default": {
       "area": 572.1590742509625,
@@ -50,9 +50,9 @@
           "class": "in",
           "label": "inside_band",
           "point": [
-            0.0,
+            2.8284271247461903,
             2.0,
-            4.0
+            -2.8284271247461903
           ]
         },
         {
@@ -95,13 +95,114 @@
           "class": "on",
           "label": "on_flat_base",
           "point": [
-            4.0,
+            -4.0,
             0.0,
             0.0
           ]
         }
       ],
       "volume": 631.9095528400004
+    },
+    "three_quarter": {
+      "area": 468.3892138580943,
+      "centroid": [
+        -1.1593073667498832,
+        2.0197067915572497,
+        -1.159307366749882
+      ],
+      "counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          7630.331288165391,
+          -57.61032884420092,
+          2225.1000792823224
+        ],
+        [
+          -57.61032884420092,
+          13693.927257012067,
+          -57.61032884420115
+        ],
+        [
+          2225.1000792823224,
+          -57.61032884420115,
+          7630.331288165389
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 9,
+        "faces": 5,
+        "loops": 5,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 6
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_band",
+          "point": [
+            2.8284271247461903,
+            2.0,
+            -2.8284271247461903
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inside_bore",
+          "point": [
+            0.0,
+            2.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_band",
+          "point": [
+            0.0,
+            2.0,
+            8.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_bore",
+          "point": [
+            0.0,
+            2.0,
+            3.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_outer_wall",
+          "point": [
+            0.0,
+            4.0,
+            6.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_flat_base",
+          "point": [
+            -4.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 473.9321646300003
     }
   }
 }

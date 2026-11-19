@@ -1,5 +1,7 @@
 {
-  "description": "The outer quadrant of the rivet's spindle meridian stays at least 3 from the axis, though its circle crosses it. A full turn gives annular sections with radii 3 and 3 + sqrt(25 - y^2), for 0 <= y <= 5. Integrating their areas and first moments gives the volume and centroid; the area adds the inner cylinder and base annulus to the torus band.",
+  "description": "The outer quadrant of the rivet's spindle meridian stays at least 3 from the axis, though its circle crosses it. A full turn gives annular sections with radii 3 and 3 + sqrt(25 - y^2), for 0 <= y <= 5. The three-quarter turn adds the two flat ends. Each end plane also cuts the torus on the opposite side of the axis, outside that end's trim.",
+  "params": {"angle": 360, "ends": 0},
+  "variants": {"three_quarter": {"angle": 270, "ends": 2}},
   "steps": [
     {
       "name": "meridian", "op": "profile",
@@ -8,21 +10,24 @@
         {"via": [6, 4], "arc_to": [3, 5]}, {"line_to": [3, 0]}, {"line_to": [8, 0]}
       ]}
     },
-    {"name": "result", "op": "revolve", "profile": "meridian", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 360}
+    {"name": "result", "op": "revolve", "profile": "meridian", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": "angle"}
   ],
   "result": "result",
   "probes": [
-    {"label": "inside_band", "point": [0, 2, 4], "expect": "in"},
+    {"label": "inside_band", "point": ["sqrt(8)", 2, "-sqrt(8)"], "expect": "in"},
     {"label": "inside_bore", "point": [0, 2, 2], "expect": "out"},
     {"label": "outside_band", "point": [0, 2, 8], "expect": "out"},
     {"label": "on_bore", "point": [0, 2, 3], "expect": "on"},
     {"label": "on_outer_wall", "point": [0, 4, 6], "expect": "on"},
-    {"label": "on_flat_base", "point": [4, 0, 0], "expect": "on"}
+    {"label": "on_flat_base", "point": [-4, 0, 0], "expect": "on"}
   ],
   "analytic": {
-    "volume": "pi * (75 * pi / 2 + 250 / 3)",
-    "area": "10 * pi * (3 * pi / 2 + 5) + 30 * pi + 55 * pi",
-    "centroid": [0, "(2 * 125 + 625 / 4) / (75 * pi / 2 + 250 / 3)", 0],
-    "genus": 1
+    "volume": "pi * (75 * pi / 2 + 250 / 3) * angle / 360",
+    "area": "(10 * pi * (3 * pi / 2 + 5) + 30 * pi + 55 * pi) * angle / 360 + ends * 25 * pi / 4",
+    "centroid": [
+      "-ends * (250 + 1525 * pi / 16) / (radians(angle) * (75 * pi / 2 + 250 / 3))",
+      "(2 * 125 + 625 / 4) / (75 * pi / 2 + 250 / 3)",
+      "-ends * (250 + 1525 * pi / 16) / (radians(angle) * (75 * pi / 2 + 250 / 3))"
+    ]
   }
 }

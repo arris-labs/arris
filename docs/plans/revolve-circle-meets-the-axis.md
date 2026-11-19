@@ -156,7 +156,10 @@ Decided here by the agent, recorded:
   an interior touch at the same `v`.
 - Settled in step 4: the signed centre-distance guard still refuses the
   unsupported inner sheet. For an arc on the outer sheet, the arc's actual
-  radial extent determines whether it can build clear of the axis.
+  radial extent determines whether it can build clear of the axis. For
+  partial turns, S5 checks axial cap planes against the spindle's two
+  meridian arcs clipped to the outer sheet. The surface section keeps
+  its existing refusal.
 - ⚠ OPEN: in step 7, diagnose Open CASCADE's own STEP of
   `revolve-spindle-arc-to-axis`. The direct build is valid and matches the
   closed forms. Its self-read loses the pole and trim, reporting zero
