@@ -32,7 +32,12 @@ docs checklist. Deletion is the done signal.
    Fix any red verification before launching acceptance on that SHA's
    tree. Run the plan's acceptance via
    `tools/at-commit.sh <sha> sh -c '<runs>'` using the harness-specific
-   wait rule. Include `tools/full-gate.sh <absolute-log>`, then use
+   wait rule. For a tooling-only diff limited to shell scripts under
+   `tools/`, GitHub workflow YAML and prose, run the affected checks named
+   in the plan and exercise any changed routing. Use the full gate if the
+   diff changes kernel or test behavior, including how the full gate runs
+   tests. For other diffs that reach code, include
+   `tools/full-gate.sh <absolute-log>`. Use
    `ARRIS_ORACLE_CACHE=off` for the oracle comparisons the plan touched.
    Run `cargo nextest run -p <crate> --features parallel` for each of
    `arris-mesh`, `arris-ops` and `arris` whose changed files intersect
@@ -41,8 +46,7 @@ docs checklist. Deletion is the done signal.
    Give the expected finish when launching the runs (about 55 minutes
    for the full gate). Steps 3–8 can proceed during acceptance. A red
    result stops retirement until fixed and verified on the new tip.
-   A prose-only plan (`tools/gate-reuse.sh --reaches-code <first plan
-   commit's parent> <sha>` exits 1) uses the commits' hooks as its gate.
+   A prose-only plan uses the commits' hooks as its gate.
 3. Execute *Docs to update* line by line, present tense, no "as of this
    plan". A closed `⚠ OPEN:` gets its ADR now, listed in
    `docs/adr/README.md`.

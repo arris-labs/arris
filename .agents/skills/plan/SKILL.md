@@ -61,6 +61,8 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
      case with the real hooks. Assert which SHA was verified and whether
      `pre-push` accepts it. For landing, cover a rebase whose final amend
      changes only prose and assert that static checks ran on the final tree.
+     For tooling-only plans, name the affected checks and how to exercise
+     any changed routing (see `/retire-plan`).
    - *Docs to update* is written now, while the deltas are fresh — it is
      what `/retire-plan` executes; `GLOSSARY.md` is on it when a term is
      new. Rustdoc on new public items is part of the steps.

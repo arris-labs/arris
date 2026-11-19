@@ -58,7 +58,7 @@
   `run_in_background`: the layer rule, fmt, clippy `-D warnings`, nextest
   over the workspace (256 cases, `real_*` included), the doctests, `cargo
   doc` with warnings denied. Every stage runs; its last lines name each red
-  stage and test. It runs once per plan that reaches the code (`/retire-plan`,
+  stage and test. It runs once per plan that requires it (`/retire-plan`,
   on the tip's own tree by `tools/at-commit.sh` so fixes go on beside it,
   ADR-0081), at
   `/close-cycle` and `/release`. CI runs it at 1000 cases plus the
