@@ -43,8 +43,10 @@ docs checklist. Deletion is the done signal.
    `arris-mesh`, `arris-ops` and `arris` whose changed files intersect
    `git grep -l 'feature = "parallel"' crates`. Include
    `tools/py-test.sh` if the plan touched `crates/arris-py`.
-   Give the expected finish when launching the runs (about 55 minutes
-   for the full gate). Steps 3–8 can proceed during acceptance. A red
+   As job owner, report the pinned SHA, expected finish (about 55 minutes
+   for the full gate), exit-status path or harness job ID, and log path.
+   Inspect the log on failure or at the first check after a missed expected
+   finish. Give the conductor the result in the hand-back. Steps 3–8 can proceed during acceptance. A red
    result stops retirement until fixed and verified on the new tip.
    A prose-only plan uses the commits' hooks as its gate.
 3. Execute *Docs to update* line by line, present tense, no "as of this

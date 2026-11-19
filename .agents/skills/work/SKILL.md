@@ -106,7 +106,10 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    stopped you." The conductor writes no code itself; it alone talks to
    the human.
    A notice that the subagent is waiting on its own background work is
-   interim. Let its completion resume it. In Claude Code, use the harness
+   interim. The job owner reports the pinned SHA, expected finish, exit-status
+   path and log path when starting a long job. Use the harness exit result
+   when it retains one. The conductor waits for the owner; the owner opens
+   the log on failure or at the first check after a missed expected finish. In Claude Code, use the harness
    notification and set a one-line `ScheduleWakeup` fallback after at
    least 20 minutes (about 60 for a full gate). In Codex, use the longest
    available interruptible `wait_agent` timeout appropriate to the step.
