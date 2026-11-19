@@ -1100,6 +1100,11 @@ pub struct Analytic {
     /// it to `expected.json`, so nothing Arris is held to changes.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub step_differs: Option<String>,
+    /// Why Open CASCADE loses a trim when reading its own native STEP,
+    /// where its B-spline export does read back as the result. The oracle
+    /// self-test round-trips that export; Arris still reads both files.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub occt_step_self_read_differs: Option<String>,
     /// Why a query fixture's ray hits differ from Open CASCADE's: it
     /// reports a ray through an edge or a vertex once per face there, and
     /// Arris reports one hit naming the edge or the vertex (ADR-0053 §1,
@@ -2038,7 +2043,14 @@ fn lint_flags(fixture: &Fixture, variant: &str, m: &Measured) -> Vec<String> {
     if a.step_differs.is_some() && (a.degenerate || a.expect_error.is_some()) {
         problems.push("analytic.step_differs needs a result Arris builds".into());
     }
+    if a.occt_step_self_read_differs.is_some() && m.nurbs_counts.is_none() {
+        problems.push("analytic.occt_step_self_read_differs needs a B-spline oracle export".into());
+    }
     for (key, refused) in [
+        (
+            "occt_step_self_read_differs",
+            a.occt_step_self_read_differs.is_some(),
+        ),
         ("occt_step_refused", a.occt_step_refused.is_some()),
         ("occt_nurbs_refused", a.occt_nurbs_refused.is_some()),
         ("occt_step_unread", a.occt_step_unread.is_some()),

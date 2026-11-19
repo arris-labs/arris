@@ -367,6 +367,12 @@ of the step that made the fixture pass, and a later change to it is a
   oracle's self-test reads it, and skips that fixture's round trip; the
   runner skips its read-back stage, `compare.py` compares exactly as
   without it, and the lint refuses it on a result Arris does not build.
+  `occt_step_self_read_differs: "why"` records a trim Open CASCADE loses
+  in its native self-read where its B-spline export preserves the
+  result. The oracle self-test checks the B-spline file against the
+  measurements, genus and probes in `expected.json` and its converted
+  counts. Arris reads both Open CASCADE files and Open CASCADE reads
+  Arris's STEP.
   `occt_step_refused: {"kind": …, "why": …}` says Arris's reader refuses
   Open CASCADE's own STEP of the result with that refusal kind (as
   `RefusalKind` prints it): a file that describes no solid by ISO

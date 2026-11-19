@@ -87,7 +87,7 @@ pub enum Surface {
         major_radius: f64,
         /// `r`, the tube's radius. Any `r > 0`: `r = R` is a horn torus and
         /// `r > R` a spindle torus, and a face of either lies on the
-        /// regular band, where `R + r cos v` is off the axis.
+        /// regular band and can close at a pole where `R + r cos v = 0`.
         minor_radius: f64,
     },
     /// A rational B-spline; parametrised by its knots, no frame.
@@ -705,8 +705,9 @@ impl Surface {
 
     /// The singular points of the parametrisation, where a whole row of
     /// one parameter names one point: a cone's apex, a sphere's two
-    /// poles, a NURBS surface's collapsed rows (boundary rows of control
-    /// points that are one point to rounding), and none on the others.
+    /// poles, a horn or spindle torus's poles, a NURBS surface's collapsed
+    /// rows (boundary rows of control points that are one point to
+    /// rounding), and none on the others.
     /// They are the points [`crate::pcurve_on`] ends a pcurve on, at the
     /// row's own value, and where a loop's walk in (u, v) runs along the
     /// row on a degenerate edge.
@@ -745,6 +746,24 @@ impl Surface {
                     value: side * FRAC_PI_2,
                 })
                 .collect(),
+            Surface::Torus {
+                ref frame,
+                major_radius,
+                minor_radius,
+            } if major_radius > 0.0 && major_radius <= minor_radius => {
+                let v = real::acos(-major_radius / minor_radius);
+                let height = minor_radius * real::sin(v);
+                let row = |value, height| Singularity {
+                    point: frame.origin() + height * frame.z().into_inner(),
+                    fixed: 1,
+                    value,
+                };
+                if major_radius == minor_radius {
+                    vec![row(v, 0.0)]
+                } else {
+                    vec![row(v, height), row(-v, -height)]
+                }
+            }
             Surface::Nurbs(ref nurbs) => (nurbs.collapsed_rows().into_iter())
                 .map(|(fixed, value, point)| Singularity {
                     point,

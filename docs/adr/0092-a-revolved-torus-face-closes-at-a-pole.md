@@ -69,3 +69,10 @@ that vector at `v*`, flipped for a reversed face use. A spindle's limit
 has both components. A horn's radial scale has a double root and the
 limit is `−radial(u)`. The degenerate edge identifies the pole even
 when a stored pcurve endpoint rounds past the root.
+
+## STEP
+
+The writer leaves the degenerate coedge out of the `EDGE_LOOP`. The
+reader recovers it at the torus pole between the meridian coedges using
+the same boundary walk as for a sphere. The regular-band check still
+holds the rebuilt trim to the outer sheet.

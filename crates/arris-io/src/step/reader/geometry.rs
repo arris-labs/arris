@@ -604,7 +604,7 @@ fn turned(frame: &Frame, angle: f64) -> Frame {
 
 /// A torus Arris holds: `R > 0` and `r > 0` (data-model §Surfaces); a
 /// horn or a spindle torus is read, its faces held to the regular band
-/// (ADR-0080). Else refused.
+/// up to their poles (ADR-0080, ADR-0092). Else refused.
 fn torus(id: u64, frame: Frame, major: f64, minor: f64) -> Result<Surface, Refusal> {
     if major <= 0.0 {
         return Err(Refusal::SelfIntersectingTorus {

@@ -24,7 +24,6 @@
     "volume": "pi * (236 + 225 * (pi - atan(4 / 3))) / 3",
     "area": "10 * pi * (3 * (pi - atan(4 / 3)) + 4) + 64 * pi",
     "centroid": [0, "1536 / (236 + 225 * (pi - atan(4 / 3)))", 0],
-    "genus": 0,
-    "occt_step_refused": {"kind": "unsupported entity", "why": "The reader does not rebuild the torus pole of the wrapping loop. Step 7 of revolve-circle-meets-the-axis restores the read-back."}
+    "genus": 0
   }
 }

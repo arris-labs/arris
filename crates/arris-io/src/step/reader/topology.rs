@@ -37,8 +37,8 @@
 //!   than half a period from its outer loop's centre, boxes of the
 //!   checker's sample count move it the whole periods between them.
 //! - **Degenerate edges** the writer left out are rebuilt where two uses
-//!   meet at a singular point of the surface — a sphere's pole, a cone's
-//!   apex, a NURBS surface's collapsed row ([`Surface::singularities`]):
+//!   meet at a singular point of the surface — a sphere or torus pole,
+//!   a cone apex, a NURBS surface's collapsed row ([`Surface::singularities`]):
 //!   a degenerate coedge along the row between where the one ends and
 //!   the other starts, run in the sense that keeps the face on its left,
 //!   a whole turn where the two meet the row at one value and the walk
@@ -1602,10 +1602,10 @@ fn seam_to(
         Surface::Nurbs(_) => {
             return Err("a VERTEX_LOOP on a NURBS surface, whose seam has no exact curve");
         }
-        Surface::Plane { .. }
-        | Surface::Cylinder { .. }
-        | Surface::EllipticCylinder { .. }
-        | Surface::Torus { .. } => return Err("a VERTEX_LOOP on a surface with no singular point"),
+        Surface::Torus { .. } => return Err("a VERTEX_LOOP on a torus without its meridian seam"),
+        Surface::Plane { .. } | Surface::Cylinder { .. } | Surface::EllipticCylinder { .. } => {
+            return Err("a VERTEX_LOOP on a surface with no singular point");
+        }
     };
     let range = Interval::new(0.0, span).map_err(|_| "a seam of no length")?;
     let pcurve = pcurve_on(&curve, range, surface, tol, meter)

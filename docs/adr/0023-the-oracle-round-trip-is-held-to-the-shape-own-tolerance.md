@@ -61,6 +61,11 @@ every commit, which hides the day it says something that does.
 
 ## Consequences
 
+When only Open CASCADE's native self-read loses a trim,
+`analytic.occt_step_self_read_differs` holds the self-test to the result's
+B-spline export. The corpus reads both exports with Arris and checks
+Arris's own STEP through Open CASCADE.
+
 - The `oracle` job is green again, and a red one is news.
 - The self-test is weaker on shapes whose tolerances Open CASCADE grew:
   it can no longer see a reader error smaller than the shape's own

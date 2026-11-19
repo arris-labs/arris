@@ -93,7 +93,7 @@ design; **[3]** unproven, robustness or a bound established here.
 - [x] Step 6 **[2]** — Mesh at a torus pole: the fan closes, the normal is the
   limit from the face's side, and the fixtures mesh closed to their volume
   (`crates/arris-mesh/tests/band.rs` takes the revolve fixtures).
-- [ ] Step 7 **[2]** — STEP: write and read back a pole face. Arris reads Open
+- [x] Step 7 **[2]** — STEP: write and read back a pole face. Arris reads Open
   CASCADE's STEP of each fixture, Open CASCADE reads Arris's, and the corpus
   read-back stage passes. Lift the expected pole refusals in the spindle and
   horn arc fixtures and in `crates/arris-io/tests/step_read.rs` once the files read.
@@ -168,10 +168,11 @@ Decided here by the agent, recorded:
   compute the outer-sheet normal per corner. A near-sphere spindle's
   endpoint rounds beyond the root, where a direct normal would point
   inward. The horn's root is double and needs the second-order limit.
-- ⚠ OPEN: in step 7, diagnose Open CASCADE's own STEP of
-  `revolve-spindle-arc-to-axis`. The direct build is valid and matches the
-  closed forms. Its self-read loses the pole and trim, reporting zero
-  volume and only the base's area for both variants. The from-axis
-  recipe for the same solid survives Open CASCADE's round trip. Both
-  handed profile frames, both axis directions, cyclic loop starts and
-  an alternate point on the arc leave the to-axis failure unchanged.
+- Settled in step 7: Open CASCADE's native STEP contains the spindle's
+  meridian and pole vertex. Arris recovers the trim from these without
+  reading the file's pcurves. Open CASCADE's native self-read loses the
+  side trim in both to-axis variants even when its writer omits pcurves.
+  The oracle self-test uses Open CASCADE's exact B-spline export of the
+  same shape, which preserves topology and measures. Arris's corpus
+  reads both Open CASCADE exports and compares Arris's STEP through Open
+  CASCADE. The fixture's tolerances and expected values are unchanged.

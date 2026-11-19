@@ -24,10 +24,6 @@
   "analytic": {
     "volume": "turn * ((pi - a + sin(a) * cos(a) + 1 + cos(a)) / 2 - sin(a)^3 / 3 - sin(a)^2 / 4)",
     "area": "turn * (pi - a - sin(a) + (1 + cos(a)) * (sin(a) + 0.5) + (1 + cos(a))^2 / 2) + pi - a + sin(a) * cos(a) + 1 + cos(a)",
-    "genus": 0,
-    "occt_step_refused": {
-      "kind": "gap past the cap",
-      "why": "The analytic STEP reader does not reconstruct the horn pole in this partial turn. The pole read-back is covered by step 7 of revolve-circle-meets-the-axis."
-    }
+    "genus": 0
   }
 }

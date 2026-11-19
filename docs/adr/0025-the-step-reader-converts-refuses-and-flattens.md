@@ -2,6 +2,8 @@
 
 - Status: accepted (2026-09-25)
 - Plan: `step-reader` step 1
+- Amended by: ADR-0080 (the regular band of horns and spindles), ADR-0092
+  (the reader rebuilds degenerate edges at torus poles)
 - Follows: ADR-0020 (the reader's output is a refusal histogram that picks
   the cycle after it), ADR-0023 (`step_differs`), ADR-0024 (the oracle
   cache, the fuzz targets, the refusal `Reason` table)

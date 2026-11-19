@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use arris_check::{Level, check};
 use arris_debug::corpus::{self, Chain, Made};
 use arris_debug::fixtures::{self, DUMPED_AREAS, Fixture};
-use arris_io::step::{self, ReadBody, ReadOptions, Refusal};
+use arris_io::step::{self, ReadBody, ReadOptions};
 use arris_topo::builder::{Assembly, Builder, FaceSpec};
 use arris_topo::entity::BodyKind;
 use arris_topo::provenance::{Origin, Relation, Role};
@@ -59,26 +59,6 @@ fn read_back(fixture: &Fixture, variant: &str) -> Result<Option<usize>, String> 
             "{} solids read of {lumps} lumps",
             read.solids.len()
         ));
-    }
-    // The revolve fixtures hold the pole's geometry. Step 7 of
-    // revolve-circle-meets-the-axis lifts this reader refusal.
-    if matches!(
-        fixture.name.as_str(),
-        "sweep/revolve-spindle-arc-from-axis" | "sweep/revolve-spindle-arc-to-axis"
-    ) {
-        return match read.solids.as_slice() {
-            [solid] => match &solid.result {
-                Err(Refusal::Unsupported { name, .. })
-                    if name
-                        == "a face of one loop wrapping a period, with no singular point on its side" =>
-                {
-                    Ok(None)
-                }
-                Err(refusal) => Err(format!("expected the torus pole refusal, got {refusal}")),
-                Ok(_) => Err("the torus pole reads back; lift its expected refusal".into()),
-            },
-            _ => Err("expected one solid refused for its torus pole".into()),
-        };
     }
     let mut bodies = Vec::new();
     for solid in &read.solids {
