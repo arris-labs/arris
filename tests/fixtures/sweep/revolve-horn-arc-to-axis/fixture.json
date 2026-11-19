@@ -1,0 +1,33 @@
+{
+  "description": "A unit circle centred one unit from the axis has a tangent endpoint at the horn pole. Its three-point reconstruction can put the major and minor radii on opposite sides of equality by roundoff. The axis leg is tangent to the arc at the pole.",
+  "params": {"a": 0.3141592653589793, "turn": 0.25},
+  "steps": [
+    {
+      "name": "meridian",
+      "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [-1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": ["1 + cos(a)", "sin(a)"], "segments": [
+        {"via": ["1 + cos((a + pi) / 2)", "sin((a + pi) / 2)"], "arc_to": [0, 0]},
+        {"line_to": [0, -0.5]},
+        {"line_to": ["1 + cos(a)", -0.5]},
+        {"line_to": ["1 + cos(a)", "sin(a)"]}
+      ]}
+    },
+    {"name": "result", "op": "revolve", "profile": "meridian", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": "180 * turn / pi"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside_near_base", "point": ["-cos(turn / 2)", -0.25, "sin(turn / 2)"], "expect": "in"},
+    {"label": "past_outer_wall", "point": ["-3 * cos(turn / 2)", -0.25, "3 * sin(turn / 2)"], "expect": "out"},
+    {"label": "on_pole", "point": [0, 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "turn * ((pi - a + sin(a) * cos(a) + 1 + cos(a)) / 2 - sin(a)^3 / 3 - sin(a)^2 / 4)",
+    "area": "turn * (pi - a - sin(a) + (1 + cos(a)) * (sin(a) + 0.5) + (1 + cos(a))^2 / 2) + pi - a + sin(a) * cos(a) + 1 + cos(a)",
+    "genus": 0,
+    "occt_step_refused": {
+      "kind": "gap past the cap",
+      "why": "The analytic STEP reader does not reconstruct the horn pole in this partial turn. The pole read-back is covered by step 7 of revolve-circle-meets-the-axis."
+    }
+  }
+}

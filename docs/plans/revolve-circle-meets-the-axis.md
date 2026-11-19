@@ -94,8 +94,8 @@ design; **[3]** unproven, robustness or a bound established here.
   (`crates/arris-mesh/tests/band.rs` takes the revolve fixtures).
 - [ ] Step 7 **[2]** — STEP: write and read back a pole face. Arris reads Open
   CASCADE's STEP of each fixture, Open CASCADE reads Arris's, and the corpus
-  read-back stage passes. Lift the expected pole refusals in the spindle
-  fixture and in `crates/arris-io/tests/step_read.rs` once the files read.
+  read-back stage passes. Lift the expected pole refusals in the spindle and
+  horn arc fixtures and in `crates/arris-io/tests/step_read.rs` once the files read.
 - [ ] Step 8 **[3]** — The boolean on a pole body, three fixtures from the
   oracle: the apple fused to a coaxial shank on its flat side (the `rivet`
   program), cut by a box across the pole clear of the axis plane, and the
@@ -153,7 +153,10 @@ Decided here by the agent, recorded:
 - Settled in step 3 and recorded in ADR-0092: F1 reads neighbouring
   coedges to verify a pole endpoint before allowing it in the `v` hull.
   The extent alone cannot establish a shared pole vertex or distinguish
-  an interior touch at the same `v`.
+  an interior touch at the same `v`. A path arc tangent at an endpoint on
+  the axis uses equal major and minor radii when the reconstructed radii
+  agree within the model tolerance. The endpoint's tangency establishes
+  the double root independently of their computed ordering.
 - Settled in step 4: the signed centre-distance guard still refuses the
   unsupported inner sheet. For an arc on the outer sheet, the arc's actual
   radial extent determines whether it can build clear of the axis. For

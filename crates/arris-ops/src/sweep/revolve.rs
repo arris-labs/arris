@@ -142,6 +142,32 @@ fn elliptic(loops: &[Vec<ProfileEdge>]) -> Option<&ProfileEdge> {
         .min_by_key(|e| (e.loop_index, e.segment))
 }
 
+/// The major radius of the swept circle. A terminal tangency is the
+/// horn's double root: reconstructing the circle from three points can
+/// put its centre distance on either side of the radius. Use the radius
+/// when the endpoint is on the axis and the circle is tangent there.
+fn arc_major_radius(
+    edge: &ProfileEdge,
+    axis: &AxisInPlane,
+    centre: Point2,
+    radius: f64,
+    tol: Tolerance,
+) -> f64 {
+    let major = axis.rho(centre);
+    if major > tol.linear
+        && (major - radius).abs() <= tol.linear
+        && edge.range.length() < TAU - tol.angular
+        && [edge.start, edge.end].into_iter().any(|p| {
+            axis.rho(p).abs() <= tol.linear
+                && (p - centre).dot(&axis.along).abs() <= radius * tol.angular
+        })
+    {
+        radius
+    } else {
+        major
+    }
+}
+
 /// The profile held to one side of the axis: `radial` turned to face the
 /// side every point of every edge lies on, reaching at worst within
 /// `tol.linear` of the axis — a point that near is *on* it —
@@ -178,7 +204,7 @@ pub(super) fn orient(
     for edge in loops.iter().flatten() {
         if let Curve2::Circle { frame, radius } = &edge.pcurve {
             let centre = frame.origin();
-            let major = axis.rho(centre);
+            let major = arc_major_radius(edge, &axis, centre, *radius, tol);
             if major.abs() <= tol.linear {
                 continue;
             }
@@ -289,7 +315,7 @@ pub(super) fn swept_surface(
             };
             let centre = in_plane.origin();
             let origin = axis_point(axis.t(centre));
-            let major = axis.rho(centre);
+            let major = arc_major_radius(edge, axis, centre, radius, tol);
             if major.abs() <= tol.linear {
                 Ok((
                     Surface::Sphere {
