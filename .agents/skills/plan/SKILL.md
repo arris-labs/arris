@@ -80,5 +80,8 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
 8. Reply with the step list and the open questions, then **stop**. The
    human edits the plan before `/work` starts it. The plan links the idea's
    decision (and its ADR) as settled; code and branches wait for `/work`.
+   When the human narrows an implementation request to planning, finish the
+   plan and any explicitly requested planning changes, then stop before the
+   first implementation step.
 
 `$ARGUMENTS`
