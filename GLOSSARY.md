@@ -55,10 +55,17 @@ a blend face), so a consumer can name it.
 
 **Regular band** (of a torus):
 The part of a torus off its axis, where `R + r cos v` exceeds the face's
-tolerance; the only part a face may lie on (ADR-0080).
+tolerance. A torus face may reach the axis at a torus pole (ADR-0080,
+ADR-0092).
+
+**Torus pole**:
+A point on the torus axis where all values of `u` at a singular `v`
+evaluate to the same point. A face closes there at a vertex with a
+degenerate edge whose pcurve holds that `v` (ADR-0092).
 
 **Horn torus**:
-A torus with `R = r`: it touches its axis at one point, which no face reaches.
+A torus with `R = r`: it touches its axis at one point, which a face may
+reach as a torus pole.
 
 **Spindle torus**:
 A torus with `R < r`: it crosses itself on its axis, and a face lies on the

@@ -74,7 +74,7 @@ design; **[3]** unproven, robustness or a bound established here.
   (`V = π(236 + 225π − 225 asin(4/5))/3`, `A = 10π(3(π − atan(4/3)) + 4) +
   64π`; `V = π²`, `A = 2π² + 2π`) and Open CASCADE's record from
   `tools/oracle/`, with probes and `#[ignore]`.
-- [ ] Step 2 **[1]** — ADR-0092 as in *Design deltas*; ADR-0080 gets an
+- [x] Step 2 **[1]** — ADR-0092 as in *Design deltas*; ADR-0080 gets an
   "Amended by" line; GLOSSARY **Torus pole**.
 - [ ] Step 3 **[3]** — The pole: F1 admits a degenerate edge at `v*`, and the
   revolve closes a torus face there (`closes_at`). Arc-from-axis and

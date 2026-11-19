@@ -3,6 +3,7 @@
 - Status: accepted (2026-10-31)
 - Plan: `horn-torus` step 1
 - Amends: ADR-0035, ADR-0036 §3 (the horn and spindle refusals they record)
+- Amended by: ADR-0092 §1–§3 (a revolved torus face can close at a pole)
 - Reference trees read: none; Open CASCADE run as the oracle
 
 ## Context

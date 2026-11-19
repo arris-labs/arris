@@ -102,3 +102,4 @@ here; the first ADR is the first decision taken *after* the seed.
 | [0089](0089-resample-a-piece-at-an-isolated-touch.md) | Resample a piece at an isolated touch; check surviving point contacts against the output trims | accepted |
 | [0090](0090-a-shared-contact-is-copied-per-shell.md) | A shared contact is copied per shell | accepted |
 | [0091](0091-an-outside-pull-request-lands-through-the-verified-rebase.md) | An outside pull request lands through the maintainer's verified rebase | accepted |
+| [0092](0092-a-revolved-torus-face-closes-at-a-pole.md) | A revolved torus face closes at a pole on a degenerate edge at the singular `v`; F1 admits the pole at the band's boundary (amends ADR-0080 §3, §5) | accepted |
