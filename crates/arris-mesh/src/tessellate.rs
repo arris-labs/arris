@@ -6,9 +6,9 @@ use arris_math::real;
 use std::collections::{BTreeMap, BTreeSet};
 
 use arris_check::domain::FaceDomain;
-use arris_geom::Surface;
 use arris_geom::region2::{MAX_SEGMENTS_PER_PIECE, Polygon2};
-use arris_math::{Control, Interval, Meter, Point2, UnitVec3, Vec3};
+use arris_geom::{Curve2, Surface};
+use arris_math::{Control, Interval, Meter, Point2, UnitVec3, Vec3, wrap_signed};
 use arris_topo::entity::{Coedge, EdgeGeometry, Loop};
 use arris_topo::{
     Body, Edge, EdgeId, Face, FaceId, Model, NotFound, Orientation, Vertex, VertexId,
@@ -167,11 +167,10 @@ pub fn tessellate(
 ///   copies differ by exactly one period and a consumer that wants
 ///   `[0, 1]` divides by [`crate::CornerFace::uv_box`].
 ///
-/// Where the parametrisation is singular — a sphere's pole, a cone's
-/// apex — the normal is the limit approached along the parameter the
-/// surface still moves in, from inside the face's own (u, v) box: `±Z`
-/// at a sphere's pole for every corner of the fan, and at a cone's apex
-/// one normal per corner's own `u` (ADR-0012).
+/// Where the parametrisation is singular, the normal is the limit
+/// approached from inside the face's own (u, v) box (ADR-0012). At a
+/// sphere's pole every corner of the fan takes `±Z`. At a cone's apex or
+/// a torus pole each corner takes the limit at its own `u` (ADR-0092).
 ///
 /// Errors: [`tessellate`]'s (`control` stops it the same way), and [`MeshError::Corners`] if the block
 /// could not be built — a face no point of which has a normal.
@@ -618,16 +617,32 @@ impl<'a> Tessellation<'a> {
         // position of its own on the surface.
         let surface = m.surface(face.surface())?;
         let mut interior = interior_grid(f.id, &polygons, bounds, steps)?;
-        // A face with a degenerate edge — a cone reaching its apex —
-        // takes no ring: see [`cone_rings`].
-        let collapsed = face
-            .loops()
-            .iter()
-            .flat_map(|l| l.coedges())
-            .map(|c| m.edge(c.edge()).map(|e| e.is_degenerate()))
-            .collect::<Result<Vec<bool>, _>>()?
-            .into_iter()
-            .any(|d| d);
+        let mut collapsed = false;
+        let mut torus_poles = BTreeSet::new();
+        for c in face.loops().iter().flat_map(|l| l.coedges()) {
+            if !m.edge(c.edge())?.is_degenerate() {
+                continue;
+            }
+            collapsed = true;
+            if block.is_some()
+                && let Surface::Torus {
+                    major_radius,
+                    minor_radius,
+                    ..
+                } = surface
+                && major_radius <= minor_radius
+                && let Curve2::Line { origin, direction } = m.curve2(c.pcurve())?
+                && direction.y == 0.0
+                && (wrap_signed(origin.y, core::f64::consts::TAU).abs()
+                    - real::acos(-major_radius / minor_radius))
+                .abs()
+                    <= m.precision().angular_tolerance
+            {
+                let s = samples.get(&c.edge()).ok_or(NotFound::new(c.edge()))?;
+                torus_poles.extend(s.indices.first().copied());
+            }
+        }
+        // A cone reaching its apex takes no rings: see [`cone_rings`].
         if self.with_rings && !collapsed {
             let rings = cone_rings(f.id, surface, &polygons, bounds, self.chord, interior.len())?;
             interior.extend(rings);
@@ -660,6 +675,7 @@ impl<'a> Tessellation<'a> {
                 surface,
                 bounds,
                 reversed,
+                &torus_poles,
                 &polygons,
                 &rings,
                 &interior,
@@ -781,6 +797,7 @@ impl CornerBlock {
         surface: &Surface,
         bounds: [Interval; 2],
         reversed: bool,
+        torus_poles: &BTreeSet<u32>,
         polygons: &[Polygon2],
         rings: &[Vec<u32>],
         interior: &[Point2],
@@ -803,7 +820,16 @@ impl CornerBlock {
         }
         let mut normals: Vec<Option<[f64; 3]>> = uvs
             .iter()
-            .map(|&[u, v]| corner_normal(surface, Point2::new(u, v), bounds, reversed))
+            .zip(&self.positions[base..])
+            .map(|(&[u, v], index)| {
+                corner_normal(
+                    surface,
+                    Point2::new(u, v),
+                    bounds,
+                    reversed,
+                    torus_poles.contains(index),
+                )
+            })
             .collect();
         fill_missing_normals(face, &uvs, &mut normals)?;
         let normals: Vec<[f64; 3]> =
@@ -866,10 +892,32 @@ fn corner_normal(
     uv: Point2,
     bounds: [Interval; 2],
     reversed: bool,
+    torus_pole: bool,
 ) -> Option<[f64; 3]> {
-    let n = match surface.normal(uv.x, uv.y) {
-        Some(n) => n.into_inner(),
-        None => singular_normal(surface, uv, bounds)?,
+    let n = if torus_pole
+        && let Surface::Torus {
+            frame,
+            major_radius,
+            minor_radius,
+        } = surface
+    {
+        // The shared pole index identifies the collapse even when the
+        // pcurve's endpoint rounds onto the lemon sheet. On the outer
+        // sheet du × dv is a positive multiple of cos(v) radial + sin(v) Z.
+        // At its root cos(v) = -R/r, including the horn's double root
+        // where the first-order cross product vanishes.
+        let cos_v = -major_radius / minor_radius;
+        let sin_v = ((1.0 + cos_v) * (1.0 - cos_v))
+            .sqrt()
+            .copysign(real::sin(uv.y));
+        let (sin_u, cos_u) = real::sin_cos(uv.x);
+        let radial = cos_u * frame.x().into_inner() + sin_u * frame.y().into_inner();
+        cos_v * radial + sin_v * frame.z().into_inner()
+    } else {
+        match surface.normal(uv.x, uv.y) {
+            Some(n) => n.into_inner(),
+            None => singular_normal(surface, uv, bounds)?,
+        }
     };
     let n = if reversed { -n } else { n };
     Some([n.x, n.y, n.z])

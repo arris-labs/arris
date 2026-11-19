@@ -2,11 +2,14 @@
 //! face: the horn and spindle blends of the corpus, and the same blends
 //! after a cut and a fuse, mesh closed with a positive volume, and every
 //! triangle of the torus face lies off its axis and faces outward.
+//! Revolve fixtures cover the outer sheet up to a torus pole (ADR-0092).
 
-use arris_debug::unmetered::tessellate;
+use arris_debug::unmetered::{tessellate, tessellate_with};
 use arris_debug::{corpus, fixtures};
 use arris_geom::Surface;
-use arris_math::{Point3, Vec3};
+use arris_math::{Point3, Vec3, real};
+use arris_mesh::MeshRequest;
+use arris_topo::Orientation;
 
 const CHORD: f64 = 1e-3;
 
@@ -15,6 +18,14 @@ const BLENDS: &[&str] = &[
     "blend/cylinder-rim-spindle-fillet",
     "blend/horn-blend-box-cut",
     "blend/spindle-blend-cylinder-fuse",
+];
+
+/// Whether each revolved torus face reaches the axis.
+const REVOLVES: &[(&str, bool)] = &[
+    ("sweep/revolve-spindle-arc-from-axis", true),
+    ("sweep/revolve-spindle-arc-to-axis", true),
+    ("sweep/revolve-spindle-arc-clear-of-axis", false),
+    ("sweep/revolve-horn-arc-to-axis", true),
 ];
 
 #[test]
@@ -68,5 +79,84 @@ fn the_blends_of_a_horn_and_a_spindle_torus_mesh_closed_with_normals_off_the_axi
             }
         }
         assert!(tori >= 1, "{name}: no torus face to hold");
+    }
+}
+
+#[test]
+fn the_revolved_torus_fixtures_mesh_closed_to_their_volume_with_pole_normals() {
+    for &(name, has_pole) in REVOLVES {
+        let dir = fixtures::corpus_root().join(name);
+        let fixture = fixtures::load(&dir).unwrap();
+        for variant in fixture.recipe.variant_names() {
+            let label = format!("{name}/{variant}");
+            let chain = corpus::chain(&dir, &variant).unwrap();
+            let (body, _) = corpus::check_stage(&fixture, &chain).unwrap();
+            let target =
+                corpus::measure_stage(&fixture, &chain, &fixture.expected.results[&variant])
+                    .unwrap();
+            let tolerances = fixture.recipe.tolerances;
+            let m = &chain.model;
+            let request = MeshRequest::new(tolerances.mesh_chord).with_corners();
+            let mesh = tessellate_with(m, body, &request).unwrap();
+            let volume = mesh
+                .signed_volume()
+                .unwrap_or_else(|| panic!("{label}: the mesh is not closed"));
+            let expected = target.measured.volume.unwrap();
+            assert!(
+                (volume - expected).abs() <= expected * tolerances.mesh_volume_rel,
+                "{label}: mesh volume {volume} differs from {} {expected}",
+                target.by
+            );
+
+            let corners = mesh.corners().unwrap();
+            let mut tori = 0;
+            let mut poles = 0;
+            for face_use in m.faces(body).unwrap() {
+                let face = m.face(face_use.id).unwrap();
+                let Surface::Torus { frame, .. } = m.surface(face.surface()).unwrap() else {
+                    continue;
+                };
+                tori += 1;
+                let range = mesh.faces().iter().find(|r| r.face == face_use.id).unwrap();
+                for coedge in face.loops().iter().flat_map(|l| l.coedges()) {
+                    let edge = m.edge(coedge.edge()).unwrap();
+                    if !edge.is_degenerate() {
+                        continue;
+                    }
+                    poles += 1;
+                    let &[pole] = mesh.edge_polyline(coedge.edge()).unwrap() else {
+                        panic!("{label}: the pole must have one shared index");
+                    };
+                    let fan_corners = corners.triangles()[range.triangles.clone()]
+                        .iter()
+                        .flatten()
+                        .map(|&i| i as usize)
+                        .filter(|&i| corners.positions()[i] == pole);
+                    let mut fan_triangles = 0;
+                    for i in fan_corners {
+                        fan_triangles += 1;
+                        let [u, v] = corners.uvs()[i];
+                        let (su, cu) = real::sin_cos(u);
+                        let (sv, cv) = real::sin_cos(v);
+                        let limit = cv
+                            * (cu * frame.x().into_inner() + su * frame.y().into_inner())
+                            + sv * frame.z().into_inner();
+                        let expected = if face_use.orientation == Orientation::Reversed {
+                            -limit
+                        } else {
+                            limit
+                        };
+                        let normal = Vec3::from(corners.normals()[i]);
+                        assert!(
+                            (normal - expected).norm() < 1e-12,
+                            "{label}: at ({u}, {v}) the pole normal is {normal}, expected {expected}"
+                        );
+                    }
+                    assert!(fan_triangles > 1, "{label}: the pole fan is missing");
+                }
+            }
+            assert_eq!(tori, 1, "{label}: expected one torus face");
+            assert_eq!(poles, usize::from(has_pole), "{label}: wrong pole count");
+        }
     }
 }

@@ -57,3 +57,15 @@ band margin, then admits the pole as a bound of the face's unwrapped hull.
 A ray hit at a torus pole carries `u = 0` and the singular `v`, as at a
 cone apex, so classification can test the face's trim without asking the
 ordinary surface projection for an azimuth at a collapsed point.
+
+## Tessellation
+
+As at a sphere's pole (ADR-0003), the degenerate edge's samples share
+the pole's mesh index, and a triangle collapsed onto that index is
+dropped. The surviving fan has normals at each corner's own `u`. On
+the outer sheet, `∂P/∂u × ∂P/∂v` is a positive multiple of
+`cos(v) radial(u) + sin(v) Z`, so its normalised limit at the pole is
+that vector at `v*`, flipped for a reversed face use. A spindle's limit
+has both components. A horn's radial scale has a double root and the
+limit is `−radial(u)`. The degenerate edge identifies the pole even
+when a stored pcurve endpoint rounds past the root.

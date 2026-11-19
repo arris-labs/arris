@@ -53,9 +53,10 @@ left is an arc that touches the axis inside its range, and it names the arc.
   first path arc, in the consumer's order, that touches the axis at a point
   inside its range. `arris-py` maps it: class, attributes, `_arris.pyi` line.
   `arris-debug::histogram` renames its row.
-- **`arris-mesh` tessellate**: `singular_normal` and the pole fan take a torus
-  at `v*`. The limit normal there is `±Z` (a spindle's apex cone) or the
-  horn's tangent plane, from the side the face lies on.
+- **`arris-mesh` tessellate**: the pole fan takes a torus at `v*`. Each
+  corner takes the outer-sheet limit `cos(v*) radial(u) + sin(v*) Z`, in
+  the face use's orientation. The spindle has a radial and an axial
+  component. The horn's double root gives a purely radial limit.
 - **`arris-io` STEP**: the pole's degenerate edge is written and read as a
   sphere pole's is; the reader holds a toroidal face to the band but there.
 - `GLOSSARY.md`: **Torus pole** (new); **Regular band** and **Horn torus**
@@ -89,7 +90,7 @@ design; **[3]** unproven, robustness or a bound established here.
   by a random angle, are `Full`-green with Pappus's volume (the profile's area
   and centroid, closed form) and an area within the fixture tolerance, or are
   `ProfileCrossesAxis`.
-- [ ] Step 6 **[2]** — Mesh at a torus pole: the fan closes, the normal is the
+- [x] Step 6 **[2]** — Mesh at a torus pole: the fan closes, the normal is the
   limit from the face's side, and the fixtures mesh closed to their volume
   (`crates/arris-mesh/tests/band.rs` takes the revolve fixtures).
 - [ ] Step 7 **[2]** — STEP: write and read back a pole face. Arris reads Open
@@ -163,6 +164,10 @@ Decided here by the agent, recorded:
   partial turns, S5 checks axial cap planes against the spindle's two
   meridian arcs clipped to the outer sheet. The surface section keeps
   its existing refusal.
+- Settled in step 6: identify a torus pole by its degenerate edge and
+  compute the outer-sheet normal per corner. A near-sphere spindle's
+  endpoint rounds beyond the root, where a direct normal would point
+  inward. The horn's root is double and needs the second-order limit.
 - ⚠ OPEN: in step 7, diagnose Open CASCADE's own STEP of
   `revolve-spindle-arc-to-axis`. The direct build is valid and matches the
   closed forms. Its self-read loses the pole and trim, reporting zero

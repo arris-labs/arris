@@ -1944,10 +1944,12 @@ across faces by none:
   carries one face-local vertex per triangle of its fan. Where the
   parametrisation is singular the normal is the limit approached along
   the parameter the surface still moves in, from inside the face's own
-  (u, v) box — `±Z` at a sphere's pole for every corner, and at a cone's
-  apex one normal per corner's own `u` (ADR-0012). The limit is the
-  first-order term of `∂P/∂u × ∂P/∂v` out of `Surface::eval`, so no
-  surface kind is matched on and nothing is divided by zero.
+  (u, v) box. The first-order term of `∂P/∂u × ∂P/∂v` gives `±Z` for
+  every corner at a sphere's pole and one normal per corner's own `u`
+  at a cone's apex (ADR-0012). At a torus pole the degenerate edge marks
+  the fan, and each corner takes the outer-sheet limit
+  `cos(v*) radial(u) + sin(v*) Z` in the face use's orientation
+  (ADR-0092). For a horn, the double root at `π` makes this limit radial.
 - The corpus runner asks for the block on every fixture and holds every
   face-local vertex to both invariants — `surface.point(u, v)` is the
   position it stands on within the face's tolerance, and its normal is

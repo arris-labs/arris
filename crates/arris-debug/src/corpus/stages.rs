@@ -1,4 +1,6 @@
 use super::*;
+use arris_math::real;
+use std::collections::BTreeSet;
 
 /// How a result step is expected to fail.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -931,8 +933,9 @@ pub fn provenance_stage(fixture: &Fixture, chain: &Chain) -> Result<(), CorpusEr
 /// tolerance and not the face's (docs/DATA-MODEL.md §Tolerances,
 /// ADR-0026's amendment of step 5) — and its normal is the
 /// surface's own in the face use's sense — outward — wherever the
-/// parametrisation is not singular, and a unit vector in the tangent
-/// plane where it is.
+/// parametrisation is regular, the outer-sheet limit at a torus pole,
+/// and a unit vector perpendicular to the remaining derivatives at
+/// other singularities.
 pub(super) fn corners_stage(m: &Model, body: Body, mesh: &TriMesh) -> Result<(), String> {
     let corners = mesh
         .corners()
@@ -956,11 +959,20 @@ pub(super) fn corners_stage(m: &Model, body: Body, mesh: &TriMesh) -> Result<(),
         let surface = m.surface(face.surface()).map_err(|e| e.to_string())?;
         let reversed = used.orientation == Orientation::Reversed;
         let mut within = face.tolerance();
+        let mut collapsed = BTreeSet::new();
         for coedge in face.loops().iter().flat_map(|l| l.coedges()) {
             let edge = m.edge(coedge.edge()).map_err(|e| e.to_string())?;
             within = within.max(edge.tolerance());
             for v in [edge.start(), edge.end()] {
                 within = within.max(m.vertex(v).map_err(|e| e.to_string())?.tolerance());
+            }
+            if edge.is_degenerate() {
+                collapsed.extend(
+                    mesh.edge_polyline(coedge.edge())
+                        .into_iter()
+                        .flatten()
+                        .copied(),
+                );
             }
         }
         for i in cf.vertices.clone() {
@@ -980,7 +992,23 @@ pub(super) fn corners_stage(m: &Model, body: Body, mesh: &TriMesh) -> Result<(),
                 ));
             }
             let n = Vec3::from(normal);
-            if let Some(own) = surface.normal(u, v) {
+            let own = if collapsed.contains(&(shared as u32))
+                && let Surface::Torus {
+                    major_radius,
+                    minor_radius,
+                    ..
+                } = surface
+                && major_radius <= minor_radius
+                && (major_radius + minor_radius * real::cos(v)).abs() <= within
+            {
+                // The torus's meridian acceleration is inward on the
+                // outer sheet and still defined at its exact root.
+                let root = real::acos(-major_radius / minor_radius).copysign(real::sin(v));
+                UnitVec3::try_new(-surface.eval(u, root).dvv, 0.0)
+            } else {
+                surface.normal(u, v)
+            };
+            if let Some(own) = own {
                 let outward = if reversed {
                     -own.into_inner()
                 } else {
