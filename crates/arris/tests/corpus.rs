@@ -44,6 +44,32 @@ fn run_variant(name: &str, variant: &str) {
     }
 }
 
+fn run_arc_touches_axis(name: &str) {
+    use arris_ops::{OpError, Reason};
+
+    let dir = fixtures::corpus_root().join(name);
+    match corpus::chain(&dir, "default") {
+        Err(CorpusError::Op {
+            step,
+            source:
+                OpError::Degenerate {
+                    reason: Reason::Sweep(reason),
+                    ..
+                },
+            ..
+        }) if step == "result" => {
+            // Step 10 replaces this with the corpus's typed refusal check
+            // once the public SweepReason variant exists.
+            assert_eq!(
+                format!("{reason:?}"),
+                "ArcTouchesAxis { loop_index: 0, segment: 1 }"
+            );
+        }
+        Err(err) => panic!("{name}: expected an arc tangency refusal, got {err}"),
+        Ok(_) => panic!("{name}: the arc tangent inside its range was revolved"),
+    }
+}
+
 /// The corpus as a table: one row per test, `name => how "area/dir"`.
 /// `run` runs every variant of the recipe, `variant` one of them, `part`
 /// a part fixture, `query` a query fixture. Doc comments and `#[ignore = …]` on a row carry to its
@@ -67,6 +93,7 @@ macro_rules! corpus_tests {
     (@call part $dir:literal) => { run_part($dir) };
     (@call query $dir:literal) => { run_query($dir) };
     (@call variant $dir:literal, $variant:literal) => { run_variant($dir, $variant) };
+    (@call arc_touches_axis $dir:literal) => { run_arc_touches_axis($dir) };
 }
 
 corpus_tests! {
@@ -951,6 +978,21 @@ corpus_tests! {
     /// and Arris refuses it, `SweepReason::EllipticRevolve` naming the segment,
     /// since the surface it would sweep has no variant (ADR-0014).
     sweep_revolve_ellipse => run "sweep/revolve-ellipse";
+    /// The spindle arc starts on the axis and sweeps a torus face with a pole.
+    #[ignore = "the revolve refuses the spindle circle before building the arc's pole"]
+    regression_revolve_spindle_arc_from_axis => run "regression/revolve-spindle-arc-from-axis";
+    /// The arc ends on the axis, including a circle almost centred on it.
+    #[ignore = "the revolve refuses the spindle circle before building the arc's pole"]
+    regression_revolve_spindle_arc_to_axis => run "regression/revolve-spindle-arc-to-axis";
+    /// The arc's swept band stays away from the axis that its circle crosses.
+    #[ignore = "the revolve refuses a spindle circle even when the arc stays clear of the axis"]
+    regression_revolve_spindle_arc_clear_of_axis => run "regression/revolve-spindle-arc-clear-of-axis";
+    /// The half-turn of a tangent circle has one axis pole and two flat caps.
+    #[ignore = "the revolve refuses the tangent circle before building the horn half-turn"]
+    regression_revolve_horn_torus_half_turn => run "regression/revolve-horn-torus-half-turn";
+    /// The interior tangency names the second segment of the first loop.
+    #[ignore = "the spindle refusal gives neither the loop nor the segment"]
+    regression_revolve_horn_arc_touches_axis_inside => arc_touches_axis "regression/revolve-horn-arc-touches-axis-inside";
     /// A square whose plane misses the arc's axis, along a quarter arc: no
     /// kind holds the faces, so they are fitted (ADR-0063).
     sweep_sweep_arc_tilted_profile => run "sweep/sweep-arc-tilted-profile";

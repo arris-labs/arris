@@ -67,7 +67,7 @@ Complexity grades; a step's grade is its tier (`.agents/tiers.md`):
 **[1]** routine; **[2]** careful, a geometric or numeric case within a given
 design; **[3]** unproven, robustness or a bound established here.
 
-- [ ] Step 1 **[2]** — Fixtures: `regression/revolve-spindle-arc-from-axis`,
+- [x] Step 1 **[2]** — Fixtures: `regression/revolve-spindle-arc-from-axis`,
   `-arc-to-axis` (variant: centre 1.3e-4 off the axis),
   `revolve-spindle-arc-clear-of-axis`, `revolve-horn-torus-half-turn` and
   `revolve-horn-arc-touches-axis-inside` (refusal). Each has its closed form
@@ -110,7 +110,7 @@ design; **[3]** unproven, robustness or a bound established here.
 
 ## Acceptance
 
-- `cargo nextest run -p arris --test corpus -E 'test(/revolve-(spindle|horn)/)'`
+- `cargo nextest run -p arris --test corpus -E 'test(/revolve_(spindle|horn)/)'`
   and the step 8 boolean fixtures: `Full`-green, counts and genus against Open
   CASCADE, volume, area and centroid to the closed forms within the fixture
   tolerance, STEP read back by the oracle and by Arris, provenance accounted.
@@ -152,3 +152,10 @@ Decided here by the agent, recorded:
 - ⚠ OPEN: if step 3 finds that F1's hull test cannot tell a pole from a
   pcurve crossing `v*` without the coedge walk, it moves to `f1` over the
   loop. The agent decides in step 3 and records it in ADR-0092.
+- ⚠ OPEN: in step 7, diagnose Open CASCADE's own STEP of
+  `revolve-spindle-arc-to-axis`. The direct build is valid and matches the
+  closed forms. Its self-read loses the pole and trim, reporting zero
+  volume and only the base's area for both variants. The from-axis
+  recipe for the same solid survives Open CASCADE's round trip. Both
+  handed profile frames, both axis directions, cyclic loop starts and
+  an alternate point on the arc leave the to-axis failure unchanged.

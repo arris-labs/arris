@@ -1,0 +1,116 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "a09d8ee2c5790346b35e8d85d21b46af045eec10ac2e4cf08da65f309b1ea15d",
+  "results": {
+    "default": {
+      "area": 535.418252668535,
+      "centroid": [
+        -1.8113120103007776e-15,
+        2.0920247843220077,
+        -1.1006228530428643e-16
+      ],
+      "counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          11625.951092194471,
+          -5.829069332258534e-13,
+          -1.5109393741985388e-12
+        ],
+        [
+          -5.829069332258534e-13,
+          20585.515841318123,
+          1.4055547510083162e-13
+        ],
+        [
+          -1.5109393741985388e-12,
+          1.4055547510083162e-13,
+          11625.951092194362
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_at_axis",
+          "point": [
+            0.0,
+            2.0,
+            0.0
+          ]
+        },
+        {
+          "class": "in",
+          "label": "inside_above_pole",
+          "point": [
+            0.0,
+            4.5,
+            3.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "above_pole_at_axis",
+          "point": [
+            0.0,
+            4.5,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_outer_wall",
+          "point": [
+            8.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_pole",
+          "point": [
+            0.0,
+            4.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_outer_wall",
+          "point": [
+            0.0,
+            4.0,
+            6.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_flat_base",
+          "point": [
+            2.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 768.8701638203887
+    }
+  }
+}

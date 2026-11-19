@@ -1,0 +1,31 @@
+{
+  "description": "The same rivet head with the arc ending on the axis, plus a dome-cap variant with the circle centre 1.3e-4 off the axis. Put h = sqrt(25 - center^2) and a = pi/2 + atan(center/h). Integrating signed pi*x^2 dy along the arc gives volume pi*(25*center*a + 25*h - h^3/3). The axial moment is pi times the integral of (x - center)*x^2 from 0 to center+5. The surface of revolution integrates 2*pi*x along the arc and the disk contributes pi*(center+5)^2.",
+  "params": {"center": 3},
+  "variants": {"near_sphere": {"center": 0.00013}},
+  "steps": [
+    {
+      "name": "meridian", "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": [0, 0], "segments": [
+        {"line_to": ["center + 5", 0]},
+        {"via": ["center + 3", 4], "arc_to": [0, "sqrt(25 - center ^ 2)"]},
+        {"line_to": [0, 0]}
+      ]}
+    },
+    {"name": "result", "op": "revolve", "profile": "meridian", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 360}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside_at_axis", "point": [0, 2, 0], "expect": "in"},
+    {"label": "past_outer_wall", "point": ["center + 5", 1, 0], "expect": "out"},
+    {"label": "on_pole", "point": [0, "sqrt(25 - center ^ 2)", 0], "expect": "on"},
+    {"label": "on_outer_wall", "point": [0, 4, "center + 3"], "expect": "on"},
+    {"label": "on_flat_base", "point": [2, 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "pi * (25 * center * (pi / 2 + atan(center / sqrt(25 - center ^ 2))) + (50 + center ^ 2) * sqrt(25 - center ^ 2) / 3)",
+    "area": "10 * pi * (center * (pi / 2 + atan(center / sqrt(25 - center ^ 2))) + sqrt(25 - center ^ 2)) + pi * (center + 5) ^ 2",
+    "centroid": [0, "((center + 5) ^ 4 / 4 - center * (center + 5) ^ 3 / 3) / (25 * center * (pi / 2 + atan(center / sqrt(25 - center ^ 2))) + (50 + center ^ 2) * sqrt(25 - center ^ 2) / 3)", 0],
+    "genus": 0
+  }
+}

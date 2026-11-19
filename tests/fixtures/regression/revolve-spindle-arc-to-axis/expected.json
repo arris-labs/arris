@@ -1,0 +1,190 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "3229619eb01572fd7418af0b6c46c5897da0a4c7a410b6f344697078e54acbef",
+  "results": {
+    "default": {
+      "area": 535.4182526685349,
+      "centroid": [
+        1.4786220492251253e-16,
+        2.0920247843220077,
+        -1.8006702724873677e-17
+      ],
+      "counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          11625.951092194455,
+          -3.021767970128613e-13,
+          -9.982045174274399e-13
+        ],
+        [
+          -3.021767970128613e-13,
+          20585.5158413181,
+          1.1567676556009184e-13
+        ],
+        [
+          -9.982045174274399e-13,
+          1.1567676556009184e-13,
+          11625.951092194351
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_at_axis",
+          "point": [
+            0.0,
+            2.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_outer_wall",
+          "point": [
+            8.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_pole",
+          "point": [
+            0.0,
+            4.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_outer_wall",
+          "point": [
+            0.0,
+            4.0,
+            6.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_flat_base",
+          "point": [
+            2.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 768.8701638203883
+    },
+    "near_sphere": {
+      "area": 235.62994843873076,
+      "centroid": [
+        -6.513376964676881e-16,
+        1.8750151352251383,
+        -1.905027824836281e-17
+      ],
+      "counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          1697.784764686799,
+          -1.0660722050227731e-14,
+          -1.9825645292222e-13
+        ],
+        [
+          -1.0660722050227731e-14,
+          2618.2946057741024,
+          1.5849876138404725e-14
+        ],
+        [
+          -1.9825645292222e-13,
+          1.5849876138404725e-14,
+          1697.7847646867785
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 2,
+        "faces": 2,
+        "loops": 2,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 2
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_at_axis",
+          "point": [
+            0.0,
+            2.0,
+            0.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "past_outer_wall",
+          "point": [
+            5.00013,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_pole",
+          "point": [
+            0.0,
+            4.99999999831,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_outer_wall",
+          "point": [
+            0.0,
+            4.0,
+            3.00013
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_flat_base",
+          "point": [
+            2.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 261.81542617176586
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "description": "The rivet head's meridian: an arc starts on the y axis at (0, 4), passes through (6, 4), then ends at (8, 0). The full turn closes the spindle torus at its upper pole and at the flat base. For x = 3 + 5 cos(t), y = 5 sin(t), integrate pi*x^2 dy for volume, pi*y*x^2 dy for the first moment, and 2*pi*x*5 dt for lateral area. The upper limit is pi - atan(4/3); the base adds 64*pi.",
+  "steps": [
+    {
+      "name": "meridian", "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": [0, 4], "segments": [
+        {"via": [6, 4], "arc_to": [8, 0]}, {"line_to": [0, 0]}, {"line_to": [0, 4]}
+      ]}
+    },
+    {"name": "result", "op": "revolve", "profile": "meridian", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 360}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside_at_axis", "point": [0, 2, 0], "expect": "in"},
+    {"label": "inside_above_pole", "point": [0, 4.5, 3], "expect": "in"},
+    {"label": "above_pole_at_axis", "point": [0, 4.5, 0], "expect": "out"},
+    {"label": "past_outer_wall", "point": [8, 1, 0], "expect": "out"},
+    {"label": "on_pole", "point": [0, 4, 0], "expect": "on"},
+    {"label": "on_outer_wall", "point": [0, 4, 6], "expect": "on"},
+    {"label": "on_flat_base", "point": [2, 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "pi * (236 + 225 * (pi - atan(4 / 3))) / 3",
+    "area": "10 * pi * (3 * (pi - atan(4 / 3)) + 4) + 64 * pi",
+    "centroid": [0, "1536 / (236 + 225 * (pi - atan(4 / 3)))", 0],
+    "genus": 0
+  }
+}

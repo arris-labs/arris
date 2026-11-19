@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "0d2b705e40708a5dd026b0e271c79e672c68f143b0e4a1a5b1d2d058dc1143cc",
+  "results": {
+    "default": {
+      "area": 572.1590742509625,
+      "centroid": [
+        -5.847074489294912e-16,
+        2.01970679155725,
+        -2.7324905909623172e-17
+      ],
+      "counts": {
+        "edges": 5,
+        "faces": 3,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 3
+      },
+      "degenerate": false,
+      "euler_characteristic": 0,
+      "genus": 1,
+      "inertia": [
+        [
+          11023.057427105312,
+          1.2061638329202376e-13,
+          -1.1455069727873144e-12
+        ],
+        [
+          1.2061638329202376e-13,
+          19957.134428452213,
+          2.491777450347531e-13
+        ],
+        [
+          -1.1455069727873144e-12,
+          2.491777450347531e-13,
+          11023.05742710518
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 5,
+        "faces": 3,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 3
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside_band",
+          "point": [
+            0.0,
+            2.0,
+            4.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inside_bore",
+          "point": [
+            0.0,
+            2.0,
+            2.0
+          ]
+        },
+        {
+          "class": "out",
+          "label": "outside_band",
+          "point": [
+            0.0,
+            2.0,
+            8.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_bore",
+          "point": [
+            0.0,
+            2.0,
+            3.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_outer_wall",
+          "point": [
+            0.0,
+            4.0,
+            6.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_flat_base",
+          "point": [
+            4.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 631.9095528400004
+    }
+  }
+}

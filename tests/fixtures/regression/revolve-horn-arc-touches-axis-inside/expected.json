@@ -1,0 +1,107 @@
+{
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "4bcaafdade175a9d828bfd67cbdf1121add921a235464da463d1823730c65dd0",
+  "results": {
+    "default": {
+      "area": 13.011197054679151,
+      "centroid": [
+        2.5411773420211827e-19,
+        -3.954176828273346e-18,
+        -0.4437125055562581
+      ],
+      "counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "degenerate": false,
+      "euler_characteristic": 2,
+      "genus": 0,
+      "inertia": [
+        [
+          1.013080194513888,
+          1.4770353276601062e-18,
+          -5.4682422528880694e-17
+        ],
+        [
+          1.4770353276601062e-18,
+          0.9557389162645192,
+          7.940026343703526e-17
+        ],
+        [
+          -5.4682422528880694e-17,
+          7.940026343703526e-17,
+          1.5723017810656927
+        ]
+      ],
+      "nurbs_counts": {
+        "edges": 6,
+        "faces": 4,
+        "loops": 4,
+        "shells": 1,
+        "solids": 1,
+        "vertices": 4
+      },
+      "probes": [
+        {
+          "class": "in",
+          "label": "inside",
+          "point": [
+            0.0,
+            0.0,
+            -0.5
+          ]
+        },
+        {
+          "class": "out",
+          "label": "inside_bore",
+          "point": [
+            0.0,
+            0.8,
+            -0.2
+          ]
+        },
+        {
+          "class": "out",
+          "label": "behind_caps",
+          "point": [
+            0.0,
+            0.0,
+            0.5
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_pole",
+          "point": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_cylinder",
+          "point": [
+            0.0,
+            0.0,
+            -1.0
+          ]
+        },
+        {
+          "class": "on",
+          "label": "on_cap",
+          "point": [
+            0.5,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "volume": 2.8404070981514833
+    }
+  }
+}

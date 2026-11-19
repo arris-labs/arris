@@ -1,0 +1,26 @@
+{
+  "description": "A unit circle centred 1 from the y axis, revolved 180 degrees. Pappus gives pi*pi for the volume and 2*pi*pi for the torus area; the two disk caps add 2*pi and meet at the pole. The disk's radial second moment is 5*pi/4 and its first moment is pi, so the centroid's transverse offset is (2/pi)*(5/4).",
+  "steps": [
+    {
+      "name": "circle", "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"circle": {"center": [1, 0], "radius": 1}}
+    },
+    {"name": "result", "op": "revolve", "profile": "circle", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 180}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": [0, 0, -1], "expect": "in"},
+    {"label": "behind_caps", "point": [0, 0, 1], "expect": "out"},
+    {"label": "outside", "point": [0, 0, -3], "expect": "out"},
+    {"label": "on_pole", "point": [0, 0, 0], "expect": "on"},
+    {"label": "on_wall", "point": [0, 0, -2], "expect": "on"},
+    {"label": "on_cap", "point": [1, 0, 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "pi ^ 2",
+    "area": "2 * pi ^ 2 + 2 * pi",
+    "centroid": [0, 0, "-5 / (2 * pi)"],
+    "genus": 0
+  }
+}
