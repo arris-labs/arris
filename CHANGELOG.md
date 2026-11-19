@@ -76,6 +76,14 @@ into its version (ADR-0027).
   `a.astype("<f8").tobytes()` and the codes read back with
   `numpy.frombuffer(out, dtype="i1")`.
 
+### Breaking
+
+- `arris_check::Violation` adds `CoincidentVertices { a, b }` (V4). Handle
+  it in exhaustive matches. The boolean result checker reports distinct
+  vertices of one shell that lie within the larger vertex tolerance,
+  allowing the separate ends of a short edge. The variants after it, from
+  `EdgeRange` on, move one place in the enum's order.
+
 ## 0.11.1 — 2026-11-16
 
 - The Python package `arris` is now on PyPI. 0.11.0's wheels never published, so
@@ -98,11 +106,6 @@ into its version (ADR-0027).
   that ended in an internal error (a surface fit out of spans) now builds.
 
 ### Breaking
-
-- `arris_check::Violation` adds `CoincidentVertices { a, b }` (V4). Handle
-  it in exhaustive matches. The boolean result checker reports distinct
-  vertices of one shell that lie within the larger vertex tolerance,
-  allowing the separate ends of a short edge.
 
 - Python's `Model.surface_properties` names its first parameter `entity`, not
   `body`, since it takes a `Body` or a `Face`: pass it positionally, or
