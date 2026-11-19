@@ -57,6 +57,10 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
      step 1 takes it and no ADR fixes a law before it. A plan that needs
      the second oracle's machine says so in its header, so the human is
      asked when the plan is written, not partway through the run.
+     For changes to hooks, verification or landing, include a scratch-clone
+     case with the real hooks. Assert which SHA was verified and whether
+     `pre-push` accepts it. For landing, cover a rebase whose final amend
+     changes only prose and assert that static checks ran on the final tree.
    - *Docs to update* is written now, while the deltas are fresh — it is
      what `/retire-plan` executes; `GLOSSARY.md` is on it when a term is
      new. Rustdoc on new public items is part of the steps.
