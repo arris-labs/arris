@@ -1,0 +1,36 @@
+{
+  "description": "The upper semicircle of a radius-one horn meridian and its rectangular foot are offset radially by less than the model tolerance. The exact cap and horn share the axis edge and pole. The semicircle seated on the axis while keeping its outer endpoint has radius q = 1 + gap/2. Pappus gives the volume from the area of its meridian and the first moment in x, with the surface area from the corresponding first moment of the meridian's boundary.",
+  "params": {"gap": -9.9e-8, "angle": 90},
+  "steps": [
+    {
+      "name": "meridian", "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": ["gap", 0], "segments": [
+        {"via": ["gap + 1", 1], "arc_to": ["gap + 2", 0]},
+        {"line_to": ["gap + 2", -0.5]},
+        {"line_to": ["gap", -0.5]},
+        {"line_to": ["gap", 0]}
+      ]}
+    },
+    {"name": "result", "op": "revolve", "profile": "meridian", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": "angle"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": ["cos(radians(angle) / 2)", -0.25, "-sin(radians(angle) / 2)"], "expect": "in"},
+    {"label": "outside", "point": ["3 * cos(radians(angle) / 2)", -0.25, "-3 * sin(radians(angle) / 2)"], "expect": "out"},
+    {"label": "on_pole", "point": [0, 0, 0], "expect": "on"}
+  ],
+  "tolerances": {"volume_rel": 5e-7, "area_rel": 5e-7, "centroid_abs": 5e-7, "inertia_rel": 1e-6},
+  "analytic": {
+    "occt_step_refused": {"kind": "fails the checker", "why": "Open CASCADE keeps the offset spindle, whose meridian pcurve reaches across the torus axis. The seated Arris horn round-trips with the shared axis leg and pole."},
+    "occt_nurbs_refused": {"kind": "gap past the cap", "why": "The B-spline conversion of the offset spindle leaves its boundary curves outside the STEP reader's gap cap."},
+    "volume": "radians(angle) * (pi * (1 + gap / 2)^3 / 2 + (1 + gap / 2)^2)",
+    "area": "radians(angle) * ((pi + 2) * (1 + gap / 2)^2 + (1 + gap / 2)) + pi * (1 + gap / 2)^2 + 2 * (1 + gap / 2)",
+    "centroid": [
+      "sin(radians(angle)) * (5 * pi * (1 + gap / 2)^4 / 8 + 4 * (1 + gap / 2)^3 / 3) / (radians(angle) * (pi * (1 + gap / 2)^3 / 2 + (1 + gap / 2)^2))",
+      "(2 * (1 + gap / 2)^4 / 3 - (1 + gap / 2)^2 / 4) / (pi * (1 + gap / 2)^3 / 2 + (1 + gap / 2)^2)",
+      "(cos(radians(angle)) - 1) * (5 * pi * (1 + gap / 2)^4 / 8 + 4 * (1 + gap / 2)^3 / 3) / (radians(angle) * (pi * (1 + gap / 2)^3 / 2 + (1 + gap / 2)^2))"
+    ],
+    "genus": 0
+  }
+}

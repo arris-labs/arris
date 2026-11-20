@@ -961,10 +961,16 @@ corpus_tests! {
     sweep_revolve_spindle_arc_from_axis => run "sweep/revolve-spindle-arc-from-axis";
     /// The arc ends on the axis, including a circle almost centred on it.
     sweep_revolve_spindle_arc_to_axis => run "sweep/revolve-spindle-arc-to-axis";
+    /// A shallow spindle meets the axis at a simple root close to the horn's double root.
+    #[ignore = "an angular comparison rejects the exact spindle pole near the horn limit"]
+    regression_revolve_spindle_arc_near_horn => run "regression/revolve-spindle-arc-near-horn";
     /// The arc's swept band stays away from the axis that its circle crosses.
     sweep_revolve_spindle_arc_clear_of_axis => run "sweep/revolve-spindle-arc-clear-of-axis";
     /// A path arc's terminal tangency closes at the horn pole.
     sweep_revolve_horn_arc_to_axis => run "sweep/revolve-horn-arc-to-axis";
+    /// A slightly offset horn meridian still shares the pole and axis leg between the caps.
+    #[ignore = "the rotated off-axis cap curves miss the stationary vertices"]
+    regression_revolve_horn_arc_near_axis => run "regression/revolve-horn-arc-near-axis";
     /// The half-turn of a tangent circle has one axis pole and two flat caps.
     sweep_revolve_horn_torus_half_turn => run "sweep/revolve-horn-torus-half-turn";
     /// A quarter turn of a circle within tolerance of the axis seats one pole.

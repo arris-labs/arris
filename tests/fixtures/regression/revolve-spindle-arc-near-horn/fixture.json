@@ -1,0 +1,29 @@
+{
+  "description": "A radius-one spindle meridian ends at the upper pole, at y = sqrt((1 - R)*(1 + R)) for R = 1 - 1e-9. Its cap descends to y = -0.5. Pappus gives the volume by integrating x times the height y + 0.5 over the base interval [0, R + 1]. The boundary's first moment gives the lateral area. The radial centroid uses the second moment in x, and the axial centroid integrates x*(y*y - 0.25)/2 over the same interval.",
+  "params": {"r": 0.999999999, "turn": 1.2},
+  "steps": [
+    {
+      "name": "meridian", "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"start": ["r + 1", 0], "segments": [
+        {"via": ["r + cos((pi / 2 + atan(r / sqrt((1 - r) * (1 + r)))) / 2)", "sin((pi / 2 + atan(r / sqrt((1 - r) * (1 + r)))) / 2)"], "arc_to": [0, "sqrt((1 - r) * (1 + r))"]},
+        {"line_to": [0, -0.5]},
+        {"line_to": ["r + 1", -0.5]},
+        {"line_to": ["r + 1", 0]}
+      ]}
+    },
+    {"name": "result", "op": "revolve", "profile": "meridian", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": "180 * turn / pi"}
+  ],
+  "result": "result",
+  "probes": [
+    {"label": "inside", "point": ["cos(turn / 2)", -0.25, "-sin(turn / 2)"], "expect": "in"},
+    {"label": "outside", "point": ["3 * cos(turn / 2)", -0.25, "-3 * sin(turn / 2)"], "expect": "out"},
+    {"label": "on_pole", "point": [0, "sqrt((1 - r) * (1 + r))", 0], "expect": "on"}
+  ],
+  "analytic": {
+    "volume": "turn * (r * (pi / 2 + atan(r / sqrt(1 - r^2)) + r * sqrt(1 - r^2) + 1 + r) / 2 + (1 - r^2)^(3 / 2) / 3 + (1 - r^2) / 4)",
+    "area": "turn * (r * (pi / 2 + atan(r / sqrt(1 - r^2))) + sqrt(1 - r^2) + (r + 1) / 2 + (r + 1)^2 / 2) + pi / 2 + atan(r / sqrt(1 - r^2)) + r * sqrt(1 - r^2) + 1 + r",
+    "centroid": [0.9960510463160712, 0.16207688735347625, -0.6814351837720801],
+    "genus": 0
+  }
+}
