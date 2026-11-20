@@ -116,7 +116,7 @@ script fails on its first line, never skips.
   v, 0.0]` (line ends; arc start, `via()`, `end()`; a sampled circle), one
   `Polyline` per loop, `render_png(&TriMesh::new(), &polylines, View::Top,
   Some(Highlight::Point(start)), "name")`. For a revolve axis refusal
-  (`ProfileCrossesAxis`, `SpindleTorus`, full-turn `NonManifold`) add the
+  (`ProfileCrossesAxis`, `ArcTouchesAxis`, full-turn `NonManifold`) add the
   axis, projected by dotting offsets from `plane` with its `X` and `Y`.
 - **For the human**: `arris_debug::rerun::{spawn, log}` (`rerun` feature)
   streams faces, edges and vertices as separate entity paths. Only when

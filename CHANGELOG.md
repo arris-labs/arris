@@ -8,10 +8,12 @@ into its version (ADR-0027).
 
 ## Unreleased
 
-- `revolve` builds a capped horn torus from a partial turn of a circle
-  tangent to the axis. A full turn returns `NonManifold` at the pinch.
-- `revolve` builds a torus face from an arc that stays clear of the axis
-  on the outer sheet, even when its circle reaches or crosses the axis.
+- `revolve` builds the outer sheet of a horn or spindle torus from a
+  circular arc clear of the axis or meeting it at an endpoint. A face
+  reaching the axis closes at a torus pole that tessellates and round-trips
+  through STEP. A partial turn of a tangent circle builds a capped horn
+  torus. A full turn returns `NonManifold` at the pinch. Moving a torus
+  face with a pole via `offset_faces` returns `SurfaceCollapses`.
 
 - Solids that meet along a shared edge can fuse into touching lumps.
   Each lump keeps its own copy of the contact edge and endpoints, and

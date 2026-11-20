@@ -1,7 +1,6 @@
 # ADR-0092 — A revolved torus face closes at a pole
 
 - Status: accepted (2026-11-19)
-- Plan: `revolve-circle-meets-the-axis` step 2
 - Amends: ADR-0080 §3 and §5
 - Follows: ADR-0002, ADR-0021 §2
 - Reference trees read: none. Open CASCADE was run as the fixture oracle.
@@ -35,9 +34,14 @@ the axis. Its sweep retains that major radius.
    clear of the axis sweeps a regular-band face. An arc ending on the axis
    closes with a degenerate edge at the torus pole. An arc crossing the
    axis remains `ProfileCrossesAxis`. An arc tangent to the axis in its
-   interior is refused by segment. A full profile circle tangent to the
-   axis is cut at the touch point, so a partial turn can close its side
-   there and a full turn gives `NonManifold`.
+   interior returns `ArcTouchesAxis { loop_index, segment }`. A full profile circle tangent to the
+   axis seats its seam at the touch point. For a circle within linear
+   tolerance of tangency, a radial translation seats the geometry at
+   the same point. A partial turn closes its side there and a full turn
+   gives `NonManifold`. A terminal horn arc may be refitted through its
+   seated pole and unchanged outer endpoint within linear tolerance.
+   A spindle's terminal contact is checked in model space, and the trim
+   ends at the analytic root.
 
 ## Consequences
 

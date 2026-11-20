@@ -68,9 +68,10 @@ classification and tangency fixes are done. Per-face surface properties
 shipped beside it in 0.11.0, followed by 0.11.1, the first release on PyPI.
 Solids that touch along a curve, at a point or through shared topology
 build as touching lumps. Each lump keeps its own contact edges and
-vertices (ADR-0088 to ADR-0090). Draft, thicken and `region2` wait for the
-next named cycle.
-**Next:** `/work revolve-circle-meets-the-axis` (`docs/plans/`, ten steps).
+vertices (ADR-0088 to ADR-0090). Horn and spindle revolutions can close
+at a torus pole, with closed tessellation and STEP round trips (ADR-0092).
+Draft, thicken and `region2` wait for the next named cycle.
+**Next:** `/plan tight-body-bounds`.
 
 ## Rules that are not derivable from the code
 

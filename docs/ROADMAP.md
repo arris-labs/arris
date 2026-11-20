@@ -971,9 +971,15 @@ the named cycle next in line.*
   are refused `BlendTooLarge`. Open: a seam crossing a cap a few
   tolerances inside the rim (the cusp), a touch merged into a vertex, and
   `fuse_many` of a cylinder tangent inside a slab's side (backlog).
-- A revolve whose arc's circle reaches the axis while the arc stays on
-  one side: the spindle torus's outer part, and the half horn torus
-  (`docs/plans/revolve-circle-meets-the-axis.md`).
+- Revolves of circular profiles that reach the axis. **Done** (2026-11-20):
+  arcs on the outer sheet of a horn or spindle torus build clear of the
+  axis or close at a torus pole (ADR-0092). The near-sphere spindle keeps
+  its major radius of 1.3e-4. A tangent circle builds a capped horn on a
+  partial turn, with volume `π²` and area `2π² + 2π` for the unit
+  half-turn. Three pole booleans (a rivet fuse, a box cut and a ball
+  common) match the oracle. An arc tangent in its interior returns
+  `ArcTouchesAxis` with the sketch indices. The sweep and blend rows
+  block 0 of 38 real parts, and the script corpus builds 70 of 71 stages.
 - Operands that touch only along a curve or at an isolated point fuse to one
   solid of touching lumps (ADR-0088, ADR-0089). The harness's torus-link,
   ball-knob and hinge pairs cut to their targets and have empty commons.
