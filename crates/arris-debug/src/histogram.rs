@@ -374,7 +374,7 @@ pub fn blocks_reason(stage: Stage, error: &OpError) -> Option<Cycle> {
                 Cycle::Itself("AxisNotInProfilePlane")
             }
             Reason::Sweep(SweepReason::AngleAboveTurn) => Cycle::Itself("AngleAboveTurn"),
-            Reason::Sweep(SweepReason::SpindleTorus) => Cycle::Itself("SpindleTorus"),
+            Reason::Sweep(SweepReason::ArcTouchesAxis { .. }) => Cycle::Itself("ArcTouchesAxis"),
             // Nor does it sweep along a path.
             Reason::Sweep(SweepReason::ProfileAlongPath) => Cycle::Itself("ProfileAlongPath"),
             Reason::Sweep(SweepReason::SweepFolds { .. }) => Cycle::Itself("SweepFolds"),
@@ -466,6 +466,7 @@ pub fn blocks_reason_named(
                 Cycle::Itself("unsupported pair")
             }
         }
+        "ArcTouchesAxis" => Cycle::Itself("ArcTouchesAxis"),
         "OpDegenerateError" => {
             let r = reason.unwrap_or("");
             if r.contains("closed forms do not cover")
@@ -539,8 +540,10 @@ pub fn blocks_reason_named(
                 Cycle::Itself("AxisNotInProfilePlane")
             } else if r == "AngleAboveTurn" || r.contains("revolve angle is above a full turn") {
                 Cycle::Itself("AngleAboveTurn")
-            } else if r == "SpindleTorus" || r.contains("spindle torus") {
-                Cycle::Itself("SpindleTorus")
+            } else if r == "ArcTouchesAxis"
+                || r.contains("touches the revolve axis inside its range")
+            {
+                Cycle::Itself("ArcTouchesAxis")
             } else if r == "ProfileAlongPath" || r.contains("plane holds the path's start tangent")
             {
                 Cycle::Itself("ProfileAlongPath")
@@ -1288,6 +1291,10 @@ mod tests {
             Some(Cycle::Itself("beside a singularity"))
         );
 
+        assert_eq!(
+            blocks_reason_named("revolve", "ArcTouchesAxis", None, None, None),
+            Some(Cycle::Itself("ArcTouchesAxis"))
+        );
         // 4. OpProfileError
         assert_eq!(
             blocks_reason_named("extrude", "OpProfileError", None, None, None),

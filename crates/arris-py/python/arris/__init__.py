@@ -1,6 +1,7 @@
 """Arris: a B-Rep geometric kernel. A thin layer over the Rust crate."""
 
 from ._arris import (
+    ArcTouchesAxis,
     ArrisError,
     Body,
     BodyDecodeError,
@@ -110,6 +111,7 @@ from ._arris import (
 )
 
 __all__ = [
+    "ArcTouchesAxis",
     "ArrisError",
     "Body",
     "BodyDecodeError",

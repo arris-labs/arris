@@ -515,7 +515,8 @@ impl Model {
     ///
     /// Raises `OpProfileError` for an invalid sketch and `OpDegenerateError`
     /// for an axis off the plane, a profile across the axis, or an angle
-    /// that is not in `(0, 2π]`.
+    /// that is not in `(0, 2π]`. `ArcTouchesAxis` names the first arc
+    /// that touches the axis inside its range.
     ///
     /// ```python
     /// import math

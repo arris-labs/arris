@@ -20,7 +20,7 @@ use arris::io::body::BodyError;
 use arris::io::native::NativeError;
 use arris::io::step::{ReadError, StepError};
 use arris::mesh::MeshError;
-use arris::ops::OpError;
+use arris::ops::{OpError, Reason, SweepReason};
 use arris::topo::{AnyId, EntityId, Shape, TopoError};
 use arris::{Interrupted, Stop};
 use pyo3::IntoPyObjectExt;
@@ -169,6 +169,18 @@ pub fn op_error(error: &OpError) -> Mapped {
             .with("a", Attr::Shape(a.1))
             .text("b_kind", b.0)
             .with("b", Attr::Shape(b.1)),
+        OpError::Degenerate {
+            entities,
+            reason:
+                reason @ Reason::Sweep(SweepReason::ArcTouchesAxis {
+                    loop_index,
+                    segment,
+                }),
+        } => Mapped::new(Class::ArcTouchesAxis, message)
+            .with("entities", Attr::Shapes(entities.clone()))
+            .text("reason", reason)
+            .with("loop_index", Attr::Uint(*loop_index as u64))
+            .with("segment", Attr::Uint(*segment as u64)),
         OpError::Degenerate { entities, reason } => Mapped::new(Class::OpDegenerateError, message)
             .with("entities", Attr::Shapes(entities.clone()))
             .text("reason", reason),
@@ -512,6 +524,13 @@ mod tests {
                 reason: Reason::Sweep(SweepReason::AngleAboveTurn),
             }),
             op_error(&OpError::Degenerate {
+                entities: vec![],
+                reason: Reason::Sweep(SweepReason::ArcTouchesAxis {
+                    loop_index: 1,
+                    segment: 2,
+                }),
+            }),
+            op_error(&OpError::Degenerate {
                 entities: vec![shape()],
                 reason: Reason::Boolean(BooleanReason::Empty),
             }),
@@ -718,8 +737,9 @@ mod tests {
         produced.insert(BindError::Poisoned { model: this }.class());
         let bases: BTreeSet<&str> = Class::ALL.iter().map(|c| c.base()).collect();
         // The families (`OpError`, `GeomError`, …) are bases, never raised bare.
+        // `OpDegenerateError` also serves as the base for `ArcTouchesAxis`.
         for class in Class::ALL {
-            if bases.contains(class.name()) {
+            if bases.contains(class.name()) && *class != Class::OpDegenerateError {
                 assert!(
                     !produced.contains(class),
                     "{} is a family, not a variant",

@@ -819,6 +819,10 @@ class OpDegenerateError(OpError):
     entities: list[_Entity]
     reason: str
 
+class ArcTouchesAxis(OpDegenerateError):
+    loop_index: int
+    segment: int
+
 class OpProfileError(OpError):
     detail: str
 

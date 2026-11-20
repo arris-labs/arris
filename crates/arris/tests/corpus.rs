@@ -45,7 +45,7 @@ fn run_variant(name: &str, variant: &str) {
 }
 
 fn run_arc_touches_axis(name: &str) {
-    use arris_ops::{OpError, Reason};
+    use arris_ops::{OpError, Reason, SweepReason};
 
     let dir = fixtures::corpus_root().join(name);
     match corpus::chain(&dir, "default") {
@@ -53,18 +53,15 @@ fn run_arc_touches_axis(name: &str) {
             step,
             source:
                 OpError::Degenerate {
-                    reason: Reason::Sweep(reason),
+                    reason:
+                        Reason::Sweep(SweepReason::ArcTouchesAxis {
+                            loop_index: 0,
+                            segment: 1,
+                        }),
                     ..
                 },
             ..
-        }) if step == "result" => {
-            // Step 10 replaces this with the corpus's typed refusal check
-            // once the public SweepReason variant exists.
-            assert_eq!(
-                format!("{reason:?}"),
-                "ArcTouchesAxis { loop_index: 0, segment: 1 }"
-            );
-        }
+        }) if step == "result" => {}
         Err(err) => panic!("{name}: expected an arc tangency refusal, got {err}"),
         Ok(_) => panic!("{name}: the arc tangent inside its range was revolved"),
     }
@@ -995,8 +992,7 @@ corpus_tests! {
     /// The half-turn of a tangent circle has one axis pole and two flat caps.
     sweep_revolve_horn_torus_half_turn => run "sweep/revolve-horn-torus-half-turn";
     /// The interior tangency names the second segment of the first loop.
-    #[ignore = "the spindle refusal gives neither the loop nor the segment"]
-    regression_revolve_horn_arc_touches_axis_inside => arc_touches_axis "regression/revolve-horn-arc-touches-axis-inside";
+    sweep_revolve_horn_arc_touches_axis_inside => arc_touches_axis "sweep/revolve-horn-arc-touches-axis-inside";
     /// A square whose plane misses the arc's axis, along a quarter arc: no
     /// kind holds the faces, so they are fitted (ADR-0063).
     sweep_sweep_arc_tilted_profile => run "sweep/sweep-arc-tilted-profile";

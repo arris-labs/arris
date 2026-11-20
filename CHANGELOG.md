@@ -83,6 +83,11 @@ into its version (ADR-0027).
 
 ### Breaking
 
+- Replace `SweepReason::SpindleTorus` matches with `ArcTouchesAxis { loop_index,
+  segment }` for arcs that touch the axis in their interior, and
+  `ProfileCrossesAxis` for arcs that would sweep the inner sheet. In Python,
+  catch `arris.ArcTouchesAxis` to read the two zero-based indices.
+
 - `arris_check::Violation` adds `CoincidentVertices { a, b }` (V4). Handle
   it in exhaustive matches. The boolean result checker reports distinct
   vertices of one shell that lie within the larger vertex tolerance,

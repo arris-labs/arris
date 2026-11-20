@@ -105,7 +105,7 @@ design; **[3]** unproven, robustness or a bound established here.
 - [x] Step 9 **[2]** — Horn circle: re-seat a tangent `Circle` loop's vertex
   at the touch point. `revolve-horn-torus-half-turn` builds to `π²` and
   `2π² + 2π`, and its full turn is `NonManifold` (a unit test).
-- [ ] Step 10 **[1]** — `ArcTouchesAxis { loop_index, segment }` replaces
+- [x] Step 10 **[1]** — `ArcTouchesAxis { loop_index, segment }` replaces
   `SpindleTorus`: error docs, `arris-py` class and stub, the histogram row,
   `tests/revolve.rs`, the refusal fixture moved to `sweep/`, a `### Breaking`
   bullet.
@@ -189,3 +189,8 @@ Decided here by the agent, recorded:
   double root cannot recover the meridian's azimuth. Mass integration
   splits the full meridian into quarter turns to resolve inertia at the
   fixture's tolerance.
+- Settled in step 10: the earlier inner-sheet witness has its arc's centre
+  on the opposite side of the axis even though the arc itself stays clear
+  of it. The signed-centre guard classifies that unsupported sheet as
+  `ProfileCrossesAxis`. `ArcTouchesAxis` identifies an interior tangency
+  and uses the lowest input loop and segment indices.

@@ -1193,8 +1193,8 @@ fn ring_recipe() -> Recipe {
 }
 
 /// An arc whose centre lies across the axis would sweep the unsupported
-/// inner sheet of a spindle torus. A circle crossing the axis is refused
-/// separately. Both refusals leave the model untouched.
+/// inner sheet of a spindle torus. That arc and a circle crossing the
+/// axis both receive the axis-crossing refusal and leave the model untouched.
 #[test]
 fn revolve_refuses_the_inner_sheet_and_a_crossing_circle() {
     let z = Axis::z_at(Point3::origin());
@@ -1220,7 +1220,7 @@ fn revolve_refuses_the_inner_sheet_and_a_crossing_circle() {
     assert!(matches!(
         revolve(&mut m, &bulge, z, TAU),
         Err(OpError::Degenerate {
-            reason: Reason::Sweep(SweepReason::SpindleTorus),
+            reason: Reason::Sweep(SweepReason::ProfileCrossesAxis),
             ..
         })
     ));
@@ -1248,6 +1248,46 @@ fn revolve_refuses_the_inner_sheet_and_a_crossing_circle() {
         dump_text(&fresh, again).unwrap(),
         "the model is as it was"
     );
+}
+
+/// Both arcs touch the axis inside their ranges. Normalising this
+/// clockwise loop reverses the walk but preserves the input indices.
+#[test]
+fn revolve_reports_the_first_interior_touch_in_input_order() {
+    let p = Point2::new;
+    let profile = Profile {
+        plane: xz_plane(),
+        outer: ProfileLoop::Path {
+            start: p(1.0, -2.0),
+            segments: vec![
+                ProfileSegment::ArcTo {
+                    via: p(0.0, -1.0),
+                    to: p(1.0, 0.0),
+                },
+                ProfileSegment::ArcTo {
+                    via: p(0.0, 1.0),
+                    to: p(1.0, 2.0),
+                },
+                ProfileSegment::LineTo(p(2.0, 2.0)),
+                ProfileSegment::LineTo(p(2.0, -2.0)),
+                ProfileSegment::LineTo(p(1.0, -2.0)),
+            ],
+        },
+        holes: Vec::new(),
+    };
+    let mut m = Model::default();
+    let edges = profile.edges(m.precision().tolerance()).unwrap();
+    assert!(edges[0].iter().all(|edge| edge.reversed));
+    assert!(matches!(
+        revolve(&mut m, &profile, Axis::z_at(Point3::origin()), TAU / 2.0),
+        Err(OpError::Degenerate {
+            reason: Reason::Sweep(SweepReason::ArcTouchesAxis {
+                loop_index: 0,
+                segment: 0,
+            }),
+            ..
+        })
+    ));
 }
 
 /// The input circle's seam is two radii from the axis. The half turn

@@ -1,6 +1,7 @@
 """Type stubs for the package: everything the extension module defines."""
 
 from ._arris import (
+    ArcTouchesAxis as ArcTouchesAxis,
     ArrisError as ArrisError,
     Body as Body,
     BodyDecodeError as BodyDecodeError,
@@ -110,6 +111,7 @@ from ._arris import (
 )
 
 __all__ = [
+    "ArcTouchesAxis",
     "ArrisError",
     "Body",
     "BodyDecodeError",

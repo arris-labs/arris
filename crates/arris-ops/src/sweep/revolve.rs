@@ -248,6 +248,7 @@ pub(super) fn check_circular_edges(
     axis: &AxisInPlane,
     tol: Tolerance,
 ) -> Result<(), OpError> {
+    let mut first_touch = None;
     for edge in loops.iter().flatten() {
         if let Curve2::Circle { frame, radius } = &edge.pcurve {
             let centre = frame.origin();
@@ -272,10 +273,27 @@ pub(super) fn check_circular_edges(
                     .filter(|&p| axis.rho(p).abs() <= tol.linear);
                 on_axis.next().is_some_and(at_pole) && on_axis.all(at_pole)
             };
-            if !closes_at_end {
-                return Err(degenerate(Reason::Sweep(SweepReason::SpindleTorus)));
+            // Test the minimum signed radius inside the arc's own range,
+            // excluding the endpoint poles.
+            let nearest = real::atan2(-axis.radial.dot(&frame.y()), -axis.radial.dot(&frame.x()));
+            let from_start = wrap_angle(nearest - edge.range.lo());
+            let touches_inside = major > tol.linear
+                && (axis.rho(centre) - radius).abs() <= tol.linear
+                && from_start > tol.angular
+                && edge.range.length() - from_start > tol.angular;
+            if touches_inside {
+                let index = (edge.loop_index, edge.segment);
+                first_touch = Some(first_touch.map_or(index, |first| index.min(first)));
+            } else if !closes_at_end {
+                return Err(degenerate(Reason::Sweep(SweepReason::ProfileCrossesAxis)));
             }
         }
+    }
+    if let Some((loop_index, segment)) = first_touch {
+        return Err(degenerate(Reason::Sweep(SweepReason::ArcTouchesAxis {
+            loop_index,
+            segment,
+        })));
     }
     Ok(())
 }
@@ -464,13 +482,13 @@ fn apex_pcurve(surface: &Surface, axis: &Axis, v: f64) -> Curve2 {
 /// [`SweepReason::AngleAboveTurn`] above `2π`, [`SweepReason::AxisNotInProfilePlane`]
 /// when the axis is off the plane by more than the tolerances,
 /// [`SweepReason::ProfileCrossesAxis`] when the profile has points on both
-/// sides of the axis, [`InputReason::ZeroThickness`] when it lies within
+/// sides of the axis or an arc would leave the supported outer sheet of a
+/// torus, [`InputReason::ZeroThickness`] when it lies within
 /// `default_tolerance` of the axis everywhere,
 /// [`InputReason::NonManifold`] when a full turn's profile touches the axis at
 /// a vertex with no segment along it, where the swept surface would touch
-/// itself, [`SweepReason::SpindleTorus`] when an arc would sweep the inner
-/// sheet of a spindle torus or reach its revolve axis away from a torus pole
-/// at an endpoint, and [`SweepReason::EllipticRevolve`]
+/// itself, [`SweepReason::ArcTouchesAxis`] naming the first arc that touches
+/// the axis inside its range, and [`SweepReason::EllipticRevolve`]
 /// naming the first elliptic segment of the sketch, whose swept surface
 /// has no variant (ADR-0014).
 ///

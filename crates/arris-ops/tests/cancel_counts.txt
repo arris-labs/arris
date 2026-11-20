@@ -203,6 +203,7 @@ sweep/revolve-ellipse: refused
 sweep/revolve-frustum: 20
 sweep/revolve-hollow-ring: 40
 sweep/revolve-horn-arc-to-axis: 24
+sweep/revolve-horn-arc-touches-axis-inside: refused
 sweep/revolve-horn-torus-half-turn: 6
 sweep/revolve-l-profile: 36
 sweep/revolve-notch-to-axis: 40

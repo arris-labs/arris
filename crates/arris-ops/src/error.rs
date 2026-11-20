@@ -192,7 +192,8 @@ impl core::fmt::Display for InputReason {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SweepReason {
     /// A revolve profile crosses its axis: it has points on both sides of
-    /// the axis line in its plane, beyond the tolerance.
+    /// the axis line in its plane beyond the tolerance, or an arc would
+    /// leave the supported outer sheet and its terminal poles.
     ProfileCrossesAxis,
     /// A revolve axis does not lie in the profile's plane within the
     /// tolerances: its direction is off the plane by more than the angular
@@ -201,9 +202,14 @@ pub enum SweepReason {
     /// A revolve angle is above a full turn, by more than the angular
     /// tolerance.
     AngleAboveTurn,
-    /// A revolve profile has an arc that would sweep the inner sheet of a
-    /// spindle torus or reach the axis without closing at a torus pole (ADR-0092).
-    SpindleTorus,
+    /// The first arc that touches the revolve axis inside its range
+    /// (ADR-0092), in the consumer's input order.
+    ArcTouchesAxis {
+        /// The loop: `0` the outer, the holes from `1`.
+        loop_index: usize,
+        /// The segment of that loop, as the consumer wrote it.
+        segment: usize,
+    },
     /// A revolve profile has an elliptic segment or a full-ellipse loop
     /// (ADR-0014): the surface it would sweep — a spheroid, an elliptic
     /// torus — has no variant in the data model, and the meridian
@@ -251,7 +257,7 @@ impl SweepReason {
             SweepReason::ProfileCrossesAxis => "ProfileCrossesAxis",
             SweepReason::AxisNotInProfilePlane => "AxisNotInProfilePlane",
             SweepReason::AngleAboveTurn => "AngleAboveTurn",
-            SweepReason::SpindleTorus => "SpindleTorus",
+            SweepReason::ArcTouchesAxis { .. } => "ArcTouchesAxis",
             SweepReason::EllipticRevolve { .. } => "EllipticRevolve",
             SweepReason::ProfileAlongPath => "ProfileAlongPath",
             SweepReason::SweepFolds { .. } => "SweepFolds",
@@ -268,9 +274,13 @@ impl core::fmt::Display for SweepReason {
                 f.write_str("the revolve axis does not lie in the profile's plane")
             }
             SweepReason::AngleAboveTurn => f.write_str("the revolve angle is above a full turn"),
-            SweepReason::SpindleTorus => {
-                f.write_str("an arc's circle crosses the revolve axis: a spindle torus")
-            }
+            SweepReason::ArcTouchesAxis {
+                loop_index,
+                segment,
+            } => write!(
+                f,
+                "loop {loop_index}, segment {segment} touches the revolve axis inside its range"
+            ),
             SweepReason::EllipticRevolve {
                 loop_index,
                 segment,
@@ -1069,9 +1079,12 @@ mod tests {
                 "the revolve angle is above a full turn",
             ),
             (
-                Reason::Sweep(SweepReason::SpindleTorus),
-                "SpindleTorus",
-                "an arc's circle crosses the revolve axis: a spindle torus",
+                Reason::Sweep(SweepReason::ArcTouchesAxis {
+                    loop_index: 1,
+                    segment: 2,
+                }),
+                "ArcTouchesAxis",
+                "loop 1, segment 2 touches the revolve axis inside its range",
             ),
             (
                 Reason::Boolean(BooleanReason::Empty),

@@ -130,6 +130,7 @@ classes! {
     OpInvalidInputError(OpError) = "An input body fails the checker.";
     OpUnsupportedError(OpError) = "No closed form for this pair of surfaces or curves yet.";
     OpDegenerateError(OpError) = "The requested result has no valid representation.";
+    ArcTouchesAxis(OpDegenerateError) = "A revolve arc touches the axis inside its range.";
     OpProfileError(OpError) = "The profile of a sweep is not a valid sketch.";
     OpPathError(OpError) = "The path of a sweep is not a G1 chain of usable segments.";
     OpLoftError(OpError) = "The sections of a loft cannot be matched.";

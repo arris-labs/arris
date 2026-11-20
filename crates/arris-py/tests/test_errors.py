@@ -1,3 +1,5 @@
+import math
+
 import arris
 import pytest
 
@@ -53,3 +55,18 @@ def test_the_shared_conditions_are_one_class_each():
 
 def test_the_exceptions_say_where_they_live():
     assert arris.OpUnsupportedError.__module__ == "arris"
+
+
+def test_revolve_names_an_arc_that_touches_the_axis_inside_its_range():
+    profile = arris.Profile(
+        arris.Loop.path(
+            (1, -1),
+            [arris.Segment.line((1, 1)), arris.Segment.arc(to=(1, -1), via=(0, 0))],
+        )
+    )
+    with pytest.raises(arris.ArcTouchesAxis) as error:
+        arris.Model().revolve(profile, (0, 0, 0), (0, 1, 0), math.pi)
+    assert isinstance(error.value, arris.OpDegenerateError)
+    assert (error.value.loop_index, error.value.segment) == (0, 1)
+    assert error.value.entities == []
+    assert "touches the revolve axis inside its range" in error.value.reason
