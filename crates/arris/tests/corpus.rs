@@ -1916,8 +1916,7 @@ corpus_tests! {
     /// tube radius moved.
     offset_torus_ring => run "offset/torus-ring";
     /// A half horn's torus face moved in or out would lose its pole.
-    #[ignore = "the inward move returns Unsupported instead of SurfaceCollapses"]
-    regression_offset_horn_torus_pole => run "regression/offset-horn-torus-pole";
+    offset_horn_torus_pole => run "offset/horn-torus-pole";
     /// A hole's wall moved past its own radius: the cylinder collapses,
     /// refused as `SurfaceCollapses` where Open CASCADE builds an
     /// inverted one.

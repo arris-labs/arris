@@ -473,9 +473,9 @@ pub enum OffsetReason {
     /// parallel curve of an ellipse is no ellipse) or a free-form surface.
     /// The error's entity is the face.
     NoExactOffset,
-    /// The offset drives a moved face's surface through zero — a
-    /// cylinder, a sphere or a torus tube whose radius is gone, a cone
-    /// whose move reaches its axis. The error's entity is the face.
+    /// The offset removes a moved face's radius, carries a cone to its
+    /// axis, or moves a torus face with a pole or off its regular band.
+    /// The error's entity is the face.
     SurfaceCollapses,
     /// A face dragged along by a tangent neighbour no longer meets a face
     /// beside it that stays: its offset has pulled clear of the other's

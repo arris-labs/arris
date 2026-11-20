@@ -99,8 +99,8 @@ impl Moves {
 /// cylinder or a free-form surface, or a tangent edge that is no line or
 /// circle, or along which the faces' normal turns,
 /// [`OffsetReason::SurfaceCollapses`] naming a moved face whose radius the
-/// move drives through zero or whose cone it carries to the axis — a
-/// dragged fillet moved in past its radius — and [`OffsetReason::Gap`]
+/// move drives through zero, whose cone it carries to the axis, or whose
+/// torus trim has a pole or leaves the regular band, and [`OffsetReason::Gap`]
 /// naming the edge where a dragged face no longer meets a face beside it
 /// that stays, [`OffsetReason::SelfIntersects`] naming the faces the
 /// checker's global level finds running into each other — a pocket floor
@@ -297,8 +297,8 @@ fn self_intersection(report: &arris_check::Report) -> Option<OpError> {
 /// the body's use of the face. An elliptic cylinder or a free-form surface
 /// has none of its own kind ([`OffsetReason::NoExactOffset`]); a surface
 /// whose radius the move drives through zero, a cone one of whose
-/// vertices it carries to the axis, or a torus face the move drives off the
-/// regular band (ADR-0080), collapses
+/// vertices it carries to the axis, or a torus face that has a pole or
+/// leaves the regular band (ADR-0080, ADR-0092), collapses
 /// ([`OffsetReason::SurfaceCollapses`]).
 fn moves(
     m: &Model,
@@ -313,7 +313,8 @@ fn moves(
     };
     let mut surfaces = BTreeMap::new();
     for &f in &chain.moved {
-        let surface = m.surface(m.face(f)?.surface())?;
+        let face = m.face(f)?;
+        let surface = m.surface(face.surface())?;
         let by = distance * view.orientation[&f].sign();
         let offset = match surface {
             Surface::EllipticCylinder { .. } | Surface::Nurbs(_) => {
@@ -334,7 +335,7 @@ fn moves(
         {
             // A vertex of the face at radius `ρ` from the axis moves to
             // `ρ + by · cos α`: at or below zero it has crossed the axis.
-            for l in m.face(f)?.loops() {
+            for l in face.loops() {
                 for c in l.coedges() {
                     let e = m.edge(c.edge())?;
                     for v in [e.start(), e.end()] {
@@ -359,29 +360,26 @@ fn moves(
             // lies on a plane through the axis that the section does not
             // answer: refused here, naming the face, not left to the edge
             // cut.
-            if let Surface::Torus {
-                major_radius,
-                minor_radius,
-                ..
-            } = offset
-                && minor_radius - major_radius > tol.linear
-            {
+            if minor_radius - major_radius > tol.linear {
                 return Err(refuse(f, OffsetReason::SurfaceCollapses));
             }
-            let face = m.face(f)?;
-            for l in face.loops() {
-                for c in l.coedges() {
-                    let range = m.edge(c.edge())?.range();
-                    if !(range.lo().is_finite() && range.hi().is_finite()) {
-                        continue;
-                    }
-                    let pcurve = m.curve2(c.pcurve())?;
-                    let reaches = pcurve.v_extent(range).is_some_and(|v| {
-                        torus_v_reaches_axis(major_radius, minor_radius, face.tolerance(), v)
-                    });
-                    if reaches {
-                        return Err(refuse(f, OffsetReason::SurfaceCollapses));
-                    }
+            for c in face.loops().iter().flat_map(|l| l.coedges()) {
+                let edge = m.edge(c.edge())?;
+                // The rewrite keeps a degenerate coedge's pcurve. Moving
+                // the tube moves or removes the pole that pcurve closes.
+                if edge.is_degenerate() {
+                    return Err(refuse(f, OffsetReason::SurfaceCollapses));
+                }
+                let range = edge.range();
+                if !range.is_bounded() {
+                    continue;
+                }
+                let pcurve = m.curve2(c.pcurve())?;
+                let reaches = pcurve.v_extent(range).is_some_and(|v| {
+                    torus_v_reaches_axis(major_radius, minor_radius, face.tolerance(), v)
+                });
+                if reaches {
+                    return Err(refuse(f, OffsetReason::SurfaceCollapses));
                 }
             }
         }

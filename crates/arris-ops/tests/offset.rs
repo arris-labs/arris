@@ -163,6 +163,19 @@ fn assert_refused(
 }
 
 #[test]
+fn a_torus_pole_refuses_offsets_in_both_directions() {
+    let dir = arris_debug::fixtures::corpus_root().join("offset/horn-torus-pole");
+    let inputs = arris_debug::corpus::inputs(&dir, "default").unwrap();
+    let body = inputs.bodies["horn"];
+    let mut m = inputs.model;
+    let torus = face_at(&m, body, Point3::new(0.0, 0.0, -2.0));
+    for distance in [-0.1, 0.1] {
+        let reason = Reason::Offset(OffsetReason::SurfaceCollapses);
+        assert_refused(&mut m, body, &[torus], distance, reason, torus.id);
+    }
+}
+
+#[test]
 fn the_inputs_are_refused_by_name() {
     let mut m = Model::default();
     let b = cube(&mut m, 10.0);
