@@ -1,0 +1,17 @@
+{
+  "description": "The torus face of a half-turn of a tangent unit circle moves inward or outward by 0.1. The move cannot keep the torus pole as a vertex: shrinking opens a hole and growing carries the face past the axis.",
+  "params": {"d": -0.1},
+  "variants": {"out": {"d": 0.1}},
+  "steps": [
+    {
+      "name": "circle", "op": "profile",
+      "plane": {"origin": [0, 0, 0], "x": [-1, 0, 0], "y": [0, 1, 0]},
+      "outer": {"circle": {"center": [-1, 0], "radius": 1}}
+    },
+    {"name": "horn", "op": "revolve", "profile": "circle", "axis": {"origin": [0, 0, 0], "direction": [0, 1, 0]}, "angle_deg": 180},
+    {"name": "result", "op": "offset", "of": "horn", "faces": [[0, 0, -2]], "distance": "d"}
+  ],
+  "result": "result",
+  "probes": [],
+  "analytic": {"expect_error": "surface-collapses"}
+}
