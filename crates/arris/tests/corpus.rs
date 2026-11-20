@@ -968,8 +968,7 @@ corpus_tests! {
     /// The half-turn of a tangent circle has one axis pole and two flat caps.
     sweep_revolve_horn_torus_half_turn => run "sweep/revolve-horn-torus-half-turn";
     /// A quarter turn of a circle within tolerance of the axis seats one pole.
-    #[ignore = "the cap seams fall on distinct points that exceed the model tolerance after rotation"]
-    regression_revolve_horn_circle_near_axis => run "regression/revolve-horn-circle-near-axis";
+    sweep_revolve_horn_circle_near_axis => run "sweep/revolve-horn-circle-near-axis";
     /// The interior tangency names the second segment of the first loop.
     sweep_revolve_horn_arc_touches_axis_inside => run "sweep/revolve-horn-arc-touches-axis-inside";
     /// A square whose plane misses the arc's axis, along a quarter arc: no

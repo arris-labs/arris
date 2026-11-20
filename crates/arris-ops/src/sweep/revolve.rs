@@ -202,9 +202,10 @@ pub(super) fn orient(
     Ok(axis)
 }
 
-/// Seat the seam of a tangent circle loop at its nearest point to the
-/// axis. Rotating both frames preserves the loop's direction and keeps
-/// the seam at parameter zero on the cap and the meridian.
+/// Seat a circle loop within tolerance of tangency at its pole. Move the
+/// centre radially by the gap so both caps share a seam vertex on the
+/// axis. Rotating both frames puts that seam at parameter zero and
+/// preserves the loop's direction.
 fn seat_horn_circles(
     loops: &mut [Vec<ProfileEdge>],
     plane: &Frame,
@@ -222,20 +223,22 @@ fn seat_horn_circles(
         };
         let major = axis.rho(uv.origin());
         if major > tol.linear && (major - *radius).abs() <= tol.linear {
+            let pole = axis.origin + axis.t(uv.origin()) * axis.along;
+            let centre = pole + *radius * axis.radial;
             let x = -axis.radial;
             let handedness = if uv.is_right_handed() {
                 Handedness::Right
             } else {
                 Handedness::Left
             };
-            *uv = Frame2::new(uv.origin(), x, handedness)?;
+            *uv = Frame2::new(centre, x, handedness)?;
             *frame = Frame::new(
-                frame.origin(),
+                plane.to_world(Point3::new(centre.x, centre.y, 0.0)),
                 frame.z().into_inner(),
                 plane.vec_to_world(Vec3::new(x.x, x.y, 0.0)),
             )?;
-            edge.start = uv.origin() + *radius * uv.x().into_inner();
-            edge.end = edge.start;
+            edge.start = pole;
+            edge.end = pole;
         }
     }
     Ok(())
