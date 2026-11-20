@@ -44,29 +44,6 @@ fn run_variant(name: &str, variant: &str) {
     }
 }
 
-fn run_arc_touches_axis(name: &str) {
-    use arris_ops::{OpError, Reason, SweepReason};
-
-    let dir = fixtures::corpus_root().join(name);
-    match corpus::chain(&dir, "default") {
-        Err(CorpusError::Op {
-            step,
-            source:
-                OpError::Degenerate {
-                    reason:
-                        Reason::Sweep(SweepReason::ArcTouchesAxis {
-                            loop_index: 0,
-                            segment: 1,
-                        }),
-                    ..
-                },
-            ..
-        }) if step == "result" => {}
-        Err(err) => panic!("{name}: expected an arc tangency refusal, got {err}"),
-        Ok(_) => panic!("{name}: the arc tangent inside its range was revolved"),
-    }
-}
-
 /// The corpus as a table: one row per test, `name => how "area/dir"`.
 /// `run` runs every variant of the recipe, `variant` one of them, `part`
 /// a part fixture, `query` a query fixture. Doc comments and `#[ignore = …]` on a row carry to its
@@ -90,7 +67,6 @@ macro_rules! corpus_tests {
     (@call part $dir:literal) => { run_part($dir) };
     (@call query $dir:literal) => { run_query($dir) };
     (@call variant $dir:literal, $variant:literal) => { run_variant($dir, $variant) };
-    (@call arc_touches_axis $dir:literal) => { run_arc_touches_axis($dir) };
 }
 
 corpus_tests! {
@@ -992,7 +968,7 @@ corpus_tests! {
     /// The half-turn of a tangent circle has one axis pole and two flat caps.
     sweep_revolve_horn_torus_half_turn => run "sweep/revolve-horn-torus-half-turn";
     /// The interior tangency names the second segment of the first loop.
-    sweep_revolve_horn_arc_touches_axis_inside => arc_touches_axis "sweep/revolve-horn-arc-touches-axis-inside";
+    sweep_revolve_horn_arc_touches_axis_inside => run "sweep/revolve-horn-arc-touches-axis-inside";
     /// A square whose plane misses the arc's axis, along a quarter arc: no
     /// kind holds the faces, so they are fitted (ADR-0063).
     sweep_sweep_arc_tilted_profile => run "sweep/sweep-arc-tilted-profile";

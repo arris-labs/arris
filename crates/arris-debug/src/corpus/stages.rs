@@ -34,6 +34,12 @@ impl Refusal {
             Refusal::Error(ExpectError::EllipticRevolve) => {
                 "OpError::Degenerate with Reason::EllipticRevolve".into()
             }
+            Refusal::Error(ExpectError::ArcTouchesAxis {
+                loop_index,
+                segment,
+            }) => format!(
+                "OpError::Degenerate with ArcTouchesAxis at loop {loop_index}, segment {segment}"
+            ),
             Refusal::Error(ExpectError::PathCorner) => {
                 "OpError::Path with PathError::Corner".into()
             }
@@ -119,6 +125,16 @@ impl Refusal {
                     }
                     Refusal::Error(ExpectError::EllipticRevolve) => {
                         matches!(reason, Reason::Sweep(SweepReason::EllipticRevolve { .. }))
+                    }
+                    Refusal::Error(ExpectError::ArcTouchesAxis {
+                        loop_index,
+                        segment,
+                    }) => {
+                        reason
+                            == Reason::Sweep(SweepReason::ArcTouchesAxis {
+                                loop_index,
+                                segment,
+                            })
                     }
                     Refusal::Error(ExpectError::ProfileAlongPath) => {
                         reason == Reason::Sweep(SweepReason::ProfileAlongPath)

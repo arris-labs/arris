@@ -941,6 +941,14 @@ pub enum ExpectError {
     /// a profile with an elliptic segment, whose swept surface has no
     /// variant (ADR-0014).
     EllipticRevolve,
+    /// `OpError::Degenerate` with `SweepReason::ArcTouchesAxis`: an arc
+    /// touches the revolve axis at an interior point (ADR-0092).
+    ArcTouchesAxis {
+        /// Zero-based index of the profile loop.
+        loop_index: usize,
+        /// Zero-based index of the arc in the loop.
+        segment: usize,
+    },
     /// `OpError::Path` with `PathError::Corner`: a sweep along a path
     /// whose joint turns by more than the angular tolerance, which Open
     /// CASCADE's pipe carries through under a transition mode (ADR-0063).
