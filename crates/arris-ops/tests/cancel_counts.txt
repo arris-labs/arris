@@ -202,6 +202,7 @@ sweep/revolve-barrel: 20
 sweep/revolve-ellipse: refused
 sweep/revolve-frustum: 20
 sweep/revolve-hollow-ring: 40
+sweep/revolve-horn-arc-near-axis: 24
 sweep/revolve-horn-arc-to-axis: 24
 sweep/revolve-horn-arc-touches-axis-inside: refused
 sweep/revolve-horn-circle-near-axis: 6
@@ -213,6 +214,7 @@ sweep/revolve-quarter: 24
 sweep/revolve-ring: 5
 sweep/revolve-spindle-arc-clear-of-axis: 15
 sweep/revolve-spindle-arc-from-axis: 15
+sweep/revolve-spindle-arc-near-horn: 24
 sweep/revolve-spindle-arc-to-axis: 15
 sweep/revolve-tube: 20
 sweep/sweep-arc-tilted-profile: 23324

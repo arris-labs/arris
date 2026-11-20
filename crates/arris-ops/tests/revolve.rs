@@ -48,6 +48,83 @@ const REL: f64 = 1e-9;
 /// area of the exact volume.
 const MESH_CHORD: f64 = 1e-2;
 
+#[test]
+fn a_horn_arc_with_an_axis_leg_seats_both_caps() {
+    let mut model = Model::default();
+    let gap = 0.99 * model.precision().default_tolerance;
+    let p = Point2::new;
+    let axis = Axis {
+        origin: Point3::origin(),
+        direction: Vec3::y_axis(),
+    };
+    for (gap, axis_leg_end) in [(-gap, -gap), (gap, gap), (0.0, gap)] {
+        let profile = Profile {
+            plane: Frame::world(),
+            outer: ProfileLoop::Path {
+                start: p(gap, 0.0),
+                segments: vec![
+                    ProfileSegment::ArcTo {
+                        via: p(gap + 1.0, 1.0),
+                        to: p(gap + 2.0, 0.0),
+                    },
+                    ProfileSegment::LineTo(p(gap + 2.0, -0.5)),
+                    ProfileSegment::LineTo(p(axis_leg_end, -0.5)),
+                    ProfileSegment::LineTo(p(gap, 0.0)),
+                ],
+            },
+            holes: Vec::new(),
+        };
+        let radius = 1.0 + gap / 2.0;
+        for angle in [PI / 2.0, PI, 4.0] {
+            let (body, _) = revolve(&mut model, &profile, axis, angle).unwrap();
+            let report = check(&model, body, Level::Full);
+            assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+            let props = mass_properties(&model, body).unwrap();
+            let volume = angle * radius * radius * (PI * radius / 2.0 + 1.0);
+            let area = angle * ((PI + 2.0) * radius * radius + radius)
+                + PI * radius * radius
+                + 2.0 * radius;
+            assert!(close(props.volume, volume), "{} vs {volume}", props.volume);
+            assert!(close(props.area, area), "{} vs {area}", props.area);
+        }
+    }
+}
+
+#[test]
+fn adjacent_horn_arcs_can_share_a_seated_vertex() {
+    let mut model = Model::default();
+    let gap = 0.99 * model.precision().default_tolerance;
+    let p = Point2::new;
+    let h = core::f64::consts::FRAC_1_SQRT_2;
+    let profile = Profile {
+        plane: Frame::world(),
+        outer: ProfileLoop::Path {
+            start: p(gap, 0.0),
+            segments: vec![
+                ProfileSegment::ArcTo {
+                    via: p(gap + 1.0 - h, h),
+                    to: p(gap + 1.0, 1.0),
+                },
+                ProfileSegment::LineTo(p(gap + 2.0, 1.0)),
+                ProfileSegment::LineTo(p(gap + 2.0, -1.0)),
+                ProfileSegment::LineTo(p(gap + 1.0, -1.0)),
+                ProfileSegment::ArcTo {
+                    via: p(gap + 1.0 - h, -h),
+                    to: p(gap, 0.0),
+                },
+            ],
+        },
+        holes: Vec::new(),
+    };
+    let axis = Axis {
+        origin: Point3::origin(),
+        direction: Vec3::y_axis(),
+    };
+    let (body, _) = revolve(&mut model, &profile, axis, PI).unwrap();
+    let report = check(&model, body, Level::Full);
+    assert!(report.is_ok() && report.unchecked().is_empty(), "{report}");
+}
+
 /// [`arris_debug::testing::recorded_parts`] over `Role::Revolve`.
 fn recorded_parts(
     m: &Model,

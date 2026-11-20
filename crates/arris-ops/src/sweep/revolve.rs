@@ -4,11 +4,11 @@ use arris_math::real;
 use core::f64::consts::TAU;
 use std::collections::BTreeMap;
 
-use arris_geom::{Curve, Curve2, Profile, ProfileEdge, Surface, pcurve_on};
+use arris_geom::{Curve, Curve2, Profile, ProfileEdge, ProfileError, Surface, pcurve_on};
 use arris_math::nalgebra::UnitQuaternion;
 use arris_math::{
     Axis, Control, Frame, Frame2, Handedness, Interval, Isometry, Meter, Point2, Point3, Tolerance,
-    UnitVec2, UnitVec3, Vec2, Vec3, wrap_angle,
+    UnitVec2, UnitVec3, Vec2, Vec3, is_negligible, wrap_angle, wrap_signed,
 };
 use arris_topo::builder::{EdgeSpec, VertexKey};
 use arris_topo::entity::EdgeGeometry;
@@ -37,6 +37,10 @@ pub(super) struct AxisInPlane {
 }
 
 impl AxisInPlane {
+    fn at(&self, t: f64) -> Point2 {
+        self.origin + t * self.along
+    }
+
     /// The position along the axis of a (u, v) point.
     pub(super) fn t(&self, p: Point2) -> f64 {
         (p - self.origin).dot(&self.along)
@@ -265,11 +269,12 @@ pub(super) fn check_circular_edges(
             // A centre on the opposite side would sweep the unsupported
             // inner sheet. On the outer sheet an axis contact requires a pole.
             let closes_at_end = major > tol.linear && major <= *radius && {
-                let root = real::acos(-major / radius);
+                // Compare in the profile plane. Near a horn, small rounding
+                // errors in either radius are magnified by acos.
+                let height = radius * (((radius - major) / radius) * (1.0 + major / radius)).sqrt();
                 let at_pole = |p: Point2| {
-                    let rho = axis.rho(p);
-                    let v = real::atan2((p - centre).dot(&axis.along), rho - major);
-                    (v.abs() - root).abs() <= tol.angular
+                    let axial = (p - centre).dot(&axis.along);
+                    real::hypot(axis.rho(p), axial.abs() - height) <= tol.linear
                 };
                 let mut on_axis = [edge.start, edge.end]
                     .into_iter()
@@ -297,6 +302,213 @@ pub(super) fn check_circular_edges(
             loop_index,
             segment,
         })));
+    }
+    Ok(())
+}
+
+/// Fit the horn's circle through its seated pole and its unchanged outer
+/// endpoint. The centre is one radius from the pole, along the radial.
+fn fit_horn_arc(
+    edge: &mut ProfileEdge,
+    plane: &Frame,
+    axis: &AxisInPlane,
+    tol: Tolerance,
+    pole_at_start: bool,
+) -> Result<Point2, OpError> {
+    let (Curve::Circle { frame, radius }, Curve2::Circle { frame: uv, .. }) =
+        (&edge.curve, &edge.pcurve)
+    else {
+        return Err(profile_curve_fault(edge));
+    };
+    let (pole, outer) = if pole_at_start {
+        (edge.start, edge.end)
+    } else {
+        (edge.end, edge.start)
+    };
+    let crosses_axis = || degenerate(Reason::Sweep(SweepReason::ProfileCrossesAxis));
+    let pole = axis.at(axis.t(pole));
+    let rho = axis.rho(outer);
+    if rho <= tol.linear {
+        return Err(crosses_axis());
+    }
+    let seated_radius = (outer - pole).norm_squared() / (2.0 * rho);
+    let centre = pole + seated_radius * axis.radial;
+    if (centre - uv.origin()).norm() + (seated_radius - radius).abs() > tol.linear {
+        return Err(crosses_axis());
+    }
+    let (start, end) = if pole_at_start {
+        (pole, outer)
+    } else {
+        (outer, pole)
+    };
+    let handedness = if uv.is_right_handed() {
+        Handedness::Right
+    } else {
+        Handedness::Left
+    };
+    let uv = Frame2::new(centre, start - centre, handedness)?;
+    let v = end - centre;
+    let sweep = wrap_angle(real::atan2(v.dot(&uv.y()), v.dot(&uv.x())));
+    if sweep <= tol.angular {
+        return Err(crosses_axis());
+    }
+    edge.range = Interval::new(0.0, sweep).map_err(|_| crosses_axis())?;
+    edge.curve = Curve::Circle {
+        frame: Frame::new(
+            plane.to_world(Point3::new(centre.x, centre.y, 0.0)),
+            frame.z().into_inner(),
+            plane.vec_to_world(Vec3::new(uv.x().x, uv.x().y, 0.0)),
+        )?,
+        radius: seated_radius,
+    };
+    edge.pcurve = Curve2::Circle {
+        frame: uv,
+        radius: seated_radius,
+    };
+    Ok(pole)
+}
+
+/// Put torus meridian endpoints on their singular rows before building
+/// caps and sides. The caps share the pole and any axis leg through it.
+fn seat_path_poles(
+    loops: &mut [Vec<ProfileEdge>],
+    plane: &Frame,
+    axis: &AxisInPlane,
+    tol: Tolerance,
+) -> Result<(), OpError> {
+    let crosses_axis = || degenerate(Reason::Sweep(SweepReason::ProfileCrossesAxis));
+    for edges in loops.iter_mut().filter(|edges| edges.len() > 1) {
+        let n = edges.len();
+        let mut vertices = vec![None; n];
+        for (i, edge) in edges.iter_mut().enumerate() {
+            let Curve2::Circle { frame, radius } = edge.pcurve else {
+                continue;
+            };
+            let centre = frame.origin();
+            let major = circle_major_radius(edge, axis, centre, radius, tol);
+            if major <= tol.linear || major > radius {
+                continue;
+            }
+            let root = real::acos(-major / radius);
+            let x = frame.x();
+            let y = frame.y();
+            let v0 = real::atan2(x.dot(&axis.along), x.dot(&axis.radial));
+            let sense = (x.dot(&axis.radial) * y.dot(&axis.along)
+                - x.dot(&axis.along) * y.dot(&axis.radial))
+            .signum();
+            let mut ends = [edge.range.lo(), edge.range.hi()];
+            for (end, (point, t)) in [edge.start, edge.end]
+                .into_iter()
+                .zip(&mut ends)
+                .enumerate()
+            {
+                let rho = axis.rho(point);
+                if rho.abs() > tol.linear {
+                    continue;
+                }
+                let vertex = (i + end) % n;
+                // Preserve a rounded endpoint only when its rotation also
+                // fits within tolerance.
+                let seated = is_negligible(rho, radius) && rho.abs() <= tol.linear * 0.25;
+                if major == radius {
+                    if seated {
+                        vertices[vertex].get_or_insert(point);
+                    } else {
+                        vertices[vertex] = Some(fit_horn_arc(edge, plane, axis, tol, end == 0)?);
+                    }
+                    break;
+                }
+                let v_pole = root.copysign((point - centre).dot(&axis.along));
+                let correction = wrap_signed(v_pole - (v0 + sense * *t), TAU);
+                if correction.abs() <= tol.angular * 0.5 && seated {
+                    vertices[vertex].get_or_insert(point);
+                    continue;
+                }
+                *t += sense * correction;
+                let pole = axis.at(axis.t(centre) + radius * real::sin(v_pole));
+                if (pole - point).norm() > tol.linear {
+                    return Err(crosses_axis());
+                }
+                vertices[vertex] = Some(pole);
+            }
+            if ends != [edge.range.lo(), edge.range.hi()] && major < radius {
+                let span = Interval::new(ends[0], ends[1]).map_err(|_| crosses_axis())?;
+                if span.length() <= tol.angular || span.length() >= TAU {
+                    return Err(crosses_axis());
+                }
+                edge.range = span;
+            }
+        }
+        if vertices.iter().any(Option::is_some) {
+            seat_axis_lines(edges, &mut vertices, plane, axis, tol)?;
+        }
+    }
+    Ok(())
+}
+
+fn seat_axis_lines(
+    edges: &mut [ProfileEdge],
+    vertices: &mut [Option<Point2>],
+    plane: &Frame,
+    axis: &AxisInPlane,
+    tol: Tolerance,
+) -> Result<(), OpError> {
+    // Both turns use the same axis leg. Propagate each seated pole along
+    // its incident axis lines so that the entire shared leg is fixed.
+    let n = edges.len();
+    let mut pending: Vec<_> = (0..n).filter(|&i| vertices[i].is_some()).collect();
+    while let Some(i) = pending.pop() {
+        let prev = (i + n - 1) % n;
+        let next = (i + 1) % n;
+        for (j, e) in [(prev, prev), (next, i)] {
+            let point = edges[j].start;
+            if vertices[j].is_none()
+                && matches!(edges[e].curve, Curve::Line { .. })
+                && axis.rho(point).abs() <= tol.linear
+            {
+                vertices[j] = Some(axis.at(axis.t(point)));
+                pending.push(j);
+            }
+        }
+    }
+    let ends = vertices.iter().cycle().skip(1);
+    for (edge, (&start, &end)) in edges.iter_mut().zip(vertices.iter().zip(ends)) {
+        let start = start.unwrap_or(edge.start);
+        let end = end.unwrap_or(edge.end);
+        if matches!(edge.curve, Curve::Line { .. }) && (start != edge.start || end != edge.end) {
+            let chord = end - start;
+            let short = || {
+                OpError::Profile(ProfileError::ShortSegment {
+                    loop_index: edge.loop_index,
+                    segment: edge.segment,
+                })
+            };
+            let direction = UnitVec2::try_new(chord, 0.0).ok_or_else(short)?;
+            let world = plane.vec_to_world(Vec3::new(direction.x, direction.y, 0.0));
+            edge.range = Interval::new(0.0, chord.norm()).map_err(|_| short())?;
+            edge.curve = Curve::Line {
+                origin: plane.to_world(Point3::new(start.x, start.y, 0.0)),
+                direction: UnitVec3::new_unchecked(world),
+            };
+            edge.pcurve = Curve2::Line {
+                origin: start,
+                direction,
+            };
+        }
+        edge.start = start;
+        edge.end = end;
+    }
+    for (edge, next) in edges.iter().zip(edges.iter().cycle().skip(1)) {
+        // Two arcs can independently reach a shared vertex. Check the
+        // cap corner as well as each arc's distance to the chosen vertex.
+        let end = edge.pcurve.point(edge.range.hi());
+        let start = next.pcurve.point(next.range.lo());
+        if (end - start).norm() > tol.linear
+            || (end - edge.end).norm() > tol.linear
+            || (start - next.start).norm() > tol.linear
+        {
+            return Err(degenerate(Reason::Sweep(SweepReason::ProfileCrossesAxis)));
+        }
     }
     Ok(())
 }
@@ -564,6 +776,7 @@ pub fn revolve(
     let in_plane = orient(&loops, in_plane, tol)?;
     seat_horn_circles(&mut loops, &profile.plane, &in_plane, tol)?;
     check_circular_edges(&loops, &in_plane, tol)?;
+    seat_path_poles(&mut loops, &profile.plane, &in_plane, tol)?;
 
     let plane = &profile.plane;
     let normal = plane.z().into_inner();

@@ -24,6 +24,11 @@
   "analytic": {
     "volume": "turn * ((pi - a + sin(a) * cos(a) + 1 + cos(a)) / 2 - sin(a)^3 / 3 - sin(a)^2 / 4)",
     "area": "turn * (pi - a - sin(a) + (1 + cos(a)) * (sin(a) + 0.5) + (1 + cos(a))^2 / 2) + pi - a + sin(a) * cos(a) + 1 + cos(a)",
+    "centroid": [
+      "-sin(turn) * ((pi - a + sin(a) * cos(a)) / 2 - 2 * sin(a)^3 / 3 + (pi - a) / 8 + sin(4 * a) / 32 + (1 + cos(a))^3 / 6) / (turn * ((pi - a + sin(a) * cos(a) + 1 + cos(a)) / 2 - sin(a)^3 / 3 - sin(a)^2 / 4))",
+      "((1 + cos(a))^3 / 3 - (1 + cos(a))^4 / 8 - (1 + cos(a))^2 / 16) / ((pi - a + sin(a) * cos(a) + 1 + cos(a)) / 2 - sin(a)^3 / 3 - sin(a)^2 / 4)",
+      "(1 - cos(turn)) * ((pi - a + sin(a) * cos(a)) / 2 - 2 * sin(a)^3 / 3 + (pi - a) / 8 + sin(4 * a) / 32 + (1 + cos(a))^3 / 6) / (turn * ((pi - a + sin(a) * cos(a) + 1 + cos(a)) / 2 - sin(a)^3 / 3 - sin(a)^2 / 4))"
+    ],
     "genus": 0
   }
 }
