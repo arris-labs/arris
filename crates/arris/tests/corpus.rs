@@ -7,6 +7,9 @@
 use arris_debug::corpus::{self, CorpusError};
 use arris_debug::fixtures;
 
+#[path = "corpus/tight_bounds.rs"]
+mod tight_bounds;
+
 fn run(name: &str) {
     let dir = fixtures::corpus_root().join(name);
     let fixture = fixtures::load(&dir).unwrap();

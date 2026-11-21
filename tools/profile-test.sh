@@ -8,7 +8,8 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 # The slow set, by test name, as `tools/test-timings.sh --slow-set` printed
-# it. Keep in step with `.config/nextest.toml`.
+# it, plus the four full-gate tight-box corpus checks. Keep in step with
+# `.config/nextest.toml`.
 slow='a_budget_stops_every_operation_at_the_same_step_and_leaves_the_model_as_it_was
 a_chain_into_a_twinned_arc_meets_on_the_balls_arc
 a_cylinders_twinned_rim_chamfers_as_the_closed_forms_cone
@@ -92,6 +93,10 @@ sweep_sweep_thread_chamfer
 the_band_at_the_fixtures_numbers
 the_horn_and_spindle_edges_of_the_fetched_parts_build_or_are_refused_by_name
 the_parallel_cylinder_edges_of_the_fetched_parts_are_counted_by_outcome
+tight_bounds::tight_bounds_blend_corpus
+tight_bounds::tight_bounds_boolean_corpus
+tight_bounds::tight_bounds_loft_corpus
+tight_bounds::tight_bounds_sweep_corpus
 transform_mirror_hollow_ring'
 
 list() { cargo nextest list --workspace --cargo-quiet --message-format oneline ${1:+--profile "$1"} 2>/dev/null | sort; }

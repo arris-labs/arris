@@ -28,6 +28,7 @@ slow-timeout = { period = "60s", terminate-after = 8 }
 # The slow set: a single test that is not a shard of a property and costs
 # ~30 s or more at the hook's case counts, as `tools/test-timings.sh
 # --slow-set` prints it (ADR-0032's rule, ADR-0066's measurement).
+# The four tight-box corpus checks also run only in the full gate.
 # `tools/profile-test.sh` holds the set to exactly these names.
 default-filter = """
 not (
@@ -115,6 +116,7 @@ not (
   or test(=the_band_at_the_fixtures_numbers)
   or test(=the_horn_and_spindle_edges_of_the_fetched_parts_build_or_are_refused_by_name)
   or test(=the_parallel_cylinder_edges_of_the_fetched_parts_are_counted_by_outcome)
+  or test(/^tight_bounds::tight_bounds_(boolean|blend|sweep|loft)_corpus$/)
   or test(=transform_mirror_hollow_ring)
 )
 """

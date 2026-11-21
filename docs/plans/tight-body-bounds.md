@@ -109,7 +109,7 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   and the bicubic dome, whole and cut. Each is a `corpus_tests!` row.
 - [x] Step 6 **[1]** — Binding: the method, stub line, docstring example and
   a pytest on the three harness bodies. Run `tools/py-test.sh tests/test_queries.py`.
-- [ ] Step 7 **[2]** — Corpus property: for each `boolean/`, `blend/`,
+- [x] Step 7 **[2]** — Corpus property: for each `boolean/`, `blend/`,
   `sweep/` and `loft/` fixture result, require `tight ⊆ bounds`, every mesh
   vertex inside `tight` grown by the chord and tolerance, and every side of
   `tight` within chord + `eps` of the mesh box. It runs as a nextest corpus
