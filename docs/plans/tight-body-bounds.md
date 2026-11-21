@@ -107,7 +107,7 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   `tight-bounds-clevis-pin`, each with its closed form. Add
   `tight-bounds-ball-pole` and `tight-bounds-quarter-torus` from step 3,
   and the bicubic dome, whole and cut. Each is a `corpus_tests!` row.
-- [ ] Step 6 **[1]** — Binding: the method, stub line, docstring example and
+- [x] Step 6 **[1]** — Binding: the method, stub line, docstring example and
   a pytest on the three harness bodies. Run `tools/py-test.sh tests/test_queries.py`.
 - [ ] Step 7 **[2]** — Corpus property: for each `boolean/`, `blend/`,
   `sweep/` and `loft/` fixture result, require `tight ⊆ bounds`, every mesh
@@ -124,8 +124,8 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
 - Step 1's and step 2's property tests pass at 1000 cases, outer and within
   `eps`, and step 7's corpus property passes over its four areas.
 - `tools/py-test.sh tests/test_queries.py`: `tight_bounds` of the
-  `shaft_collar` is (−2, −2, 0)..(2, 2, 2) to 1e-9, while `bounds` stays
-  2.0012288786 wide in y.
+  `shaft_collar` is (−2, −2, 0)..(2, 2, 2) to 1e-8, while the y sides of `bounds`
+  stay at ±2.0012288786 to 1e-9.
 - `tools/full-gate.sh` is green, with no new `bounds` caller in `ops` and no
   change to any fixture's `expected.json` apart from the new ones.
 
@@ -139,8 +139,7 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
 - `docs/ROADMAP.md` §C12: mark the tight-bounds line done, with its numbers.
 - `AGENTS.md` current state: C12's in-list is done; next is `/close-cycle`
   after the publish retry.
-- `GLOSSARY.md`: *tight box* (step 4). `CHANGELOG.md` gets an Unreleased
-  bullet at retirement.
+- `GLOSSARY.md`: *tight box* (step 4). `CHANGELOG.md` records the Rust and Python queries (step 6).
 
 ## Open questions
 
@@ -165,8 +164,7 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   took 81–83 ms. Ruled faces use their boundary without sampling the trim,
   and NURBS faces whose control hull fits inside the boundary box need
   no domain or subdivision.
-- ⚠ OPEN: the 1e-9 Python assertion. The cross-hole fixture's stored
-  NURBS edges already evaluate to y = ±2.000000002982075 at their
-  midpoints. An outer box of those edges meets the model tolerance and
-  the 1e-6 fixture check, but cannot meet the 1e-9 closed-form assertion
-  without improving the fit. Reconcile this before step 6 acceptance.
+- *Settled* (step 6): the shaft-collar Python check uses 1e-8 for the
+  tight box. The fitted cross-hole edges reach about 2.982e-9 past the
+  closed-form y sides, and the tight box encloses the stored geometry.
+  The y sides of the outer box are still checked to 1e-9.

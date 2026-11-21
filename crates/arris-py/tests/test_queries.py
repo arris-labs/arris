@@ -415,3 +415,58 @@ def test_classify_points_refuses_a_bad_length_a_nan_and_a_budget():
         model.classify_points(box, [(1, 1, 1)] * 3, budget=1)
     with pytest.raises(arris.ForeignHandleError):
         other.classify_points(box, [(1, 1, 1)])
+
+
+def test_tight_bounds_of_a_shaft_collar():
+    model = arris.Model()
+    blank, _ = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 2, 2)
+    bore, _ = model.primitive_cylinder((0, 0, -1), (0, 0, 1), 1, 4)
+    ring, _ = model.cut(blank, bore)
+    hole, _ = model.primitive_cylinder((0, -3, 1), (0, 1, 0), 0.5, 6)
+    shaft_collar, _ = model.cut(ring, hole)
+    lo, hi = model.tight_bounds(shaft_collar)
+    # The fitted cross-hole edges extend about 3e-9 past the nominal y sides.
+    assert lo == pytest.approx((-2, -2, 0), abs=1e-8, rel=0)
+    assert hi == pytest.approx((2, 2, 2), abs=1e-8, rel=0)
+    outer_lo, outer_hi = model.bounds(shaft_collar)
+    assert (outer_lo[1], outer_hi[1]) == pytest.approx(
+        (-2.0012288786, 2.0012288786), abs=1e-9, rel=0
+    )
+
+
+def test_tight_bounds_of_a_spacer_ring():
+    model = arris.Model()
+    radius, half_slot = 21.19, 1.25
+    blank, _ = model.primitive_cylinder((0, 0, 0), (0, -1, 0), radius, 1.51)
+    rims = [edge for edge in model.edges(blank) if model.curve(edge).kind == "circle"]
+    bevel, _ = model.chamfer(blank, rims, 0.4)
+    slot, _ = model.primitive_box((11.608, -1.255, -half_slot), (24.718, 1.255, half_slot))
+    spacer_ring, _ = model.cut(bevel, slot)
+    lo, hi = model.tight_bounds(spacer_ring)
+    assert lo == pytest.approx((-radius, -1.51, -radius), abs=1e-6, rel=0)
+    assert hi == pytest.approx((math.sqrt(radius**2 - half_slot**2), 0, radius), abs=1e-6, rel=0)
+
+
+def test_tight_bounds_of_a_clevis_pin():
+    model = arris.Model()
+    blank, _ = model.primitive_cylinder((0, -21.385, 0), (0, 1, 0), 5.94, 42.77)
+    rims = [edge for edge in model.edges(blank) if model.curve(edge).kind == "circle"]
+    bevel, _ = model.chamfer(blank, rims, 1.19)
+    hole, _ = model.primitive_cylinder((0, 0, -7), (0, 0, 1), 1.19, 14)
+    clevis_pin, _ = model.cut(bevel, hole)
+    lo, hi = model.tight_bounds(clevis_pin)
+    assert lo == pytest.approx((-5.94, -21.385, -5.94), abs=1e-6, rel=0)
+    assert hi == pytest.approx((5.94, 21.385, 5.94), abs=1e-6, rel=0)
+
+
+def test_tight_bounds_checks_handle_ownership_and_accepts_controls():
+    model = arris.Model()
+    body = plate(model)
+    with pytest.raises(arris.ForeignHandleError):
+        arris.Model().tight_bounds(body)
+    with pytest.raises(arris.Interrupted):
+        model.tight_bounds(body, budget=0)
+    token = arris.Cancel()
+    token.set()
+    with pytest.raises(arris.Interrupted):
+        model.tight_bounds(body, cancel=token)

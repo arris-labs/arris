@@ -233,6 +233,42 @@ impl Model {
         }))
     }
 
+    /// The world-axis-aligned tight box of a vertex, edge, face, shell or
+    /// body, as `(min, max)`. It encloses the stored geometry, with each
+    /// side within the model's linear tolerance of geometry the entity
+    /// reaches, to rounding and subject to the subdivision limit.
+    /// Returns `None` when a finite box cannot be obtained. Raises
+    /// `Interrupted` when `cancel` or `budget` stops the query.
+    ///
+    /// ```python
+    /// import arris
+    ///
+    /// model = arris.Model()
+    /// blank, _ = model.primitive_cylinder((0, 0, 0), (0, 0, 1), 2, 2)
+    /// bore, _ = model.primitive_cylinder((0, 0, -1), (0, 0, 1), 1, 4)
+    /// ring, _ = model.cut(blank, bore)
+    /// hole, _ = model.primitive_cylinder((0, -3, 1), (0, 1, 0), 0.5, 6)
+    /// shaft_collar, _ = model.cut(ring, hole)
+    /// lo, hi = model.tight_bounds(shaft_collar)
+    /// assert all(abs(a - b) < 1e-6 for a, b in zip(lo, (-2, -2, 0)))
+    /// assert all(abs(a - b) < 1e-6 for a, b in zip(hi, (2, 2, 2)))
+    /// ```
+    #[pyo3(signature = (entity, *, cancel=None, budget=None))]
+    fn tight_bounds(
+        &self,
+        py: Python<'_>,
+        entity: AnyHandle<'_>,
+        cancel: Option<&Cancel>,
+        budget: Option<u64>,
+    ) -> PyResult<Option<Corners>> {
+        let entity = entity.resolve(&self.shared)?;
+        let limits = Limits::new(cancel, budget);
+        let bounds = self.run(py, &limits, move |m, control| {
+            arris::ops::query::tight_bounds(m, entity, control)
+        })?;
+        Ok(bounds.map(|b| (b.min.into(), b.max.into())))
+    }
+
     /// The frame of a planar `face`: `z` is its outward normal, reversed
     /// for a face reached against its orientation.
     ///

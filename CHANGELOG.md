@@ -8,6 +8,10 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+- Query an entity’s world-axis-aligned tight box with Rust’s
+  `ops::query::tight_bounds` or Python’s `Model.tight_bounds`. Both
+  support cancellation and a work budget.
+
 - `revolve` builds the outer sheet of a horn or spindle torus from a
   circular arc clear of the axis or meeting it at an endpoint. A face
   reaching the axis closes at a torus pole that tessellates and round-trips
