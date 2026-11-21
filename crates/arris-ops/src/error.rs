@@ -621,7 +621,7 @@ pub enum QueryReason {
     /// entities are the operands it refused.
     NotMeasurable,
     /// `tight_bounds` could not certify a tight box within the model's
-    /// linear tolerance. The error's entity is the face.
+    /// linear tolerance. The error's entity is the edge or face.
     BoundsUncertified,
 }
 

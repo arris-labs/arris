@@ -471,7 +471,7 @@ impl NurbsSurface {
         })
     }
 
-    fn wrap(&self, dir: usize, t: f64) -> f64 {
+    pub(super) fn wrap(&self, dir: usize, t: f64) -> f64 {
         let d = self.domain_of(dir);
         match self.period[dir] {
             Some(period) => {

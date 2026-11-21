@@ -1,4 +1,4 @@
-//! Interior extrema of trimmed faces (`plans/tight-body-bounds`).
+//! Tight bounds of the closure and trimmed faces.
 //!
 //! A NURBS face's (u, v) box is subdivided into patches, each bounded by its own
 //! clipped control net, until every side of the box is within `eps` of a
@@ -34,22 +34,24 @@ use std::collections::{BTreeSet, VecDeque};
 use arris_check::domain::{FaceDomain, shifts};
 use arris_geom::{NurbsSurface, Surface, region2::Side};
 use arris_math::{Aabb, Control, Interval, Meter, Point2, Vec3, real};
-use arris_topo::{EntityId, Face, FaceId, Model};
+use arris_topo::{EntityId, Model, Orientation, Shape};
 
 use super::degenerate;
 use crate::{OpError, QueryReason, Reason};
+
+mod trim;
 
 /// The tight box of a vertex, edge, face, shell or body in world coordinates.
 /// It contains the entity's geometry, with each side within the model's
 /// linear tolerance of a point on the entity, to rounding. Entity tolerances
 /// do not grow the box.
 ///
-/// Returns `None` if the entity is empty or no finite box can be obtained.
+/// Returns `None` if the entity is empty or unbounded.
 /// Errors are [`OpError::NotFound`] for an unresolved id,
 /// [`OpError::Degenerate`] with [`QueryReason::BoundsUncertified`] when a
-/// face cannot be bounded to tolerance, and [`OpError::Interrupted`] when
-/// the control stops the query. The meter ticks
-/// once per entity in the closure and once per NURBS edge or face split.
+/// finite edge or face cannot be bounded to tolerance, and [`OpError::Interrupted`] when
+/// the control stops the query. The meter ticks once per entity in the
+/// closure and once per edge, trim, or face split.
 ///
 /// ```
 /// use arris_math::{Axis, Control, Point3, Vec3};
@@ -98,10 +100,13 @@ pub fn tight_bounds(
                 let Some((curve, range)) = m.edge(id)?.curve() else {
                     continue;
                 };
-                let Some(b) = m.curve(curve)?.tight_bounds_with(range, eps, &mut meter)? else {
+                let curve = m.curve(curve)?;
+                if !range.is_bounded() {
                     return Ok(None);
-                };
-                b
+                }
+                curve
+                    .tight_bounds_with(range, eps, &mut meter)?
+                    .ok_or_else(|| bounds_uncertified(id))?
             }
             EntityId::Face(id) => {
                 faces.push(id);
@@ -113,55 +118,72 @@ pub fn tight_bounds(
     }
 
     let mut result = boundary;
+    // The edge, trim, and interior bounds may build on one another.
+    // Their allowances add to the linear tolerance.
+    let face_eps = eps * 0.5;
+    let parametric_tolerance = m.precision().parametric_tolerance;
     for id in faces {
         meter.tick()?;
         let face = m.face(id)?;
         let surface = m.surface(face.surface())?;
-        if let Surface::Nurbs(nurbs) = surface
+        let loops = face
+            .loops()
+            .iter()
+            .map(|l| m.loop_pieces(l))
+            .collect::<Result<Vec<_>, _>>()?;
+        if loops.iter().any(|pieces| !trim::bounded_loop(pieces)) {
+            return Ok(None);
+        }
+        let hull_inside_closure = if let Surface::Nurbs(nurbs) = surface
             && let (Some(boundary), Some(hull)) = (boundary, box_of(nurbs))
-            && boundary.union(hull) == boundary
         {
+            boundary.union(hull) == boundary
+        } else {
+            false
+        };
+        if hull_inside_closure && trim::within_domain(surface, &loops) {
             continue;
         }
-        let tolerance = m.precision().parametric_tolerance;
         let interior = match surface {
             Surface::Nurbs(nurbs) => {
-                let domain = FaceDomain::of(m, id, tolerance)?;
-                // Only the edge and vertex box seeds subdivision, so the
+                // Seed from the closure and this face's lifted trims. The
                 // approximation errors of different faces cannot accumulate.
                 let seed = boundary.unwrap_or_else(|| {
                     let [u, v] = nurbs.domain();
                     Aabb::of_point(surface.point(u.lo(), v.lo()))
                 });
-                Some(nurbs_face_box(nurbs, &domain, seed, eps, &mut meter)?)
+                let seed = trim::bounds(surface, &loops, seed, face_eps, &mut meter)?
+                    .ok_or_else(|| bounds_uncertified(id))?;
+                if hull_inside_closure {
+                    include_box(&mut result, seed);
+                    continue;
+                }
+                let domain = FaceDomain::of(m, id, parametric_tolerance)?;
+                nurbs_face_box(nurbs, &domain, seed, face_eps, &mut meter)?
             }
             Surface::Sphere { .. } | Surface::Torus { .. } => {
-                let domain = FaceDomain::of(m, id, tolerance)?;
-                analytic_face_extrema(&domain)
+                let domain = FaceDomain::of(m, id, parametric_tolerance)?;
+                let mut seed = boundary;
+                if let Some(b) = analytic_face_extrema(&domain) {
+                    include_box(&mut seed, b);
+                }
+                let seed = seed.ok_or_else(|| bounds_uncertified(id))?;
+                trim::bounds(surface, &loops, seed, face_eps, &mut meter)?
+                    .ok_or_else(|| bounds_uncertified(id))?
             }
             Surface::Plane { .. }
             | Surface::Cylinder { .. }
             | Surface::EllipticCylinder { .. }
             | Surface::Cone { .. } => {
-                // The ruling argument needs a bounded trim, but never a
-                // sampled polygon or a point-in-face test.
-                let mut bounded = false;
-                for trim in face.loops() {
-                    let pieces = m.loop_pieces(trim)?;
-                    bounded |= !pieces.is_empty()
-                        && pieces
-                            .iter()
-                            .all(|p| p.range.is_bounded() && p.range.lo() < p.range.hi());
-                }
-                if !bounded {
+                let Some(seed) = boundary.filter(|_| !loops.is_empty()) else {
                     return Ok(None);
-                }
-                None
+                };
+                // The ruling argument only needs the lifted trim.
+                trim::bounds(surface, &loops, seed, face_eps, &mut meter)?
+                    .ok_or_else(|| bounds_uncertified(id))?
             }
         };
-        if let Some(b) = interior {
-            include_box(&mut result, b);
-        }
+        include_box(&mut result, interior);
     }
     Ok(result)
 }
@@ -221,7 +243,7 @@ fn collect(
 /// Axis extrema of an analytic surface that belong to the trimmed face.
 /// A coordinate of a plane, cylinder, elliptic cylinder or cone is affine
 /// along a ruling, so the boundary supplies both extrema. A singular end
-/// of a cone or torus is represented by a boundary vertex.
+/// of a cone or torus lies on its lifted trim.
 fn analytic_face_extrema(domain: &FaceDomain<'_>) -> Option<Aabb> {
     let surface = domain.surface();
     let uv_box = domain.uv_box();
@@ -267,7 +289,7 @@ fn analytic_face_extrema(domain: &FaceDomain<'_>) -> Option<Aabb> {
                 if h == 0.0 {
                     // Each crest has constant height along u. If the sample
                     // is outside but some of the crest is in the face, the
-                    // crest meets an edge that already supplies that height.
+                    // crest meets the trim at the same height.
                     let u = u_range.lerp(0.5);
                     for v in [FRAC_PI_2, 3.0 * FRAC_PI_2] {
                         include(Point2::new(u, v), surface.point(u, v));
@@ -506,9 +528,9 @@ fn nurbs_face_box(
     Ok(result)
 }
 
-fn bounds_uncertified(face: FaceId) -> OpError {
+fn bounds_uncertified(entity: impl Into<EntityId>) -> OpError {
     degenerate(
-        Face::forward(face).shape(),
+        Shape::new(entity, Orientation::Forward),
         Reason::Query(QueryReason::BoundsUncertified),
     )
 }

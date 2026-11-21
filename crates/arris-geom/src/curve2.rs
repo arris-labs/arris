@@ -1,6 +1,8 @@
 //! Curves in a surface's (u, v) plane: the pcurves of
 //! `docs/DATA-MODEL.md` §Pcurves.
 
+pub(crate) mod chord;
+
 use arris_math::real;
 use core::f64::consts::TAU;
 use core::fmt;

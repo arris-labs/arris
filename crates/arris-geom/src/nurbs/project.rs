@@ -23,7 +23,7 @@ use core::cmp::Ordering;
 use std::collections::BinaryHeap;
 
 use arris_math::nalgebra::Vector4;
-use arris_math::{Point2, Point3, RELATIVE_ROUNDING, Vec3, is_negligible};
+use arris_math::{Interval, Point2, Point3, RELATIVE_ROUNDING, Vec3, is_negligible};
 
 use super::{NurbsSurface, basis};
 use crate::DegenerateReason;
@@ -253,8 +253,13 @@ impl Patch {
 /// the homogeneous control values `active` of the controls `i − p ..= i`
 /// that carry it: the blossom of the spline at `lo` and `hi` in every
 /// mixture (*The NURBS Book* §5.7).
-fn extract(p: usize, knots: &[f64], i: usize, active: &[Vector4<f64>]) -> Vec<Vector4<f64>> {
-    let (lo, hi) = (knots[i], knots[i + 1]);
+fn extract(
+    p: usize,
+    knots: &[f64],
+    i: usize,
+    active: &[Vector4<f64>],
+    [lo, hi]: [f64; 2],
+) -> Vec<Vector4<f64>> {
     (0..=p)
         .map(|k| {
             let mut d = active.to_vec();
@@ -313,6 +318,71 @@ impl Ord for Queued {
 }
 
 impl NurbsSurface {
+    /// Bernstein nets of the surface over a trim's rectangle. Unlike
+    /// the nets for projection, these include every positive-width
+    /// knot span and extend the end piece where the trim extrapolates.
+    pub(crate) fn trim_patches(&self, uv: [Interval; 2]) -> Option<Vec<Patch>> {
+        let [p, q] = self.degree();
+        let [ku, kv] = self.knots();
+        let [n, m] = self.counts();
+        let [pu, pv] = self.closure();
+        let [du, dv] = self.domain();
+        let cuts = |dir, range: Interval, knots: &[f64], domain, period, degree, count| {
+            let mut cuts = vec![range.lo()];
+            if let Some(period) = period {
+                let domain: Interval = domain;
+                let first = range.lo() - (self.wrap(dir, range.lo()) - domain.lo());
+                let mut base = first;
+                while base < range.hi() {
+                    cuts.extend(knots.iter().copied().filter_map(|k| {
+                        let t = base + (k - domain.lo());
+                        (domain.lo() <= k && k < domain.hi() && range.lo() < t && t < range.hi())
+                            .then_some(t)
+                    }));
+                    let next = base + period;
+                    if next <= base {
+                        return None;
+                    }
+                    base = next;
+                }
+            } else {
+                cuts.extend(
+                    knots
+                        .iter()
+                        .copied()
+                        .filter(|&k| range.lo() < k && k < range.hi()),
+                );
+            }
+            cuts.dedup();
+            cuts.push(range.hi());
+            Some(
+                cuts.windows(2)
+                    .map(|ends| {
+                        let loc = [ends[0], ends[1]];
+                        let mid = loc[0] + (loc[1] - loc[0]) / 2.0;
+                        let mid = if mid < loc[1] { mid } else { loc[0] };
+                        let wrapped = self.wrap(dir, mid);
+                        let shift = wrapped - mid;
+                        (
+                            basis::span(degree, knots, count, wrapped),
+                            loc,
+                            loc.map(|t| t + shift),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        };
+        let us = cuts(0, uv[0], ku, du, pu, p, n)?;
+        let vs = cuts(1, uv[1], kv, dv, pv, q, m)?;
+        let mut patches = Vec::new();
+        for (iu, u, ur) in us {
+            for &(iv, v, vr) in &vs {
+                patches.push(self.extract_patch([iu, iv], [u, v], [ur, vr]));
+            }
+        }
+        Some(patches)
+    }
+
     /// The Bézier patches of the surface: one per pair of non-empty knot
     /// spans, in row-major order over `u`. Unclamped knots are read as they
     /// are — a periodic direction's patches are the ones inside its
@@ -321,40 +391,54 @@ impl NurbsSurface {
         let [p, q] = self.degree();
         let [n, m] = self.counts();
         let [ku, kv] = self.knots();
-        let homogeneous = |i: usize, j: usize| {
-            let idx = i * m + j;
-            let w = self.weights()[idx];
-            let x = self.control_points()[idx];
-            Vector4::new(w * x.x, w * x.y, w * x.z, w)
-        };
         let u_spans = basis::resolvable_spans(p, ku, n);
         let v_spans = basis::resolvable_spans(q, kv, m);
         let mut out = Vec::with_capacity(u_spans.len() * v_spans.len());
         for &iu in &u_spans {
             for &iv in &v_spans {
-                // Along `u` in every active column, then along `v`.
-                let columns: Vec<Vec<Vector4<f64>>> = (iv - q..=iv)
-                    .map(|j| {
-                        let active: Vec<_> = (iu - p..=iu).map(|i| homogeneous(i, j)).collect();
-                        extract(p, ku, iu, &active)
-                    })
-                    .collect();
-                let mut net = Vec::with_capacity((p + 1) * (q + 1));
-                for a in 0..=p {
-                    let active: Vec<_> = columns.iter().map(|c| c[a]).collect();
-                    net.extend(extract(q, kv, iv, &active));
-                }
-                out.push(Patch {
-                    u: [ku[iu], ku[iu + 1]],
-                    v: [kv[iv], kv[iv + 1]],
-                    span: [[ku[iu], ku[iu + 1]], [kv[iv], kv[iv + 1]]],
-                    degree: [p, q],
-                    net,
-                    depth: 0,
-                });
+                let uv = [[ku[iu], ku[iu + 1]], [kv[iv], kv[iv + 1]]];
+                out.push(self.extract_patch([iu, iv], uv, uv));
             }
         }
         out
+    }
+
+    // Tensor-product blossom: along u in each active column, then along v.
+    fn extract_patch(
+        &self,
+        [iu, iv]: [usize; 2],
+        [u, v]: [[f64; 2]; 2],
+        [ur, vr]: [[f64; 2]; 2],
+    ) -> Patch {
+        let [p, q] = self.degree();
+        let [ku, kv] = self.knots();
+        let [_, m] = self.counts();
+        let columns: Vec<_> = (iv - q..=iv)
+            .map(|j| {
+                let active: Vec<_> = (iu - p..=iu)
+                    .map(|i| {
+                        let idx = i * m + j;
+                        let point = self.control_points()[idx];
+                        let w = self.weights()[idx];
+                        Vector4::new(w * point.x, w * point.y, w * point.z, w)
+                    })
+                    .collect();
+                extract(p, ku, iu, &active, ur)
+            })
+            .collect();
+        let mut net = Vec::with_capacity((p + 1) * (q + 1));
+        for a in 0..=p {
+            let active: Vec<_> = columns.iter().map(|c| c[a]).collect();
+            net.extend(extract(q, kv, iv, &active, vr));
+        }
+        Patch {
+            u,
+            v,
+            span: [u, v],
+            degree: [p, q],
+            net,
+            depth: 0,
+        }
     }
 
     /// The nearest point of the surface to `p`, with its `(u, v)`: the

@@ -22,12 +22,20 @@ envelope is also useful when deciding whether two entities can meet.
    edge ranges give their exact extrema. A NURBS edge keeps the clipped
    Bernstein hulls that cover its range, subdividing where they extend
    past the current box of evaluated points by more than half the linear
-   tolerance.
+   tolerance. Each face also bounds its pcurves evaluated on its surface.
+   The checker permits these lifted trims to differ from the shared edge
+   curves within the edges' tolerances. Planes and isolines admit exact
+   lifts. For other trims, bound the pcurve's distance from its chord and
+   lift the chord with bounds on the surface derivatives. A rational
+   pcurve's Cartesian controls bound its deviation, and the quotient
+   rule and Bernstein control hulls bound a NURBS surface's derivatives.
+   On smooth pieces the lift's error shrinks with the square of the
+   chord's width. Across a crease the one-sided speeds bound the lift.
 3. **Include interior extrema of trimmed faces.** Each coordinate of a
    plane, cylinder, elliptic cylinder or cone is affine along each ruling.
-   The endpoints of a ruling inside the trim reach the boundary, so their
-   coordinates bound the intervening segment. The vertex at a cone apex
-   supplies the singular endpoint. A sphere's six axis poles and a torus's
+   The endpoints of a ruling inside the trim reach the lifted boundary,
+   so their coordinates bound the intervening segment, including a
+   singular endpoint on a cone apex. A sphere's six axis poles and a torus's
    stationary points count when the face domain classifies them inside
    or on the trim. A crest circle on a torus has constant height along
    its axis. If only part of it survives the trim, the trim meets it
@@ -40,9 +48,10 @@ envelope is also useful when deciding whether two entities can meet.
    occur at a C0 knot or closed, clamped seam. Test the sign of the weighted
    control-point differences at both ends of the coordinate's hull range to
    prove monotonicity. Keep remaining hulls whose open sides
-   are within half the linear tolerance of the boundary box or evaluated
-   face points. The edge and face allowances add to at most one linear
-   tolerance. When a midpoint rounds to an endpoint, subdivide along the
+   are within a quarter of the linear tolerance of the box already found
+   or of evaluated face points. Lifted trims also have a quarter of the
+   tolerance. The edge, trim and interior allowances add to at most one
+   linear tolerance. When a midpoint rounds to an endpoint, subdivide along the
    other direction. When subdivision stops, keep an open hull side only
    if the final witness box has reached it within the allowance.
    Otherwise return `BoundsUncertified` naming the face.
@@ -51,6 +60,6 @@ envelope is also useful when deciding whether two entities can meet.
 
 The query returns `None` for an unbounded face or when a finite box cannot
 be obtained. A caller can interrupt the query through `Control`. Its meter
-counts each entity in the closure and each NURBS edge or face split. Booleans
+counts each entity in the closure and each edge, trim or face split. Booleans
 and `interference_many` continue to reject candidates with their inexpensive
 outer boxes.

@@ -2,10 +2,12 @@ use core::f64::consts::TAU;
 
 use arris_check::{Level, check, domain::FaceDomain};
 use arris_debug::sample;
-use arris_geom::{NurbsSurface, Profile, ProfileLoop, ProfileSegment, Surface};
+use arris_geom::{Curve, Curve2, NurbsSurface, Profile, ProfileLoop, ProfileSegment, Surface};
 use arris_math::{Aabb, Axis, Frame, Interval, Point2, Point3, Stop, Vec2, Vec3};
-use arris_topo::entity::{Body as BodyEntity, BodyKind, Face, Vertex};
-use arris_topo::{Body, Model};
+use arris_topo::entity::{
+    Body as BodyEntity, BodyKind, Coedge, Edge, EdgeGeometry, Face, Loop, Shell, Vertex,
+};
+use arris_topo::{Body, Model, Orientation};
 
 use crate::query::tight_bounds;
 use crate::{Control, OpError, extrude, primitive_box, primitive_cylinder, revolve};
@@ -123,6 +125,92 @@ fn tight_bounds_nurbs_keeps_an_interior_peak_and_spends_patch_budget() {
             steps: steps as u64
         }))
     );
+}
+
+#[test]
+fn tight_bounds_include_the_lifted_trim_of_a_sheet() {
+    for (nurbs, rotated) in [(false, false), (true, false), (true, true)] {
+        let mut m = Model::default();
+        let tol = m.precision().default_tolerance;
+        let offset = tol / 2.0;
+        let plane = Surface::Plane {
+            frame: Frame::world(),
+        };
+        let surface = m.add_surface(if nurbs {
+            Surface::Nurbs(
+                plane
+                    .to_nurbs([Interval::new(-1.0, 2.0).unwrap(); 2])
+                    .unwrap(),
+            )
+        } else {
+            plane
+        });
+        let square = [
+            Point3::origin(),
+            Point3::new(1.0, 0.0, 0.0),
+            Point3::new(1.0, 1.0, 0.0),
+            Point3::new(0.0, 1.0, 0.0),
+        ]
+        .map(|p| {
+            if rotated {
+                Point3::new(0.6 * p.x - 0.8 * p.y, 0.8 * p.x + 0.6 * p.y, p.z)
+            } else {
+                p
+            }
+        });
+        let vertices = square.map(|p| m.raw().add_vertex(Vertex::new(p, tol)));
+        let mut coedges = Vec::new();
+        for (i, p) in square.into_iter().enumerate() {
+            let j = (i + 1) % square.len();
+            let delta = square[j] - p;
+            let curve = m.add_curve(Curve::Line {
+                origin: p,
+                direction: arris_math::UnitVec3::new_unchecked(delta),
+            });
+            let pcurve = m.add_curve2(Curve2::Line {
+                origin: Point2::new(p.x + offset, p.y),
+                direction: arris_math::UnitVec2::new_unchecked(Vec2::new(delta.x, delta.y)),
+            });
+            let edge = m.raw().add_edge(Edge::new(
+                EdgeGeometry::Curve {
+                    curve,
+                    range: Interval::UNIT,
+                },
+                vertices[i],
+                vertices[j],
+                tol,
+            ));
+            coedges.push(Coedge::new(edge, Orientation::Forward, pcurve));
+        }
+        let face = m
+            .raw()
+            .add_face(Face::new(surface, vec![Loop::new(coedges)], tol));
+        let shell = m
+            .raw()
+            .add_shell(Shell::new(vec![arris_topo::Face::forward(face)]));
+        let body = m.raw().add_body(BodyEntity::new(
+            BodyKind::Sheet,
+            vec![arris_topo::Shell::forward(shell)],
+            vec![],
+            vec![],
+        ));
+        let body = Body::forward(body);
+        let report = check(&m, body, Level::Full);
+        assert!(report.is_ok(), "{report:?}");
+        let edge_box = Aabb::of_points(square.iter().map(|p| p.coords.as_ref())).unwrap();
+        let mut exact = edge_box;
+        exact.max[0] += offset;
+        let rounding = arris_math::RELATIVE_ROUNDING * edge_box.diagonal();
+        for entity in [face.into(), shell.into(), body.id.into()] {
+            let b = tight_bounds(&m, entity, &Control::NONE).unwrap().unwrap();
+            for k in 0..3 {
+                assert!(b.min[k] <= exact.min[k] + rounding, "{b:?}, {exact:?}");
+                assert!(b.max[k] >= exact.max[k] - rounding, "{b:?}, {exact:?}");
+                assert!(b.min[k] >= exact.min[k] - tol, "{b:?}, {exact:?}");
+                assert!(b.max[k] <= exact.max[k] + tol, "{b:?}, {exact:?}");
+            }
+        }
+    }
 }
 
 #[test]

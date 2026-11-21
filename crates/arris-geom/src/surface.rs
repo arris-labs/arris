@@ -1,5 +1,7 @@
 //! Surfaces and their evaluation.
 
+mod trim;
+
 use arris_math::real;
 use core::f64::consts::{FRAC_PI_2, TAU};
 use core::fmt;
