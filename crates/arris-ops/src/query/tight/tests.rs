@@ -3,16 +3,52 @@
 
 use super::nurbs_face_box;
 
-use arris_check::domain::FaceDomain;
+use arris_check::{Level, domain::FaceDomain};
 use arris_debug::prop::{check, finite_f64, frame};
 use arris_debug::sample;
 use arris_geom::{Curve, Curve2, NurbsSurface, Surface, fit_curve_periodic};
-use arris_math::{Aabb, Frame2, Handedness, Interval, Meter, Point2, Point3, Vec2, real};
+use arris_math::{Aabb, Control, Frame2, Handedness, Interval, Meter, Point2, Point3, Vec2, real};
 use arris_topo::entity::{Coedge, Edge, EdgeGeometry, Face, Loop, Vertex};
 use arris_topo::{FaceId, Model, Orientation};
 use core::f64::consts::TAU;
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
+
+#[test]
+fn tight_bounds_split_the_other_direction_when_a_midpoint_stalls() {
+    let u = Interval::new(1.0, 1.0_f64.next_up()).unwrap();
+    let points = (0..2)
+        .flat_map(|i| {
+            [0.0, 2.0, 0.0]
+                .into_iter()
+                .enumerate()
+                .map(move |(j, z)| Point3::new(i as f64, j as f64 / 2.0, z))
+        })
+        .collect();
+    let surface = NurbsSurface::new(
+        [1, 2],
+        [
+            vec![u.lo(), u.lo(), u.hi(), u.hi()],
+            vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+        ],
+        points,
+        vec![1.0; 6],
+    )
+    .unwrap();
+    let mut m = Model::default();
+    let body = sample::patch(&mut m, Surface::Nurbs(surface), u, Interval::UNIT).unwrap();
+    let report = arris_check::check(&m, body, Level::Full);
+    assert!(report.is_ok(), "{report:?}");
+    let got = crate::query::tight_bounds(&m, body.id.into(), &Control::NONE)
+        .unwrap()
+        .unwrap();
+    let eps = m.precision().default_tolerance;
+    // z = 4v(1-v) has a maximum of 1 at v = 1/2 for every u.
+    assert!(
+        got.max[2] >= 1.0 - SLACK && got.max[2] <= 1.0 + eps,
+        "{got:?}"
+    );
+}
 
 /// How far past the refined extreme the boundary box the test hands in
 /// is set, so that it holds the boundary's true extreme too.

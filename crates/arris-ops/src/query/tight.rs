@@ -431,29 +431,34 @@ fn nurbs_face_box(
         if open == 0 {
             continue;
         }
-        let halves = [0, 1].map(|dir| halve(patch.uv[dir]));
-        let (Some([u0, u1]), Some([v0, v1])) = (halves[0], halves[1]) else {
-            keep_open_sides(&hull, open, &mut kept_lo, &mut kept_hi);
-            continue;
-        };
-        if patch.depth >= MAX_DEPTH {
+        let [us, vs] = patch.uv.map(halve);
+        if patch.depth >= MAX_DEPTH || (us.is_none() && vs.is_none()) {
             keep_open_sides(&hull, open, &mut kept_lo, &mut kept_hi);
             continue;
         }
         meter.tick()?;
-        for child in [[u0, v0], [u1, v0], [u0, v1], [u1, v1]] {
-            let near = patch
-                .near
-                .iter()
-                .copied()
-                .filter(|&s| distance_to_rect(&segments[s], child) <= segments[s].reach)
-                .collect();
-            queue.push_back(Patch {
-                uv: child,
-                depth: patch.depth + 1,
-                open,
-                near,
-            });
+        let us = us
+            .as_ref()
+            .map_or(std::slice::from_ref(&u), |r| r.as_slice());
+        let vs = vs
+            .as_ref()
+            .map_or(std::slice::from_ref(&v), |r| r.as_slice());
+        for &v in vs {
+            for &u in us {
+                let child = [u, v];
+                let near = patch
+                    .near
+                    .iter()
+                    .copied()
+                    .filter(|&s| distance_to_rect(&segments[s], child) <= segments[s].reach)
+                    .collect();
+                queue.push_back(Patch {
+                    uv: child,
+                    depth: patch.depth + 1,
+                    open,
+                    near,
+                });
+            }
         }
     }
 

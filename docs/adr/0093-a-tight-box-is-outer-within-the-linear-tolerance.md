@@ -40,8 +40,9 @@ envelope is also useful when deciding whether two entities can meet.
    hull range to prove monotonicity. Keep remaining hulls whose open sides
    are within half the linear tolerance of the boundary box or evaluated
    face points. The edge and face allowances add to at most one linear
-   tolerance. At the subdivision limit or when a midpoint rounds to an
-   endpoint, retain the patch's outer hull, which can extend farther.
+   tolerance. When a midpoint rounds to an endpoint, subdivide along the
+   other direction. At the subdivision limit or when neither direction
+   can split, retain the patch's outer hull, which can extend farther.
 
 ## Consequences
 
