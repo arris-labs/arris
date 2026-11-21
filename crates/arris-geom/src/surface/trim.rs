@@ -10,10 +10,10 @@ use crate::{Curve, Curve2, NurbsCurve, Surface};
 
 impl Surface {
     /// Join an existing outer box with the image of a pcurve over `range`.
-    /// Any side added to the box is within `eps` of a point of that image,
-    /// to floating-point rounding. The supplied box can prune spans that
-    /// cannot extend that side. The meter ticks for each period copied,
-    /// knot piece prepared and subdivision.
+    /// Each side is within `eps` of the corresponding supplied side or a
+    /// point of the image, to floating-point rounding. The supplied box
+    /// can prune spans that cannot extend it. The meter ticks for each
+    /// period copied, knot piece prepared and subdivision.
     ///
     /// Returns `None` if the range or tolerance is invalid or cannot be
     /// bounded to that tolerance at the available numeric precision.

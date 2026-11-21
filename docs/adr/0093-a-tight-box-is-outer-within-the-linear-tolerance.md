@@ -36,14 +36,22 @@ envelope is also useful when deciding whether two entities can meet.
    The endpoints of a ruling inside the trim reach the lifted boundary,
    so their coordinates bound the intervening segment, including a
    singular endpoint on a cone apex. A sphere's six axis poles and a torus's
-   stationary points count when the face domain classifies them inside
-   or on the trim. A crest circle on a torus has constant height along
-   its axis. If only part of it survives the trim, the trim meets it
-   at the same height.
+   stationary points count when the trim winding certifies that they lie
+   inside. Where winding is ambiguous, keep only the stationary
+   coordinate, and only when a side of the lifted trim box already
+   witnesses it within the remaining allowance. An unresolved side
+   returns `BoundsUncertified`. A crest circle on a torus has constant
+   height along its axis. If only part of it survives the trim, the trim
+   meets it at the same height.
 4. **Subdivide NURBS faces where their interiors can enlarge the box.**
    Split at a closed, clamped seam and clip each piece in the fundamental
-   knot domain. Test the trim in its own translate. Discard patches proved
-   outside the loops. For a coordinate strictly monotone along either
+   knot domain. Read the trim as closed loops of pcurve chords, following
+   whole-period joins in the same chart and joining tolerated endpoint
+   gaps by short straight segments. The chords' certified deviations
+   enclose the deformation from the pcurves to their polygons. Use
+   winding only at points clear of those enclosures, and discard a
+   patch only when it clears the enclosures and its winding is zero.
+   For a coordinate strictly monotone along either
    parameter, the boundary supplies its extrema except where extrema can
    occur at a C0 knot or closed, clamped seam. Test the sign of the weighted
    control-point differences at both ends of the coordinate's hull range to
@@ -58,8 +66,10 @@ envelope is also useful when deciding whether two entities can meet.
 
 ## Consequences
 
-The query returns `None` for an unbounded face or when a finite box cannot
-be obtained. A caller can interrupt the query through `Control`. Its meter
-counts each entity in the closure and each edge, trim or face split. Booleans
-and `interference_many` continue to reject candidates with their inexpensive
+The query returns `None` for an empty or unbounded entity. A finite edge
+or face that cannot be bounded to the tolerance returns
+`BoundsUncertified` naming that entity. A caller can interrupt the query
+through `Control`. Its meter counts closure entities, preparation of knot
+pieces, period copies, and edge, trim and face splits. Booleans and
+`interference_many` continue to reject candidates with their inexpensive
 outer boxes.

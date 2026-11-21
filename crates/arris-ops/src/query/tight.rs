@@ -28,18 +28,20 @@
 //! around them. Every other patch the loops wind around lies wholly inside
 //! `D`, and one they do not wind around holds no point of it.
 
-use core::f64::consts::{FRAC_PI_2, PI, TAU};
 use std::collections::{BTreeSet, VecDeque};
 
-use arris_check::domain::{FaceDomain, shifts};
-use arris_geom::{NurbsSurface, Surface, region2::Side};
-use arris_math::{Aabb, Control, Interval, Meter, Point2, Vec3, real};
-use arris_topo::{EntityId, Model, Orientation, Shape};
+use arris_geom::{NurbsSurface, Surface};
+use arris_math::{Aabb, Control, Interval, Meter, Point2};
+use arris_topo::{EntityId, FaceId, Model, Orientation, Shape};
 
 use super::degenerate;
 use crate::{OpError, QueryReason, Reason};
 
+mod analytic;
+mod domain;
 mod trim;
+
+use domain::{TrimDomain, distance_to_rect, distance_to_segment};
 
 /// The tight box of a vertex, edge, face, shell or body in world coordinates.
 /// It contains the entity's geometry, with each side within the model's
@@ -49,9 +51,10 @@ mod trim;
 /// Returns `None` if the entity is empty or unbounded.
 /// Errors are [`OpError::NotFound`] for an unresolved id,
 /// [`OpError::Degenerate`] with [`QueryReason::BoundsUncertified`] when a
-/// finite edge or face cannot be bounded to tolerance, and [`OpError::Interrupted`] when
-/// the control stops the query. The meter ticks once per entity in the
-/// closure and once per edge, trim, or face split.
+/// finite edge or face cannot be bounded to tolerance, and
+/// [`OpError::Interrupted`] when the control stops the query. The meter
+/// counts closure entities, preparation of knot pieces, period copies,
+/// and edge, trim and face splits.
 ///
 /// ```
 /// use arris_math::{Axis, Control, Point3, Vec3};
@@ -158,18 +161,29 @@ pub fn tight_bounds(
                     include_box(&mut result, seed);
                     continue;
                 }
-                let domain = FaceDomain::of(m, id, parametric_tolerance)?;
-                nurbs_face_box(nurbs, &domain, seed, face_eps, &mut meter)?
+                let domain =
+                    TrimDomain::of(&loops, surface.period(), parametric_tolerance, &mut meter)?
+                        .ok_or_else(|| bounds_uncertified(id))?;
+                nurbs_face_box(id, nurbs, &domain, seed, face_eps, &mut meter)?
             }
             Surface::Sphere { .. } | Surface::Torus { .. } => {
-                let domain = FaceDomain::of(m, id, parametric_tolerance)?;
-                let mut seed = boundary;
-                if let Some(b) = analytic_face_extrema(&domain) {
-                    include_box(&mut seed, b);
-                }
-                let seed = seed.ok_or_else(|| bounds_uncertified(id))?;
-                trim::bounds(surface, &loops, seed, face_eps, &mut meter)?
-                    .ok_or_else(|| bounds_uncertified(id))?
+                let seed = if let Some(boundary) = boundary {
+                    Some(
+                        trim::bounds(surface, &loops, boundary, face_eps, &mut meter)?
+                            .ok_or_else(|| bounds_uncertified(id))?,
+                    )
+                } else {
+                    None
+                };
+                analytic::face_box(
+                    surface,
+                    &loops,
+                    seed,
+                    parametric_tolerance,
+                    face_eps,
+                    &mut meter,
+                )?
+                .ok_or_else(|| bounds_uncertified(id))?
             }
             Surface::Plane { .. }
             | Surface::Cylinder { .. }
@@ -240,86 +254,6 @@ fn collect(
     Ok(())
 }
 
-/// Axis extrema of an analytic surface that belong to the trimmed face.
-/// A coordinate of a plane, cylinder, elliptic cylinder or cone is affine
-/// along a ruling, so the boundary supplies both extrema. A singular end
-/// of a cone or torus lies on its lifted trim.
-fn analytic_face_extrema(domain: &FaceDomain<'_>) -> Option<Aabb> {
-    let surface = domain.surface();
-    let uv_box = domain.uv_box();
-    let [u_range, _] = uv_box.unwrap_or_else(|| surface.domain());
-    let chart_centre = uv_box.map(|[u, v]| Point2::new(u.midpoint(), v.midpoint()));
-    let periods = surface.period();
-    let mut bounds: Option<Aabb> = None;
-    let mut include = |uv: Point2, point| {
-        if chart_centre.is_none_or(|centre| {
-            // The trim can be several turns from the analytic parameters.
-            // Start in its chart before `side` checks adjacent translates.
-            let uv = uv + arris_math::shift_nearest_uv(centre - uv, periods);
-            domain.side(uv).0 != Side::Outside
-        }) {
-            include_box(&mut bounds, Aabb::of_point(point));
-        }
-    };
-    let axes = [Vec3::x(), Vec3::y(), Vec3::z()];
-    match surface {
-        Surface::Sphere { frame, radius } => {
-            for axis in axes {
-                for d in [axis, -axis] {
-                    let x = d.dot(frame.x().as_ref());
-                    let y = d.dot(frame.y().as_ref());
-                    let z = d.dot(frame.z().as_ref());
-                    let h = real::hypot(x, y);
-                    let u = if h == 0.0 {
-                        u_range.lerp(0.5)
-                    } else {
-                        real::atan2(y, x).rem_euclid(TAU)
-                    };
-                    let v = real::atan2(z, h);
-                    include(Point2::new(u, v), frame.origin() + *radius * d);
-                }
-            }
-        }
-        Surface::Torus { frame, .. } => {
-            for axis in axes {
-                let x = axis.dot(frame.x().as_ref());
-                let y = axis.dot(frame.y().as_ref());
-                let z = axis.dot(frame.z().as_ref());
-                let h = real::hypot(x, y);
-                if h == 0.0 {
-                    // Each crest has constant height along u. If the sample
-                    // is outside but some of the crest is in the face, the
-                    // crest meets the trim at the same height.
-                    let u = u_range.lerp(0.5);
-                    for v in [FRAC_PI_2, 3.0 * FRAC_PI_2] {
-                        include(Point2::new(u, v), surface.point(u, v));
-                    }
-                } else {
-                    // On the regular band, dP/du vanishes along the axis
-                    // being measured at the two radial directions ±h.
-                    // In either meridian, the two stationary tube angles
-                    // are a half turn apart.
-                    let azimuth = real::atan2(y, x);
-                    for (u, radial) in [(azimuth, h), (azimuth + PI, -h)] {
-                        let u = u.rem_euclid(TAU);
-                        let meridian = real::atan2(z, radial);
-                        for v in [meridian, meridian + PI] {
-                            let v = v.rem_euclid(TAU);
-                            include(Point2::new(u, v), surface.point(u, v));
-                        }
-                    }
-                }
-            }
-        }
-        Surface::Plane { .. }
-        | Surface::Cylinder { .. }
-        | Surface::EllipticCylinder { .. }
-        | Surface::Cone { .. }
-        | Surface::Nurbs(_) => {}
-    }
-    bounds
-}
-
 /// How many halvings a patch takes before its hull is kept as it is: a
 /// patch `2⁻³²` of the face's (u, v) box is far below any tolerance a
 /// model is read at, so a side that has not settled by then is one
@@ -332,15 +266,6 @@ const MAX_DEPTH: u32 = 32;
 /// line and still be read as on it. Erring towards a crease only keeps a
 /// patch that a monotone proof would have set aside.
 const CREASE_ULPS: f64 = 4.0;
-
-/// One piece of a loop's polygon in the translate the patches are in, and
-/// the polygon's chord deviation: the true loop is within `reach` of it.
-#[derive(Debug, Clone, Copy)]
-struct Segment {
-    from: Point2,
-    to: Point2,
-    reach: f64,
-}
 
 /// A rectangle of the subdivision: its (u, v) ranges, its depth, the sides
 /// still open (bit `2k` the low side of axis `k`, `2k + 1` the high one),
@@ -365,8 +290,9 @@ struct Patch {
 /// before it proves these bounds, the query names the face it could not
 /// certify. The meter ticks once per patch split.
 fn nurbs_face_box(
+    face: FaceId,
     surface: &NurbsSurface,
-    domain: &FaceDomain<'_>,
+    domain: &TrimDomain,
     boundary: Aabb,
     eps: f64,
     meter: &mut Meter,
@@ -376,7 +302,7 @@ fn nurbs_face_box(
     let Some(root) = fit_to_surface(surface, uv) else {
         return Ok(boundary);
     };
-    let segments = segments(domain, surface, root);
+    let segments = domain.segments_in(root, meter)?;
     let creases = [0, 1].map(|dir| creases(surface, dir));
 
     let mut inner: Option<Aabb> = None;
@@ -414,7 +340,7 @@ fn nurbs_face_box(
         let [u, v] = patch.uv;
         let centre = Point2::new(u.lerp(0.5), v.lerp(0.5));
         let grazed = !patch.near.is_empty();
-        if !whole && !grazed && !domain.winds_around(centre) {
+        if !whole && !grazed && !domain.winds_around(centre, meter)? {
             continue;
         }
         let corners = [
@@ -430,7 +356,7 @@ fn nurbs_face_box(
                     .near
                     .iter()
                     .all(|&s| distance_to_segment(q, &segments[s]) > segments[s].reach)
-                    && domain.winds_around(q));
+                    && domain.winds_around(q, meter)?);
             if counts {
                 let b = Aabb::of_point(surface.eval(q.x, q.y).point);
                 inner = Some(inner.map_or(b, |acc| acc.union(b)));
@@ -446,16 +372,16 @@ fn nurbs_face_box(
             Interval::new(d.clamp(r.lo() - shift), d.clamp(r.hi() - shift))
         });
         let (Ok(u_clip), Ok(v_clip)) = (u_clip, v_clip) else {
-            return Err(bounds_uncertified(domain.face()));
+            return Err(bounds_uncertified(face));
         };
         let clip = [u_clip, v_clip];
         let net = surface.clipped(clip);
         let hull = match &net {
             Some(n) => box_of(n),
-            None => domain.surface().bounds(clip),
+            None => Surface::Nurbs(surface.clone()).bounds(clip),
         };
         let Some(hull) = hull else {
-            return Err(bounds_uncertified(domain.face()));
+            return Err(bounds_uncertified(face));
         };
         let r = inner.map_or(boundary, |i| boundary.union(i));
         let mut open = patch.open;
@@ -520,7 +446,7 @@ fn nurbs_face_box(
         // A stalled patch may be settled by a point evaluated elsewhere
         // later in the queue.
         if kept_lo[k] < witnesses.min[k] - eps || kept_hi[k] > witnesses.max[k] + eps {
-            return Err(bounds_uncertified(domain.face()));
+            return Err(bounds_uncertified(face));
         }
         result.min[k] = result.min[k].min(kept_lo[k]);
         result.max[k] = result.max[k].max(kept_hi[k]);
@@ -580,34 +506,6 @@ fn closed_parts(range: Interval, domain: Interval) -> Vec<(Interval, f64)> {
         parts.push((right, shift + period));
     }
     parts
-}
-
-/// The loops' polygon pieces, in every translate by a period that brings
-/// them within their reach of `root`.
-fn segments(domain: &FaceDomain<'_>, surface: &NurbsSurface, root: [Interval; 2]) -> Vec<Segment> {
-    let periods = surface.closure();
-    let mut out = Vec::new();
-    for polygon in domain.polygons() {
-        let reach = polygon.chord_deviation();
-        let points = polygon.points();
-        for (i, &p) in points.iter().enumerate() {
-            let q = points[(i + 1) % points.len()];
-            for du in shifts(periods[0]) {
-                for dv in shifts(periods[1]) {
-                    let shift = arris_math::Vec2::new(du, dv);
-                    let s = Segment {
-                        from: p + shift,
-                        to: q + shift,
-                        reach,
-                    };
-                    if distance_to_rect(&s, root) <= reach {
-                        out.push(s);
-                    }
-                }
-            }
-        }
-    }
-    out
 }
 
 /// The knots of direction `dir` inside the domain at which the surface is
@@ -730,71 +628,6 @@ fn halve(r: Interval) -> Option<[Interval; 2]> {
         Interval::new(r.lo(), mid).ok()?,
         Interval::new(mid, r.hi()).ok()?,
     ])
-}
-
-/// The distance from `p` to a segment.
-fn distance_to_segment(p: Point2, s: &Segment) -> f64 {
-    let d = s.to - s.from;
-    let len2 = d.norm_squared();
-    let t = if len2 > 0.0 {
-        ((p - s.from).dot(&d) / len2).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    (p - (s.from + t * d)).norm()
-}
-
-/// The distance from a point to a rectangle, zero inside it.
-fn distance_to_box(p: Point2, uv: [Interval; 2]) -> f64 {
-    let [u, v] = uv;
-    let dx = (u.lo() - p.x).max(p.x - u.hi()).max(0.0);
-    let dy = (v.lo() - p.y).max(p.y - v.hi()).max(0.0);
-    real::hypot(dx, dy)
-}
-
-/// The distance between a segment and a rectangle: zero where the segment
-/// crosses it, else attained at an end of the segment or a corner of the
-/// rectangle, as between any two disjoint convex sets with corners.
-fn distance_to_rect(s: &Segment, uv: [Interval; 2]) -> f64 {
-    if crosses(s, uv) {
-        return 0.0;
-    }
-    let [u, v] = uv;
-    let corners = [
-        Point2::new(u.lo(), v.lo()),
-        Point2::new(u.hi(), v.lo()),
-        Point2::new(u.lo(), v.hi()),
-        Point2::new(u.hi(), v.hi()),
-    ];
-    corners
-        .iter()
-        .map(|&c| distance_to_segment(c, s))
-        .chain([distance_to_box(s.from, uv), distance_to_box(s.to, uv)])
-        .fold(f64::INFINITY, f64::min)
-}
-
-/// `true` when the segment meets the closed rectangle: the segment's
-/// parameter clipped by each slab (Liang–Barsky) keeps a range.
-fn crosses(s: &Segment, uv: [Interval; 2]) -> bool {
-    let d = s.to - s.from;
-    let (mut t0, mut t1) = (0.0_f64, 1.0_f64);
-    for (axis, range) in uv.iter().enumerate() {
-        let (o, dd) = (s.from[axis], d[axis]);
-        if dd == 0.0 {
-            if o < range.lo() || o > range.hi() {
-                return false;
-            }
-            continue;
-        }
-        let (a, b) = ((range.lo() - o) / dd, (range.hi() - o) / dd);
-        let (a, b) = if a <= b { (a, b) } else { (b, a) };
-        t0 = t0.max(a);
-        t1 = t1.min(b);
-        if t0 > t1 {
-            return false;
-        }
-    }
-    true
 }
 
 #[cfg(test)]

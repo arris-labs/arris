@@ -1,15 +1,16 @@
 use core::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, TAU};
 
-use arris_check::{Level, check, domain::FaceDomain};
+use arris_check::{Level, check};
 use arris_debug::sample;
 use arris_geom::{Profile, ProfileLoop, ProfileSegment, Surface, SurfaceKind};
-use arris_math::{Aabb, Axis, Frame, Interval, Point2, Point3, Reflection, Vec3, real};
-use arris_topo::{Body, Model};
+use arris_math::{Aabb, Axis, Frame, Interval, Point2, Point3, Reflection, Vec2, Vec3, real};
+use arris_topo::entity::{Body as BodyEntity, BodyKind, Coedge, Face, Loop, Shell};
+use arris_topo::{Body, Face as FaceHandle, FaceId, Model, Shell as ShellHandle};
 
-use super::{analytic_face_extrema, tight_bounds};
+use super::tight_bounds;
 use crate::{Control, cut, mirror, revolve};
 
-fn face_domain(m: &Model, body: Body, kind: SurfaceKind) -> FaceDomain<'_> {
+fn face_of(m: &Model, body: Body, kind: SurfaceKind) -> FaceId {
     let report = check(m, body, Level::Full);
     assert!(report.is_ok(), "{report:?}");
     let faces = m.faces(body).unwrap();
@@ -19,24 +20,7 @@ fn face_domain(m: &Model, body: Body, kind: SurfaceKind) -> FaceDomain<'_> {
     });
     let face = matching.next().expect("the analytic face");
     assert!(matching.next().is_none());
-    FaceDomain::of(m, face.id, m.precision().parametric_tolerance).unwrap()
-}
-
-fn boundary_box(m: &Model, domain: &FaceDomain<'_>) -> Aabb {
-    domain
-        .edges()
-        .iter()
-        .map(|&id| {
-            let edge = m.edge(id).unwrap();
-            let ends = Aabb::of_point(m.vertex(edge.start()).unwrap().point())
-                .union(Aabb::of_point(m.vertex(edge.end()).unwrap().point()));
-            match edge.curve() {
-                Some((curve, range)) => ends.union(m.curve(curve).unwrap().bounds(range).unwrap()),
-                None => ends,
-            }
-        })
-        .reduce(Aabb::union)
-        .expect("a closed face boundary")
+    face.id
 }
 
 fn assert_box(got: Aabb, min: [f64; 3], max: [f64; 3], eps: f64) {
@@ -74,6 +58,56 @@ fn tight_bounds_of_sphere_patch_in_translated_charts() {
             .unwrap();
         assert_box(got, [c * c, -s, -s], [1.0, s, s], eps);
     }
+}
+
+#[test]
+fn tight_bounds_follow_whole_period_joins_between_pcurves() {
+    let mut m = Model::default();
+    let eps = m.precision().default_tolerance;
+    let source = sample::patch(
+        &mut m,
+        Surface::Sphere {
+            frame: Frame::world(),
+            radius: 1.0,
+        },
+        Interval::new(0.25, 0.5).unwrap(),
+        Interval::new(-0.3, 0.3).unwrap(),
+    )
+    .unwrap();
+    let face = m.face(m.faces(source).unwrap()[0].id).unwrap();
+    let surface = face.surface();
+    let mut coedges = face.loops()[0].coedges().to_vec();
+    // Write the second pcurve one turn from its neighbors, with the same
+    // shared edge. Both joins represent the same UV points on the sphere.
+    let use_ = coedges[1];
+    let shifted = m
+        .curve2(use_.pcurve())
+        .unwrap()
+        .translated(Vec2::new(TAU, 0.0));
+    let pcurve = m.add_curve2(shifted);
+    coedges[1] = Coedge::new(use_.edge(), use_.orientation(), pcurve);
+    let mut raw = m.raw();
+    let face = raw.add_face(Face::new(surface, vec![Loop::new(coedges)], eps));
+    let shell = raw.add_shell(Shell::new(vec![FaceHandle::forward(face)]));
+    let body = Body::forward(raw.add_body(BodyEntity::new(
+        BodyKind::Sheet,
+        vec![ShellHandle::forward(shell)],
+        vec![],
+        vec![],
+    )));
+    let report = check(&m, body, Level::Full);
+    assert!(report.is_ok(), "{report}");
+
+    let got = tight_bounds(&m, body.id.into(), &Control::NONE)
+        .unwrap()
+        .unwrap();
+    let (s, c) = real::sin_cos(0.3);
+    assert_box(
+        got,
+        [real::cos(0.5) * c, real::sin(0.25) * c, -s],
+        [real::cos(0.25), real::sin(0.5), s],
+        eps,
+    );
 }
 
 #[test]
@@ -116,15 +150,15 @@ fn analytic_extrema_keep_only_the_uncut_ball_pole() {
     )
     .unwrap();
     let (body, _) = cut(&mut m, sphere, tool, &Control::NONE).unwrap();
-    let domain = face_domain(&m, body, SurfaceKind::Sphere);
-    let interior = analytic_face_extrema(&domain).expect("the surviving pole and equator");
-    let eps = m.precision().default_tolerance;
-    assert_box(interior, [-2.0; 3], [2.0, 2.0, 0.0], eps);
+    let face = face_of(&m, body, SurfaceKind::Sphere);
+    let b = tight_bounds(&m, face.into(), &Control::NONE)
+        .unwrap()
+        .unwrap();
     assert_box(
-        boundary_box(&m, &domain).union(interior),
+        b,
         [-2.0; 3],
         [2.0, 2.0, 1.0],
-        eps,
+        m.precision().default_tolerance,
     );
 }
 
@@ -165,16 +199,11 @@ fn analytic_extrema_find_quarter_torus_crests_and_outer_equator_about_z_and_x() 
             &Control::NONE,
         )
         .unwrap();
-        let domain = face_domain(&m, body, SurfaceKind::Torus);
-        let interior = analytic_face_extrema(&domain).expect("the crests and mid-turn extrema");
-        let boundary = boundary_box(&m, &domain);
-        let eps = m.precision().default_tolerance;
-        let (axial, radial) = if axis == Vec3::z() { (2, 0) } else { (0, 1) };
-        assert!((interior.min[axial] + 1.0).abs() <= eps);
-        assert!((interior.max[axial] - 1.0).abs() <= eps);
-        assert!((interior.min[radial] - 2.0).abs() <= eps);
-        assert!((interior.max[radial] - 4.0).abs() <= eps);
-        assert_box(boundary.union(interior), min, max, eps);
+        let face = face_of(&m, body, SurfaceKind::Torus);
+        let b = tight_bounds(&m, face.into(), &Control::NONE)
+            .unwrap()
+            .unwrap();
+        assert_box(b, min, max, m.precision().default_tolerance);
     }
 }
 
@@ -195,15 +224,24 @@ fn analytic_extrema_leave_the_cone_apex_to_the_boundary() {
         holes: vec![],
     };
     let (body, _) = revolve(&mut m, &profile, Axis::z_at(origin), TAU, &Control::NONE).unwrap();
-    let domain = face_domain(&m, body, SurfaceKind::Cone);
-    assert!(analytic_face_extrema(&domain).is_none());
-    assert!(domain.edges().iter().any(|&id| {
-        let edge = m.edge(id).unwrap();
-        edge.is_degenerate()
-            && m.vertex(edge.start()).unwrap().point() == Point3::new(0.0, 0.0, 4.0)
-    }));
+    let face = face_of(&m, body, SurfaceKind::Cone);
+    assert!(
+        m.face(face)
+            .unwrap()
+            .loops()
+            .iter()
+            .flat_map(|l| l.coedges())
+            .any(|c| {
+                let edge = m.edge(c.edge()).unwrap();
+                edge.is_degenerate()
+                    && m.vertex(edge.start()).unwrap().point() == Point3::new(0.0, 0.0, 4.0)
+            })
+    );
+    let b = tight_bounds(&m, face.into(), &Control::NONE)
+        .unwrap()
+        .unwrap();
     assert_box(
-        boundary_box(&m, &domain),
+        b,
         [-2.0, -2.0, 0.0],
         [2.0, 2.0, 4.0],
         m.precision().default_tolerance,

@@ -1,9 +1,9 @@
 //! The trimmed NURBS face's tight box against dense samples refined to
 //! the extremes: outer, and within `eps` of the face on every side.
 
-use super::nurbs_face_box;
+use super::{TrimDomain, nurbs_face_box};
 
-use arris_check::{Level, domain::FaceDomain};
+use arris_check::Level;
 use arris_debug::prop::{check, finite_f64, frame};
 use arris_debug::sample;
 use arris_geom::{Curve, Curve2, NurbsCurve, NurbsSurface, Surface, fit_curve_periodic};
@@ -394,7 +394,21 @@ fn face_extreme(case: &Case, k: usize, sign: f64) -> f64 {
 /// its refined boundary extremes, padded out.
 fn run(case: &Case) -> (Aabb, f64) {
     let (m, face) = build(case);
-    let domain = FaceDomain::of(&m, face, m.precision().parametric_tolerance).expect("a domain");
+    let loops = m
+        .face(face)
+        .unwrap()
+        .loops()
+        .iter()
+        .map(|l| m.loop_pieces(l).unwrap())
+        .collect::<Vec<_>>();
+    let domain = TrimDomain::of(
+        &loops,
+        case.surface.closure(),
+        m.precision().parametric_tolerance,
+        &mut Meter::default(),
+    )
+    .unwrap()
+    .expect("a certified trim");
     let mut boundary = Aabb {
         min: [0.0; 3],
         max: [0.0; 3],
@@ -404,8 +418,15 @@ fn run(case: &Case) -> (Aabb, f64) {
         boundary.max[k] = boundary_extreme(case, k, 1.0) + BOUNDARY_PAD;
     }
     let eps = m.precision().default_tolerance;
-    let got = nurbs_face_box(&case.surface, &domain, boundary, eps, &mut Meter::default())
-        .expect("the face has a tight box");
+    let got = nurbs_face_box(
+        face,
+        &case.surface,
+        &domain,
+        boundary,
+        eps,
+        &mut Meter::default(),
+    )
+    .expect("the face has a tight box");
     (got, eps)
 }
 

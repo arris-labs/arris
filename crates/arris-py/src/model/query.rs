@@ -237,9 +237,10 @@ impl Model {
     /// body, as `(min, max)`. It encloses the stored geometry, with each
     /// side within the model's linear tolerance of geometry the entity
     /// reaches, to rounding. Returns `None` for an empty or unbounded
-    /// entity. Raises `OpDegenerateError` naming the face if the query
-    /// cannot certify its box within tolerance, and `Interrupted` when
-    /// `cancel` or `budget` stops the query.
+    /// entity. Raises `OpDegenerateError` with reason `BoundsUncertified`
+    /// naming the edge or face whose box could not be certified within
+    /// tolerance, and `Interrupted` when `cancel` or `budget` stops the
+    /// query.
     ///
     /// ```python
     /// import arris

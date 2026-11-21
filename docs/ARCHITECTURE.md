@@ -389,8 +389,10 @@ Result<Option<Aabb>, OpError>` gives the tight box of a vertex, edge, face,
 shell or body (ADR-0093). It joins the boxes of the closure's vertices
 and edge ranges with each face's lifted trims and interior extrema. A
 NURBS face whose control hull fits in the closure's boundary box requires
-no subdivision when its pcurves stay inside its domain. The meter counts
-closure entities and edge, trim and face splits.
+no subdivision when its pcurves stay inside its domain. Elsewhere the query
+uses certified pcurve chords to decide when trim winding can classify a
+stationary point or a patch. The meter counts closure entities, preparation
+of knot pieces, period copies, and edge, trim and face splits.
 
 `ops::boolean::interferences(&Model, a, b) -> Result<Interferences,
 OpError>` is another query: the boolean decomposition of ADR-0004 as
