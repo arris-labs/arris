@@ -327,13 +327,15 @@ struct Segment {
 #[derive(Debug, Clone)]
 struct Patch {
     uv: [Interval; 2],
+    /// The displacement of each closed, clamped direction from its knot domain.
+    shift: [f64; 2],
     depth: u32,
     open: u8,
     near: Vec<usize>,
 }
 
 /// The tight box of the face `domain` reads, on the NURBS `surface`, given
-/// `boundary`, a box that holds the face's boundary (its edges' points):
+/// `boundary`, a box that holds the face's lifted trim:
 /// every coordinate's extreme not inside the face is on it.
 ///
 /// Guarantees, where the box is `Some`: it holds every point of the face;
@@ -364,12 +366,33 @@ fn nurbs_face_box(
     // The sides of the hulls kept, axis by axis.
     let mut kept_lo = [f64::INFINITY; 3];
     let mut kept_hi = [f64::NEG_INFINITY; 3];
-    let mut queue = VecDeque::from([Patch {
-        uv: root,
-        depth: 0,
-        open: 0b11_1111,
-        near: (0..segments.len()).collect(),
-    }]);
+    let spline_domain = surface.domain();
+    let [us, vs] = [0, 1].map(|dir| {
+        if surface.closure()[dir].is_some() && surface.period()[dir].is_none() {
+            closed_parts(root[dir], spline_domain[dir])
+        } else {
+            vec![(root[dir], 0.0)]
+        }
+    });
+    if us.len() > 1 || vs.len() > 1 {
+        meter.tick()?;
+    }
+    let mut queue = VecDeque::new();
+    for &(v, dv) in &vs {
+        for &(u, du) in &us {
+            let uv = [u, v];
+            let near = (0..segments.len())
+                .filter(|&s| distance_to_rect(&segments[s], uv) <= segments[s].reach)
+                .collect();
+            queue.push_back(Patch {
+                uv,
+                shift: [du, dv],
+                depth: 0,
+                open: 0b11_1111,
+                near,
+            });
+        }
+    }
     while let Some(patch) = queue.pop_front() {
         let [u, v] = patch.uv;
         let centre = Point2::new(u.lerp(0.5), v.lerp(0.5));
@@ -396,10 +419,23 @@ fn nurbs_face_box(
                 inner = Some(inner.map_or(b, |acc| acc.union(b)));
             }
         }
-        let net = surface.clipped(patch.uv);
+        let [u_clip, v_clip] = [0, 1].map(|dir| {
+            let r = patch.uv[dir];
+            let shift = patch.shift[dir];
+            if shift == 0.0 {
+                return Ok(r);
+            }
+            let d = spline_domain[dir];
+            Interval::new(d.clamp(r.lo() - shift), d.clamp(r.hi() - shift))
+        });
+        let (Ok(u_clip), Ok(v_clip)) = (u_clip, v_clip) else {
+            return Ok(None);
+        };
+        let clip = [u_clip, v_clip];
+        let net = surface.clipped(clip);
         let hull = match &net {
             Some(n) => box_of(n),
-            None => domain.surface().bounds(patch.uv),
+            None => domain.surface().bounds(clip),
         };
         // A finite rectangle always has a hull; one that does not leaves
         // nothing outer to keep, so there is no box rather than a wrong one.
@@ -414,14 +450,7 @@ fn nurbs_face_box(
             }
             if !whole
                 && let Some(n) = &net
-                && monotone(
-                    surface,
-                    n,
-                    k,
-                    [hull.min[k], hull.max[k]],
-                    patch.uv,
-                    &creases,
-                )
+                && monotone(surface, n, k, [hull.min[k], hull.max[k]], clip, &creases)
             {
                 open &= !(0b11 << (2 * k));
                 continue;
@@ -461,6 +490,7 @@ fn nurbs_face_box(
                     .collect();
                 queue.push_back(Patch {
                     uv: child,
+                    shift: patch.shift,
                     depth: patch.depth + 1,
                     open,
                     near,
@@ -477,13 +507,12 @@ fn nurbs_face_box(
     Ok(Some(result))
 }
 
-/// The face's (u, v) box cut to what the surface has: a clamped direction
-/// to its domain, a periodic one to one period from its low end, where a
-/// point a period further is the same point. `None` when a clamped
-/// direction's box misses the domain.
+/// The face's (u, v) box cut to what the surface has: an open direction
+/// to its domain, a closed one to one period from the box's low end.
+/// `None` when an open direction's box misses the domain.
 fn fit_to_surface(surface: &NurbsSurface, uv: [Interval; 2]) -> Option<[Interval; 2]> {
     let domain = surface.domain();
-    let periods = surface.period();
+    let periods = surface.closure();
     let mut out = uv;
     for dir in 0..2 {
         let r = uv[dir];
@@ -498,10 +527,37 @@ fn fit_to_surface(surface: &NurbsSurface, uv: [Interval; 2]) -> Option<[Interval
     Some(out)
 }
 
+/// The pieces of a range of at most one period in a closed, clamped
+/// direction. Each piece stays in the trim's translate for winding tests
+/// and carries the displacement of its knot domain for clipping.
+fn closed_parts(range: Interval, domain: Interval) -> Vec<(Interval, f64)> {
+    if domain.contains(range.lo()) && domain.contains(range.hi()) {
+        return vec![(range, 0.0)];
+    }
+    let period = domain.length();
+    let mut shift = ((range.lo() - domain.lo()) / period).floor() * period;
+    if range.lo() < domain.lo() + shift {
+        shift -= period;
+    }
+    let seam = domain.hi() + shift;
+    let mut parts = Vec::with_capacity(2);
+    if let Ok(left) = Interval::new(range.lo(), range.hi().min(seam))
+        && left.length() > 0.0
+    {
+        parts.push((left, shift));
+    }
+    if let Ok(right) = Interval::new(range.lo().max(seam), range.hi())
+        && (right.length() > 0.0 || parts.is_empty())
+    {
+        parts.push((right, shift + period));
+    }
+    parts
+}
+
 /// The loops' polygon pieces, in every translate by a period that brings
 /// them within their reach of `root`.
 fn segments(domain: &FaceDomain<'_>, surface: &NurbsSurface, root: [Interval; 2]) -> Vec<Segment> {
-    let periods = surface.period();
+    let periods = surface.closure();
     let mut out = Vec::new();
     for polygon in domain.polygons() {
         let reach = polygon.chord_deviation();
@@ -553,14 +609,18 @@ fn creases(surface: &NurbsSurface, dir: usize) -> Vec<f64> {
 /// creases, read modulo the period where there is one.
 fn on_crease(surface: &NurbsSurface, dir: usize, x: f64, creases: &[f64]) -> bool {
     let domain = surface.domain()[dir];
-    let x = match surface.period()[dir] {
+    let closure = surface.closure()[dir];
+    let x = match closure {
         Some(p) => domain.lo() + (x - domain.lo()).rem_euclid(p),
         None => x,
     };
-    creases.iter().any(|&k| {
+    let at = |k: f64| {
         let ulp = f64::EPSILON * k.abs().max(x.abs()).max(1.0);
         (x - k).abs() <= CREASE_ULPS * ulp
-    })
+    };
+    // A closed, clamped seam only promises that its endpoints meet.
+    (closure.is_some() && surface.period()[dir].is_none() && (at(domain.lo()) || at(domain.hi())))
+        || creases.iter().copied().any(at)
 }
 
 /// `true` when `net`, the patch of `surface` over `uv` whose hull in `k`

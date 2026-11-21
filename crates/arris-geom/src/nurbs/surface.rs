@@ -294,10 +294,9 @@ impl NurbsSurface {
     /// the domain. A range past a clamped end stops at that end; a
     /// periodic direction takes any range of at most its period, wrapping
     /// the seam. The patch's control net holds the surface over `uv`
-    /// (its hull is what [`crate::Surface::bounds`] returns), and a
-    /// coordinate that rises from each row of the net to the next rises
-    /// along the patch. `None` when a direction cannot be clipped: a range
-    /// outside a clamped domain, or longer than the period.
+    /// (its hull is what [`crate::Surface::bounds`] returns). `None` when
+    /// a direction cannot be clipped: a range outside a clamped domain,
+    /// or longer than the period.
     ///
     /// ```
     /// use arris_geom::Surface;

@@ -6,10 +6,14 @@ use super::nurbs_face_box;
 use arris_check::{Level, domain::FaceDomain};
 use arris_debug::prop::{check, finite_f64, frame};
 use arris_debug::sample;
-use arris_geom::{Curve, Curve2, NurbsSurface, Surface, fit_curve_periodic};
-use arris_math::{Aabb, Control, Frame2, Handedness, Interval, Meter, Point2, Point3, Vec2, real};
-use arris_topo::entity::{Coedge, Edge, EdgeGeometry, Face, Loop, Vertex};
-use arris_topo::{FaceId, Model, Orientation};
+use arris_geom::{Curve, Curve2, NurbsCurve, NurbsSurface, Surface, fit_curve_periodic};
+use arris_math::{
+    Aabb, Control, Frame2, Handedness, Interval, Meter, Point2, Point3, Vec2, Vec3, real,
+};
+use arris_topo::entity::{
+    Body as BodyEntity, BodyKind, Coedge, Edge, EdgeGeometry, Face, Loop, Shell, Vertex,
+};
+use arris_topo::{Body, Face as FaceHandle, FaceId, Model, Orientation, Shell as ShellHandle};
 use core::f64::consts::TAU;
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
@@ -48,6 +52,54 @@ fn tight_bounds_split_the_other_direction_when_a_midpoint_stalls() {
         got.max[2] >= 1.0 - SLACK && got.max[2] <= 1.0 + eps,
         "{got:?}"
     );
+}
+
+#[test]
+fn tight_bounds_find_the_peak_across_a_clamped_revolution_seam() {
+    // Radius r(v) = 2 + 4v(1-v), with the seam at angle 1/4. The point
+    // at angle zero and v = 1/2 has x = 3 and lies strictly in the trim,
+    // on the side of the seam where the pcurve wraps.
+    let meridian = NurbsCurve::new(
+        2,
+        vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+        vec![
+            Point3::new(2.0, 0.0, 0.0),
+            Point3::new(4.0, 0.0, 0.5),
+            Point3::new(2.0, 0.0, 1.0),
+        ],
+        vec![1.0; 3],
+    )
+    .unwrap();
+    let turn = Interval::new(0.25, 0.25 + TAU).unwrap();
+    let surface =
+        NurbsSurface::revolution(&meridian, Point3::origin(), Vec3::z_axis(), turn).unwrap();
+    assert_eq!(surface.period(), [None, None]);
+    assert_eq!(surface.closure(), [Some(TAU), None]);
+    for seam in [turn.lo(), turn.hi()] {
+        let (mut m, face) = build(&Case {
+            surface: surface.clone(),
+            trim: Some((Point2::new(seam, 0.5), 0.4)),
+        });
+        let shell = m
+            .raw()
+            .add_shell(Shell::new(vec![FaceHandle::forward(face)]));
+        let body = Body::forward(m.raw().add_body(BodyEntity::new(
+            BodyKind::Sheet,
+            vec![ShellHandle::forward(shell)],
+            vec![],
+            vec![],
+        )));
+        let report = arris_check::check(&m, body, Level::Full);
+        assert!(report.is_ok(), "{report:?}");
+        let got = crate::query::tight_bounds(&m, body.id.into(), &Control::NONE)
+            .unwrap()
+            .unwrap();
+        let eps = m.precision().default_tolerance;
+        assert!(
+            got.max[0] >= 3.0 - SLACK && got.max[0] <= 3.0 + eps,
+            "{got:?}"
+        );
+    }
 }
 
 /// How far past the refined extreme the boundary box the test hands in

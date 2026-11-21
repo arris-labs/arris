@@ -33,11 +33,13 @@ envelope is also useful when deciding whether two entities can meet.
    its axis. If only part of it survives the trim, the trim meets it
    at the same height.
 4. **Subdivide NURBS faces where their interiors can enlarge the box.**
-   Discard patches proved outside the loops. For a coordinate strictly
-   monotone along either parameter, the boundary supplies its extrema
-   except where extrema can occur at a C0 knot. Test the sign of the
-   weighted control-point differences at both ends of the coordinate's
-   hull range to prove monotonicity. Keep remaining hulls whose open sides
+   Split at a closed, clamped seam and clip each piece in the fundamental
+   knot domain. Test the trim in its own translate. Discard patches proved
+   outside the loops. For a coordinate strictly monotone along either
+   parameter, the boundary supplies its extrema except where extrema can
+   occur at a C0 knot or closed, clamped seam. Test the sign of the weighted
+   control-point differences at both ends of the coordinate's hull range to
+   prove monotonicity. Keep remaining hulls whose open sides
    are within half the linear tolerance of the boundary box or evaluated
    face points. The edge and face allowances add to at most one linear
    tolerance. When a midpoint rounds to an endpoint, subdivide along the
