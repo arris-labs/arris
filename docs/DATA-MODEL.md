@@ -1278,8 +1278,11 @@ a conic's extrema per axis, a plane rectangle's four corners, a
 cylinder's sinusoid in `u` and travel in `v` — and an outer bound where
 the two parameters multiply (a cone, a sphere, a torus) or where the
 geometry is a NURBS, whose control hull of the patch clipped to the range
-contains it; a tighter, piecewise bound is the caller's, by quartering the
-range and bounding each quarter. A face's box is the union of its edges' boxes and its
+contains it. `Curve::tight_bounds(range, eps)` gives an outer box with each
+side within `eps` of the curve to rounding. It uses the exact bounds of a
+line or conic and subdivides a NURBS only where its clipped control hull
+extends more than `eps` past the box of evaluated points. Periodic ranges
+can cross a seam. A face's box is the union of its edges' boxes and its
 surface's over the loops' (u, v) bounds, inflated by the face's
 tolerance; `Aabb::intersects` on two of them is the cheap reject a
 boolean's face pairs go through before any intersection is computed.

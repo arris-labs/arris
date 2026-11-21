@@ -1,7 +1,8 @@
 //! Rational B-spline curves in 3D and in the (u, v) plane.
 
-use arris_math::{Interval, Isometry, Point2, Point3, Reflection, Vec2};
+use arris_math::{Aabb, Interval, Isometry, Point2, Point3, Reflection, Vec2};
 
+use super::basis;
 use super::spline::{BezierSpan, Spline};
 use crate::{Curve2Eval, Curve2Kind, CurveEval, CurveKind, GeomError, GeomKind, SplineFault};
 
@@ -178,6 +179,102 @@ impl NurbsCurve {
             .segment(lo, hi)
             .ok()
             .map(|s| s.points().to_vec())
+    }
+
+    /// Refine only pieces with a hull that can still move a side by more
+    /// than `eps`. Every accepted hull covers its piece and stays within
+    /// `eps` of the final sampled box because that box only grows.
+    pub(crate) fn tight_bounds(&self, range: Interval, eps: f64) -> Option<Aabb> {
+        let domain = self.domain();
+        let mut pending = match self.period() {
+            Some(period) if range.length() >= period => vec![domain],
+            Some(_) => {
+                let lo = self.spline.wrap(range.lo());
+                let hi = self.spline.wrap(range.hi());
+                if hi < lo {
+                    vec![
+                        Interval::new(domain.lo(), hi).ok()?,
+                        Interval::new(lo, domain.hi()).ok()?,
+                    ]
+                } else {
+                    vec![Interval::new(lo, hi).ok()?]
+                }
+            }
+            None if domain.contains(range.lo()) && domain.contains(range.hi()) => vec![range],
+            None => return None,
+        };
+        let point_box = |t| {
+            let p = self.spline.point(t);
+            p.coords
+                .iter()
+                .all(|x| x.is_finite())
+                .then(|| Aabb::of_point(p))
+        };
+        let mut inner = point_box(range.lo())?.union(point_box(range.hi())?);
+        for range in &pending {
+            inner = inner
+                .union(point_box(range.lo())?)
+                .union(point_box(range.hi())?);
+        }
+        let mut outer = inner;
+        let knots = self.knots();
+        while let Some(range) = pending.pop() {
+            if range.lo() == range.hi() {
+                continue;
+            }
+            let hull = self.clipped_hull(range)?;
+            if (0..3)
+                .all(|k| inner.min[k] - hull.min[k] <= eps && hull.max[k] - inner.max[k] <= eps)
+            {
+                outer = outer.union(hull);
+                continue;
+            }
+
+            let first = knots.partition_point(|&k| k <= range.lo());
+            let end = knots.partition_point(|&k| k < range.hi());
+            let split = if first < end {
+                *knots.get(first + (end - first) / 2)?
+            } else {
+                range.midpoint()
+            };
+            // If the midpoint rounded to an end, further splitting cannot
+            // certify the requested tolerance in this parameter range.
+            if !(range.lo() < split && split < range.hi()) {
+                return None;
+            }
+            inner = inner.union(point_box(split)?);
+            pending.push(Interval::new(split, range.hi()).ok()?);
+            pending.push(Interval::new(range.lo(), split).ok()?);
+        }
+        Some(outer.union(inner))
+    }
+
+    /// Union the clipped Bernstein hulls, including spans below the
+    /// resolution used for root isolation. The range lies in the domain
+    /// and has already been split at the seam of a periodic curve.
+    fn clipped_hull(&self, range: Interval) -> Option<Aabb> {
+        let p = self.degree();
+        let knots = self.knots();
+        let n = self.control_points().len();
+        let first = basis::span(p, knots, n, range.lo());
+        let last = basis::span(p, knots, n, range.hi());
+        let mut hull: Option<Aabb> = None;
+        let spans = knots.get(first..=last + 1)?.windows(2);
+        for (i, ends) in (first..=last).zip(spans) {
+            let lo = range.lo().max(ends[0]);
+            let hi = range.hi().min(ends[1]);
+            if lo < hi {
+                for (q, w) in self.spline.bezier_span(i, lo, hi).control {
+                    let point = Point3::from(q / w);
+                    if !(w.is_finite() && w > 0.0 && point.coords.iter().all(|x| x.is_finite())) {
+                        return None;
+                    }
+                    let bound = Aabb::of_point(point);
+                    hull = Some(hull.map_or(bound, |h| h.union(bound)));
+                }
+            }
+        }
+        hull
     }
 
     /// `p`.

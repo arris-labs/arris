@@ -87,7 +87,7 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   that the loops graze. A property test over random bicubic patches, whole
   and trimmed by a random circle, holds the result outer and within `eps`
   of a dense sample refined by golden section.
-- [ ] Step 2 **[2]** — `Curve::tight_bounds` for NURBS, as in the deltas.
+- [x] Step 2 **[2]** — `Curve::tight_bounds` for NURBS, as in the deltas.
   Test with rational and periodic curves, including a range that wraps the
   seam: outer, within `eps` of refined samples, and equal to `bounds` for
   lines and conics.
@@ -153,6 +153,11 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   inside the loops, else split (depth cap 32). The result is within `eps`
   of the face or of the boundary box, so step 4 runs edges and patches at
   `eps / 2`. 1000 cases: median 1 split, at most 28. ADR-0093 (step 4).
+- *Settled* (step 2): a clipped hull is the union of the clipped Bernstein
+  hulls of all spans the range covers. Extracting these directly includes
+  unclamped domain ends and short spans omitted by root isolation. A range
+  outside a nonperiodic NURBS domain has no clipped hull for the extrapolated
+  pieces and returns `None`. Edge ranges already satisfy E1.
 - ⚠ OPEN: a speed bar. The agent picks it in step 4: under 0.1 s for the
   269-face real part used to time `classify_points`. A miss there is a
   finding, not a refusal.

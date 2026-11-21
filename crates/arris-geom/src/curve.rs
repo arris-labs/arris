@@ -243,6 +243,38 @@ impl Curve {
         }
     }
 
+    /// An outer box over `range`, with each side within `eps` of the
+    /// curve, to floating-point rounding. Lines and conics use [`Self::bounds`].
+    /// A periodic NURBS accepts ranges across its seam and a range of at
+    /// least one period bounds the whole curve.
+    ///
+    /// Returns `None` for an unbounded range, a non-positive or non-finite
+    /// `eps`, a range outside a nonperiodic NURBS domain, or a NURBS hull
+    /// that cannot be refined to `eps` at the available numeric precision.
+    ///
+    /// ```
+    /// use arris_geom::{Curve, NurbsCurve};
+    /// use arris_math::{Interval, Point3};
+    ///
+    /// let arch = Curve::Nurbs(NurbsCurve::new(
+    ///     2,
+    ///     vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+    ///     vec![Point3::origin(), Point3::new(1.0, 2.0, 0.0), Point3::new(2.0, 0.0, 0.0)],
+    ///     vec![1.0; 3],
+    /// ).unwrap());
+    /// let tight = arch.tight_bounds(Interval::UNIT, 1e-6).unwrap();
+    /// assert_eq!(tight.max, [2.0, 1.0, 0.0]);
+    /// ```
+    pub fn tight_bounds(&self, range: Interval, eps: f64) -> Option<Aabb> {
+        if !(range.is_bounded() && eps.is_finite() && eps > 0.0) {
+            return None;
+        }
+        match self {
+            Curve::Line { .. } | Curve::Circle { .. } | Curve::Ellipse { .. } => self.bounds(range),
+            Curve::Nurbs(curve) => curve.tight_bounds(range, eps),
+        }
+    }
+
     /// How many straight segments approximate the curve over `range`
     /// within `chord` in 3D: the twin of
     /// [`crate::region2::Piece::segment_count`] for a 3D curve, with the

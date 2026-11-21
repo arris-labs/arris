@@ -3,11 +3,12 @@
 //! and refuse a range that is not finite: the cheap reject a boolean's
 //! face pairs go through (ADR-0004).
 
-use arris_debug::prop::geom::{curve, nurbs_curve, nurbs_surface, surface};
-use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64};
+use arris_debug::prop::geom::{NURBS_WEIGHT_RANGE, curve, nurbs_curve, nurbs_surface, surface};
+use arris_debug::prop::{DEFAULT_SCALE, check, finite_f64, point_in_box};
 use arris_debug::testing::EXACT;
-use arris_geom::{Curve, Surface};
+use arris_geom::{Curve, NurbsCurve, Surface};
 use arris_math::real;
+use arris_math::roots::golden_section;
 use arris_math::{Aabb, Frame, Interval, Point3, UnitVec3, Vec3};
 use proptest::prelude::*;
 
@@ -81,6 +82,169 @@ fn a_nurbs_curves_control_hull_holds_it() {
             Ok(())
         },
     );
+}
+
+const TIGHT_EPS: f64 = 1e-6;
+
+/// Verify containment at every sample, then polish the best sample for
+/// each side per knot span. Every polished point is also on the curve,
+/// so finding one within eps of a returned side certifies its tightness.
+fn check_tight_curve(n: NurbsCurve, range: Interval) -> Result<(), TestCaseError> {
+    // Refine over one complete knot sequence when the range covers it
+    // more than once. Check containment over the original range as well.
+    let witnesses = if n.period().is_some_and(|period| range.length() >= period) {
+        n.domain()
+    } else {
+        range
+    };
+    let mut ends = vec![witnesses.lo()];
+    ends.extend(n.breaks_within(witnesses));
+    ends.push(witnesses.hi());
+    let c = Curve::Nurbs(n);
+    let Some(tight) = c.tight_bounds(range, TIGHT_EPS) else {
+        return Err(TestCaseError::fail(format!(
+            "no tight bounds over {range:?}"
+        )));
+    };
+    if witnesses != range {
+        for t in range.samples(SAMPLES) {
+            prop_assert!(holds(&tight, c.point(t)), "point outside {tight:?} at {t}");
+        }
+    }
+    let mut reached = Aabb::of_point(c.point(range.lo()));
+    for span in ends.windows(2) {
+        let piece = Interval::new(span[0], span[1]).unwrap();
+        let samples: Vec<_> = piece
+            .samples(SAMPLES)
+            .into_iter()
+            .map(|t| (t, c.point(t)))
+            .collect();
+        for &(_, p) in &samples {
+            prop_assert!(holds(&tight, p), "{p:?} outside {tight:?} over {range:?}");
+            reached = reached.union(Aabb::of_point(p));
+        }
+        for axis in 0..3 {
+            for sign in [-1.0, 1.0] {
+                let best = (0..samples.len())
+                    .min_by(|&a, &b| {
+                        (sign * samples[a].1[axis]).total_cmp(&(sign * samples[b].1[axis]))
+                    })
+                    .unwrap();
+                let lo = samples[best.saturating_sub(1)].0;
+                let hi = samples[(best + 1).min(samples.len() - 1)].0;
+                let b = golden_section(|t| sign * c.point(t)[axis], lo, hi, 32);
+                for t in [b.low_probe.0, b.high_probe.0] {
+                    let p = c.point(t);
+                    prop_assert!(holds(&tight, p), "{p:?} outside {tight:?} at {t}");
+                    reached = reached.union(Aabb::of_point(p));
+                }
+            }
+        }
+    }
+    for axis in 0..3 {
+        prop_assert!(
+            reached.min[axis] - tight.min[axis] <= TIGHT_EPS + EXACT
+                && tight.max[axis] - reached.max[axis] <= TIGHT_EPS + EXACT,
+            "{tight:?} is loose on axis {axis}; curve reaches {reached:?} over {range:?}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn tight_bounds_of_rational_curves_hold_on_trimmed_ranges() {
+    check(
+        (nurbs_curve(), finite_f64(0.0..=1.0), finite_f64(0.0..=1.0)),
+        |(n, a, b)| {
+            let range = sub_range(n.domain(), a, b).unwrap();
+            check_tight_curve(n, range)
+        },
+    );
+}
+
+#[test]
+fn tight_bounds_of_periodic_curves_hold_across_the_seam() {
+    const DEGREE: usize = 3;
+    const SPANS: usize = 5;
+    check(
+        (
+            proptest::collection::vec(point_in_box(DEFAULT_SCALE), SPANS),
+            proptest::collection::vec(finite_f64(NURBS_WEIGHT_RANGE), SPANS),
+            finite_f64(0.0..=1.0),
+            finite_f64(0.0..=1.0),
+        ),
+        |(mut points, mut weights, a, b)| {
+            points.extend_from_within(..DEGREE);
+            weights.extend_from_within(..DEGREE);
+            let knots = (0..=SPANS + 2 * DEGREE).map(|i| i as f64).collect();
+            let n = NurbsCurve::new(DEGREE, knots, points, weights).unwrap();
+            let period = SPANS as f64;
+            prop_assert_eq!(n.period(), Some(period));
+            let seam = n.domain().hi();
+            // Include the stored seam and a seam before the stored knots.
+            for seam in [seam, seam - 3.0 * period] {
+                let range = Interval::new(seam - (1.0 + a), seam + (1.0 + b)).unwrap();
+                check_tight_curve(n.clone(), range)?;
+            }
+            check_tight_curve(n, Interval::new(seam + a, seam + a + 2.0 * period).unwrap())
+        },
+    );
+}
+
+#[test]
+fn tight_bounds_of_lines_and_conics_equal_bounds() {
+    let frame = Frame::world();
+    let curves = [
+        Curve::Line {
+            origin: frame.origin(),
+            direction: frame.x(),
+        },
+        Curve::Circle { frame, radius: 2.0 },
+        Curve::Ellipse {
+            frame,
+            major_radius: 3.0,
+            minor_radius: 2.0,
+        },
+    ];
+    for c in curves {
+        for range in [
+            Interval::new(-0.5, 2.0).unwrap(),
+            Interval::TURN,
+            Interval::REAL,
+        ] {
+            assert_eq!(c.tight_bounds(range, TIGHT_EPS), c.bounds(range));
+        }
+    }
+}
+
+#[test]
+fn tight_bounds_include_unclamped_domain_ends() {
+    let c = Curve::Nurbs(
+        NurbsCurve::new(
+            2,
+            (0..=5).map(f64::from).collect(),
+            vec![
+                Point3::origin(),
+                Point3::new(1.0, 2.0, 0.0),
+                Point3::new(2.0, 0.0, 0.0),
+            ],
+            vec![1.0; 3],
+        )
+        .unwrap(),
+    );
+    // Over its single span, x = 0.5 + u and y = 1 + 2u(1 - u).
+    let tight = c.tight_bounds(c.domain(), TIGHT_EPS).unwrap();
+    assert_eq!(tight.min, [0.5, 1.0, 0.0]);
+    assert_eq!(tight.max, [1.5, 1.5, 0.0]);
+    let at_mid = Interval::new(2.5, 2.5).unwrap();
+    assert_eq!(
+        c.tight_bounds(at_mid, TIGHT_EPS),
+        Some(Aabb::of_point(Point3::new(1.0, 1.5, 0.0)))
+    );
+    assert_eq!(c.tight_bounds(Interval::UNIT, TIGHT_EPS), None);
+    for eps in [0.0, -TIGHT_EPS, f64::INFINITY, f64::NAN] {
+        assert_eq!(c.tight_bounds(c.domain(), eps), None);
+    }
 }
 
 #[test]

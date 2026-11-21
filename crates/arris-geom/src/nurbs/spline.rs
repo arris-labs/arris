@@ -399,32 +399,36 @@ impl<const D: usize> Spline<D> {
         let p = self.degree;
         let n = self.points.len();
         let spans = basis::resolvable_spans(p, &self.knots, n);
-        let mut out = Vec::with_capacity(spans.len());
-        for i in spans {
-            let (lo, hi) = (self.knots[i], self.knots[i + 1]);
-            let mut control = Vec::with_capacity(p + 1);
-            for k in 0..=p {
-                let mut d: Vec<(SVector<f64, D>, f64)> = (i - p..=i)
-                    .map(|j| (self.weights[j] * self.points[j].coords, self.weights[j]))
-                    .collect();
-                for r in 1..=p {
-                    // The last `k` arguments of the blossom are `hi`.
-                    let t = if r > p - k { hi } else { lo };
-                    for j in (r..=p).rev() {
-                        let g = i - p + j;
-                        let alpha =
-                            (t - self.knots[g]) / (self.knots[g + p - r + 1] - self.knots[g]);
-                        d[j] = (
-                            (1.0 - alpha) * d[j - 1].0 + alpha * d[j].0,
-                            (1.0 - alpha) * d[j - 1].1 + alpha * d[j].1,
-                        );
-                    }
+        spans
+            .into_iter()
+            .map(|i| self.bezier_span(i, self.knots[i], self.knots[i + 1]))
+            .collect()
+    }
+
+    /// The Bernstein control points of span `i` restricted to `[lo, hi]`
+    /// inside that span. The blossom is evaluated with `p - k` copies of
+    /// the lower end and `k` copies of the upper end for control point `k`.
+    pub(super) fn bezier_span(&self, i: usize, lo: f64, hi: f64) -> BezierSpan<D> {
+        let p = self.degree;
+        let mut control = Vec::with_capacity(p + 1);
+        for k in 0..=p {
+            let mut d: Vec<(SVector<f64, D>, f64)> = (i - p..=i)
+                .map(|j| (self.weights[j] * self.points[j].coords, self.weights[j]))
+                .collect();
+            for r in 1..=p {
+                let t = if r > p - k { hi } else { lo };
+                for j in (r..=p).rev() {
+                    let g = i - p + j;
+                    let alpha = (t - self.knots[g]) / (self.knots[g + p - r + 1] - self.knots[g]);
+                    d[j] = (
+                        (1.0 - alpha) * d[j - 1].0 + alpha * d[j].0,
+                        (1.0 - alpha) * d[j - 1].1 + alpha * d[j].1,
+                    );
                 }
-                control.push(d[p]);
             }
-            out.push(BezierSpan { lo, hi, control });
+            control.push(d[p]);
         }
-        out
+        BezierSpan { lo, hi, control }
     }
 
     /// The spline with every control point mapped through `f`.
