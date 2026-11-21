@@ -45,10 +45,17 @@ and `clevis_pin` cases match their closed forms within 1e-6.
   torus, the points whose normal is `±e_k` count: up to four isolated points,
   or one sample on each crest circle when `e_k` is along the axis. A point
   counts when `FaceDomain::side` puts its (u, v) inside or on the loops.
-  On a NURBS surface, subdivide the face's `uv_box` and drop each patch that
-  `FaceDomain::misses`. A kept patch is split like a curve range until its
-  hull's excess is at most `eps`. The bound for a patch that the loops
-  graze is established in step 1.
+  On a NURBS surface, subdivide the face's `uv_box` (cut to the domain, or
+  to one period) and drop each patch that no loop comes within its chord
+  deviation of and whose centre the loops do not wind around. A coordinate
+  is set aside on a patch whose clipped net proves it strictly monotone
+  along `u` or `v`, unless the side it rises to is a C0 knot line; the
+  rest are split until the hull is within `eps` of the boundary box and
+  the evaluated face points (step 1's *Settled*).
+- **Patch net** (`arris-geom`): `NurbsSurface::clipped(uv) ->
+  Option<NurbsSurface>`, the patch over a rectangle with its knots clamped
+  there, the net `Surface::bounds` already takes the hull of. A public
+  addition, not a break.
 - **Query** (`arris-ops::query`): `tight_bounds(&Model, EntityId, &Control)
   -> Result<Option<Aabb>, OpError>`. It is the union over the entity's
   closure of vertex points, edges' `Curve::tight_bounds` and faces'
@@ -74,7 +81,7 @@ and `clevis_pin` cases match their closed forms within 1e-6.
 Grades: **[1]** routine; **[2]** careful, a geometric or numeric case within
 the design; **[3]** unproven, an algorithm whose bound is established here.
 
-- [ ] Step 1 **[3]** — Bound a trimmed NURBS face by subdividing it and pruning
+- [x] Step 1 **[3]** — Bound a trimmed NURBS face by subdividing it and pruning
   with `misses`, as a private helper in `ops::query` that takes a
   `FaceDomain`, `eps` and a `Meter`. Establish the stopping rule for a patch
   that the loops graze. A property test over random bicubic patches, whole
@@ -136,10 +143,16 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
 
 ## Open questions
 
-- ⚠ OPEN: the stopping rule for a NURBS patch the loops graze. The agent
-  decides it in step 1 and records it in ADR-0093. The candidate: stop
-  when the patch's hull diagonal is at most `eps`, since every point of it
-  is then within `eps` of the boundary edge's own tight box.
+- *Settled* (step 1): the grazed-patch stopping rule. The candidate (hull
+  diagonal ≤ `eps`) converges linearly: ~`L / eps` patches along a straight
+  trim the surface rises across. Instead a coordinate's extreme is on the
+  boundary or where both partials vanish; a patch whose net differences
+  `w'(Q'_k − s) − w(Q_k − s)` keep one sign at both ends of its hull range
+  is set aside for `k`, unless it rises to a C0 knot line. Other open
+  sides stop within `eps` of the boundary box joined with points proved
+  inside the loops, else split (depth cap 32). The result is within `eps`
+  of the face or of the boundary box, so step 4 runs edges and patches at
+  `eps / 2`. 1000 cases: median 1 split, at most 28. ADR-0093 (step 4).
 - ⚠ OPEN: a speed bar. The agent picks it in step 4: under 0.1 s for the
   269-face real part used to time `classify_points`. A miss there is a
   finding, not a refusal.

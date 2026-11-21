@@ -55,6 +55,14 @@ pub struct NurbsSurface {
     closed: [bool; 2],
 }
 
+/// A patch's control net as [`NurbsSurface::clipped`] cuts it, before it is
+/// validated as a surface: row-major over `u`, as the surface's own.
+struct ClippedNet {
+    points: Vec<Point3>,
+    weights: Vec<f64>,
+    knots: [Vec<f64>; 2],
+}
+
 /// The wire form of a [`NurbsSurface`]: what [`NurbsSurface::new`] takes,
 /// validated by it on the way in.
 #[cfg(feature = "serde")]
@@ -277,8 +285,44 @@ impl NurbsSurface {
     /// clipped (a range that is no range, or longer than the period), and
     /// the caller keeps the spans' hull.
     pub(crate) fn clipped_points(&self, uv: [Interval; 2]) -> Option<Vec<Point3>> {
+        self.clip(uv).map(|net| net.points)
+    }
+
+    /// The patch of the surface over the parameter rectangle `uv` as a
+    /// surface of its own: the same points at the same parameters, its
+    /// knots clamped at `uv`'s ends in each direction `uv` cuts short of
+    /// the domain. A range past a clamped end stops at that end; a
+    /// periodic direction takes any range of at most its period, wrapping
+    /// the seam. The patch's control net holds the surface over `uv`
+    /// (its hull is what [`crate::Surface::bounds`] returns), and a
+    /// coordinate that rises from each row of the net to the next rises
+    /// along the patch. `None` when a direction cannot be clipped: a range
+    /// outside a clamped domain, or longer than the period.
+    ///
+    /// ```
+    /// use arris_geom::Surface;
+    /// use arris_math::{Frame, Interval};
+    ///
+    /// let ball = Surface::Sphere { frame: Frame::world(), radius: 2.0 };
+    /// let twin = ball.to_nurbs(ball.domain()).unwrap();
+    /// let [du, dv] = twin.domain();
+    /// let uv = [Interval::new(du.lerp(0.1), du.lerp(0.3)).unwrap(), dv];
+    /// let patch = twin.clipped(uv).unwrap();
+    /// assert_eq!(patch.domain()[0], uv[0]);
+    /// let (u, v) = (du.lerp(0.2), dv.lerp(0.6));
+    /// assert!((patch.eval(u, v).point - twin.eval(u, v).point).norm() < 1e-12);
+    /// ```
+    pub fn clipped(&self, uv: [Interval; 2]) -> Option<NurbsSurface> {
+        let net = self.clip(uv)?;
+        NurbsSurface::new(self.degree, net.knots, net.points, net.weights).ok()
+    }
+
+    /// The control net, weights and knots of the patch over `uv`
+    /// ([`NurbsSurface::clipped`]).
+    fn clip(&self, uv: [Interval; 2]) -> Option<ClippedNet> {
         let mut points = self.points.clone();
         let mut weights = self.weights.clone();
+        let mut knots = self.knots.clone();
         let mut counts = self.counts;
         for dir in 0..2 {
             let domain = self.domain_of(dir);
@@ -301,14 +345,16 @@ impl NurbsSurface {
             for line in 0..lines {
                 let spline = super::spline::Spline::<3>::new(
                     self.degree[dir],
-                    self.knots[dir].clone(),
+                    knots[dir].clone(),
                     (0..length).map(|k| points[at(line, k)]).collect(),
                     (0..length).map(|k| weights[at(line, k)]).collect(),
                 )
                 .ok()?;
                 clipped.push(spline.segment(lo, hi).ok()?);
             }
-            let kept = clipped.first()?.points().len();
+            let first = clipped.first()?;
+            let kept = first.points().len();
+            knots[dir] = first.knots().to_vec();
             let mut next_points = vec![Point3::origin(); kept * lines];
             let mut next_weights = vec![1.0; kept * lines];
             for (line, spline) in clipped.iter().enumerate() {
@@ -329,7 +375,11 @@ impl NurbsSurface {
             weights = next_weights;
             counts[dir] = kept;
         }
-        Some(points)
+        Some(ClippedNet {
+            points,
+            weights,
+            knots,
+        })
     }
 
     /// The surface over `range` of direction `dir`, the other direction

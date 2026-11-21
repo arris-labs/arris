@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 
 mod distance;
 mod interference;
+mod tight;
 
 pub use distance::{Distance, Foot, FootParam, Operand, distance};
 pub use interference::{Clash, Contact, Interference, interference, interference_many};
