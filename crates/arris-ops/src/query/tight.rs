@@ -227,9 +227,16 @@ fn analytic_face_extrema(domain: &FaceDomain<'_>) -> Option<Aabb> {
     let surface = domain.surface();
     let uv_box = domain.uv_box();
     let [u_range, _] = uv_box.unwrap_or_else(|| surface.domain());
+    let chart_centre = uv_box.map(|[u, v]| Point2::new(u.midpoint(), v.midpoint()));
+    let periods = surface.period();
     let mut bounds: Option<Aabb> = None;
     let mut include = |uv: Point2, point| {
-        if uv_box.is_none() || domain.side(uv).0 != Side::Outside {
+        if chart_centre.is_none_or(|centre| {
+            // The trim can be several turns from the analytic parameters.
+            // Start in its chart before `side` checks adjacent translates.
+            let uv = uv + arris_math::shift_nearest_uv(centre - uv, periods);
+            domain.side(uv).0 != Side::Outside
+        }) {
             include_box(&mut bounds, Aabb::of_point(point));
         }
     };

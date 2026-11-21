@@ -2,12 +2,12 @@ use core::f64::consts::{FRAC_1_SQRT_2, FRAC_PI_2, TAU};
 
 use arris_check::{Level, check, domain::FaceDomain};
 use arris_debug::sample;
-use arris_geom::{Profile, ProfileLoop, ProfileSegment, SurfaceKind};
-use arris_math::{Aabb, Axis, Frame, Point2, Point3, Vec3};
+use arris_geom::{Profile, ProfileLoop, ProfileSegment, Surface, SurfaceKind};
+use arris_math::{Aabb, Axis, Frame, Interval, Point2, Point3, Reflection, Vec3, real};
 use arris_topo::{Body, Model};
 
-use super::analytic_face_extrema;
-use crate::{Control, cut, revolve};
+use super::{analytic_face_extrema, tight_bounds};
+use crate::{Control, cut, mirror, revolve};
 
 fn face_domain(m: &Model, body: Body, kind: SurfaceKind) -> FaceDomain<'_> {
     let report = check(m, body, Level::Full);
@@ -50,6 +50,58 @@ fn assert_box(got: Aabb, min: [f64; 3], max: [f64; 3], eps: f64) {
             (actual - expected).abs() <= eps,
             "{got:?}, expected {min:?}..{max:?}"
         );
+    }
+}
+
+#[test]
+fn tight_bounds_of_sphere_patch_in_translated_charts() {
+    let mut m = Model::default();
+    let eps = m.precision().default_tolerance;
+    let half_angle = 0.3;
+    let (s, c) = real::sin_cos(half_angle);
+    let v = Interval::new(-half_angle, half_angle).unwrap();
+    for shift in [0.0, 2.0 * TAU, -3.0 * TAU] {
+        let u = Interval::new(shift - half_angle, shift + half_angle).unwrap();
+        let surface = Surface::Sphere {
+            frame: Frame::world(),
+            radius: 1.0,
+        };
+        let body = sample::patch(&mut m, surface, u, v).unwrap();
+        let report = check(&m, body, Level::Full);
+        assert!(report.is_ok(), "{report:?}");
+        let got = tight_bounds(&m, body.id.into(), &Control::NONE)
+            .unwrap()
+            .unwrap();
+        assert_box(got, [c * c, -s, -s], [1.0, s, s], eps);
+    }
+}
+
+#[test]
+fn tight_bounds_of_torus_patch_in_translated_and_reflected_charts() {
+    let mut m = Model::default();
+    let eps = m.precision().default_tolerance;
+    let reflection = Reflection::new(Point3::origin(), Vec3::x()).unwrap();
+    let half_angle = 0.3;
+    let (s, c) = real::sin_cos(half_angle);
+    let x_min = (3.0 + c) * c;
+    for (du, dv) in [(0.0, 0.0), (2.0 * TAU, 0.0), (0.0, -3.0 * TAU)] {
+        let u = Interval::new(du - half_angle, du + half_angle).unwrap();
+        let v = Interval::new(dv - half_angle, dv + half_angle).unwrap();
+        let surface = Surface::Torus {
+            frame: Frame::world(),
+            major_radius: 3.0,
+            minor_radius: 1.0,
+        };
+        let body = sample::patch(&mut m, surface, u, v).unwrap();
+        let (image, _) = mirror(&mut m, body, &reflection, &Control::NONE).unwrap();
+        for (patch, min_x, max_x) in [(body, x_min, 4.0), (image, -4.0, -x_min)] {
+            let report = check(&m, patch, Level::Full);
+            assert!(report.is_ok(), "{report:?}");
+            let got = tight_bounds(&m, patch.id.into(), &Control::NONE)
+                .unwrap()
+                .unwrap();
+            assert_box(got, [min_x, -4.0 * s, -s], [max_x, 4.0 * s, s], eps);
+        }
     }
 }
 
