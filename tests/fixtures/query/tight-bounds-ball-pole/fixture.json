@@ -1,0 +1,15 @@
+{
+  "kind": "query",
+  "description": "A radius 2 ball cut at z = 1. Its equator and south pole survive, so only the upper z extent changes to 1 at the planar cap.",
+  "tolerances": {"probe": 1e-6},
+  "steps": [
+    {"name": "profile", "op": "profile", "plane": {"origin": [0, 0, 0], "x": [1, 0, 0], "y": [0, 0, 1]}, "outer": {"start": [0, -2], "segments": [{"arc_to": [0, 2], "via": [2, 0]}, {"line_to": [0, -2]}]}},
+    {"name": "blank", "op": "revolve", "profile": "profile", "axis": {"origin": [0, 0, 0], "direction": [0, 0, 1]}, "angle_deg": 360},
+    {"name": "tool", "op": "box", "min": [-3, -3, 1], "max": [3, 3, 3]},
+    {"name": "part", "op": "cut", "target": "blank", "tool": "tool"}
+  ],
+  "result": "part",
+  "queries": [
+    {"label": "result extent", "tight_bounds": true, "expect_box": [[-2, -2, -2], [2, 2, 1]]}
+  ]
+}

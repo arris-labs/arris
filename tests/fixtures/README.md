@@ -904,9 +904,8 @@ sorted into the differential's classes (ADR-0024 §2):
 
 A solid recipe and the questions a consumer asks of its result, each held
 to Open CASCADE's answer (ADR-0053 §8). One kind for every query of the
-query cycle: ray fire is the first form, and the distance, interference
-and section plans add theirs to the same `queries` list. They sit under
-`query/`.
+query cycle: ray fire, distance, interference, section and tight bounds
+share the `queries` list. They sit under `query/`.
 
 ```json
 {
@@ -936,7 +935,7 @@ and section plans add theirs to the same `queries` list. They sit under
   `edge` or `vertex` nearest a point, `{"step": …, "face": {"near": [x, y,
   z]}}`: ids differ between kernels, so an entity is picked by place.
   `expect_distance` is the distance the author works out by hand, held to
-  the oracle's by the lint. Exactly one of `ray` and `distance` per query.
+  the oracle's by the lint. A query selects exactly one form.
 - `expect_hits` is the count the author works out by hand for what
   `hits` asks. The lint holds it to the oracle's, as `analytic` is held;
   it is optional.
@@ -960,6 +959,16 @@ and section plans add theirs to the same `queries` list. They sit under
   oracle's quadrature, which is 7e-3 off on a B-spline cylinder wall; a
   fixture whose faces' centroids are far apart widens `centroid_abs` and
   says why.
+- A **tight box query** (ADR-0093) is `"tight_bounds": true` on the
+  recipe's result. Its required `expect_box` is
+  `[[xmin, ymin, zmin], [xmax, ymax, zmax]]` in world coordinates,
+  with numbers or expressions over the params. The oracle records its
+  corners under `tight_bounds` using `BRepBndLib.AddOptimal` with
+  triangulation and shape tolerances disabled. The lint compares the
+  oracle's record to the closed form using `tolerances.probe` per
+  coordinate. The runner compares Arris's answer to both. If the oracle
+  differs from the closed form, `analytic.measure_differs` gives the
+  evidence (ADR-0015), and the closed form holds that answer.
 - A distance query's `expected.json` answer is
   `BRepExtrema_DistShapeShape`'s: the `distance`, every solution it lists
   (both points, the kind each lies on — `vertex`, `edge` or `face` — and a

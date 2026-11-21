@@ -100,7 +100,7 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   ADR-0093, its README line, the glossary's *tight box*, rustdoc with the
   `shaft_collar` example, and `tight ⊆ bounds` unit tests on every primitive,
   with equality on the analytic ones.
-- [ ] Step 5 **[2]** — Fixtures and oracle: the runner's `tight_bounds`
+- [x] Step 5 **[2]** — Fixtures and oracle: the runner's `tight_bounds`
   query and the oracle's `AddOptimal`. Add `query/tight-bounds-cross-hole`
   (`shaft_collar`, closed form (−2, −2, 0)..(2, 2, 2)),
   `tight-bounds-chamfer-slot` (`spacer_ring`) and

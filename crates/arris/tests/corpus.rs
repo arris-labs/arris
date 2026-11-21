@@ -70,6 +70,20 @@ macro_rules! corpus_tests {
 }
 
 corpus_tests! {
+    /// The shaft collar's transverse hole leaves fitted edges on the cylinder wall.
+    query_tight_bounds_cross_hole => query "query/tight-bounds-cross-hole";
+    /// The spacer ring's slot removes the positive x extremum of the disc.
+    query_tight_bounds_chamfer_slot => query "query/tight-bounds-chamfer-slot";
+    /// A clevis pin with chamfered rims and a transverse hole.
+    query_tight_bounds_clevis_pin => query "query/tight-bounds-clevis-pin";
+    /// The cut ball keeps its south pole and replaces its north pole with a cap.
+    query_tight_bounds_ball_pole => query "query/tight-bounds-ball-pole";
+    /// A quarter torus about z and x reaches its outermost radius mid-turn.
+    query_tight_bounds_quarter_torus => query "query/tight-bounds-quarter-torus";
+    /// The bicubic dome reaches its maximum height in the face interior.
+    query_tight_bounds_bicubic_dome => query "query/tight-bounds-bicubic-dome";
+    /// The clipped dome reaches its maximum height on the cut wall.
+    query_tight_bounds_bicubic_dome_cut => query "query/tight-bounds-bicubic-dome-cut";
     /// A ray through two faces of a box, from inside it, away from it and
     /// beside it (ADR-0053).
     query_ray_box_through => query "query/ray-box-through";

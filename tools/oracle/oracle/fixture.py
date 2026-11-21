@@ -259,6 +259,9 @@ def _query_summary(q: dict) -> str:
             + (f", {i['contact']} contact" if "contact" in i else "")
             + (f", volume {i['volume']:.10g}" if "volume" in i else "")
         )
+    if "tight_bounds" in q:
+        lo, hi = q["tight_bounds"]
+        return f"tight box {lo} .. {hi}"
     if "section" in q:
         s = q["section"]
         if s["none"]:

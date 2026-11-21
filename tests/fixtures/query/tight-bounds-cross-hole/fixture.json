@@ -1,0 +1,14 @@
+{
+  "kind": "query",
+  "description": "The shaft collar's reduced cross-hole case: drill a radius 0.5 through-hole along y at z = 1 in a cylinder of radius 2 and height 2. The rims still reach x and y = ±2 and z = 0 and 2. The fitted curves where the hole meets the wall reach past those sides in their control hulls.",
+  "tolerances": {"probe": 1e-6},
+  "steps": [
+    {"name": "blank", "op": "cylinder", "base": [0, 0, 0], "axis": [0, 0, 1], "radius": 2, "height": 2},
+    {"name": "hole", "op": "cylinder", "base": [0, -3, 1], "axis": [0, 1, 0], "radius": 0.5, "height": 6},
+    {"name": "part", "op": "cut", "target": "blank", "tool": "hole"}
+  ],
+  "result": "part",
+  "queries": [
+    {"label": "result extent", "tight_bounds": true, "expect_box": [[-2, -2, 0], [2, 2, 2]]}
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "kind": "query",
+  "description": "The spacer ring's reduced case: a disc along −y, both rims chamfered, with a slot cut down to y = −1.255. The cylinder's band lies above that floor, so its positive x extent occurs at the slot walls z = ±w. Under the slot floor the lower cone reaches radius at most r − 0.4 + (1.51 − 1.255), below that extent. The other five sides retain the original disc's extrema.",
+  "params": {"r": 21.19, "w": 1.25},
+  "tolerances": {"probe": 1e-6},
+  "steps": [
+    {"name": "blank", "op": "cylinder", "base": [0, 0, 0], "axis": [0, -1, 0], "radius": "r", "height": 1.51},
+    {"name": "bevel", "op": "chamfer", "of": "blank", "distance": 0.4, "edges": [[-21.19, 0, 0], [-21.19, -1.51, 0]]},
+    {"name": "slot", "op": "box", "min": [11.608, -1.255, "-w"], "max": [24.718, 1.255, "w"]},
+    {"name": "part", "op": "cut", "target": "bevel", "tool": "slot"}
+  ],
+  "result": "part",
+  "queries": [
+    {"label": "result extent", "tight_bounds": true, "expect_box": [["-r", -1.51, "-r"], ["sqrt(r^2 - w^2)", 0, "r"]]}
+  ]
+}

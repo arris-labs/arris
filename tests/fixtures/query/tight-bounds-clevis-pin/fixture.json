@@ -1,0 +1,15 @@
+{
+  "kind": "query",
+  "description": "A clevis pin of radius 5.94 and length 42.77 along y, with 1.19 chamfers at both rims and a transverse hole along z at mid-length. Away from the hole and the chamfers the cylindrical wall reaches its four radial extrema. The flat end discs reach y = ±21.385.",
+  "tolerances": {"probe": 1e-6},
+  "steps": [
+    {"name": "blank", "op": "cylinder", "base": [0, -21.385, 0], "axis": [0, 1, 0], "radius": 5.94, "height": 42.77},
+    {"name": "bevel", "op": "chamfer", "of": "blank", "distance": 1.19, "edges": [[-5.94, -21.385, 0], [-5.94, 21.385, 0]]},
+    {"name": "hole", "op": "cylinder", "base": [0, 0, -7], "axis": [0, 0, 1], "radius": 1.19, "height": 14},
+    {"name": "part", "op": "cut", "target": "bevel", "tool": "hole"}
+  ],
+  "result": "part",
+  "queries": [
+    {"label": "result extent", "tight_bounds": true, "expect_box": [[-5.94, -21.385, -5.94], [5.94, 21.385, 5.94]]}
+  ]
+}

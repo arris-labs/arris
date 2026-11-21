@@ -1,0 +1,15 @@
+{
+  "kind": "query",
+  "description": "A circle of radius 1 revolved from −45 to 45 degrees around an axis in its plane at distance 3 from the circle centre. In the default pose the cap radii give x min = 2/sqrt(2) and y = ±4/sqrt(2), the outer equator reaches x = 4 mid-turn, and the crest circles give z = ±1. The turned variant cyclically permutes these axes.",
+  "params": {"sx": 0.7071067811865476, "sy": -0.7071067811865476, "sz": 0, "ax": 0, "az": 1, "xmin": 1.4142135623730951, "ymin": -2.8284271247461903, "zmin": -1, "xmax": 4, "ymax": 2.8284271247461903, "zmax": 1},
+  "variants": {"about_x": {"sx": 0, "sy": 0.7071067811865476, "sz": -0.7071067811865476, "ax": 1, "az": 0, "xmin": -1, "ymin": 1.4142135623730951, "zmin": -2.8284271247461903, "xmax": 1, "ymax": 4, "zmax": 2.8284271247461903}},
+  "tolerances": {"probe": 1e-6},
+  "steps": [
+    {"name": "profile", "op": "profile", "plane": {"origin": [0, 0, 0], "x": ["sx", "sy", "sz"], "y": ["ax", 0, "az"]}, "outer": {"circle": {"center": [3, 0], "radius": 1}}},
+    {"name": "blank", "op": "revolve", "profile": "profile", "axis": {"origin": [0, 0, 0], "direction": ["ax", 0, "az"]}, "angle_deg": 90}
+  ],
+  "result": "blank",
+  "queries": [
+    {"label": "result extent", "tight_bounds": true, "expect_box": [["xmin", "ymin", "zmin"], ["xmax", "ymax", "zmax"]]}
+  ]
+}

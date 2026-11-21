@@ -44,6 +44,10 @@ planar face past its box holds no face; else the common's `faces`, `loops`
 `BRepAlgoAPI_Section(solid, plane)` the distinct `edges` and their total
 `edge_length`.
 
+A tight box query uses `"tight_bounds": true` on the recipe's result.
+`BRepBndLib.AddOptimal` gives the minimum and maximum corners with
+triangulation and shape tolerances disabled.
+
 A ray is a half-line from `origin` along `direction` (normalised), so `t`
 is the distance along it and a hit at a negative `t` is never reported
 (ADR-0053 §5). The answer per variant and query is every hit of
@@ -104,17 +108,22 @@ def _answer(
     shape: TopoDS_Shape, shapes: dict[str, TopoDS_Shape], query: dict, params: dict[str, float], tolerance: float
 ) -> dict:
     label = query.get("label", "?")
+    forms = ("ray", "distance", "interference", "section", "tight_bounds")
+    if sum(form in query for form in forms) != 1:
+        raise OracleError(f"query {label!r}: expected exactly one of {', '.join(forms)}")
+    if "tight_bounds" in query:
+        if query["tight_bounds"] is not True:
+            raise OracleError(f"query {label!r}: `tight_bounds` must be true")
+        box = Bnd_Box()
+        BRepBndLib.AddOptimal_s(shape, box, False, False)
+        if box.IsVoid() or box.IsOpen():
+            raise OracleError(f"query {label!r}: no finite tight box")
+        return {"label": label, "tight_bounds": [list(p.Coord()) for p in (box.CornerMin(), box.CornerMax())]}
     if "distance" in query:
-        if "ray" in query:
-            raise OracleError(f"query {label!r}: a ray or a distance, not both")
         return {"label": label, "distance": _distance(shapes, query["distance"], params, label)}
     if "interference" in query:
-        if "ray" in query:
-            raise OracleError(f"query {label!r}: a ray or an interference, not both")
         return {"label": label, "interference": _interference(shapes, query["interference"], params, label, tolerance)}
     if "section" in query:
-        if "ray" in query:
-            raise OracleError(f"query {label!r}: a ray or a section, not both")
         return {"label": label, "section": _section(shapes, query["section"], params, label)}
     if query.get("hits") not in ("first", "all"):
         raise OracleError(f"query {label!r}: `hits` is `first` or `all`")

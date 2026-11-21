@@ -6,10 +6,9 @@
 //! `fixture.json` is the solid kind's recipe (`params`, `variants`,
 //! `steps`, `result`) with `"kind": "query"` and a `queries` list. A
 //! query is one ray, `{"label", "ray": {origin, direction}, "hits":
-//! "first" | "all", "expect_hits"}`; the distance, interference and
-//! section plans add their own forms to the same list. `expected.json`
-//! is Open CASCADE's answer, per variant and query: every hit of
-//! `IntCurvesFace_ShapeIntersector` on the half-line, sorted by `t`.
+//! "first" | "all", "expect_hits"}`; distance, interference, section and
+//! tight bounds have their own forms in the same list. `expected.json` is
+//! Open CASCADE's answer per variant and query.
 //!
 //! The runner builds the result under each variant, holds it to the
 //! checker at `Full`, fires every ray with `arris_ops::query::ray_fire`
@@ -18,7 +17,9 @@
 //! the face a hit on a face lands on by the face's centroid within
 //! `centroid_abs` (ids differ between kernels, ADR-0053 §8).
 //! `expect_hits`, the closed-form count the author states, is what the
-//! lint holds to the oracle's count and the runner to Arris's.
+//! lint holds to the oracle's count and the runner to Arris's. A tight
+//! box is compared by its six coordinates against `expect_box` and
+//! `BRepBndLib.AddOptimal`'s answer (ADR-0093).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -32,6 +33,7 @@ use serde::{Deserialize, Serialize};
 mod distance;
 mod interference;
 mod section;
+mod tight_bounds;
 
 use crate::corpus::{self, CorpusError};
 use crate::fixtures::{
@@ -58,7 +60,7 @@ pub struct RaySpec {
     pub direction: [Num; 3],
 }
 
-/// One question of a fixture: a ray or a distance.
+/// One question of a fixture, with exactly one query form.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Query {
     /// A name for the report; unique within the fixture.
@@ -115,6 +117,27 @@ pub struct Query {
     /// The section's centroid worked out by hand.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expect_centroid: Option<[Num; 3]>,
+    /// `true` asks for the tight box of the recipe's result (ADR-0093).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tight_bounds: Option<bool>,
+    /// The tight box's closed-form minimum and maximum corners.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_box: Option<[[Num; 3]; 2]>,
+}
+
+impl Query {
+    fn form_count(&self) -> usize {
+        [
+            self.ray.is_some(),
+            self.distance.is_some(),
+            self.interference.is_some(),
+            self.section.is_some(),
+            self.tight_bounds.is_some(),
+        ]
+        .into_iter()
+        .filter(|present| *present)
+        .count()
+    }
 }
 
 /// The body and plane of a section query: a whole recipe step, cut by the
@@ -223,6 +246,9 @@ pub struct Answer {
     /// The oracle's section, for a section query.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub section: Option<OracleSection>,
+    /// The oracle's tight box, as minimum and maximum corners in world coordinates.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tight_bounds: Option<[[f64; 3]; 2]>,
 }
 
 /// The oracle's answer to a section query: `BRepAlgoAPI_Section`'s edges
@@ -434,7 +460,7 @@ pub enum QueryError {
         /// The cause.
         source: fixtures::ExprError,
     },
-    /// A ray's fire was refused.
+    /// The kernel refused the query.
     #[error("{fixture}: [{variant}] query {label:?}: {source}")]
     Refused {
         /// The fixture.
@@ -446,7 +472,7 @@ pub enum QueryError {
         /// The refusal.
         source: Box<arris_ops::OpError>,
     },
-    /// The hits do not match.
+    /// The query or its answer does not match the fixture.
     #[error("{fixture}: [{variant}] query {label:?}: {what}")]
     Mismatch {
         /// The fixture.
@@ -503,8 +529,8 @@ pub fn load(dir: &Path) -> Result<QueryFixture, FixtureError> {
 }
 
 /// Runs a query fixture: for every variant, builds the result, holds it
-/// to the checker at `Full`, fires each query's ray at it and holds the
-/// hits to the oracle's, and to the closed-form `expect_hits`. Errors:
+/// to the checker at `Full`, and holds each query to its oracle answer and
+/// any closed form the fixture declares. Errors:
 /// [`QueryError`], naming the variant and the query.
 ///
 /// ```no_run
@@ -539,29 +565,47 @@ pub fn run(dir: &Path) -> Result<(), QueryError> {
                     label: query.label.clone(),
                 });
             };
+            if query.form_count() != 1 {
+                return Err(mismatch("expected exactly one query form".into()));
+            }
+            if query.tight_bounds.is_some() {
+                let comparison =
+                    tight_bounds::comparison(query, answer, &params).map_err(mismatch)?;
+                let got = arris_ops::query::tight_bounds(
+                    &chain.model,
+                    body.id.into(),
+                    &arris_math::Control::NONE,
+                )
+                .map_err(|source| QueryError::Refused {
+                    fixture: fixture.name.clone(),
+                    variant: variant.clone(),
+                    label: query.label.clone(),
+                    source: Box::new(source),
+                })?
+                .ok_or_else(|| mismatch("the result has no finite tight box".into()))?;
+                comparison
+                    .check(
+                        [got.min, got.max],
+                        fixture.recipe.tolerances.probe,
+                        fixture.recipe.analytic.measure_differs.is_some(),
+                    )
+                    .map_err(mismatch)?;
+                continue;
+            }
             if let Some(spec) = &query.section {
-                if query.ray.is_some() || query.distance.is_some() || query.interference.is_some() {
-                    return Err(mismatch("more than one form".into()));
-                }
                 section::run(&fixture, &variant, &chain, query, spec, answer)?;
                 continue;
             }
             if let Some(spec) = &query.interference {
-                if query.ray.is_some() || query.distance.is_some() {
-                    return Err(mismatch("more than one form".into()));
-                }
                 interference::run(&fixture, &variant, &chain, query, spec, answer)?;
                 continue;
             }
             if let Some(spec) = &query.distance {
-                if query.ray.is_some() {
-                    return Err(mismatch("both a ray and a distance".into()));
-                }
                 distance::run(&fixture, &variant, &chain, query, spec, answer)?;
                 continue;
             }
             let (Some(_), Some(wanted)) = (&query.ray, query.hits) else {
-                return Err(mismatch("neither a distance nor a ray with `hits`".into()));
+                return Err(mismatch("a ray needs `hits`".into()));
             };
             let merge = fixture
                 .recipe
@@ -724,6 +768,8 @@ pub fn lint(dir: &Path) -> Vec<String> {
             problem(format!("duplicate query label {:?}", q.label));
         }
     }
+    let mut oracle_box_differs = false;
+    let measure_differs = r.analytic.measure_differs.as_deref();
     for variant in r.variant_names() {
         let (Some(params), Some(answers)) = (r.params_of(&variant), x.results.get(&variant)) else {
             problem(format!(
@@ -732,6 +778,19 @@ pub fn lint(dir: &Path) -> Vec<String> {
             continue;
         };
         for q in &fixture.queries {
+            if q.form_count() != 1 {
+                problem(format!(
+                    "[{variant}] query {:?}: expected exactly one of `ray`, `distance`, `interference`, `section` and `tight_bounds`",
+                    q.label
+                ));
+                continue;
+            }
+            if q.tight_bounds.is_none() && q.expect_box.is_some() {
+                problem(format!(
+                    "[{variant}] query {:?}: `expect_box` requires `tight_bounds`",
+                    q.label
+                ));
+            }
             match (&q.ray, &q.distance, &q.interference, &q.section) {
                 (Some(ray), None, None, None) => {
                     let ray = [&ray.origin, &ray.direction].map(|v| {
@@ -775,10 +834,7 @@ pub fn lint(dir: &Path) -> Vec<String> {
                         problem(format!("[{variant}] query {:?}: {text}", q.label));
                     }
                 }
-                _ => problem(format!(
-                    "[{variant}] query {:?}: needs exactly one of `ray`, `distance`, `interference` and `section`",
-                    q.label
-                )),
+                _ => {}
             }
             let Some(answer) = answers.queries.iter().find(|a| a.label == q.label) else {
                 problem(format!(
@@ -787,6 +843,19 @@ pub fn lint(dir: &Path) -> Vec<String> {
                 ));
                 continue;
             };
+            if q.tight_bounds.is_some() {
+                match tight_bounds::comparison(q, answer, &params) {
+                    Ok(comparison) => {
+                        if let Some(diff) = comparison.oracle_difference(r.tolerances.probe) {
+                            oracle_box_differs = true;
+                            if measure_differs.is_none() {
+                                problem(format!("[{variant}] query {:?}: {diff}", q.label));
+                            }
+                        }
+                    }
+                    Err(why) => problem(format!("[{variant}] query {:?}: {why}", q.label)),
+                }
+            }
             let merge = r
                 .analytic
                 .query_differs
@@ -853,6 +922,16 @@ pub fn lint(dir: &Path) -> Vec<String> {
                 answers.queries.len(),
                 fixture.queries.len()
             ));
+        }
+    }
+    if let Some(why) = measure_differs {
+        if why.trim().is_empty() {
+            problem("analytic.measure_differs needs its evidence".into());
+        }
+        if !oracle_box_differs {
+            problem(
+                "analytic.measure_differs is set but no oracle box differs from expect_box".into(),
+            );
         }
     }
     problems

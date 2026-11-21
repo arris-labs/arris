@@ -1,0 +1,14 @@
+{
+  "kind": "query",
+  "description": "The same bicubic dome clipped to x ≤ 95/32. The cut lies at u = 1/4, where the cubic basis weights are (4, 19, 8, 1, 0)/32. The surface rises towards its middle in both directions, so the surviving maximum is on the cut at v = 1/2, of height 55/16 by the tensor product of the two sets of basis weights.",
+  "tolerances": {"probe": 1e-6},
+  "steps": [
+    {"name": "dome", "op": "step", "file": "dome.step", "sha256": "6f2505bb2ac77456f6ae6648bcdd2ac8fea1e0a09df7bc5b0ef555f5110cc51f", "id": 15},
+    {"name": "tool", "op": "box", "min": [2.96875, -1, -1], "max": [11, 11, 7]},
+    {"name": "part", "op": "cut", "target": "dome", "tool": "tool"}
+  ],
+  "result": "part",
+  "queries": [
+    {"label": "result extent", "tight_bounds": true, "expect_box": [[0, 0, 0], [2.96875, 10, 3.4375]]}
+  ]
+}

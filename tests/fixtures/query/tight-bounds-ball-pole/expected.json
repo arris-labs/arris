@@ -1,0 +1,26 @@
+{
+  "kind": "query",
+  "occt": "8.0.1.0.0",
+  "recipe_sha256": "62ebaceaf26ed7367c33031c21be1cc3927fcfd10889fb2e920da67056acaa3f",
+  "results": {
+    "default": {
+      "queries": [
+        {
+          "label": "result extent",
+          "tight_bounds": [
+            [
+              -2.0,
+              -2.0,
+              -1.9999999999999998
+            ],
+            [
+              2.0,
+              2.0,
+              1.0
+            ]
+          ]
+        }
+      ]
+    }
+  }
+}
