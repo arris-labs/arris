@@ -126,7 +126,8 @@ impl Span {
 impl Curve2 {
     /// Consecutive ranges over which the pcurve is within `chord` of
     /// the closed segment through its endpoints. Each segment carries a
-    /// certified maximum deviation in (u, v). The meter ticks per split.
+    /// certified maximum deviation in (u, v). The meter ticks for each
+    /// period copied, knot piece prepared and range split.
     ///
     /// Returns `None` if the range or chord is invalid, the rational
     /// denominator cannot be bounded away from zero, or rounding
@@ -149,7 +150,7 @@ impl Curve2 {
         if !(chord.is_finite() && chord > 0.0) {
             return Ok(None);
         }
-        let Some(spans) = self.chord_spans(range) else {
+        let Some(spans) = self.chord_spans(range, meter)? else {
             return Ok(None);
         };
         let mut result = Vec::new();
@@ -171,28 +172,36 @@ impl Curve2 {
         Ok(Some(result))
     }
 
-    pub(crate) fn chord_spans(&self, range: Interval) -> Option<Vec<Span>> {
+    pub(crate) fn chord_spans(
+        &self,
+        range: Interval,
+        meter: &mut Meter<'_>,
+    ) -> Result<Option<Vec<Span>>, Interrupted> {
         if !(range.is_bounded() && range.length() > 0.0 && range.length().is_finite()) {
-            return None;
+            return Ok(None);
         }
-        match self {
+        Ok(match self {
             Curve2::Line { .. } | Curve2::Circle { .. } | Curve2::Ellipse { .. } => {
                 Some(vec![Span {
                     range,
                     control: Vec::new(),
                 }])
             }
-            Curve2::Nurbs(curve) => curve
-                .bernstein_on(range)?
-                .into_iter()
-                .map(|span| {
-                    Some(Span {
-                        range: Interval::new(span.lo, span.hi).ok()?,
-                        control: span.control,
+            Curve2::Nurbs(curve) => {
+                let Some(spans) = curve.bernstein_on(range, meter)? else {
+                    return Ok(None);
+                };
+                spans
+                    .into_iter()
+                    .map(|span| {
+                        Some(Span {
+                            range: Interval::new(span.lo, span.hi).ok()?,
+                            control: span.control,
+                        })
                     })
-                })
-                .collect(),
-        }
+                    .collect()
+            }
+        })
     }
 }
 

@@ -3,6 +3,8 @@
 //! into stack buffers (*The NURBS Book* §2.5, algorithms A2.1–A2.3, written
 //! for our bounded degree and our error reporting).
 
+use arris_math::{Interrupted, Interval, Meter};
+
 use crate::SplineFault;
 
 /// The largest degree a NURBS curve or surface may have. It is Open
@@ -10,6 +12,51 @@ use crate::SplineFault;
 /// file carries fits, and it sizes the evaluator's stack buffers, so
 /// evaluation never allocates. A structural bound, not a tolerance.
 pub const MAX_DEGREE: usize = 25;
+
+/// Split an interval at the knots it crosses, including the seam and
+/// repeated copies of each knot in a periodic direction. Keep even the
+/// shortest spans and any extrapolated end pieces.
+pub(super) fn trim_cuts(
+    knots: &[f64],
+    domain: Interval,
+    range: Interval,
+    period: Option<f64>,
+    meter: &mut Meter<'_>,
+) -> Result<Option<Vec<f64>>, Interrupted> {
+    let mut cuts = vec![range.lo()];
+    if let Some(period) = period {
+        let first = range.lo() - (range.lo() - domain.lo()).rem_euclid(period);
+        if !first.is_finite() {
+            return Ok(None);
+        }
+        let mut base = first;
+        let mut turns = 0.0;
+        let start = knots.partition_point(|&k| k < domain.lo());
+        let end = knots.partition_point(|&k| k < domain.hi());
+        while base < range.hi() {
+            meter.tick()?;
+            cuts.extend(knots[start..end].iter().copied().filter_map(|k| {
+                let t = base + (k - domain.lo());
+                (range.lo() < t && t < range.hi()).then_some(t)
+            }));
+            turns += 1.0;
+            let next = first + turns * period;
+            if next <= base {
+                return Ok(None);
+            }
+            base = next;
+        }
+    } else {
+        let start = knots.partition_point(|&k| k <= range.lo());
+        let end = knots.partition_point(|&k| k < range.hi());
+        if start < end {
+            cuts.extend_from_slice(&knots[start..end]);
+        }
+    }
+    cuts.dedup();
+    cuts.push(range.hi());
+    Ok(Some(cuts))
+}
 
 /// How many derivative orders the evaluators compute: the point, the
 /// first and the second derivative.
@@ -223,6 +270,28 @@ pub(crate) fn multiplicity(knots: &[f64], t: f64) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn trim_cuts_poll_before_expanding_many_periods() {
+        use arris_math::{Control, Stop};
+
+        let range = Interval::new(0.0, 1e12).unwrap();
+        let control = Control::budget(2);
+        let result = trim_cuts(
+            &[0.0, 0.5, 1.0],
+            Interval::UNIT,
+            range,
+            Some(1.0),
+            &mut Meter::new(&control),
+        );
+        assert_eq!(
+            result,
+            Err(Interrupted {
+                by: Stop::Budget,
+                steps: 2
+            })
+        );
+    }
 
     #[test]
     fn a_clamped_cubic_passes_and_the_broken_ones_name_their_fault() {

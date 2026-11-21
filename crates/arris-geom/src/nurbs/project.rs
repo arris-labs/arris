@@ -23,7 +23,9 @@ use core::cmp::Ordering;
 use std::collections::BinaryHeap;
 
 use arris_math::nalgebra::Vector4;
-use arris_math::{Interval, Point2, Point3, RELATIVE_ROUNDING, Vec3, is_negligible};
+use arris_math::{
+    Interrupted, Interval, Meter, Point2, Point3, RELATIVE_ROUNDING, Vec3, is_negligible,
+};
 
 use super::{NurbsSurface, basis};
 use crate::DegenerateReason;
@@ -321,66 +323,47 @@ impl NurbsSurface {
     /// Bernstein nets of the surface over a trim's rectangle. Unlike
     /// the nets for projection, these include every positive-width
     /// knot span and extend the end piece where the trim extrapolates.
-    pub(crate) fn trim_patches(&self, uv: [Interval; 2]) -> Option<Vec<Patch>> {
-        let [p, q] = self.degree();
-        let [ku, kv] = self.knots();
-        let [n, m] = self.counts();
-        let [pu, pv] = self.closure();
-        let [du, dv] = self.domain();
-        let cuts = |dir, range: Interval, knots: &[f64], domain, period, degree, count| {
-            let mut cuts = vec![range.lo()];
-            if let Some(period) = period {
-                let domain: Interval = domain;
-                let first = range.lo() - (self.wrap(dir, range.lo()) - domain.lo());
-                let mut base = first;
-                while base < range.hi() {
-                    cuts.extend(knots.iter().copied().filter_map(|k| {
-                        let t = base + (k - domain.lo());
-                        (domain.lo() <= k && k < domain.hi() && range.lo() < t && t < range.hi())
-                            .then_some(t)
-                    }));
-                    let next = base + period;
-                    if next <= base {
-                        return None;
-                    }
-                    base = next;
-                }
-            } else {
-                cuts.extend(
-                    knots
-                        .iter()
-                        .copied()
-                        .filter(|&k| range.lo() < k && k < range.hi()),
-                );
-            }
-            cuts.dedup();
-            cuts.push(range.hi());
-            Some(
-                cuts.windows(2)
-                    .map(|ends| {
-                        let loc = [ends[0], ends[1]];
-                        let mid = loc[0] + (loc[1] - loc[0]) / 2.0;
-                        let mid = if mid < loc[1] { mid } else { loc[0] };
-                        let wrapped = self.wrap(dir, mid);
-                        let shift = wrapped - mid;
-                        (
-                            basis::span(degree, knots, count, wrapped),
-                            loc,
-                            loc.map(|t| t + shift),
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-            )
+    pub(crate) fn trim_patches(
+        &self,
+        uv: [Interval; 2],
+        meter: &mut Meter<'_>,
+    ) -> Result<Option<Vec<Patch>>, Interrupted> {
+        let degree = self.degree();
+        let knots = self.knots();
+        let counts = self.counts();
+        let periods = self.closure();
+        let domain = self.domain();
+        let spans = |dir: usize, cuts: &[f64]| {
+            cuts.windows(2)
+                .map(move |ends| {
+                    let loc = [ends[0], ends[1]];
+                    let mid = loc[0] + (loc[1] - loc[0]) / 2.0;
+                    let t = if mid < loc[1] { mid } else { loc[0] };
+                    let wrapped = self.wrap(dir, t);
+                    let shift = wrapped - t;
+                    (
+                        basis::span(degree[dir], knots[dir], counts[dir], wrapped),
+                        loc,
+                        loc.map(|x| x + shift),
+                    )
+                })
+                .collect::<Vec<_>>()
         };
-        let us = cuts(0, uv[0], ku, du, pu, p, n)?;
-        let vs = cuts(1, uv[1], kv, dv, pv, q, m)?;
+        let Some(us) = basis::trim_cuts(knots[0], domain[0], uv[0], periods[0], meter)? else {
+            return Ok(None);
+        };
+        let Some(vs) = basis::trim_cuts(knots[1], domain[1], uv[1], periods[1], meter)? else {
+            return Ok(None);
+        };
+        let vs = spans(1, &vs);
         let mut patches = Vec::new();
-        for (iu, u, ur) in us {
+        for (iu, u, ur) in spans(0, &us) {
             for &(iv, v, vr) in &vs {
+                meter.tick()?;
                 patches.push(self.extract_patch([iu, iv], [u, v], [ur, vr]));
             }
         }
-        Some(patches)
+        Ok(Some(patches))
     }
 
     /// The Bézier patches of the surface: one per pair of non-empty knot

@@ -12,7 +12,8 @@ impl Surface {
     /// Join an existing outer box with the image of a pcurve over `range`.
     /// Any side added to the box is within `eps` of a point of that image,
     /// to floating-point rounding. The supplied box can prune spans that
-    /// cannot extend that side. The meter ticks per subdivision.
+    /// cannot extend that side. The meter ticks for each period copied,
+    /// knot piece prepared and subdivision.
     ///
     /// Returns `None` if the range or tolerance is invalid or cannot be
     /// bounded to that tolerance at the available numeric precision.
@@ -69,7 +70,7 @@ impl Surface {
             }
         }
 
-        let Some(spans) = curve.chord_spans(range) else {
+        let Some(spans) = curve.chord_spans(range, meter)? else {
             return Ok(None);
         };
         let mut inner = boundary;
@@ -128,9 +129,11 @@ impl Surface {
                 pending.extend([(b, None), (a, None)]);
                 continue;
             };
-            let Some(surface) =
-                envelope.or_else(|| TrimEnvelope::new(self, chord.uv).map(std::rc::Rc::new))
-            else {
+            let surface = match envelope {
+                Some(envelope) => Some(envelope),
+                None => TrimEnvelope::new(self, chord.uv, meter)?.map(std::rc::Rc::new),
+            };
+            let Some(surface) = surface else {
                 let Some([a, b]) = span.split() else {
                     return Ok(None);
                 };
@@ -332,21 +335,29 @@ enum TrimEnvelope<'a> {
 }
 
 impl<'a> TrimEnvelope<'a> {
-    fn new(surface: &'a Surface, uv: [Interval; 2]) -> Option<Self> {
-        match surface {
-            Surface::Nurbs(n) => Some(Self::Nurbs(
-                n.trim_patches(uv)?
+    fn new(
+        surface: &'a Surface,
+        uv: [Interval; 2],
+        meter: &mut Meter<'_>,
+    ) -> Result<Option<Self>, Interrupted> {
+        Ok(match surface {
+            Surface::Nurbs(n) => {
+                let Some(patches) = n.trim_patches(uv, meter)? else {
+                    return Ok(None);
+                };
+                patches
                     .into_iter()
                     .map(NurbsEnvelope::new)
-                    .collect::<Option<_>>()?,
-            )),
+                    .collect::<Option<_>>()
+                    .map(Self::Nurbs)
+            }
             Surface::Plane { .. }
             | Surface::Cylinder { .. }
             | Surface::EllipticCylinder { .. }
             | Surface::Cone { .. }
             | Surface::Sphere { .. }
             | Surface::Torus { .. } => Some(Self::Analytic(surface)),
-        }
+        })
     }
 
     fn bounds(&self, uv: [Interval; 2]) -> Option<(Aabb, Partials, bool)> {

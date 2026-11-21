@@ -1,6 +1,6 @@
 //! Rational B-spline curves in 3D and in the (u, v) plane.
 
-use arris_math::{Aabb, Interval, Isometry, Meter, Point2, Point3, Reflection, Vec2};
+use arris_math::{Aabb, Interrupted, Interval, Isometry, Meter, Point2, Point3, Reflection, Vec2};
 
 use super::basis;
 use super::spline::{BezierSpan, Spline};
@@ -536,44 +536,32 @@ impl NurbsCurve2 {
 
     /// Bernstein controls of every piece in the original parameter range,
     /// including short spans and any extrapolated ends.
-    pub(crate) fn bernstein_on(&self, range: Interval) -> Option<Vec<BezierSpan<2>>> {
-        let mut cuts = vec![range.lo()];
-        if let Some(period) = self.period() {
-            let domain = self.domain();
-            let mut base = range.lo() - (self.spline.wrap(range.lo()) - domain.lo());
-            while base < range.hi() {
-                cuts.extend(self.knots().iter().copied().filter_map(|knot| {
-                    let t = base + (knot - domain.lo());
-                    (domain.lo() <= knot && knot < domain.hi() && range.lo() < t && t < range.hi())
-                        .then_some(t)
-                }));
-                let next = base + period;
-                if next <= base {
-                    return None;
-                }
-                base = next;
-            }
-        } else {
-            cuts.extend(self.breaks_within(range));
-        }
-        cuts.push(range.hi());
-        cuts.dedup();
+    pub(crate) fn bernstein_on(
+        &self,
+        range: Interval,
+        meter: &mut Meter<'_>,
+    ) -> Result<Option<Vec<BezierSpan<2>>>, Interrupted> {
         let knots = self.knots();
         let degree = self.degree();
         let count = self.control_points().len();
-        cuts.windows(2)
-            .map(|ends| {
-                let middle = Interval::new(ends[0], ends[1]).ok()?.midpoint();
-                let t = if middle < ends[1] { middle } else { ends[0] };
-                let wrapped = self.spline.wrap(t);
-                let i = basis::span(degree, knots, count, wrapped);
-                let shift = wrapped - t;
-                let mut span = self.spline.bezier_span(i, ends[0] + shift, ends[1] + shift);
-                span.lo = ends[0];
-                span.hi = ends[1];
-                Some(span)
-            })
-            .collect()
+        let Some(cuts) = basis::trim_cuts(knots, self.domain(), range, self.period(), meter)?
+        else {
+            return Ok(None);
+        };
+        let mut spans = Vec::new();
+        for ends in cuts.windows(2) {
+            meter.tick()?;
+            let middle = ends[0] + (ends[1] - ends[0]) / 2.0;
+            let t = if middle < ends[1] { middle } else { ends[0] };
+            let wrapped = self.spline.wrap(t);
+            let i = basis::span(degree, knots, count, wrapped);
+            let shift = wrapped - t;
+            let mut span = self.spline.bezier_span(i, ends[0] + shift, ends[1] + shift);
+            span.lo = ends[0];
+            span.hi = ends[1];
+            spans.push(span);
+        }
+        Ok(Some(spans))
     }
 
     /// The point at `t` alone: `eval(t).point` bit for bit, without the
