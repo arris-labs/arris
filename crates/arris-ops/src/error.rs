@@ -620,6 +620,9 @@ pub enum QueryReason {
     /// operand with no point to measure to (ADR-0054); the error's
     /// entities are the operands it refused.
     NotMeasurable,
+    /// `tight_bounds` could not certify a tight box within the model's
+    /// linear tolerance. The error's entity is the face.
+    BoundsUncertified,
 }
 
 impl QueryReason {
@@ -636,6 +639,7 @@ impl QueryReason {
             QueryReason::RayInFace => "RayInFace",
             QueryReason::ZeroDirection => "ZeroDirection",
             QueryReason::NotMeasurable => "NotMeasurable",
+            QueryReason::BoundsUncertified => "BoundsUncertified",
         }
     }
 }
@@ -661,6 +665,9 @@ impl core::fmt::Display for QueryReason {
             QueryReason::ZeroDirection => f.write_str("the ray's direction has no length"),
             QueryReason::NotMeasurable => {
                 f.write_str("only a point, a vertex, an edge, a face or a solid has a distance")
+            }
+            QueryReason::BoundsUncertified => {
+                f.write_str("the tight box could not be certified within the model's tolerance")
             }
         }
     }
@@ -1182,12 +1189,17 @@ mod tests {
                 "the ray's direction has no length",
             ),
             (
+                Reason::Query(QueryReason::BoundsUncertified),
+                "BoundsUncertified",
+                "the tight box could not be certified within the model's tolerance",
+            ),
+            (
                 Reason::Split(SplitReason::NoCrossing),
                 "NoCrossing",
                 "the plane does not cross the body, so one side would be empty",
             ),
         ];
-        assert_eq!(leaves.len(), 30);
+        assert_eq!(leaves.len(), 31);
         for (reason, name, message) in leaves {
             assert_eq!(reason.name(), name);
             assert_eq!(reason.to_string(), message, "{name}");

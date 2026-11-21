@@ -33,20 +33,22 @@ use std::collections::{BTreeSet, VecDeque};
 
 use arris_check::domain::{FaceDomain, shifts};
 use arris_geom::{NurbsSurface, Surface, region2::Side};
-use arris_math::{Aabb, Control, Interrupted, Interval, Meter, Point2, Vec3, real};
-use arris_topo::{EntityId, Model};
+use arris_math::{Aabb, Control, Interval, Meter, Point2, Vec3, real};
+use arris_topo::{EntityId, Face, FaceId, Model};
 
-use crate::OpError;
+use super::degenerate;
+use crate::{OpError, QueryReason, Reason};
 
 /// The tight box of a vertex, edge, face, shell or body in world coordinates.
 /// It contains the entity's geometry, with each side within the model's
 /// linear tolerance of a point on the entity, to rounding. Entity tolerances
-/// do not grow the box. A NURBS face that reaches the subdivision limit
-/// retains an outer hull, which may extend farther.
+/// do not grow the box.
 ///
 /// Returns `None` if the entity is empty or no finite box can be obtained.
-/// Errors are [`OpError::NotFound`] for an unresolved id and
-/// [`OpError::Interrupted`] when the control stops the query. The meter ticks
+/// Errors are [`OpError::NotFound`] for an unresolved id,
+/// [`OpError::Degenerate`] with [`QueryReason::BoundsUncertified`] when a
+/// face cannot be bounded to tolerance, and [`OpError::Interrupted`] when
+/// the control stops the query. The meter ticks
 /// once per entity in the closure and once per NURBS edge or face split.
 ///
 /// ```
@@ -131,10 +133,7 @@ pub fn tight_bounds(
                     let [u, v] = nurbs.domain();
                     Aabb::of_point(surface.point(u.lo(), v.lo()))
                 });
-                let Some(b) = nurbs_face_box(nurbs, &domain, seed, eps, &mut meter)? else {
-                    return Ok(None);
-                };
-                Some(b)
+                Some(nurbs_face_box(nurbs, &domain, seed, eps, &mut meter)?)
             }
             Surface::Sphere { .. } | Surface::Torus { .. } => {
                 let domain = FaceDomain::of(m, id, tolerance)?;
@@ -338,26 +337,22 @@ struct Patch {
 /// `boundary`, a box that holds the face's lifted trim:
 /// every coordinate's extreme not inside the face is on it.
 ///
-/// Guarantees, where the box is `Some`: it holds every point of the face;
-/// each of its sides is within `eps` of a point of the face, or of the
-/// same side of `boundary` (each side of which the caller holds to a point
-/// of the boundary). A side still open on a patch [`MAX_DEPTH`] halvings
-/// down keeps that patch's hull: outer, and within the hull's diagonal and
-/// the loops' chord deviation of the face, rather than `eps`. `None` when
-/// a patch has no hull. A face with no trim is read over the whole surface.
-///
-/// Errors: [`Interrupted`] by the meter, ticked once per patch split.
+/// The box holds every point of the face, with each side within `eps` of
+/// the face or of the corresponding side of `boundary`. A face with no
+/// trim is read over the whole surface. If refinement reaches its limit
+/// before it proves these bounds, the query names the face it could not
+/// certify. The meter ticks once per patch split.
 fn nurbs_face_box(
     surface: &NurbsSurface,
     domain: &FaceDomain<'_>,
     boundary: Aabb,
     eps: f64,
     meter: &mut Meter,
-) -> Result<Option<Aabb>, Interrupted> {
+) -> Result<Aabb, OpError> {
     let whole = domain.uv_box().is_none();
     let uv = domain.uv_box().unwrap_or_else(|| surface.domain());
     let Some(root) = fit_to_surface(surface, uv) else {
-        return Ok(Some(boundary));
+        return Ok(boundary);
     };
     let segments = segments(domain, surface, root);
     let creases = [0, 1].map(|dir| creases(surface, dir));
@@ -429,7 +424,7 @@ fn nurbs_face_box(
             Interval::new(d.clamp(r.lo() - shift), d.clamp(r.hi() - shift))
         });
         let (Ok(u_clip), Ok(v_clip)) = (u_clip, v_clip) else {
-            return Ok(None);
+            return Err(bounds_uncertified(domain.face()));
         };
         let clip = [u_clip, v_clip];
         let net = surface.clipped(clip);
@@ -437,10 +432,8 @@ fn nurbs_face_box(
             Some(n) => box_of(n),
             None => domain.surface().bounds(clip),
         };
-        // A finite rectangle always has a hull; one that does not leaves
-        // nothing outer to keep, so there is no box rather than a wrong one.
         let Some(hull) = hull else {
-            return Ok(None);
+            return Err(bounds_uncertified(domain.face()));
         };
         let r = inner.map_or(boundary, |i| boundary.union(i));
         let mut open = patch.open;
@@ -499,12 +492,25 @@ fn nurbs_face_box(
         }
     }
 
-    let mut result = inner.map_or(boundary, |i| boundary.union(i));
+    let witnesses = inner.map_or(boundary, |i| boundary.union(i));
+    let mut result = witnesses;
     for k in 0..3 {
+        // A stalled patch may be settled by a point evaluated elsewhere
+        // later in the queue.
+        if kept_lo[k] < witnesses.min[k] - eps || kept_hi[k] > witnesses.max[k] + eps {
+            return Err(bounds_uncertified(domain.face()));
+        }
         result.min[k] = result.min[k].min(kept_lo[k]);
         result.max[k] = result.max[k].max(kept_hi[k]);
     }
-    Ok(Some(result))
+    Ok(result)
+}
+
+fn bounds_uncertified(face: FaceId) -> OpError {
+    degenerate(
+        Face::forward(face).shape(),
+        Reason::Query(QueryReason::BoundsUncertified),
+    )
 }
 
 /// The face's (u, v) box cut to what the surface has: an open direction

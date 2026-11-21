@@ -89,6 +89,9 @@ into its version (ADR-0027).
 
 ### Breaking
 
+- Rust matches on `QueryReason` need a `BoundsUncertified` arm for a
+  tight box that cannot be certified at the model's linear tolerance.
+
 - Replace `SweepReason::SpindleTorus` matches with `ArcTouchesAxis { loop_index,
   segment }` for arcs that touch the axis in their interior, and
   `ProfileCrossesAxis` for arcs that would sweep the inner sheet. In Python,

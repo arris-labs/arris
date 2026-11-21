@@ -236,9 +236,10 @@ impl Model {
     /// The world-axis-aligned tight box of a vertex, edge, face, shell or
     /// body, as `(min, max)`. It encloses the stored geometry, with each
     /// side within the model's linear tolerance of geometry the entity
-    /// reaches, to rounding and subject to the subdivision limit.
-    /// Returns `None` when a finite box cannot be obtained. Raises
-    /// `Interrupted` when `cancel` or `budget` stops the query.
+    /// reaches, to rounding. Returns `None` for an empty or unbounded
+    /// entity. Raises `OpDegenerateError` naming the face if the query
+    /// cannot certify its box within tolerance, and `Interrupted` when
+    /// `cancel` or `budget` stops the query.
     ///
     /// ```python
     /// import arris

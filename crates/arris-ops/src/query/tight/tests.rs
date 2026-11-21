@@ -55,6 +55,51 @@ fn tight_bounds_split_the_other_direction_when_a_midpoint_stalls() {
 }
 
 #[test]
+fn tight_bounds_names_the_face_when_the_subdivision_limit_is_reached() {
+    // x = u, y = v. On a narrow interior knot rectangle, the height
+    // in normalized local parameters is 16s(1-s)t(1-t), with maximum 1.
+    // The rest of the surface has z = 0. The hull reaches 4 at the cap.
+    let centre = 1.0 / 3.0;
+    let half_width = real::powi(2.0, -40);
+    let (lo, hi) = (centre - half_width, centre + half_width);
+    let knots = vec![0.0, 0.0, 0.0, lo, lo, hi, hi, 1.0, 1.0, 1.0];
+    // Greville abscissae give x = u and y = v.
+    let values: Vec<_> = knots
+        .windows(4)
+        .map(|span| f64::midpoint(span[1], span[2]))
+        .collect();
+    let points = values
+        .iter()
+        .flat_map(|&u| {
+            values.iter().map(move |&v| {
+                let z = if u == centre && v == centre { 4.0 } else { 0.0 };
+                Point3::new(u, v, z)
+            })
+        })
+        .collect();
+    let surface = NurbsSurface::new([2, 2], [knots.clone(), knots], points, vec![1.0; 49]).unwrap();
+    assert!((surface.eval(centre, centre).point.z - 1.0).abs() <= SLACK);
+    let mut m = Model::default();
+    let body = sample::patch(
+        &mut m,
+        Surface::Nurbs(surface),
+        Interval::UNIT,
+        Interval::UNIT,
+    )
+    .unwrap();
+    let report = arris_check::check(&m, body, Level::Full);
+    assert!(report.is_ok(), "{report:?}");
+    let face = m.faces(body).unwrap()[0];
+    assert_eq!(
+        crate::query::tight_bounds(&m, body.id.into(), &Control::NONE),
+        Err(crate::OpError::Degenerate {
+            entities: vec![face.shape()],
+            reason: crate::Reason::Query(crate::QueryReason::BoundsUncertified),
+        })
+    );
+}
+
+#[test]
 fn tight_bounds_find_the_peak_across_a_clamped_revolution_seam() {
     // Radius r(v) = 2 + 4v(1-v), with the seam at angle 1/4. The point
     // at angle zero and v = 1/2 has x = 3 and lies strictly in the trim,
@@ -360,8 +405,7 @@ fn run(case: &Case) -> (Aabb, f64) {
     }
     let eps = m.precision().default_tolerance;
     let got = nurbs_face_box(&case.surface, &domain, boundary, eps, &mut Meter::default())
-        .expect("no meter stops it")
-        .expect("a face with loops has a box");
+        .expect("the face has a tight box");
     (got, eps)
 }
 

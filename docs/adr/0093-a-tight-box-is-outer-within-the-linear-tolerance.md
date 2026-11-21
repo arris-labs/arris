@@ -43,8 +43,9 @@ envelope is also useful when deciding whether two entities can meet.
    are within half the linear tolerance of the boundary box or evaluated
    face points. The edge and face allowances add to at most one linear
    tolerance. When a midpoint rounds to an endpoint, subdivide along the
-   other direction. At the subdivision limit or when neither direction
-   can split, retain the patch's outer hull, which can extend farther.
+   other direction. When subdivision stops, keep an open hull side only
+   if the final witness box has reached it within the allowance.
+   Otherwise return `BoundsUncertified` naming the face.
 
 ## Consequences
 
