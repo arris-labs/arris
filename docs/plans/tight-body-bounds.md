@@ -43,8 +43,9 @@ and `clevis_pin` cases match their closed forms within 1e-6.
   its extremes lie on the boundary. The apex of a cone face that reaches it
   is a vertex. On a sphere, the six points `centre ± r·e_k` count. On a
   torus, the points whose normal is `±e_k` count: up to four isolated points,
-  or one sample on each crest circle when `e_k` is along the axis. A point
-  counts when `FaceDomain::side` puts its (u, v) inside or on the loops.
+  or one sample on each crest circle when `e_k` is along the axis. A crest
+  that survives only in part meets the trim boundary at the same height.
+  A point counts when `FaceDomain::side` puts its (u, v) inside or on the loops.
   On a NURBS surface, subdivide the face's `uv_box` (cut to the domain, or
   to one period) and drop each patch that no loop comes within its chord
   deviation of and whose centre the loops do not wind around. A coordinate
@@ -91,7 +92,7 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   Test with rational and periodic curves, including a range that wraps the
   seam: outer, within `eps` of refined samples, and equal to `bounds` for
   lines and conics.
-- [ ] Step 3 **[2]** — Interior extremes of analytic faces (sphere, torus)
+- [x] Step 3 **[2]** — Interior extremes of analytic faces (sphere, torus)
   classified by `FaceDomain::side`, with closed-form unit tests. Cases: a
   ball cut by a box that keeps one pole and removes another; a quarter
   torus about z and about x; a cone face that reaches its apex.

@@ -1,5 +1,6 @@
-//! The tight box of a trimmed NURBS face (`plans/tight-body-bounds`): the
-//! face's (u, v) box subdivided into patches, each bounded by its own
+//! Interior extrema of trimmed faces (`plans/tight-body-bounds`).
+//!
+//! A NURBS face's (u, v) box is subdivided into patches, each bounded by its own
 //! clipped control net, until every side of the box is within `eps` of a
 //! point the face reaches or of the face's boundary box.
 //!
@@ -28,11 +29,92 @@
 //! around them. Every other patch the loops wind around lies wholly inside
 //! `D`, and one they do not wind around holds no point of it.
 
+use core::f64::consts::{FRAC_PI_2, PI, TAU};
 use std::collections::VecDeque;
 
 use arris_check::domain::{FaceDomain, shifts};
-use arris_geom::NurbsSurface;
-use arris_math::{Aabb, Interrupted, Interval, Meter, Point2, real};
+use arris_geom::{NurbsSurface, Surface, region2::Side};
+use arris_math::{Aabb, Interrupted, Interval, Meter, Point2, Vec3, real};
+
+/// Axis extrema of an analytic surface that belong to the trimmed face.
+/// A coordinate of a plane, cylinder, elliptic cylinder or cone is affine
+/// along a ruling, so the boundary supplies both extrema. A singular end
+/// of a cone or torus is represented by a boundary vertex.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "ops::query::tight_bounds calls it (plans/tight-body-bounds step 4)"
+    )
+)]
+pub(crate) fn analytic_face_extrema(domain: &FaceDomain<'_>) -> Option<Aabb> {
+    let surface = domain.surface();
+    let [u_range, _] = domain.uv_box()?;
+    let mut bounds: Option<Aabb> = None;
+    let mut include = |uv: Point2, point| {
+        if domain.side(uv).0 != Side::Outside {
+            let b = Aabb::of_point(point);
+            bounds = Some(bounds.map_or(b, |acc| acc.union(b)));
+        }
+    };
+    let axes = [Vec3::x(), Vec3::y(), Vec3::z()];
+    match surface {
+        Surface::Sphere { frame, radius } => {
+            for axis in axes {
+                for d in [axis, -axis] {
+                    let x = d.dot(frame.x().as_ref());
+                    let y = d.dot(frame.y().as_ref());
+                    let z = d.dot(frame.z().as_ref());
+                    let h = real::hypot(x, y);
+                    let u = if h == 0.0 {
+                        u_range.lerp(0.5)
+                    } else {
+                        real::atan2(y, x).rem_euclid(TAU)
+                    };
+                    let v = real::atan2(z, h);
+                    include(Point2::new(u, v), frame.origin() + *radius * d);
+                }
+            }
+        }
+        Surface::Torus { frame, .. } => {
+            for axis in axes {
+                let x = axis.dot(frame.x().as_ref());
+                let y = axis.dot(frame.y().as_ref());
+                let z = axis.dot(frame.z().as_ref());
+                let h = real::hypot(x, y);
+                if h == 0.0 {
+                    // Each crest has constant height along u. If the sample
+                    // is outside but some of the crest is in the face, the
+                    // crest meets an edge that already supplies that height.
+                    let u = u_range.lerp(0.5);
+                    for v in [FRAC_PI_2, 3.0 * FRAC_PI_2] {
+                        include(Point2::new(u, v), surface.point(u, v));
+                    }
+                } else {
+                    // On the regular band, dP/du vanishes along the axis
+                    // being measured at the two radial directions ±h.
+                    // In either meridian, the two stationary tube angles
+                    // are a half turn apart.
+                    let azimuth = real::atan2(y, x);
+                    for (u, radial) in [(azimuth, h), (azimuth + PI, -h)] {
+                        let u = u.rem_euclid(TAU);
+                        let meridian = real::atan2(z, radial);
+                        for v in [meridian, meridian + PI] {
+                            let v = v.rem_euclid(TAU);
+                            include(Point2::new(u, v), surface.point(u, v));
+                        }
+                    }
+                }
+            }
+        }
+        Surface::Plane { .. }
+        | Surface::Cylinder { .. }
+        | Surface::EllipticCylinder { .. }
+        | Surface::Cone { .. }
+        | Surface::Nurbs(_) => {}
+    }
+    bounds
+}
 
 /// How many halvings a patch takes before its hull is kept as it is: a
 /// patch `2⁻³²` of the face's (u, v) box is far below any tolerance a
@@ -446,5 +528,7 @@ fn crosses(s: &Segment, uv: [Interval; 2]) -> bool {
     true
 }
 
+#[cfg(test)]
+mod analytic_tests;
 #[cfg(test)]
 mod tests;
