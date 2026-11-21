@@ -1,6 +1,6 @@
 //! Rational B-spline curves in 3D and in the (u, v) plane.
 
-use arris_math::{Aabb, Interval, Isometry, Point2, Point3, Reflection, Vec2};
+use arris_math::{Aabb, Interval, Isometry, Meter, Point2, Point3, Reflection, Vec2};
 
 use super::basis;
 use super::spline::{BezierSpan, Spline};
@@ -184,7 +184,13 @@ impl NurbsCurve {
     /// Refine only pieces with a hull that can still move a side by more
     /// than `eps`. Every accepted hull covers its piece and stays within
     /// `eps` of the final sampled box because that box only grows.
-    pub(crate) fn tight_bounds(&self, range: Interval, eps: f64) -> Option<Aabb> {
+    /// The caller reads the meter's stop after this returns.
+    pub(crate) fn tight_bounds(
+        &self,
+        range: Interval,
+        eps: f64,
+        meter: &mut Meter<'_>,
+    ) -> Option<Aabb> {
         let domain = self.domain();
         let mut pending = match self.period() {
             Some(period) if range.length() >= period => vec![domain],
@@ -242,6 +248,7 @@ impl NurbsCurve {
             if !(range.lo() < split && split < range.hi()) {
                 return None;
             }
+            meter.tick().ok()?;
             inner = inner.union(point_box(split)?);
             pending.push(Interval::new(split, range.hi()).ok()?);
             pending.push(Interval::new(range.lo(), split).ok()?);

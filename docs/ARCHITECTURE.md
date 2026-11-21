@@ -389,7 +389,7 @@ Result<Option<Aabb>, OpError>` gives the tight box of a vertex, edge, face,
 shell or body (ADR-0093). It joins the boxes of the closure's vertices
 and edge ranges with each face's interior extrema. A NURBS face whose
 control hull fits in the closure's boundary box requires no subdivision.
-The meter counts closure entities and NURBS face patch splits.
+The meter counts closure entities and NURBS edge and face splits.
 
 `ops::boolean::interferences(&Model, a, b) -> Result<Interferences,
 OpError>` is another query: the boolean decomposition of ADR-0004 as

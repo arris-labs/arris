@@ -47,7 +47,7 @@ use crate::OpError;
 /// Returns `None` if the entity is empty or no finite box can be obtained.
 /// Errors are [`OpError::NotFound`] for an unresolved id and
 /// [`OpError::Interrupted`] when the control stops the query. The meter ticks
-/// once per entity in the closure and once per NURBS face patch split.
+/// once per entity in the closure and once per NURBS edge or face split.
 ///
 /// ```
 /// use arris_math::{Axis, Control, Point3, Vec3};
@@ -96,7 +96,7 @@ pub fn tight_bounds(
                 let Some((curve, range)) = m.edge(id)?.curve() else {
                     continue;
                 };
-                let Some(b) = m.curve(curve)?.tight_bounds(range, eps) else {
+                let Some(b) = m.curve(curve)?.tight_bounds_with(range, eps, &mut meter)? else {
                     return Ok(None);
                 };
                 b

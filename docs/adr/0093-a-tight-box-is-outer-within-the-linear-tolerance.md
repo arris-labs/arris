@@ -48,6 +48,6 @@ envelope is also useful when deciding whether two entities can meet.
 
 The query returns `None` for an unbounded face or when a finite box cannot
 be obtained. A caller can interrupt the query through `Control`. Its meter
-counts each entity in the closure and each NURBS face patch split. Booleans
+counts each entity in the closure and each NURBS edge or face split. Booleans
 and `interference_many` continue to reject candidates with their inexpensive
 outer boxes.

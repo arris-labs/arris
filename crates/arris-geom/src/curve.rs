@@ -3,7 +3,9 @@
 use arris_math::real;
 use core::fmt;
 
-use arris_math::{Aabb, Frame, Interval, Isometry, Point3, Reflection, UnitVec3, Vec3};
+use arris_math::{
+    Aabb, Frame, Interrupted, Interval, Isometry, Meter, Point3, Reflection, UnitVec3, Vec3,
+};
 
 use crate::NurbsCurve;
 
@@ -266,13 +268,27 @@ impl Curve {
     /// assert_eq!(tight.max, [2.0, 1.0, 0.0]);
     /// ```
     pub fn tight_bounds(&self, range: Interval, eps: f64) -> Option<Aabb> {
+        self.tight_bounds_with(range, eps, &mut Meter::default())
+            .ok()
+            .flatten()
+    }
+
+    /// Like [`Self::tight_bounds`], with one meter step per NURBS subdivision split.
+    /// Returns [`Interrupted`] if the meter stops the refinement.
+    pub fn tight_bounds_with(
+        &self,
+        range: Interval,
+        eps: f64,
+        meter: &mut Meter<'_>,
+    ) -> Result<Option<Aabb>, Interrupted> {
         if !(range.is_bounded() && eps.is_finite() && eps > 0.0) {
-            return None;
+            return Ok(None);
         }
-        match self {
+        let bounds = match self {
             Curve::Line { .. } | Curve::Circle { .. } | Curve::Ellipse { .. } => self.bounds(range),
-            Curve::Nurbs(curve) => curve.tight_bounds(range, eps),
-        }
+            Curve::Nurbs(curve) => curve.tight_bounds(range, eps, meter),
+        };
+        meter.stopped().map_or(Ok(bounds), Err)
     }
 
     /// How many straight segments approximate the curve over `range`
