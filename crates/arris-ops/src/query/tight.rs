@@ -29,31 +29,208 @@
 //! `D`, and one they do not wind around holds no point of it.
 
 use core::f64::consts::{FRAC_PI_2, PI, TAU};
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 
 use arris_check::domain::{FaceDomain, shifts};
 use arris_geom::{NurbsSurface, Surface, region2::Side};
-use arris_math::{Aabb, Interrupted, Interval, Meter, Point2, Vec3, real};
+use arris_math::{Aabb, Control, Interrupted, Interval, Meter, Point2, Vec3, real};
+use arris_topo::{EntityId, Model};
+
+use crate::OpError;
+
+/// The tight box of a vertex, edge, face, shell or body in world coordinates.
+/// It contains the entity's geometry, with each side within the model's
+/// linear tolerance of a point on the entity, to rounding. Entity tolerances
+/// do not grow the box. A NURBS face that reaches the subdivision limit
+/// retains an outer hull, which may extend farther.
+///
+/// Returns `None` if the entity is empty or no finite box can be obtained.
+/// Errors are [`OpError::NotFound`] for an unresolved id and
+/// [`OpError::Interrupted`] when the control stops the query. The meter ticks
+/// once per entity in the closure and once per NURBS face patch split.
+///
+/// ```
+/// use arris_math::{Axis, Control, Point3, Vec3};
+/// use arris_ops::{cut, primitive_cylinder, query::tight_bounds};
+/// use arris_topo::Model;
+///
+/// let mut m = Model::default();
+/// let control = &Control::NONE;
+/// // A shaft collar with an axial bore and a cross hole.
+/// let (blank, _) =
+///     primitive_cylinder(&mut m, Axis::z_at(Point3::origin()), 2.0, 2.0, control)?;
+/// let (bore, _) =
+///     primitive_cylinder(&mut m, Axis::z_at(Point3::new(0.0, 0.0, -1.0)), 1.0, 4.0, control)?;
+/// let (ring, _) = cut(&mut m, blank, bore, control)?;
+/// let cross_axis = Axis::new(Point3::new(0.0, -3.0, 1.0), Vec3::y())?;
+/// let (cross_hole, _) = primitive_cylinder(&mut m, cross_axis, 0.5, 6.0, control)?;
+/// let (shaft_collar, _) = cut(&mut m, ring, cross_hole, control)?;
+/// let b = tight_bounds(&m, shaft_collar.id.into(), control)?.unwrap();
+/// let eps = m.precision().default_tolerance;
+/// for k in 0..3 {
+///     assert!((b.min[k] - [-2.0, -2.0, 0.0][k]).abs() <= eps);
+///     assert!((b.max[k] - 2.0).abs() <= eps);
+/// }
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+pub fn tight_bounds(
+    m: &Model,
+    entity: EntityId,
+    control: &Control<'_>,
+) -> Result<Option<Aabb>, OpError> {
+    let mut meter = Meter::new(control);
+    let mut entities = BTreeSet::new();
+    collect(m, entity, &mut entities, &mut meter)?;
+
+    let eps = m.precision().default_tolerance * 0.5;
+    let mut boundary = None;
+    let mut faces = Vec::new();
+    for entity in entities {
+        let b = match entity {
+            EntityId::Vertex(id) => {
+                meter.tick()?;
+                Aabb::of_point(m.vertex(id)?.point())
+            }
+            EntityId::Edge(id) => {
+                meter.tick()?;
+                let Some((curve, range)) = m.edge(id)?.curve() else {
+                    continue;
+                };
+                let Some(b) = m.curve(curve)?.tight_bounds(range, eps) else {
+                    return Ok(None);
+                };
+                b
+            }
+            EntityId::Face(id) => {
+                faces.push(id);
+                continue;
+            }
+            EntityId::Shell(_) | EntityId::Body(_) => continue,
+        };
+        include_box(&mut boundary, b);
+    }
+
+    let mut result = boundary;
+    for id in faces {
+        meter.tick()?;
+        let face = m.face(id)?;
+        let surface = m.surface(face.surface())?;
+        if let Surface::Nurbs(nurbs) = surface
+            && let (Some(boundary), Some(hull)) = (boundary, box_of(nurbs))
+            && boundary.union(hull) == boundary
+        {
+            continue;
+        }
+        let tolerance = m.precision().parametric_tolerance;
+        let interior = match surface {
+            Surface::Nurbs(nurbs) => {
+                let domain = FaceDomain::of(m, id, tolerance)?;
+                // Only the edge and vertex box seeds subdivision, so the
+                // approximation errors of different faces cannot accumulate.
+                let seed = boundary.unwrap_or_else(|| {
+                    let [u, v] = nurbs.domain();
+                    Aabb::of_point(surface.point(u.lo(), v.lo()))
+                });
+                let Some(b) = nurbs_face_box(nurbs, &domain, seed, eps, &mut meter)? else {
+                    return Ok(None);
+                };
+                Some(b)
+            }
+            Surface::Sphere { .. } | Surface::Torus { .. } => {
+                let domain = FaceDomain::of(m, id, tolerance)?;
+                analytic_face_extrema(&domain)
+            }
+            Surface::Plane { .. }
+            | Surface::Cylinder { .. }
+            | Surface::EllipticCylinder { .. }
+            | Surface::Cone { .. } => {
+                // The ruling argument needs a bounded trim, but never a
+                // sampled polygon or a point-in-face test.
+                let mut bounded = false;
+                for trim in face.loops() {
+                    let pieces = m.loop_pieces(trim)?;
+                    bounded |= !pieces.is_empty()
+                        && pieces
+                            .iter()
+                            .all(|p| p.range.is_bounded() && p.range.lo() < p.range.hi());
+                }
+                if !bounded {
+                    return Ok(None);
+                }
+                None
+            }
+        };
+        if let Some(b) = interior {
+            include_box(&mut result, b);
+        }
+    }
+    Ok(result)
+}
+
+fn include_box(bounds: &mut Option<Aabb>, b: Aabb) {
+    *bounds = Some(bounds.map_or(b, |acc| acc.union(b)));
+}
+
+fn collect(
+    m: &Model,
+    entity: EntityId,
+    entities: &mut BTreeSet<EntityId>,
+    meter: &mut Meter<'_>,
+) -> Result<(), OpError> {
+    if !entities.insert(entity) {
+        return Ok(());
+    }
+    match entity {
+        EntityId::Vertex(id) => {
+            m.vertex(id)?;
+        }
+        EntityId::Edge(id) => {
+            let edge = m.edge(id)?;
+            for vertex in [edge.start(), edge.end()] {
+                collect(m, vertex.into(), entities, meter)?;
+            }
+        }
+        EntityId::Face(id) => {
+            for c in m.face(id)?.loops().iter().flat_map(|l| l.coedges()) {
+                m.curve2(c.pcurve())?;
+                collect(m, c.edge().into(), entities, meter)?;
+            }
+        }
+        EntityId::Shell(id) => {
+            meter.tick()?;
+            for face in m.shell(id)?.faces() {
+                collect(m, face.id.into(), entities, meter)?;
+            }
+        }
+        EntityId::Body(id) => {
+            meter.tick()?;
+            let body = m.body(id)?;
+            for shell in body.shells() {
+                collect(m, shell.id.into(), entities, meter)?;
+            }
+            for edge in body.free_edges() {
+                collect(m, edge.id.into(), entities, meter)?;
+            }
+            for &vertex in body.free_vertices() {
+                collect(m, vertex.into(), entities, meter)?;
+            }
+        }
+    }
+    Ok(())
+}
 
 /// Axis extrema of an analytic surface that belong to the trimmed face.
 /// A coordinate of a plane, cylinder, elliptic cylinder or cone is affine
 /// along a ruling, so the boundary supplies both extrema. A singular end
 /// of a cone or torus is represented by a boundary vertex.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "ops::query::tight_bounds calls it (plans/tight-body-bounds step 4)"
-    )
-)]
-pub(crate) fn analytic_face_extrema(domain: &FaceDomain<'_>) -> Option<Aabb> {
+fn analytic_face_extrema(domain: &FaceDomain<'_>) -> Option<Aabb> {
     let surface = domain.surface();
-    let [u_range, _] = domain.uv_box()?;
+    let uv_box = domain.uv_box();
+    let [u_range, _] = uv_box.unwrap_or_else(|| surface.domain());
     let mut bounds: Option<Aabb> = None;
     let mut include = |uv: Point2, point| {
-        if domain.side(uv).0 != Side::Outside {
-            let b = Aabb::of_point(point);
-            bounds = Some(bounds.map_or(b, |acc| acc.union(b)));
+        if uv_box.is_none() || domain.side(uv).0 != Side::Outside {
+            include_box(&mut bounds, Aabb::of_point(point));
         }
     };
     let axes = [Vec3::x(), Vec3::y(), Vec3::z()];
@@ -158,27 +335,18 @@ struct Patch {
 /// of the boundary). A side still open on a patch [`MAX_DEPTH`] halvings
 /// down keeps that patch's hull: outer, and within the hull's diagonal and
 /// the loops' chord deviation of the face, rather than `eps`. `None` when
-/// the domain has no (u, v) box (a face no box holds), or a patch has no
-/// hull.
+/// a patch has no hull. A face with no trim is read over the whole surface.
 ///
 /// Errors: [`Interrupted`] by the meter, ticked once per patch split.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "ops::query::tight_bounds calls it (plans/tight-body-bounds step 4)"
-    )
-)]
-pub(crate) fn nurbs_face_box(
+fn nurbs_face_box(
     surface: &NurbsSurface,
     domain: &FaceDomain<'_>,
     boundary: Aabb,
     eps: f64,
     meter: &mut Meter,
 ) -> Result<Option<Aabb>, Interrupted> {
-    let Some(uv) = domain.uv_box() else {
-        return Ok(None);
-    };
+    let whole = domain.uv_box().is_none();
+    let uv = domain.uv_box().unwrap_or_else(|| surface.domain());
     let Some(root) = fit_to_surface(surface, uv) else {
         return Ok(Some(boundary));
     };
@@ -199,7 +367,7 @@ pub(crate) fn nurbs_face_box(
         let [u, v] = patch.uv;
         let centre = Point2::new(u.lerp(0.5), v.lerp(0.5));
         let grazed = !patch.near.is_empty();
-        if !grazed && !domain.winds_around(centre) {
+        if !whole && !grazed && !domain.winds_around(centre) {
             continue;
         }
         let corners = [
@@ -237,7 +405,8 @@ pub(crate) fn nurbs_face_box(
             if open & (0b11 << (2 * k)) == 0 {
                 continue;
             }
-            if let Some(n) = &net
+            if !whole
+                && let Some(n) = &net
                 && monotone(
                     surface,
                     n,
@@ -530,5 +699,7 @@ fn crosses(s: &Segment, uv: [Interval; 2]) -> bool {
 
 #[cfg(test)]
 mod analytic_tests;
+#[cfg(test)]
+mod query_tests;
 #[cfg(test)]
 mod tests;

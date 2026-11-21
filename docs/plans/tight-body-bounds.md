@@ -96,7 +96,7 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   classified by `FaceDomain::side`, with closed-form unit tests. Cases: a
   ball cut by a box that keeps one pole and removes another; a quarter
   torus about z and about x; a cone face that reaches its apex.
-- [ ] Step 4 **[2]** — `ops::query::tight_bounds` assembling steps 1–3. Add
+- [x] Step 4 **[2]** — `ops::query::tight_bounds` assembling steps 1–3. Add
   ADR-0093, its README line, the glossary's *tight box*, rustdoc with the
   `shaft_collar` example, and `tight ⊆ bounds` unit tests on every primitive,
   with equality on the analytic ones.
@@ -160,6 +160,13 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   unclamped domain ends and short spans omitted by root isolation. A range
   outside a nonperiodic NURBS domain has no clipped hull for the extrapolated
   pieces and returns `None`. Edge ranges already satisfy E1.
-- ⚠ OPEN: a speed bar. The agent picks it in step 4: under 0.1 s for the
-  269-face real part used to time `classify_points`. A miss there is a
-  finding, not a refusal.
+- *Settled* (step 4): under 0.1 s for the 269-face NIST FTC-07 solid used
+  to time `classify_points`. Three release calls on the loaded model
+  took 81–83 ms. Ruled faces use their boundary without sampling the trim,
+  and NURBS faces whose control hull fits inside the boundary box need
+  no domain or subdivision.
+- ⚠ OPEN: the 1e-9 Python assertion. The cross-hole fixture's stored
+  NURBS edges already evaluate to y = ±2.000000002982075 at their
+  midpoints. An outer box of those edges meets the model tolerance and
+  the 1e-6 fixture check, but cannot meet the 1e-9 closed-form assertion
+  without improving the fit. Reconcile this before step 6 acceptance.

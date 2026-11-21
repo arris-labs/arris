@@ -12,6 +12,7 @@ mod tight;
 
 pub use distance::{Distance, Foot, FootParam, Operand, distance};
 pub use interference::{Clash, Contact, Interference, interference, interference_many};
+pub use tight::tight_bounds;
 
 use arris_check::classify::{Classification, Classifier, ClassifyError};
 use arris_check::domain::FaceDomain;

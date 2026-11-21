@@ -44,6 +44,16 @@ topology says, carried by each vertex, edge and face. Algorithms use the
 entity's tolerance or a named constant, never a literal.
 _Avoid_: epsilon, eps
 
+**Box**
+
+An axis-aligned outer bound. The `bounds` query grows it by the entity's
+tolerances.
+
+**Tight box**
+
+An axis-aligned outer bound on the entity's geometry, with each side
+within the model's linear tolerance of a point the entity reaches (ADR-0093).
+
 **Provenance**:
 The generated / modified / deleted record every operation returns for
 every entity it touched, its keys an entity or a role.
