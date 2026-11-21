@@ -18,10 +18,9 @@
 //! `w'(Q'_k − s) − w(Q_k − s)`; linear in `s`, they keep one sign over
 //! `[a, b]` when they do at both ends.
 //!
-//! A patch's "uphill" side, where a monotone coordinate is largest, may
-//! lie on a knot line where the surface is only C0: a crease, whose ridge
-//! no neighbour's monotone proof rules out. A patch whose uphill side is
-//! such a line is not set aside that way.
+//! A patch's low or high side along a monotone coordinate may lie on a
+//! knot line where the surface is only C0. A crease can hold an extremum
+//! even when the coordinate is monotone on both sides of it.
 //!
 //! A patch the loops pass within their chord deviation of is *grazed*:
 //! it may hold points outside `D`, so its evaluated points count only
@@ -385,8 +384,8 @@ fn on_crease(surface: &NurbsSurface, dir: usize, x: f64, creases: &[f64]) -> boo
 
 /// `true` when `net`, the patch of `surface` over `uv` whose hull in `k`
 /// is `range`, proves coordinate `k` strictly monotone along `u` or along
-/// `v` across the patch (the module's proof), and the side where it is
-/// largest is not a crease of `surface`.
+/// `v` across the patch (the module's proof), with both ends clear of
+/// creases of `surface`.
 fn monotone(
     surface: &NurbsSurface,
     net: &NurbsSurface,
@@ -421,8 +420,9 @@ fn monotone(
         if !(rising || falling) {
             continue;
         }
-        let uphill = if rising { uv[dir].hi() } else { uv[dir].lo() };
-        if !on_crease(surface, dir, uphill, &creases[dir]) {
+        if !on_crease(surface, dir, uv[dir].lo(), &creases[dir])
+            && !on_crease(surface, dir, uv[dir].hi(), &creases[dir])
+        {
             return true;
         }
     }

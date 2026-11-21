@@ -50,7 +50,7 @@ and `clevis_pin` cases match their closed forms within 1e-6.
   to one period) and drop each patch that no loop comes within its chord
   deviation of and whose centre the loops do not wind around. A coordinate
   is set aside on a patch whose clipped net proves it strictly monotone
-  along `u` or `v`, unless the side it rises to is a C0 knot line; the
+  along `u` or `v` with both ends clear of C0 knot lines; the
   rest are split until the hull is within `eps` of the boundary box and
   the evaluated face points (step 1's *Settled*).
 - **Patch net** (`arris-geom`): `NurbsSurface::clipped(uv) ->
@@ -149,7 +149,8 @@ the design; **[3]** unproven, an algorithm whose bound is established here.
   trim the surface rises across. Instead a coordinate's extreme is on the
   boundary or where both partials vanish; a patch whose net differences
   `w'(Q'_k − s) − w(Q_k − s)` keep one sign at both ends of its hull range
-  is set aside for `k`, unless it rises to a C0 knot line. Other open
+  is set aside for `k` when both ends are clear of C0 knot lines. A
+  closed-form crease minimum exercises the low side of that test. Other open
   sides stop within `eps` of the boundary box joined with points proved
   inside the loops, else split (depth cap 32). The result is within `eps`
   of the face or of the boundary box, so step 4 runs edges and patches at

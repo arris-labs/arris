@@ -277,6 +277,37 @@ fn run(case: &Case) -> (Aabb, f64) {
     (got, eps)
 }
 
+#[test]
+fn a_nurbs_face_can_reach_its_minimum_at_a_c0_knot() {
+    // z = |u - 1/2| + (v - 3/8)^2. Both patches rise away from the
+    // crease, whose low point is between the first subdivision samples.
+    let a = 3.0 / 8.0;
+    let points = (0..3)
+        .flat_map(|i| {
+            let u = i as f64 / 2.0;
+            [a * a, a * a - a, (1.0 - a) * (1.0 - a)]
+                .into_iter()
+                .enumerate()
+                .map(move |(j, z)| Point3::new(u, j as f64 / 2.0, (u - 0.5).abs() + z))
+        })
+        .collect();
+    let surface = NurbsSurface::new(
+        [1, 2],
+        [
+            vec![0.0, 0.0, 0.5, 1.0, 1.0],
+            vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+        ],
+        points,
+        vec![1.0; 9],
+    )
+    .unwrap();
+    let (got, eps) = run(&Case {
+        surface,
+        trim: None,
+    });
+    assert!((-eps..=SLACK).contains(&got.min[2]), "{got:?}");
+}
+
 fn holds(case: &Case) -> Result<(), TestCaseError> {
     let (got, eps) = run(case);
     let [du, dv] = case.surface.domain();
