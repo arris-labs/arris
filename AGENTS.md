@@ -72,7 +72,7 @@ vertices (ADR-0088 to ADR-0090). Horn and spindle revolutions can close
 at a torus pole, with closed tessellation and STEP round trips (ADR-0092).
 Tight bounds in Rust and Python complete C12's in-list (ADR-0093). Draft,
 thicken and `region2` wait for the next named cycle.
-**Next:** `/work publish-survives-index-timeout`, then `/close-cycle`.
+**Next:** `/close-cycle`.
 
 ## Rules that are not derivable from the code
 

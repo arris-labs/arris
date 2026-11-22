@@ -994,9 +994,10 @@ the named cycle next in line.*
   clevis pin match their closed forms within `1e-6`, and four corpus areas
   check tight boxes against the tolerance envelope and tessellation. Three
   release calls on the loaded 269-face NIST FTC-07 solid take about 51 ms each.
-- Beside the cycle, in the second plan slot: the nightly's open findings,
-  and the publish retry (`docs/plans/publish-survives-index-timeout.md`)
-  before the next tag.
+- Beside the cycle, the crates.io publish retry is **done**. The job checks
+  the sparse index again after a failed Cargo attempt and skips versions
+  already indexed. A rerun at the original tag resumes a partial release
+  (`.agents/rules/git.md` §Tags). The nightly findings remain open.
 
 **Out:** draft, thicken and `region2` (the named cycle "the plugin CAD's
 remaining asks"); `interference` of a cone face against a cone face (a
