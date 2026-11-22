@@ -36,7 +36,11 @@ docs checklist. Deletion is the done signal.
    and report the fixture and variant on exhaustion.
    Run the plan's acceptance via
    `tools/at-commit.sh <sha> sh -c '<runs>'` using the harness-specific
-   wait rule. For a tooling-only diff limited to shell scripts under
+   wait rule. In Codex without a completion notification, run
+   `tools/launch-at-commit.sh <sha> <new-job-directory> sh -c '<runs>'`.
+   It starts the same pinned run with default interrupt handling and
+   records the SHA, log and exit status in the job directory.
+   For a tooling-only diff limited to shell scripts under
    `tools/`, GitHub workflow YAML and prose, run the affected checks named
    in the plan and exercise any changed routing. Use the full gate if the
    diff changes kernel or test behavior, including how the full gate runs
