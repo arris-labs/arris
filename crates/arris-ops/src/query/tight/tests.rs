@@ -21,22 +21,25 @@ use proptest::test_runner::TestCaseError;
 #[test]
 fn tight_bounds_split_the_other_direction_when_a_midpoint_stalls() {
     let u = Interval::new(1.0, 1.0_f64.next_up()).unwrap();
-    let points = (0..2)
-        .flat_map(|i| {
+    // Give u two degrees so the one-span linear ruling proof does not
+    // bypass subdivision. There is still no representable midpoint in u.
+    let points = [0.0, 0.5, 1.0]
+        .into_iter()
+        .flat_map(|x| {
             [0.0, 2.0, 0.0]
                 .into_iter()
                 .enumerate()
-                .map(move |(j, z)| Point3::new(i as f64, j as f64 / 2.0, z))
+                .map(move |(j, z)| Point3::new(x, j as f64 / 2.0, z))
         })
         .collect();
     let surface = NurbsSurface::new(
-        [1, 2],
+        [2, 2],
         [
-            vec![u.lo(), u.lo(), u.hi(), u.hi()],
+            vec![u.lo(), u.lo(), u.lo(), u.hi(), u.hi(), u.hi()],
             vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
         ],
         points,
-        vec![1.0; 6],
+        vec![1.0; 9],
     )
     .unwrap();
     let mut m = Model::default();
