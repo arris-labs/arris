@@ -58,17 +58,17 @@ cargo install cargo-fuzz --locked
 
 ## Current state
 
-**C1–C11 done and released (2026-09-12 to 11-04)**, with their status
+**C1–C12 done and released (2026-09-12 to 11-22)**, with their status
 lines in `docs/ROADMAP.md`. **C12, the training harness's refusals, done
 2026-11-22**: exact batched point classification, flat-edge and tangency
 fixes, touching lumps (ADR-0087 to ADR-0090), revolves closing at a torus
 pole (ADR-0092) and tight bounds (ADR-0093), with per-face surface
-properties and the first PyPI release (0.11.1) beside it.
+properties beside it.
 **C13, the harness's sketch contacts**, opened 2026-11-22: the 76 of 968
 CAD-Recode programs Open CASCADE builds that 0.11.1 refused or returned
 checker-red (`docs/ideas/cad-recode-sketch-prism-contacts.md`). Draft,
 thicken and `region2` stay next in line.
-**Next:** `/release`, then `/plan` from that idea.
+**Next:** `/plan` from that idea.
 
 ## Rules that are not derivable from the code
 

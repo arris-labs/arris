@@ -8,6 +8,8 @@ into its version (ADR-0027).
 
 ## Unreleased
 
+## 0.12.0 — 2026-11-22
+
 - Query an entity’s world-axis-aligned tight box with Rust’s
   `ops::query::tight_bounds` or Python’s `Model.tight_bounds`. Both
   support cancellation and a work budget. `BoundsUncertified` names an
