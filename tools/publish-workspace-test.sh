@@ -61,26 +61,41 @@ esac
 echo "$name" >> "$TEST_DIR/lookups"
 
 record() {
-  printf '{"name":"%s","vers":"%s","deps":[],"cksum":"%064d","yanked":%s}\n' \
-    "$name" "$1" 0 "${2:-false}" > "$out"
+  printf '{"name":"%s","vers":"%s","deps":%s,"cksum":"%064d","yanked":%s%s}\n' \
+    "$name" "$1" "${3:-[]}" 0 "${2:-false}" "${4:-}"
 }
 case $CASE:$name in
   unreadable:arris) exit 28 ;;
   unavailable:arris) printf 503; exit ;;
   malformed:arris) printf '{\n' > "$out" ;;
   invalid:arris) printf '{"name":"arris","vers":"1.2.3"}\n' > "$out" ;;
-  yanked:arris) record 1.2.3 true ;;
+  duplicate-version-key:arris) record 1.2.3 false '[]' ',"vers":"1.2.2"' > "$out" ;;
+  duplicate-yanked-key:arris) record 1.2.3 true '[]' ',"yanked":false' > "$out" ;;
+  invalid-constant:arris) record 1.2.3 false '[]' ',"extra":NaN' > "$out" ;;
+  invalid-prerelease:arris) record 1.2.3-alpha.01 > "$out" ;;
+  duplicate-version:arris)
+    { record 1.2.3; record 1.2.3+extra; } > "$out" ;;
+  invalid-dependency:arris) record 1.2.3 false '[42]' > "$out" ;;
+  invalid-schema:arris) record 1.2.3 false '[]' ',"v":"invalid"' > "$out" ;;
+  unsupported-schema:arris) record 1.2.3 false '[]' ',"v":3' > "$out" ;;
+  yanked:arris) record 1.2.3 true > "$out" ;;
+  complete:arris)
+    {
+      record 1.2.2-alpha.1.01a+01
+      record 1.2.3 false '[{"name":"example","req":"^1.0","optional":true}]' \
+        ',"v":2,"features2":{"example":["dep:example"]},"links":null'
+    } > "$out" ;;
   complete:*|final:*)
     if [[ $CASE == complete || -e "$TEST_DIR/final" ]]; then
-      record 1.2.3
+      record 1.2.3 > "$out"
     else
-      record 1.2.2
+      record 1.2.2 > "$out"
     fi ;;
-  resumed:a|resumed:Bee) record 1.2.3 ;;
+  resumed:a|resumed:Bee) record 1.2.3 > "$out" ;;
   delayed:a)
-    if [[ -e "$TEST_DIR/visible" ]]; then record 1.2.3; else record 1.2.2; fi ;;
+    if [[ -e "$TEST_DIR/visible" ]]; then record 1.2.3; else record 1.2.2; fi > "$out" ;;
   *:xy) printf 404; exit ;;
-  *) record 1.2.2 ;;
+  *) record 1.2.2 > "$out" ;;
 esac
 printf 200
 STUB
@@ -140,7 +155,9 @@ assert_file uploads
 assert_file waits
 grep -Fxq 'Would run: cargo publish --workspace --locked --exclude Bee --exclude a --exclude other' "$test_dir/output"
 
-for scenario in unreadable unavailable malformed invalid yanked; do
+for scenario in unreadable unavailable malformed invalid yanked \
+  duplicate-version-key duplicate-yanked-key invalid-constant invalid-prerelease \
+  duplicate-version invalid-dependency invalid-schema unsupported-schema; do
   run_case 1 "$scenario"
   assert_file uploads
   assert_file waits

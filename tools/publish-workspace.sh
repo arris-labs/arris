@@ -48,27 +48,102 @@ import sys
 path, name, version = sys.argv[1:]
 version_pattern = re.compile(
     r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
-    r"(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
+    r"(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?"
     r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
 )
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key {key!r}")
+        result[key] = value
+    return result
+
+
+def reject_constant(value):
+    raise ValueError(f"invalid JSON constant {value}")
+
+
+def valid_version(value):
+    match = version_pattern.fullmatch(value) if isinstance(value, str) else None
+    if match is None:
+        return False
+    prerelease = match[1] or ""
+    return not any(
+        len(part) > 1 and part.startswith("0") and part.isdigit()
+        for part in prerelease.split(".")
+    )
+
+
+def string_list(value):
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def valid_dependency(dep):
+    return (
+        isinstance(dep, dict)
+        and isinstance(dep.get("name"), str)
+        and isinstance(dep.get("req"), str)
+        and string_list(dep.get("features", []))
+        and type(dep.get("optional", False)) is bool
+        and type(dep.get("default_features", True)) is bool
+        and dep.get("kind") in (None, "normal", "dev", "build")
+        and all(
+            dep.get(field) is None or isinstance(dep[field], str)
+            for field in ("target", "registry", "package")
+        )
+    )
+
+
+def valid_record(record):
+    if not isinstance(record, dict):
+        return False
+    schema = record.get("v", 1)
+    return (
+        record.get("name") == name
+        and valid_version(record.get("vers"))
+        and type(record.get("yanked")) is bool
+        and isinstance(record.get("deps"), list)
+        and all(valid_dependency(dep) for dep in record["deps"])
+        and isinstance(record.get("cksum"), str)
+        and re.fullmatch(r"[0-9a-f]{64}", record["cksum"]) is not None
+        and type(schema) is int
+        and schema in (1, 2)
+        and ("features2" not in record or schema == 2)
+        and all(
+            isinstance(record.get(field, {}), dict)
+            and all(string_list(items) for items in record.get(field, {}).values())
+            for field in ("features", "features2")
+        )
+        and all(
+            record.get(field) is None or isinstance(record[field], str)
+            for field in ("links", "rust_version", "pubtime")
+        )
+    )
+
+
 try:
     versions = {}
+    unique_versions = set()
     with open(path, encoding="utf-8") as records:
-        for line in records:
-            record = json.loads(line)
-            if (
-                not isinstance(record, dict)
-                or record.get("name") != name
-                or not isinstance(record.get("vers"), str)
-                or not version_pattern.fullmatch(record["vers"])
-                or type(record.get("yanked")) is not bool
-                or not isinstance(record.get("deps"), list)
-                or not isinstance(record.get("cksum"), str)
-                or not re.fullmatch(r"[0-9a-f]{64}", record["cksum"])
-                or record["vers"] in versions
-            ):
-                raise ValueError("invalid or duplicate version record")
-            versions[record["vers"]] = record["yanked"]
+        for line_number, line in enumerate(records, 1):
+            try:
+                record = json.loads(
+                    line, object_pairs_hook=unique_object, parse_constant=reject_constant
+                )
+                if not valid_record(record):
+                    raise ValueError("invalid version record")
+                indexed_version = record["vers"]
+                # The registry's uniqueness rule ignores build metadata.
+                unique_version = indexed_version.partition("+")[0]
+                if unique_version in unique_versions:
+                    raise ValueError(f"duplicate version {indexed_version!r}")
+                unique_versions.add(unique_version)
+                versions[indexed_version] = record["yanked"]
+            except (ValueError, RecursionError) as error:
+                raise ValueError(f"line {line_number}: {error}") from error
     if not versions:
         raise ValueError("empty index file")
     if versions.get(version):
