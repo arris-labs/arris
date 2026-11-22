@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Digest this repository's Claude Code and Codex session transcripts for /retro.
 
-Usage: .agents/skills/retro/session-digest [--slug SLUG] [--last N] [--session ID]...
+Usage: .agents/skills/retro/session-digest [--slug SLUG [--broad]] [--last N] [--session ID]...
 
 Finds the checkout's Claude Code transcripts under ~/.claude*/projects
 (or $CLAUDE_CONFIG_DIR/projects) and Codex rollouts under $CODEX_HOME
@@ -39,10 +39,11 @@ def project_dirs():
 
 
 def started(path):
-    for line in open(path, encoding="utf-8", errors="replace"):
-        m = re.search(r'"timestamp":\s*"([^"]+)"', line)
-        if m:
-            return m.group(1)
+    with open(path, encoding="utf-8", errors="replace") as stream:
+        for line in stream:
+            m = re.search(r'"timestamp":\s*"([^"]+)"', line)
+            if m:
+                return m.group(1)
     return ""
 
 
@@ -150,9 +151,11 @@ def digest(path, width):
     print()
 
 
-def records(path):
+def records(path, containing=()):
     with open(path, encoding="utf-8", errors="replace") as stream:
         for line in stream:
+            if containing and not any(needle in line for needle in containing):
+                continue
             try:
                 yield json.loads(line)
             except ValueError:
@@ -162,6 +165,63 @@ def records(path):
 def mentions(path, slug):
     with open(path, encoding="utf-8", errors="replace") as stream:
         return any(slug in line for line in stream)
+
+
+COMMAND = re.compile(r"^[/\$](plan|work|retire-plan|retro)(?:\s+(\S+))?(?:\s|$)")
+
+
+def selection_inputs(row):
+    """Yield genuine prompts and tool inputs, excluding outputs and injected context."""
+    kind = row.get("type")
+    if kind in ("response_item", "event_msg"):
+        payload = row.get("payload", {})
+        event = payload.get("type")
+        if kind == "event_msg" and event == "user_message":
+            yield "prompt", payload.get("message", "")
+        elif event == "message" and payload.get("role") == "user":
+            for item in payload.get("content", []):
+                if item.get("type") == "input_text":
+                    yield "prompt", item.get("text", "")
+        elif event in ("function_call", "custom_tool_call"):
+            yield "action", payload.get("arguments", payload.get("input", ""))
+        return
+
+    if row.get("isMeta") or row.get("isSidechain"):
+        return
+    attachment = row.get("attachment") or {}
+    if (attachment.get("type") == "queued_command"
+            and (attachment.get("origin") or {}).get("kind") == "human"):
+        yield "prompt", text_of(attachment.get("prompt") or "")
+    content = (row.get("message") or {}).get("content") or []
+    if kind == "user":
+        yield "prompt", human(text_of(content)) or ""
+    elif kind == "assistant":
+        for item in content:
+            if item.get("type") != "tool_use":
+                continue
+            arguments = item["input"]
+            if item.get("name") == "Skill":
+                yield "prompt", f"/{arguments.get('skill', '')} {arguments.get('args') or ''}"
+            else:
+                yield "action", json.dumps(arguments)
+
+
+def plan_session(path, slug):
+    plan_path = re.compile(rf"(?<![\w.-])docs/plans/{re.escape(slug)}\.md(?![\w./-])")
+    retrospective = False
+    for row in records(path, containing=(slug, "/retro", "$retro", "/work", "$work",
+                                          "/plan", "$plan", "/retire-plan", "$retire-plan")):
+        for kind, value in selection_inputs(row):
+            if kind == "prompt":
+                command = COMMAND.match(value.strip())
+                if command:
+                    skill, argument = command.groups()
+                    retrospective = skill == "retro"
+                    if not retrospective and argument == slug:
+                        return True
+            elif not retrospective and plan_path.search(value):
+                return True
+    return False
 
 
 def codex_sessions():
@@ -256,13 +316,16 @@ def codex_digest(path, meta, spawn, width):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--slug", help="sessions mentioning this plan slug")
+    ap.add_argument("--slug", help="sessions invoking or operating on this plan")
+    ap.add_argument("--broad", action="store_true", help="match any transcript mention of --slug")
     ap.add_argument("--last", type=int, help="the N most recent sessions")
     ap.add_argument("--session", action="append", default=[], help="a session id (prefix)")
     ap.add_argument("--width", type=int, default=200, help="characters kept per item")
     ap.add_argument("--project-dir", action="append", default=[],
                     help="another transcript directory (the checkout's old path, after a move)")
     a = ap.parse_args()
+    if a.broad and not a.slug:
+        ap.error("--broad requires --slug")
     dirs = project_dirs() + a.project_dir
     unique = {}  # a session copied under two config dirs is one session
     for f in (f for d in dirs for f in glob.glob(os.path.join(d, "*.jsonl"))):
@@ -279,7 +342,8 @@ def main():
     picked = {f for f in files if any(os.path.basename(f).startswith(prefix) for prefix in a.session)}
     picked.update(codex[sid][0] for sid in explicit)
     if a.slug:
-        picked.update(f for f in options if mentions(f, a.slug))
+        matches = mentions if a.broad else plan_session
+        picked.update(f for f in options if matches(f, a.slug))
     ordered = sorted(options, key=lambda f: options[f][0])
     if a.last:
         picked.update(ordered[-a.last:])

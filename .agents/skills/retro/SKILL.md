@@ -16,6 +16,8 @@ later session.
    <slug>` (or `--session <id>`; nothing given: this session, from your
    own context). It prints each session's human messages, skills, tools,
    failed calls and stalls. It reads Claude Code and Codex sessions.
+   Slug matching uses plan invocations and tool inputs that name the exact
+   plan path. Use `--broad` to include incidental mentions when needed.
    For a previous checkout path, pass `--project-dir` for Claude Code
    or `--session` with the Codex session ID. Open a transcript only where
    the digest points at something. Compare cached and uncached input and
