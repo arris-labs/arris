@@ -89,6 +89,9 @@ miss); reporting after one step and waiting for another `/work` is a bug.
 
 ## Conduct
 
+In Codex, read [the Codex workflow](references/codex.md) before launching
+or waiting on subagents.
+
 1. Read the plan; for each unchecked step note its tier: its grade, or
    the tier it names (`**[1, tier 3]**`). A **[CI]** step stops the
    conductor before it starts: its push is the human's.
@@ -114,8 +117,7 @@ miss); reporting after one step and waiting for another `/work` is a bug.
    when it retains one. The conductor waits for the owner; the owner opens
    the log on failure or at the first check after a missed expected finish. In Claude Code, use the harness
    notification and set a one-line `ScheduleWakeup` fallback after at
-   least 20 minutes (about 60 for a full gate). In Codex, use the longest
-   available interruptible `wait_agent` timeout appropriate to the step.
+   least 20 minutes (about 60 for a full gate).
    Follow the job-wait rule in `.agents/rules/git.md` for command jobs.
 3. On each hand-back, check what landed: the last commit names `(plans/<slug>
    step N)`, the plan has step N ticked, `git status` is clean. Its test

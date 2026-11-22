@@ -13,6 +13,9 @@ docs checklist. Deletion is the done signal.
 
 ## Do
 
+In Codex, read [the Codex workflow](references/codex.md) before launching
+review or waiting on verification.
+
 1. **Check the handoff and review the commits.** Every step of
    `docs/plans/<slug>.md` is ticked. Check that HEAD matches the verified
    SHA, or verify HEAD with `tools/verify.sh --status HEAD` if starting
