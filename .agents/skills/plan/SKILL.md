@@ -56,8 +56,11 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
      its assumptions. Exercise applicable tolerance gaps, equivalent
      periodic charts, numerical stopping limits, and caller interruption
      through the first public entry point as soon as it lands.
-     A fixture
-     with no closed form (a walked blend) is held to the second oracle's
+     Before setting a numerical threshold tighter than the model's linear
+     tolerance, check it against the stored fixture or oracle record. If a
+     step later shows the threshold is infeasible, raise the acceptance
+     decision as soon as there is evidence.
+     A fixture with no closed form (a walked blend) is held to the second oracle's
      record (ADR-0073), taken before a law is chosen: when it is missing,
      step 1 takes it and no ADR fixes a law before it. A plan that needs
      the second oracle's machine says so in its header, so the human is
