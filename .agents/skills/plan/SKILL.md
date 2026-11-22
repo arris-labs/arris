@@ -51,7 +51,12 @@ and the human can read in two minutes: under ~150 lines and ~10 steps.
    - *Acceptance* is an executable corpus run, ideally the milestone's own:
      which fixtures, which oracle values, which property tests. A pruning or
      acceleration step is held equal to its unaccelerated path (`classify`
-     vs `classify_linear`) over samples with loose, unequal tolerances. A fixture
+     vs `classify_linear`) over samples with loose, unequal tolerances.
+     For a new geometric certificate, name checker-valid cases that test
+     its assumptions. Exercise applicable tolerance gaps, equivalent
+     periodic charts, numerical stopping limits, and caller interruption
+     through the first public entry point as soon as it lands.
+     A fixture
      with no closed form (a walked blend) is held to the second oracle's
      record (ADR-0073), taken before a law is chosen: when it is missing,
      step 1 takes it and no ADR fixes a law before it. A plan that needs
