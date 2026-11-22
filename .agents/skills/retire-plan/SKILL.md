@@ -29,8 +29,12 @@ docs checklist. Deletion is the done signal.
    backlog.
 2. **Verify the reviewed tip and start acceptance.** Once review and fixes
    have handed back, pin HEAD and run `tools/verify.sh --status <sha>`.
-   Fix any red verification before launching acceptance on that SHA's
-   tree. Run the plan's acceptance via
+   Fix any red verification before launching acceptance on that SHA's tree.
+   If a review fix changes geometry or iteration, run the affected corpus
+   slice on the reviewed SHA before the full gate. Where the public
+   operation accepts a work budget, use one on representative fixtures
+   and report the fixture and variant on exhaustion.
+   Run the plan's acceptance via
    `tools/at-commit.sh <sha> sh -c '<runs>'` using the harness-specific
    wait rule. For a tooling-only diff limited to shell scripts under
    `tools/`, GitHub workflow YAML and prose, run the affected checks named
