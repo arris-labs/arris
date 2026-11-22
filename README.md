@@ -152,11 +152,11 @@ body, _ = model.chamfer(body, [lip], 1.5)
 
 | Area | What you get |
 |---|---|
-| **Modelling** | Primitives, rigid transforms and mirroring; extrude (in any direction) and revolve of profiles of lines, arcs and elliptic arcs; offset faces, shell to a wall, split by a plane; a profile as a one-face sheet body |
+| **Modelling** | Primitives, rigid transforms and mirroring; extrude (in any direction) and revolve of profiles of lines, arcs and elliptic arcs, including the horn and spindle tori an arc clear of the axis or ending on it makes; offset faces, shell to a wall, split by a plane; a profile as a one-face sheet body |
 | **Sweep and loft** | Sweep a profile along lines, arcs, helix arcs and B-spline curves, with rotation-minimising or fixed-binormal frames; loft through two or more profiles, ruled or smooth |
-| **Booleans** | Cut, fuse and common, one tool or many in one call, in any pose, over planes, cylinders, elliptic cylinders, cones, spheres, tori and NURBS faces — free-form against analytic and free-form against free-form; results with cavities, split pieces and disjoint shells |
+| **Booleans** | Cut, fuse and common, one tool or many in one call, in any pose, over planes, cylinders, elliptic cylinders, cones, spheres, tori and NURBS faces — free-form against analytic and free-form against free-form; results with cavities, split pieces, disjoint shells and touching lumps (solids that meet along a curve or at a point, each lump keeping its own contact edges and vertices); operands tangent to each other |
 | **Fillet and chamfer** | Constant radius along chains of edges, with miters, corners, steps, hole rims, seam crossings (square or slanted) and tangent cusps; a ball as large as the wall it rolls on (horn and spindle tori), and a fillet too wide for its face, rounded over the face's edge or a hole's rim; on free-form faces and between two of them, the blend a NURBS surface within your tolerance of the exact one |
-| **Queries** | Ray hits, exact point classification in a batch (inside, outside, on), minimum distance, interference with the shared volume, clash screening of an assembly, the planar section of a body; volume, area, centroid and inertia; face frames and plane projection. None of them changes the body |
+| **Queries** | Ray hits, exact point classification in a batch (inside, outside, on), minimum distance, interference with the shared volume, clash screening of an assembly, the planar section of a body; volume, area, centroid and inertia of a body or of one face; a tight world-axis-aligned box of any entity; face frames and plane projection. None of them changes the body |
 | **Meshing** | Tessellation to a chord tolerance, per face or whole, faces meshed at different times welded together; NumPy arrays from Python |
 | **STEP** | Every solid or surface model in a file read as a checked body (horn and spindle tori included) or a typed refusal naming why; small gaps closed and reversed faces turned back, each repair named on the body; assemblies; AP214 export in the unit you choose |
 | **Other formats** | STL and OBJ export; a deterministic native format in JSON and bytes, which every later release reads |
@@ -170,7 +170,7 @@ Each of these is a typed refusal today, never a wrong answer:
 - offset and shell of elliptic-cylinder and NURBS faces;
 - a NURBS face lying flush against another face over an area;
 - sewing the faces of a STEP file that share no edge;
-- non-manifold bodies.
+- non-manifold bodies (a shared edge or vertex within one lump; touching lumps are allowed).
 
 Arris is narrower than Open CASCADE and is not aiming for feature parity.
 [docs/COMPARISON.md](docs/COMPARISON.md) sets out what each does today and

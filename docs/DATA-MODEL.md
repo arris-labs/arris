@@ -95,7 +95,8 @@ With `O, X, Y, Z` the frame and `c = cos`, `s = sin`:
 
 `Surface::singularities()` lists a surface's singular points as
 `Singularity { point, fixed, value }` — the cone's apex, the sphere's two
-poles, a NURBS surface's collapsed rows — each the row of `fixed` at
+poles, a horn torus's pole (`R = r`) or a spindle torus's two (`R < r`),
+a NURBS surface's collapsed rows — each the row of `fixed` at
 `value` that is one point. `pcurve_on` ends a pcurve on one at the row's
 own value, and a loop runs along the row there on a degenerate edge;
 the STEP reader rebuilds that edge where the file left it out (ADR-0025
@@ -1162,8 +1163,8 @@ curve, where the branch's own (u, v) would be off the edge's curve by
 the fit's whole deviation.
 
 **A fitted pcurve never runs through a singular point** of the surface —
-a cone's apex, a sphere's pole, a NURBS surface's collapsed row — where
-every `u` names one point (on a NURBS surface, every value of whichever
+a cone's apex, a sphere's pole, a horn or spindle torus's pole, a NURBS
+surface's collapsed row — where every `u` names one point (on a NURBS surface, every value of whichever
 parameter runs along the row). The
 decision is a distance: a curve within `PCURVE_SINGULAR_BAND` (a quarter)
 of `tol.linear` of the point is on it. A range with that inside it is
@@ -1286,7 +1287,10 @@ can cross a seam. `Curve::tight_bounds_with` counts each subdivision against
 the caller's meter. At the available numeric precision, a range that cannot
 be bounded to `eps` gives `None`. A face's box is the union of its edges'
 boxes and its surface's over the loops' (u, v) bounds, inflated by the face's
-tolerance; `Aabb::intersects` on two of them is the cheap reject a
+tolerance; the *tight* box of an entity, `ops::query::tight_bounds`
+(ADR-0093), is not inflated: each side lies within the model's linear
+tolerance of a point of the entity, and a face or edge that cannot be bounded
+so is refused as `QueryReason::BoundsUncertified`; `Aabb::intersects` on two of them is the cheap reject a
 boolean's face pairs go through before any intersection is computed.
 `Curve2::translated(by)` (and `Frame2::translated`) is the same pcurve
 moved in (u, v) with its parameter carried along: how a boolean puts a
@@ -1610,13 +1614,14 @@ test scaffolding that stores a dangling reference as given), the builder
   by its curve's parameter direction. `range` is a sub-interval of the
   curve's domain; on a periodic curve it may cross the period (`[3π/2,
   5π/2]`). A **degenerate edge** has no 3D curve: both vertices are the same
-  vertex at a surface singularity (a sphere's pole, a cone's apex) and it
+  vertex at a surface singularity (a sphere's pole, a cone's apex, a horn
+  or spindle torus's pole) and it
   exists only to give the face's loop a pcurve across the singularity; it
   carries the parameter range of its pcurves itself, since there is no
   curve to take one from (`Edge::range()` is the range of either kind).
   It is used by the one face that closes on it, never as a boundary
-  between two (S2), and a revolve makes one per face at a cone's apex or
-  a sphere's pole on its axis.
+  between two (S2), and a revolve makes one per face at a cone's apex,
+  a sphere's pole or a torus pole on its axis.
 - A **face** is a surface trimmed by one or more loops. The face's natural
   normal is its surface's normal.
 - A **loop** is a closed ring of coedges. A **coedge** is one use of an edge
@@ -2033,7 +2038,7 @@ reference tree) mapped onto this representation.
 | S3 | A shell is connected through its edges | Fast |
 | S4 | A shell of a `Solid` is closed: no non-degenerate edge with one coedge (S2's exemption) | Fast |
 | S5 | The faces of a shell intersect only along their shared edges and vertices: their surfaces' intersection is empty, or every point of it that is interior to both faces is within the tolerance of an edge or vertex they share; two coincident surfaces must not carry faces whose interiors overlap. Surfaces meeting in isolated points (the points of a `Meets`: a touch, or a crossing through an apex) are held to the same rule point by point, and every curve is held to it whether it crosses or touches — a point inside both faces that is not within tolerance of a vertex both faces reach, or of an edge they share, is a violation; the vertex clause covers two cones closing on one apex, or a blend sphere touching a plane at the corner of its contact lines, which share a vertex but no edge. A pair whose boxes — each face's edges' curve boxes and its surface's box over its loops, grown by the tolerances — are apart shares no point and is decided without an intersector; every pair of analytic surfaces is decided in every pose, over its exact conics, over the curves a ruled pair's tracer fits in the overlap of the two faces' boxes (ADR-0018) — two blend cylinders on skew axes, a corner's sphere against a blend cylinder off its centre, two cylinders a boolean left meeting in a loop — or over the section a torus's tracer walks in its own parameter plane and fits whole, that overlap ignored (ADR-0019): a pin through the tube of a ring, a bend of pipe tangent to the straight one it runs into along a tube circle, a torus and a torus interlocked. A `Nurbs` face against an analytic one is decided over the section traced in the `Nurbs` surface's (u, v), whole (ADR-0061): a line of it the other surface runs along — a walked blend against the face it is tangent to along a contact, or against the table stripe it shares its end arc with — is divided out and returned exact, a crossing on an edge of its domain is traced from a cell cut at the edge, and a touch of an edge it does not cross is a point, or that edge's line over the stretch rounding cannot sign (a walked blend's contact against the table stripe's cylinder at a concave junction, where they agree to fourth order). At a convex junction the cylinder carried on enters the blend beside that corner, a branch the tracer refuses, and the pair is unchecked. Two `Nurbs` faces are decided over their marched section (ADR-0068); a pair with a `Nurbs` face in it is held to the rule at the traced branches' own points, isolines and singular points, never the fits of them. A pair the intersector refuses is still decided apart when the same quartering of the two patches separates them (as for B1, below). What neither decides — the tracers' and the marcher's refusals, poses of measure zero (`SectionFault`), among them the neighbours of a shared edge flush over an area or crowded with singular points — is **unchecked**: listed by `Report::unchecked`, never passed and never a violation | Full |
-| B1 | A `Solid` body has at least one shell, and its shells nest into lumps (ADR-0006): every shell enclosing positive volume is an outer shell and every one enclosing negative volume — its effective normals turned into the void — a void, a shell enclosing none being neither; no face of one shell crosses or overlaps a face of another, by S5's test with nothing shared but a touch admitted — a curve or a point where the surfaces are tangent and do not cross (`MeetKind::Touch`, and for a `Nurbs` pair a tangent isoline or an isolated singular point), so lumps may touch (ADR-0088); and, one shell lying inside another when a point of it does — a vertex clear of the other shell's faces and edges by their tolerance, else an interior point of one of its faces, the first sixty-four points of the shell the ray cast decides — by the parity of a ray cast against the other's faces alone, each void's innermost container is an outer shell and each outer shell's is none or a void. `arris_check::lumps` returns the lumps this proves — each outer shell with the voids whose innermost container it is. A face pair of two shells S5's test leaves undecided — a tracer's refusal the faces' patches do not separate, the two faces' (u, v) boxes quartered together wherever their clipped boxes overlap, down to a 256th of each face across and at most 20 000 boxes — or a shell no ray could be classified against, is **unchecked**; every pair of analytic surfaces is decided as S5 decides it, a ruled pair's traced section over the overlap of the two faces' boxes and a torus's over the whole torus. A ray meets every analytic surface by closed form and a `Nurbs` one through its Bézier patches, and one whose hit lands at a cone's apex or a sphere's pole lands on that face's degenerate edge, a boundary, and is abandoned for the next direction — so a solid of analytic faces — plane, circular or elliptic cylinder, cone, sphere and torus — is decided in every pose (ADR-0008, ADR-0019), and a shell with `Nurbs` faces is placed by its rays, its pairs the tracer refuses and the boxes do not separate being unchecked | Full |
+| B1 | A `Solid` body has at least one shell, and its shells nest into lumps (ADR-0006): every shell enclosing positive volume is an outer shell and every one enclosing negative volume — its effective normals turned into the void — a void, a shell enclosing none being neither; no face of one shell crosses or overlaps a face of another, by S5's test with nothing shared but a touch admitted — a curve or a point where the surfaces are tangent and do not cross (`MeetKind::Touch`, and for a `Nurbs` pair a tangent isoline or an isolated singular point), so lumps may touch (ADR-0088); and, one shell lying inside another when a point of it does — a vertex clear of the other shell's faces and edges by their tolerance, else an interior point of one of its faces, the first sixty-four points of the shell the ray cast decides — by the parity of a ray cast against the other's faces alone, each void's innermost container is an outer shell and each outer shell's is none or a void. `arris_check::lumps` returns the lumps this proves — each outer shell with the voids whose innermost container it is. A face pair of two shells S5's test leaves undecided — a tracer's refusal the faces' patches do not separate, the two faces' (u, v) boxes quartered together wherever their clipped boxes overlap, down to a 256th of each face across and at most 20 000 boxes — or a shell no ray could be classified against, is **unchecked**; every pair of analytic surfaces is decided as S5 decides it, a ruled pair's traced section over the overlap of the two faces' boxes and a torus's over the whole torus. A ray meets every analytic surface by closed form and a `Nurbs` one through its Bézier patches, and one whose hit lands at a cone's apex, a sphere's pole or a torus pole lands on that face's degenerate edge, a boundary, and is abandoned for the next direction — so a solid of analytic faces — plane, circular or elliptic cylinder, cone, sphere and torus — is decided in every pose (ADR-0008, ADR-0019), and a shell with `Nurbs` faces is placed by its rays, its pairs the tracer refuses and the boxes do not separate being unchecked | Full |
 | B2 | A `Solid` body encloses positive volume: `∬ p · (r_u × r_v) / 3` over each face's region in (u, v), summed with the sign of each face use. The value is reported with the violation | Full |
 | B3 | A `Wire` body has no shells; `free_edges` form chains (each vertex used by at most two free edges) — `General` bodies exempt | Fast |
 
@@ -2060,7 +2065,7 @@ asserts it. The line is linear in the closure, so it is taken at `Fast` too.
 Every operation returns a `Provenance`: which output entities came from
 which origins, and how. Three relations, in Open CASCADE's
 `BRepTools_History` vocabulary (read in the reference tree), because they
-are the three a parametric history needs; and an origin is an input
+are the three a feature tree needs; and an origin is an input
 entity *or a role* — what an entity is to the operation that made it from
 nothing — so that every chain has a root (ADR-0002):
 
@@ -2105,7 +2110,7 @@ pub struct Provenance {
   which sweeps an annulus of two closed rises, has no `StartEdge` at all.
   A revolve's vertex on the axis sweeps no rise and has no
   `EndVertex`; its `Rise` names instead the degenerate edge of each face
-  closing there at a cone's apex or a sphere's pole, and in a full turn
+  closing there at a cone's apex, a sphere's pole or a torus pole, and in a full turn
   it has a `StartVertex` only where such a face keeps it; a line
   segment along the axis sweeps no `Side` and has no `EndEdge`, its
   `StartEdge` being in a partial turn the edge both flat ends share and

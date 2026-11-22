@@ -58,21 +58,17 @@ cargo install cargo-fuzz --locked
 
 ## Current state
 
-**C1–C10 done and released (2026-09-12 to 10-22)**, with their status
-lines in `docs/ROADMAP.md`. **C11, the blend residue, done and released
-as 0.10.0 (2026-11-04)**. The blend row blocked 0 of 38 real parts,
-the scripts had 0 fillet refusals, and five nightly findings stayed open.
-**C12, the training harness's refusals**, opened 2026-11-04 and re-scoped
-2026-11-16 (ADR-0020). The cycle's exact batched classification, flat-edge
-classification and tangency fixes are done. Per-face surface properties
-shipped beside it in 0.11.0, followed by 0.11.1, the first release on PyPI.
-Solids that touch along a curve, at a point or through shared topology
-build as touching lumps. Each lump keeps its own contact edges and
-vertices (ADR-0088 to ADR-0090). Horn and spindle revolutions can close
-at a torus pole, with closed tessellation and STEP round trips (ADR-0092).
-Tight bounds in Rust and Python complete C12's in-list (ADR-0093). Draft,
-thicken and `region2` wait for the next named cycle.
-**Next:** `/close-cycle`.
+**C1–C11 done and released (2026-09-12 to 11-04)**, with their status
+lines in `docs/ROADMAP.md`. **C12, the training harness's refusals, done
+2026-11-22**: exact batched point classification, flat-edge and tangency
+fixes, touching lumps (ADR-0087 to ADR-0090), revolves closing at a torus
+pole (ADR-0092) and tight bounds (ADR-0093), with per-face surface
+properties and the first PyPI release (0.11.1) beside it.
+**C13, the harness's sketch contacts**, opened 2026-11-22: the 76 of 968
+CAD-Recode programs Open CASCADE builds that 0.11.1 refused or returned
+checker-red (`docs/ideas/cad-recode-sketch-prism-contacts.md`). Draft,
+thicken and `region2` stay next in line.
+**Next:** `/release`, then `/plan` from that idea.
 
 ## Rules that are not derivable from the code
 

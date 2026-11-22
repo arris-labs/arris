@@ -6,20 +6,19 @@ Arris is not aiming at feature parity with OCCT, and this file does not
 claim it has any. It lists what each one does today, where they differ in
 approach, and what has and has not been measured.
 
-Maintained with the code: each row names the version of `CHANGELOG.md`
-that made its Arris column true, and `/close-cycle` reviews the whole
-file against the code. A row that is no longer true is fixed in the
+Maintained with the code: `/close-cycle` reviews the whole file against
+the code and `CHANGELOG.md`. A row that is no longer true is fixed in the
 commit that makes it untrue. The Open CASCADE column describes the
 version the oracle pins (`cadquery-ocp` 8.0.1 in `tools/oracle/pyproject.toml`),
 not the latest.
 
 ## Where each one stands
 
-| Area | Open CASCADE | Arris (0.10.0) |
+| Area | Open CASCADE | Arris |
 |---|---|---|
 | Surfaces | Plane, cylinder, cone, sphere, torus, NURBS, offsets, and more | Plane, cylinder, elliptic cylinder, cone, sphere, torus; NURBS surfaces read, checked, sectioned against analytic surfaces and against each other (ADR-0061, ADR-0068), and swept/lofted (ADR-0063, ADR-0065) |
 | Curves | Lines, circles, ellipses, parabolas, hyperbolas, NURBS | Lines, circles, ellipses, NURBS (for sections, extrema, sweep paths, and lofts) |
-| Booleans (cut, fuse, common) | Over all of the above, NURBS included | Over every analytic face in any pose, multi-tool in one call; NURBS against analytic surfaces (ADR-0061) and against NURBS (ADR-0068); a NURBS face flush with another over an area is refused |
+| Booleans (cut, fuse, common) | Over all of the above, NURBS included | Over every analytic face in any pose, multi-tool in one call; NURBS against analytic surfaces (ADR-0061) and against NURBS (ADR-0068); a NURBS face flush with another over an area is refused; solids that touch along a curve or at a point fuse as touching lumps of one solid |
 | Sections | Full general sections | Exact for conic pairs; traced in a NURBS surface's parameter plane against an analytic one and marched between two NURBS surfaces, fitted elsewhere; planar section of a body as a sheet |
 | Fillet and chamfer | Constant and variable radius, on most face pairs | Constant radius (a chamfer: one distance), on chains of edges: in closed form between planes and cylinders (coaxial and parallel-axis pairs included) and on cone, sphere and torus rims, a ball large enough to make a horn or spindle torus included; elsewhere a walked NURBS stripe, on NURBS faces, between two of them and on analytic pairs no closed form holds (ADR-0062); runs over a hole's rim or a face's edge, across a seam, and into a cusp of two tangent walls; no variable radius, and some corners and tangent chains refused by name (`VertexBlend`, `TangentChain`, `BlendTooLarge`) |
 | Shell and offset | Yes, including on NURBS | Offset faces and shell on analytic faces (refuses elliptic cylinder and NURBS for offset and shell) |
@@ -27,6 +26,7 @@ not the latest.
 | Distance, interference, clash | Yes (`BRepExtrema`, `BRepAlgoAPI`) | Yes, with a typed refusal for pairs without a formula |
 | Point classification | Yes (`BRepClass3d_SolidClassifier`) | Yes, a batch of points against a solid, exact, in order; a point no ray decides is reported as undecided |
 | Ray fire | Yes | Yes, on every face kind including NURBS |
+| Bounding box | Yes (`BRepBndLib`) | A tight world-axis-aligned box of any entity, certified at the model's tolerance or refused by name |
 | Healing | `ShapeFix` and sewing, on by default when reading | Two repairs, on by default when reading and each named on the body: a gap up to 5e-4 of the part's size closed by growing that entity's tolerance, and a face the file walks against all its neighbours turned back. Faces that share no edge are not sewn: refused, naming why |
 | Sheet and non-manifold bodies | Yes | Sheet bodies (open shells): from a planar profile, a planar section and STEP surface models, which read and write; measured by area and surface inertia; moved, mirrored and tessellated; booleans, blends and shells refuse one. A surface model whose faces do not meet is refused until sewing lands. Non-manifold is refused |
 | STEP | Read and write, IGES too | Read (every solid or surface model of a file is a checked body or a named refusal), write AP214 in a chosen length unit; assemblies both ways |
@@ -107,8 +107,9 @@ the closed form:
 
 These are specific cases, not a failure rate. The tolerance-band survey
 (`crates/arris-ops/tests/tolerance_band.rs`) perturbs contacts a quarter tolerance to
-sixteen tolerances off flush, coaxial or tangent. When last run (September
-2026) Arris failed about a third of the booleans it generated. Open CASCADE has not been run over the
+sixteen tolerances off flush, coaxial or tangent. When last run (November
+2026) Arris failed about a quarter of the booleans it generated (2729 of
+10 752, recorded in that file's header). Open CASCADE has not been run over the
 same band, so no comparison of rates exists. Do not read the cases above
 as "more robust than Open CASCADE".
 

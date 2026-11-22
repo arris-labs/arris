@@ -23,7 +23,9 @@ then **C10** (the NURBS cycle: NURBS operands, sweep and loft; done
 blend residue: the fillets the real parts and scripts were refused; done
 2026-11-04, ADR-0070 to ADR-0084), then **C12** (the training harness's
 refusals: the programs it runs that Open CASCADE builds, re-scoped
-2026-11-16 from the plugin CAD's remaining asks by ADR-0020's amendment).
+2026-11-16 from the plugin CAD's remaining asks by ADR-0020's amendment;
+done 2026-11-22, ADR-0085 to ADR-0093), then **C13** (the harness's sketch
+contacts: the CAD-Recode programs Open CASCADE builds and Arris refuses).
 An unopened cycle carries
 a name, not a number: it takes its number when `/close-cycle` opens its
 section (ADR-0020).
@@ -939,65 +941,35 @@ fixture with a closed form, and together they reach about 1,100 programs.
 The plugin CAD has reported nothing. Its draft, thicken and `region2` are
 the named cycle next in line.*
 
-**In**, in the order planned:
+**Status: done 2026-11-22, tag `c12`.** Retired the training harness's
+refusals: exact batched point classification in the binding
+(`classify_points`, 10,648 points on a 269-face part within 0.6 s); a flat
+internal edge placed once, and an operand sharing entities with an earlier
+one decomposed as its copy (ADR-0087); a touch between a section and a rim
+or two edges a vertex of both, a crescent one loop through it twice, and
+five tangent operands `Full`-green to their closed forms; solids that touch
+along a curve, at a point or through shared topology fused as touching
+lumps, each keeping its own contact edges and vertices (ADR-0088 to
+ADR-0090); horn and spindle revolutions closing at a torus pole, meshed and
+round-tripped through STEP (ADR-0092); tight bounds of any entity in Rust
+and Python, three calls on the loaded 269-face FTC-07 solid about 51 ms
+each in release (ADR-0093). Beside it: per-face surface properties
+(0.11.0), the first PyPI release (0.11.1), a local verification over what
+its commit can change (ADR-0085), the nightly's count as a budget with red
+meaning a new signature (ADR-0086), outside pull requests through the
+verified rebase (ADR-0091), and a crates.io publish that resumes after an
+index timeout. The histogram's kernel rows block 0 of 38 real parts and the
+script corpus builds 70 of 71 stages (2026-11-20). Left open, in
+`docs/BACKLOG.md`: the chain property's flush-top refusals and `fuse_many`
+of a cylinder tangent inside a slab's side, the seam cusp, the touch merged
+into a vertex, and the nightly findings. ADR-0085 to ADR-0093.
 
-- Exact point classification in the binding: `classify_points`, a batch
-  of points in, in/out/on per point. **Done**, with its pruned `on` pass
-  and a speed bar of 0.6 s for 10,648 points on a 269-face part.
-- A flat internal edge read as a tangent contact: a chained fuse on a
-  shared end plane, a third slot across a cylinder, `interference` of one
-  part split two ways, a bore over a bore of its width. **Done**: an edge
-  piece is placed on a face once, a section block along a third operand's
-  edge is that edge, and an operand that shares entities with an earlier
-  one is decomposed as its copy (ADR-0087); the five fixtures build to
-  Open CASCADE's values, and a curve entered twice is a named kernel fault,
-  never `TangentContact`. The chain property of its random boxes and
-  cylinders waits on three refusals of another family (a flush top's edge
-  asked against a plane: `regression/two-boxes-on-one-plane-fuse-unsupported`,
-  `chained-fuse-three-boxes-and-cylinder-unsupported`,
-  `fuse-many-three-boxes-plane-against-plane-unsupported`).
-- Tangency faults: an operand tangent inside another, a tool tangent
-  to a bore, two chamfers that use up a face, contacts that end in an
-  internal error. **Done** (2026-11-17): a touch between a section and a
-  rim, or between two edges, is a vertex of both when the curve runs inside
-  both faces beside it, and a crescent is one loop through it twice; a node
-  orders a touch by the analytic curve's tangent. Five cases build
-  `Full`-green to their closed forms (a cylinder tangent inside another, a
-  bar with a boss tangent to each end, a plate whose arc is tangent inside a
-  cylinder, a bore cut by a column tangent along four lines, an end disc
-  tangent to a wall), and a ruling a hair off the seams builds. A frustum
-  and a box that touch at one point of a rim fuse as two touching lumps on
-  both sides of the seam. Two chamfers that use up the face between them
-  are refused `BlendTooLarge`. Open: a seam crossing a cap a few
-  tolerances inside the rim (the cusp), a touch merged into a vertex, and
-  `fuse_many` of a cylinder tangent inside a slab's side (backlog).
-- Revolves of circular profiles that reach the axis. **Done** (2026-11-20):
-  arcs on the outer sheet of a horn or spindle torus build clear of the
-  axis or close at a torus pole (ADR-0092). The near-sphere spindle keeps
-  its major radius of 1.3e-4. A tangent circle builds a capped horn on a
-  partial turn, with volume `π²` and area `2π² + 2π` for the unit
-  half-turn. Three pole booleans (a rivet fuse, a box cut and a ball
-  common) match the oracle. An arc tangent in its interior returns
-  `ArcTouchesAxis` with the sketch indices. The sweep and blend rows
-  block 0 of 38 real parts, and the script corpus builds 70 of 71 stages.
-- Operands that touch only along a curve or at an isolated point fuse to one
-  solid of touching lumps (ADR-0088, ADR-0089). The harness's torus-link,
-  ball-knob and hinge pairs cut to their targets and have empty commons.
-  A later fuse can cover the point of contact. A join that leaves the contact
-  exposed within one lump returns `TangentContact`. Shared edges and
-  vertices are copied per shell for edge-touching boxes, the crossing
-  cylinders' cut, and both frustum–box rim contacts (ADR-0090). A later
-  bridge over the whole shared contact joins the lumps. A bridge that
-  leaves contact exposed within one lump returns `NonManifold`.
-- Tight bounds for a vertex, edge, face, shell or body in Rust and Python
-  (ADR-0093). **Done** (2026-11-22). The shaft collar, spacer ring and
-  clevis pin match their closed forms within `1e-6`, and four corpus areas
-  check tight boxes against the tolerance envelope and tessellation. Three
-  release calls on the loaded 269-face NIST FTC-07 solid take about 51 ms each.
-- Beside the cycle, the crates.io publish retry is **done**. The job checks
-  the sparse index again after a failed Cargo attempt and skips versions
-  already indexed. A rerun at the original tag resumes a partial release
-  (`.agents/rules/git.md` §Tags). The nightly findings remain open.
+**In:** exact point classification in the binding; a flat internal edge
+read as a tangent contact; tangency faults (an operand tangent inside
+another, a tool tangent to a bore, two chamfers that use up a face);
+revolves of circular profiles that reach the axis; operands that touch only
+along a curve or at a point; tight bounds. Beside the cycle: per-face
+surface properties, the crates.io publish retry.
 
 **Out:** draft, thicken and `region2` (the named cycle "the plugin CAD's
 remaining asks"); `interference` of a cone face against a cone face (a
@@ -1014,6 +986,57 @@ is an `OpInternalError` or an `Ok` body the checker refuses.
 `classify_points` agrees with the oracle's probe classes on every fixture
 that has probes. The histogram and the script corpus are re-run and
 printed, with no row above C11's close, and no panic.
+
+---
+
+## C13 — the harness's sketch contacts
+
+*Goal: a sketch program the training harness runs, and Open CASCADE builds,
+builds in Arris checker-green, or is refused by name where two result
+shells genuinely touch; never an `Ok` body the checker refuses. Chosen at
+C12's close by ADR-0020's amendment of 2026-11-16, under which measured
+refusals of programs a consumer runs today rank before API a consumer has
+not called yet. On 2026-11-21 the harness lifted all 968 programs of its
+CAD-Recode validation set to sketches. Against 0.11.1, 75 were refused by
+type and one returned a body the full checker refuses, and Open CASCADE
+builds every one of the 76 (`docs/ideas/cad-recode-sketch-prism-contacts.md`).
+The plugin CAD has reported nothing since its asks. The histogram's kernel
+rows block 0 of 38 real parts, and the script corpus builds 70 of 71
+stages. Touching lumps (ADR-0088 to ADR-0090) landed after 0.11.1, so the
+first plan re-runs the reductions on `main` before it counts a row as open.*
+
+**In**, by the idea's reductions, the rows each reaches in parentheses:
+
+- A circular post tangent to a box's cap fuses `Ok` with the cap's loops
+  intersecting (L5 at `full`, and the body read back is rejected). It
+  builds checker-green with volume `31·16·25 + 19·9π` (1).
+- A circular cut tangent to a profile's edge: faces that touch along a
+  curve interior to both result faces (36, cut from the bottom), and a
+  one-coedge edge in the builder (11, cut from the left).
+- Result shells that touch along an edge or at a vertex (15): touching
+  lumps where ADR-0088 to ADR-0090 build them, a named refusal where
+  the contact stays within one lump.
+- A slanted prism fused with a taller box at a profile vertex leaves a
+  dangling section edge (6).
+- A notched circular segment refused as `SelfIntersecting`, though its
+  line lies inside the disc and misses the arc (7).
+
+**Out:** draft, thicken and `region2` (the plugin CAD's remaining asks);
+the backlog's flush-top `fuse_many` refusals unless a reduction lands on
+them; `interference` of a cone face against a cone face; free-edge sewing;
+faceted solids and the reader's other refused subsets; variable-radius
+blends and the chamfer's other modes; IGES and same-domain face merging;
+sheet operands of the boolean.
+
+**Accept:** every reduction is a fixture under `tests/fixtures/` with Open
+CASCADE's values, or its closed form under ADR-0015 where the oracle is
+off. Each one builds checker-green at `full` within its tolerance, or
+returns the typed refusal the idea's decision names for a genuine shell
+contact. None of them is an `OpInternalError` or an `Ok` body the checker
+refuses. The harness re-runs the 968 programs on the cycle's wheel and
+reports fewer than 76 failures and no checker-refused body. The histogram
+and the script corpus are re-run and printed, with no row above C12's
+close, and no panic.
 
 ---
 
@@ -1161,9 +1184,10 @@ opens it.
   into a solid through ADR-0048's offset; and `region2` as public API over
   `Curve2` with exact predicates, which S5's exact polygon–polygon overlap
   rides on (A5 and A7 of `docs/ideas/plugin-cad-consumer-asks.md`).
-  Opened as C12 and moved out at its re-scope; next in line by ADR-0020's
-  amendment of 2026-11-16, unless the training harness's next refusals
-  outrank it.
+  Opened as C12 and moved out at its re-scope; passed over at C12's close
+  for the harness's sketch contacts (C13) by ADR-0020's amendment of
+  2026-11-16, and next in line after it unless the harness's next refusals
+  outrank it again.
 - **The attribute cycle** — attributes a consumer attaches to entities,
   carried through every operation by declared rules over the split order
   ADR-0009 fixes, for a consumer with no naming scheme of its own
