@@ -995,7 +995,7 @@ the named cycle next in line.*
   check tight boxes against the tolerance envelope and tessellation. Three
   release calls on the loaded 269-face NIST FTC-07 solid take about 51 ms each.
 - Beside the cycle, in the second plan slot: the nightly's open findings,
-  and the publish retry (`docs/ideas/publish-survives-index-timeout.md`)
+  and the publish retry (`docs/plans/publish-survives-index-timeout.md`)
   before the next tag.
 
 **Out:** draft, thicken and `region2` (the named cycle "the plugin CAD's

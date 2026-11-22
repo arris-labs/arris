@@ -92,17 +92,17 @@ jobs:
         id: auth
         uses: rust-lang/crates-io-auth-action@v1
 
-      # Resolves the publish order itself and waits for each crate to reach
-      # the index before the crate above it goes up — which is what the
-      # `version` on every internal edge is for. `arris-debug` is
-      # `publish = false` and stays off crates.io.
-      - run: cargo publish --workspace --locked
+      # The helper excludes indexed versions. Cargo resolves publish order
+      # and waits for dependencies to reach the index before uploading their
+      # dependents.
+      - run: tools/publish-workspace.sh
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token || env.REGISTRY_TOKEN_SECRET }}
 
       - uses: softprops/action-gh-release@v3
         with:
           body_path: ${{ runner.temp }}/notes.md
+          append_body: false
 
   # PyPI never lets a file be replaced, so the tag must name the version the
   # package carries and a pre-release (`0.5.0-dev` is `0.5.0.dev0` to

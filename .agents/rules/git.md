@@ -118,6 +118,11 @@ Name any public type or signature it changes.
   and the Python package `arris` to PyPI in lockstep (ADR-0034), each
   behind its own environment reviewer (`crates-io`, `pypi`). `arris-debug`
   and `arris-py` are `publish = false`. Mechanics: the `/release` skill.
+- The crates.io job checks the public index before each of up to three
+  Cargo publish attempts, skipping versions already indexed. It waits two
+  minutes between attempts and checks the index after the last Cargo
+  failure. If the job still fails, wait for the index to catch up and rerun
+  the failed job at its original tag.
 
 ### The version
 

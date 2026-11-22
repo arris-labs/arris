@@ -77,12 +77,18 @@ prepares the commit the tag points at. The scheme is
 
 ## When a publish fails partway
 
-crates.io rate-limits new crates (burst 5, then one per 10 min), so a
-release introducing crates can stop on a `429` half-published. Recoverable:
-wait the window, `gh run rerun <id> --failed`; already-published crates are
-skipped. Each re-run asks the reviewer again. The workflow that runs is the
-one **at the tag**: a broken workflow is fixed on `main` and released as a
-new version, never by moving the tag.
+An upload can succeed even when Cargo times out waiting for the crates.io
+index. The crates.io job checks the public index before each of up to three
+Cargo publish attempts and excludes versions already indexed. It waits two
+minutes between attempts and checks the index again after a final Cargo
+failure. Once every version is present, the job can create or update the
+GitHub Release with the tagged changelog section.
+
+If the job fails, wait for the index to catch up and use
+`gh run rerun <id> --failed` at the original tag. For a `429`, wait for
+the registry's rate-limit window as well. A rerun asks the reviewer again.
+The workflow comes from the tagged commit. Fix a broken workflow on
+`main` and release it with a new version.
 
 ## Keep to
 
