@@ -157,7 +157,18 @@ pub fn tight_bounds(
                 });
                 let seed = trim::bounds(surface, &loops, seed, face_eps, &mut meter)?
                     .ok_or_else(|| bounds_uncertified(id))?;
-                if hull_inside_closure {
+                // A single linear span in an open direction maps each
+                // ruling to a segment with positive rational weights.
+                // Each retained interval of that ruling is enclosed by
+                // its endpoints on the lifted trims.
+                let ruled = !loops.is_empty()
+                    && nurbs
+                        .counts()
+                        .into_iter()
+                        .zip(nurbs.closure())
+                        .any(|(count, closure)| count == 2 && closure.is_none())
+                    && trim::within_domain(surface, &loops);
+                if hull_inside_closure || ruled {
                     include_box(&mut result, seed);
                     continue;
                 }
@@ -273,8 +284,6 @@ const CREASE_ULPS: f64 = 4.0;
 #[derive(Debug, Clone)]
 struct Patch {
     uv: [Interval; 2],
-    /// The displacement of each closed, clamped direction from its knot domain.
-    shift: [f64; 2],
     depth: u32,
     open: u8,
     near: Vec<usize>,
@@ -309,33 +318,12 @@ fn nurbs_face_box(
     // The sides of the hulls kept, axis by axis.
     let mut kept_lo = [f64::INFINITY; 3];
     let mut kept_hi = [f64::NEG_INFINITY; 3];
-    let spline_domain = surface.domain();
-    let [us, vs] = [0, 1].map(|dir| {
-        if surface.closure()[dir].is_some() && surface.period()[dir].is_none() {
-            closed_parts(root[dir], spline_domain[dir])
-        } else {
-            vec![(root[dir], 0.0)]
-        }
-    });
-    if us.len() > 1 || vs.len() > 1 {
-        meter.tick()?;
-    }
-    let mut queue = VecDeque::new();
-    for &(v, dv) in &vs {
-        for &(u, du) in &us {
-            let uv = [u, v];
-            let near = (0..segments.len())
-                .filter(|&s| distance_to_rect(&segments[s], uv) <= segments[s].reach)
-                .collect();
-            queue.push_back(Patch {
-                uv,
-                shift: [du, dv],
-                depth: 0,
-                open: 0b11_1111,
-                near,
-            });
-        }
-    }
+    let mut queue = VecDeque::from([Patch {
+        uv: root,
+        depth: 0,
+        open: 0b11_1111,
+        near: (0..segments.len()).collect(),
+    }]);
     while let Some(patch) = queue.pop_front() {
         let [u, v] = patch.uv;
         let centre = Point2::new(u.lerp(0.5), v.lerp(0.5));
@@ -362,23 +350,10 @@ fn nurbs_face_box(
                 inner = Some(inner.map_or(b, |acc| acc.union(b)));
             }
         }
-        let [u_clip, v_clip] = [0, 1].map(|dir| {
-            let r = patch.uv[dir];
-            let shift = patch.shift[dir];
-            if shift == 0.0 {
-                return Ok(r);
-            }
-            let d = spline_domain[dir];
-            Interval::new(d.clamp(r.lo() - shift), d.clamp(r.hi() - shift))
-        });
-        let (Ok(u_clip), Ok(v_clip)) = (u_clip, v_clip) else {
-            return Err(bounds_uncertified(face));
-        };
-        let clip = [u_clip, v_clip];
-        let net = surface.clipped(clip);
+        let net = surface.clipped(patch.uv);
         let hull = match &net {
             Some(n) => box_of(n),
-            None => Surface::Nurbs(surface.clone()).bounds(clip),
+            None => Surface::Nurbs(surface.clone()).bounds(patch.uv),
         };
         let Some(hull) = hull else {
             return Err(bounds_uncertified(face));
@@ -391,7 +366,14 @@ fn nurbs_face_box(
             }
             if !whole
                 && let Some(n) = &net
-                && monotone(surface, n, k, [hull.min[k], hull.max[k]], clip, &creases)
+                && monotone(
+                    surface,
+                    n,
+                    k,
+                    [hull.min[k], hull.max[k]],
+                    patch.uv,
+                    &creases,
+                )
             {
                 open &= !(0b11 << (2 * k));
                 continue;
@@ -431,7 +413,6 @@ fn nurbs_face_box(
                     .collect();
                 queue.push_back(Patch {
                     uv: child,
-                    shift: patch.shift,
                     depth: patch.depth + 1,
                     open,
                     near,
@@ -461,51 +442,20 @@ fn bounds_uncertified(entity: impl Into<EntityId>) -> OpError {
     )
 }
 
-/// The face's (u, v) box cut to what the surface has: an open direction
-/// to its domain, a closed one to one period from the box's low end.
-/// `None` when an open direction's box misses the domain.
+/// Use the original knot chart in closed directions. The trim's relevant
+/// translates are found in that chart, so rounding-width slivers across a
+/// clamped seam never need to be clipped as separate surface patches.
 fn fit_to_surface(surface: &NurbsSurface, uv: [Interval; 2]) -> Option<[Interval; 2]> {
     let domain = surface.domain();
-    let periods = surface.closure();
-    let mut out = uv;
-    for dir in 0..2 {
-        let r = uv[dir];
-        out[dir] = match periods[dir] {
-            Some(p) => Interval::new(r.lo(), r.hi().min(r.lo() + p)).ok()?,
-            None => {
-                let d = domain[dir];
-                Interval::new(r.lo().max(d.lo()), r.hi().min(d.hi())).ok()?
-            }
-        };
-    }
-    Some(out)
-}
-
-/// The pieces of a range of at most one period in a closed, clamped
-/// direction. Each piece stays in the trim's translate for winding tests
-/// and carries the displacement of its knot domain for clipping.
-fn closed_parts(range: Interval, domain: Interval) -> Vec<(Interval, f64)> {
-    if domain.contains(range.lo()) && domain.contains(range.hi()) {
-        return vec![(range, 0.0)];
-    }
-    let period = domain.length();
-    let mut shift = ((range.lo() - domain.lo()) / period).floor() * period;
-    if range.lo() < domain.lo() + shift {
-        shift -= period;
-    }
-    let seam = domain.hi() + shift;
-    let mut parts = Vec::with_capacity(2);
-    if let Ok(left) = Interval::new(range.lo(), range.hi().min(seam))
-        && left.length() > 0.0
-    {
-        parts.push((left, shift));
-    }
-    if let Ok(right) = Interval::new(range.lo().max(seam), range.hi())
-        && (right.length() > 0.0 || parts.is_empty())
-    {
-        parts.push((right, shift + period));
-    }
-    parts
+    let closure = surface.closure();
+    let fit = |k: usize| {
+        let d = domain[k];
+        if closure[k].is_some() {
+            return Some(d);
+        }
+        Interval::new(uv[k].lo().max(d.lo()), uv[k].hi().min(d.hi())).ok()
+    };
+    Some([fit(0)?, fit(1)?])
 }
 
 /// The knots of direction `dir` inside the domain at which the surface is

@@ -27,6 +27,46 @@ fn tight_bounds_loft_corpus() {
     check_area("loft");
 }
 
+#[test]
+fn tight_bounds_closed_loft_across_the_knot_seams() {
+    let dir = fixtures::corpus_root().join("loft/loft-closed-torus-like");
+    let chain = corpus::chain(&dir, "default").unwrap();
+    let body = chain.result().unwrap();
+
+    // Clipping a rounding-width patch across the seam used to leave
+    // millions of open patches. A generous work budget keeps that case
+    // reproducible without relying on elapsed time or memory use.
+    let got = tight_bounds(&chain.model, body.id.into(), &Control::budget(4_096))
+        .unwrap()
+        .unwrap();
+    // The loft interpolates radially oriented circles. In s = 2v - 1
+    // its x- and y-coordinate multipliers are -1 + (14s² - 8s⁴)/3
+    // and 8(s³ - s)/3. The largest section radius about z is 9.5.
+    let y = 9.5 * 16.0 / (9.0 * 3.0_f64.sqrt());
+    let want_min = [-9.5, -y, -1.5];
+    let want_max = [9.5 * 25.0 / 24.0, y, 1.5];
+    let eps = chain.model.precision().default_tolerance;
+    for k in 0..3 {
+        assert!((got.min[k] - want_min[k]).abs() <= eps, "{got:?}");
+        assert!((got.max[k] - want_max[k]).abs() <= eps, "{got:?}");
+    }
+}
+
+#[test]
+fn tight_bounds_ruled_thread_chamfer() {
+    let dir = fixtures::corpus_root().join("sweep/sweep-thread-chamfer");
+    let chain = corpus::chain(&dir, "default").unwrap();
+    let body = chain.result().unwrap();
+
+    // The chamfer wall has an open degree-one direction. Around each turn
+    // the ruling slopes can change sign, but the trims enclose them all.
+    assert!(
+        tight_bounds(&chain.model, body.id.into(), &Control::budget(16_384))
+            .unwrap()
+            .is_some()
+    );
+}
+
 fn check_area(area: &str) {
     let root = fixtures::corpus_root().join(area);
     let mut failures = Vec::new();

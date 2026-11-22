@@ -44,8 +44,15 @@ envelope is also useful when deciding whether two entities can meet.
    height along its axis. If only part of it survives the trim, the trim
    meets it at the same height.
 4. **Subdivide NURBS faces where their interiors can enlarge the box.**
-   Split at a closed, clamped seam and clip each piece in the fundamental
-   knot domain. Read the trim as closed loops of pcurve chords, following
+   Subdivide in the fundamental knot domain of each closed direction
+   and use the trim's whole-period translates there. Working in the
+   knot chart avoids rounding-width patches across a clamped seam whose
+   endpoints coincide after translation and fail to clip.
+   An open direction with one linear span maps each ruling onto a
+   straight segment, including with positive rational weights. When the
+   trims stay inside the knot domain, each retained interval on a ruling
+   is enclosed by its endpoints on the lifted trims.
+   Read the trim as closed loops of pcurve chords, following
    whole-period joins in the same chart and joining tolerated endpoint
    gaps by short straight segments. The chords' certified deviations
    enclose the deformation from the pcurves to their polygons. Use
