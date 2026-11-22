@@ -22,10 +22,13 @@ printf '%s\n' "$sha" >"$job/sha"
 
 # A background shell ignores INT and QUIT. Restore the defaults before the
 # pinned command starts so Python can install its usual Ctrl-C handler.
-(
+# Keep the verdict writer in the detached session with the command.
+setsid env --default-signal=INT,QUIT bash -c '
+  job=$1
+  shift
   status=0
-  setsid --wait env --default-signal=INT,QUIT "$at_commit" "$sha" "$@" || status=$?
-  printf '%s\n' "$status" >"$job/exit.status.tmp"
+  "$@" || status=$?
+  printf "%s\n" "$status" >"$job/exit.status.tmp"
   mv -- "$job/exit.status.tmp" "$job/exit.status"
-) </dev/null >"$job/job.log" 2>&1 &
+' launch-at-commit "$job" "$at_commit" "$sha" "$@" </dev/null >"$job/job.log" 2>&1 &
 printf '%s\n' "$job"
