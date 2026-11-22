@@ -10,7 +10,9 @@ into its version (ADR-0027).
 
 - Query an entity’s world-axis-aligned tight box with Rust’s
   `ops::query::tight_bounds` or Python’s `Model.tight_bounds`. Both
-  support cancellation and a work budget.
+  support cancellation and a work budget. `BoundsUncertified` names an
+  edge or face whose box cannot be certified at the model's linear
+  tolerance.
 
 - `revolve` builds the outer sheet of a horn or spindle torus from a
   circular arc clear of the axis or meeting it at an endpoint. A face

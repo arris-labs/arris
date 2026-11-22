@@ -1282,8 +1282,10 @@ contains it. `Curve::tight_bounds(range, eps)` gives an outer box with each
 side within `eps` of the curve to rounding. It uses the exact bounds of a
 line or conic and subdivides a NURBS only where its clipped control hull
 extends more than `eps` past the box of evaluated points. Periodic ranges
-can cross a seam. A face's box is the union of its edges' boxes and its
-surface's over the loops' (u, v) bounds, inflated by the face's
+can cross a seam. `Curve::tight_bounds_with` counts each subdivision against
+the caller's meter. At the available numeric precision, a range that cannot
+be bounded to `eps` gives `None`. A face's box is the union of its edges'
+boxes and its surface's over the loops' (u, v) bounds, inflated by the face's
 tolerance; `Aabb::intersects` on two of them is the cheap reject a
 boolean's face pairs go through before any intersection is computed.
 `Curve2::translated(by)` (and `Frame2::translated`) is the same pcurve

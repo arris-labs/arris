@@ -989,8 +989,11 @@ the named cycle next in line.*
   cylinders' cut, and both frustum–box rim contacts (ADR-0090). A later
   bridge over the whole shared contact joins the lumps. A bridge that
   leaves contact exposed within one lump returns `NonManifold`.
-- A body's tight bounds where a NURBS edge reaches them
-  (`docs/ideas/tight-body-bounds.md`).
+- Tight bounds for a vertex, edge, face, shell or body in Rust and Python
+  (ADR-0093). **Done** (2026-11-22). The shaft collar, spacer ring and
+  clevis pin match their closed forms within `1e-6`, and four corpus areas
+  check tight boxes against the tolerance envelope and tessellation. Three
+  release calls on the loaded 269-face NIST FTC-07 solid take about 51 ms each.
 - Beside the cycle, in the second plan slot: the nightly's open findings,
   and the publish retry (`docs/ideas/publish-survives-index-timeout.md`)
   before the next tag.
